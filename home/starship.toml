@@ -1,0 +1,92 @@
+# Get editor completions based on the config schema
+"$schema" = "https://starship.rs/config-schema.json"
+
+# A minimal left prompt
+format = "$character$directory"
+
+# Keep the right prompt short; long RPROMPTs can overlap/hide typed input.
+right_format = "$username$hostname$git_branch$git_status$package$elixir$nodejs$deno$bun$rust$golang$python$ruby$php$java$kotlin$lua$dart$c$cmake$docker_context$terraform$nix_shell$cmd_duration$container"
+add_newline = false
+
+[character]
+format = "$symbol  "
+success_symbol = "[🝡](bold green)"
+error_symbol = "[🗴](bold red)"
+vimcmd_symbol = "[🝡](bold blue)"
+vimcmd_replace_one_symbol = "[🝡](bold purple)"
+vimcmd_replace_symbol = "[🝡](bold purple)"
+vimcmd_visual_symbol = "[🝡](bold yellow)"
+
+[username]
+format = "[$user]($style) "
+
+[hostname]
+ssh_symbol = "@ "
+format = "[$ssh_symbol$hostname]($style) "
+
+[package]
+symbol = "󰏗 "
+
+[elixir]
+symbol = " "
+
+[git_branch]
+symbol = " "
+
+[nodejs]
+symbol = " "
+
+[deno]
+symbol = " "
+
+[bun]
+symbol = " "
+
+[rust]
+symbol = " "
+
+[golang]
+symbol = " "
+
+[python]
+symbol = " "
+
+[ruby]
+symbol = " "
+
+[php]
+symbol = " "
+
+[java]
+symbol = " "
+
+[kotlin]
+symbol = " "
+
+[lua]
+symbol = " "
+
+[dart]
+symbol = " "
+
+[c]
+symbol = " "
+
+[cmake]
+symbol = " "
+
+[docker_context]
+symbol = " "
+
+[terraform]
+symbol = "󱁢 "
+
+[nix_shell]
+symbol = " "
+
+[container]
+symbol = ""
+format = "[@ \\[$name\\]]($style) "
+
+[cmd_duration]
+format = "took [$duration]($style) "

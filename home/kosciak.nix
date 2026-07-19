@@ -19,9 +19,16 @@ in
     username = "kosciak";
     homeDirectory = "/home/kosciak";
     stateVersion = "26.05";
-    sessionPath = [ "$HOME/.local/bin" ];
+    sessionPath = [
+      "$HOME/.local/share/android-sdk/platform-tools"
+      "$HOME/.local/share/android-sdk/cmdline-tools/latest/bin"
+      "$HOME/.cargo/bin"
+      "$HOME/.local/bin"
+    ];
     sessionVariables = {
+      ANDROID_HOME = "$HOME/.local/share/android-sdk";
       GTK_USE_PORTAL = "1";
+      OPENCODE_ATTACH_TARGET = "localhost:51199";
       QT_QPA_PLATFORM = "wayland;xcb";
       QT_STYLE_OVERRIDE = "kvantum";
     };
@@ -42,6 +49,8 @@ in
       trash-cli
       vicinae
       wl-clipboard
+      worktrunk
+      zsh-completions
       inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
     ];
   };
@@ -91,13 +100,22 @@ in
     enable = true;
     enableCompletion = true;
     autosuggestion.enable = true;
-    syntaxHighlighting.enable = true;
+    fastSyntaxHighlighting.enable = true;
     history = {
       append = true;
+      expireDuplicatesFirst = true;
       extended = true;
+      findNoDups = true;
       ignoreAllDups = true;
       ignoreDups = true;
+      ignorePatterns = [
+        "ls*"
+        "cd*"
+        "pwd*"
+        "exit*"
+      ];
       ignoreSpace = true;
+      saveNoDups = true;
       save = 10000000;
       size = 10000000;
       share = true;
@@ -108,32 +126,91 @@ in
         "git"
         "pass"
         "systemd"
-        "vi-mode"
       ];
     };
+    setOptions = [
+      "BANG_HIST"
+      "HIST_BEEP"
+      "HIST_REDUCE_BLANKS"
+      "HIST_VERIFY"
+      "INC_APPEND_HISTORY"
+    ];
     shellAliases = {
+      caffeinate = "echo 'preventing idle and lid sleep' && systemd-inhibit --what=idle:sleep:handle-lid-switch --who=caffeinate --why=Caffeinate sleep infinity";
+      cp = "cp -rv --reflink=auto";
+      gcawip = "git commit --amend --no-verify -m wip";
+      gcwip = "git commit --no-verify -m wip";
+      l = "eza --git -h -g -H -l";
       n = "nvim";
+      nvimrc = "$EDITOR ~/projects/personal/wave-os/home/kosciak.nix";
+      rm = "echo 'This is not the command you are looking for.'; false";
+      sudo = "sudo ";
       vim = "nvim";
-      l = "eza --git --header --group --all --long";
-      rm = "echo 'Use trash instead of rm.'; false";
+      vimrc = "$EDITOR ~/projects/personal/wave-os/home/kosciak.nix";
       sc-suspend = "systemctl suspend";
+      zshrc = "$EDITOR ~/projects/personal/wave-os/home/kosciak.nix";
     };
-    initContent = ''
-      export FZF_DEFAULT_COMMAND="fd --hidden --follow --exclude .git --exclude node_modules"
-      export FZF_DEFAULT_OPTS="--layout=reverse --color=fg:#dcd7ba,bg:#1f1f28,hl:#7e9cd8 --color=fg+:#dcd7ba,bg+:#2a2a37,hl+:#7fb4ca"
+    initContent = lib.mkMerge [
+      (lib.mkOrder 850 ''
+        if [[ -n $TTY && $options[zle] = on ]]; then
+          source "$ZSH/plugins/vi-mode/vi-mode.plugin.zsh"
+        fi
+      '')
+      (lib.mkOrder 900 ''
+        if [[ -n $TTY && $options[zle] = on ]]; then
+          source "${pkgs.zsh-fzf-tab}/share/fzf-tab/fzf-tab.plugin.zsh"
+        fi
+      '')
+      (lib.mkOrder 910 ''
+        if [[ -n $TTY && $options[zle] = on ]]; then
+          source <("${lib.getExe pkgs.fzf}" --zsh)
+        fi
+      '')
+      (lib.mkOrder 1000 ''
+        if [[ -n $TTY && $options[zle] = on && $TERM != dumb ]]; then
+          eval "$("${lib.getExe pkgs.starship}" init zsh)"
+        fi
 
-      oc() {
-        export OPENCODE_SERVER_PASSWORD="''${OPENCODE_SERVER_PASSWORD:-$(pass show opencode.localhost/opencode)}"
-        command opencode attach localhost:51199 --dir "$PWD" "$@"
-      }
-    '';
+        export FZF_DEFAULT_COMMAND="fd --hidden --follow --exclude .git --exclude node_modules"
+        export FZF_DEFAULT_OPTS='
+          --layout=reverse
+          --color=fg:#dcd7ba,bg:#1f1f28,hl:#7e9cd8
+          --color=fg+:#dcd7ba,bg+:#2a2a37,hl+:#7fb4ca
+          --color=info:#a3aab0,prompt:#d27e99,pointer:#957fb8
+          --color=marker:#98bb6c,spinner:#957fb8,header:#7e9cd8'
+        export OPENCODE_ATTACH_TARGET="''${OPENCODE_ATTACH_TARGET:-localhost:51199}"
+
+        zstyle ':fzf-tab:complete:cd:*' disabled-on any
+
+        if (( $+commands[wt] )); then
+          eval "$(command wt config shell init zsh)"
+        fi
+
+        cpu_count() {
+          if (( $+commands[nproc] )); then
+            nproc
+          else
+            sysctl -n hw.ncpu
+          fi
+        }
+        export MIX_OS_DEPS_COMPILE_PARTITION_COUNT=$(( $(cpu_count) / 2 ))
+
+        oc() {
+          export OPENCODE_SERVER_PASSWORD="''${OPENCODE_SERVER_PASSWORD:-$(pass show opencode.localhost/opencode)}"
+          command opencode attach "$OPENCODE_ATTACH_TARGET" --dir "$PWD" "$@"
+        }
+      '')
+    ];
   };
 
   programs = {
-    eza.enable = true;
+    eza = {
+      enable = true;
+      enableZshIntegration = false;
+    };
     fzf = {
       enable = true;
-      enableZshIntegration = true;
+      enableZshIntegration = false;
     };
     neovim = {
       enable = true;
@@ -148,20 +225,8 @@ in
     password-store.enable = true;
     starship = {
       enable = true;
-      enableZshIntegration = true;
-      settings = {
-        add_newline = false;
-        format = "$character$directory";
-        right_format = "$username$hostname$git_branch$git_status$nix_shell$cmd_duration$container";
-        character = {
-          success_symbol = "[>](bold green)";
-          error_symbol = "[x](bold red)";
-          vimcmd_symbol = "[<](bold blue)";
-        };
-        git_branch.symbol = "git ";
-        nix_shell.symbol = "nix ";
-        container.format = "[@ [$name]]($style) ";
-      };
+      enableZshIntegration = false;
+      settings = builtins.fromTOML (builtins.readFile ./starship.toml);
     };
     tmux = {
       enable = true;
