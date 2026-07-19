@@ -38,11 +38,16 @@ in
       git-credential-manager
       hyprsunset
       hyprshot
+      (iosevka-bin.override { variant = "SGr-IosevkaTerm"; })
       kanagawa-kvantum
+      karla
       kdePackages.qtstyleplugin-kvantum
+      nerd-fonts.iosevka
       nerd-fonts.overpass
       nerd-fonts.symbols-only
       nodejs
+      noto-fonts
+      noto-fonts-color-emoji
       opencode
       playerctl
       ripgrep
@@ -54,6 +59,8 @@ in
       inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
     ];
   };
+
+  fonts.fontconfig.enable = true;
 
   programs.home-manager.enable = true;
   xdg.enable = true;
@@ -250,7 +257,16 @@ in
     ghostty = {
       enable = true;
       settings = {
-        font-family = "OverpassM Nerd Font";
+        font-family = [
+          "OverpassM Nerd Font"
+          "Symbols Nerd Font Mono"
+          "Noto Sans Symbols"
+          "Noto Sans Symbols 2"
+          "Noto Sans"
+          "Noto Color Emoji"
+        ];
+        font-style-italic = false;
+        font-style-bold-italic = false;
         font-size = 11;
         window-padding-x = 16;
         window-padding-y = 16;
