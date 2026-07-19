@@ -408,8 +408,12 @@ in
     settings = {
       ipc = "on";
       splash = false;
-      preload = [ "${wallpaper}" ];
-      wallpaper = [ ",${wallpaper}" ];
+      wallpaper = [
+        {
+          monitor = "*";
+          path = "${wallpaper}";
+        }
+      ];
     };
   };
 
@@ -434,8 +438,8 @@ in
     systemd.enable = false;
     settings = {
       monitor = [
-        "eDP-1,2560x1600@165,0x0,1.5,vrr,1"
-        "desc:GIGA-BYTE TECHNOLOGY CO.\\, LTD. M28U 24030B004813,3840x2160@143.999,0x-900,1.8"
+        "eDP-1,2560x1600@165,0x0,1.6,vrr,1"
+        "desc:GIGA-BYTE TECHNOLOGY CO.\\, LTD. M28U 24030B004813,3840x2160@143.999,0x-900,1.875"
         "desc:Dell Inc. DELL P2720DC H88QK53,2560x1440@59.951,0x0,1.25"
         "desc:Dell Inc. DELL P2720D D94ZS03,2560x1440@59.951,2048x0,1.25"
         ",preferred,auto,auto"
