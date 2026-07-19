@@ -93,7 +93,10 @@
       withUWSM = true;
     };
     nm-applet.enable = true;
-    zsh.enable = true;
+    zsh = {
+      enable = true;
+      enableGlobalCompInit = false;
+    };
   };
 
   security = {
