@@ -45,6 +45,7 @@ in
       nerd-fonts.iosevka
       nerd-fonts.overpass
       nerd-fonts.symbols-only
+      neovide
       nodejs
       noto-fonts
       noto-fonts-color-emoji
@@ -150,11 +151,11 @@ in
       gcwip = "git commit --no-verify -m wip";
       l = "eza --git -h -g -H -l";
       n = "nvim";
-      nvimrc = "$EDITOR ~/projects/personal/wave-os/home/kosciak.nix";
+      nvimrc = "$EDITOR ~/projects/personal/wave-os/home/nvim/init.lua";
       rm = "echo 'This is not the command you are looking for.'; false";
       sudo = "sudo ";
       vim = "nvim";
-      vimrc = "$EDITOR ~/projects/personal/wave-os/home/kosciak.nix";
+      vimrc = "$EDITOR ~/projects/personal/wave-os/home/nvim/init.lua";
       sc-suspend = "systemctl suspend";
       zshrc = "$EDITOR ~/projects/personal/wave-os/home/kosciak.nix";
     };
@@ -225,9 +226,74 @@ in
       defaultEditor = true;
       viAlias = true;
       vimAlias = true;
+      initLua = builtins.readFile ./nvim/init.lua;
+      plugins = with pkgs.vimPlugins; [
+        kanagawa-nvim
+        hardtime-nvim
+        nui-nvim
+        gitsigns-nvim
+        diffview-plus-nvim
+        neogit
+        nvim-ts-context-commentstring
+        vim-matchup
+        nvim-surround
+        mini-icons
+        mini-starter
+        plenary-nvim
+        telescope-nvim
+        telescope-fzf-native-nvim
+        nvim-lspconfig
+        conform-nvim
+        tiny-inline-diagnostic-nvim
+        copilot-lsp
+        copilot-lua
+        (nvim-treesitter.withPlugins (
+          parsers: with parsers; [
+            markdown
+            markdown_inline
+            tsx
+            javascript
+            typescript
+            json
+            graphql
+            python
+            yaml
+            html
+            scss
+            lua
+            elixir
+            heex
+          ]
+        ))
+        oil-nvim
+      ];
       extraPackages = with pkgs; [
-        gcc
-        gnumake
+        git
+        ripgrep
+        fd
+        nodejs
+        curl
+        wl-clipboard
+
+        lua-language-server
+        harper
+        vscode-langservers-extracted
+        yaml-language-server
+        beamPackages.expert
+        typescript-go
+        deno
+        biome
+        oxlint
+        tailwindcss-language-server
+
+        stylua
+        ruff
+        isort
+        black
+        oxfmt
+        prettierd
+        prettier
+        markdownlint-cli
       ];
     };
     quickshell = {
@@ -379,6 +445,9 @@ in
       selection-background = 2d4f67
       selection-foreground = c8c093
     '';
+    "nvim/lsp".source = ./nvim/lsp;
+    "nvim/lua".source = ./nvim/lua;
+    "nvim/queries".source = ./nvim/queries;
     "Kvantum/Kanagawa".source = "${kanagawa-kvantum}/share/Kvantum/Kanagawa";
     "Kvantum/kvantum.kvconfig".text = ''
       [General]
