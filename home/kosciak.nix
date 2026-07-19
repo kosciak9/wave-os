@@ -50,6 +50,7 @@ in
       noto-fonts-color-emoji
       opencode
       playerctl
+      pulseaudio
       ripgrep
       trash-cli
       vicinae
