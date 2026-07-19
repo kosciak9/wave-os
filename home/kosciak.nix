@@ -456,6 +456,11 @@ in
         };
       };
 
+      gesture = [
+        "3, horizontal, scrollMove"
+        "3, vertical, workspace"
+      ];
+
       general = {
         layout = "scrolling";
         gaps_in = 8;
@@ -463,6 +468,29 @@ in
         border_size = 2;
         "col.active_border" = "rgb(938056)";
         "col.inactive_border" = "rgb(717c7c)";
+      };
+
+      animations = {
+        enabled = true;
+        # Niri defaults: 150 ms open/close and critically damped movement.
+        bezier = [
+          "niriOpen, 0.155022, 1.056612, 0.360227, 0.981250"
+          "niriClose, 0.333333, 0.666667, 0.666667, 1.000000"
+          "niriSpring, 0.326467, 0.688594, 0.114413, 1.000000"
+        ];
+        animation = [
+          "global, 1, 1.5, niriClose"
+          "windows, 1, 3.2564, niriSpring"
+          "windowsIn, 1, 1.5, niriOpen, popin 50%"
+          "windowsOut, 1, 1.5, niriClose, popin 80%"
+          "fadeIn, 1, 1.5, niriOpen"
+          "fadeOut, 1, 1.5, niriClose"
+          "layersIn, 1, 1.5, niriOpen, fade"
+          "layersOut, 1, 1.5, niriClose, fade"
+          "fadeLayersIn, 1, 1.5, niriOpen"
+          "fadeLayersOut, 1, 1.5, niriClose"
+          "workspaces, 1, 2.9126, niriSpring, slidevert"
+        ];
       };
 
       scrolling.fullscreen_on_one_column = true;
