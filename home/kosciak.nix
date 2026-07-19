@@ -230,6 +230,15 @@ in
         gnumake
       ];
     };
+    quickshell = {
+      enable = true;
+      activeConfig = "wave";
+      configs.wave = ./quickshell;
+      systemd = {
+        enable = true;
+        target = "graphical-session.target";
+      };
+    };
     password-store.enable = true;
     starship = {
       enable = true;

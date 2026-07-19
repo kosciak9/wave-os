@@ -66,6 +66,7 @@
     fprintd.enable = true;
     gnome.gnome-keyring.enable = true;
     power-profiles-daemon.enable = true;
+    upower.enable = true;
     tailscale.enable = true;
     syncthing = {
       enable = true;
@@ -92,7 +93,6 @@
       enable = true;
       withUWSM = true;
     };
-    nm-applet.enable = true;
     zsh = {
       enable = true;
       enableGlobalCompInit = false;

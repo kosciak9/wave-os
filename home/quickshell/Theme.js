@@ -1,0 +1,16 @@
+.pragma library
+
+var sumiInk0 = "#16161D"
+var sumiInk1 = "#1F1F28"
+var sumiInk2 = "#2A2A37"
+var sumiInk3 = "#363646"
+var waveBlue1 = "#223249"
+var waveBlue2 = "#2D4F67"
+var fujiWhite = "#DCD7BA"
+var oldWhite = "#C8C093"
+var fujiGray = "#727169"
+var crystalBlue = "#7E9CD8"
+var springGreen = "#98BB6C"
+var carpYellow = "#E6C384"
+var waveRed = "#E46876"
+var fontFamily = "OverpassM Nerd Font Mono"
