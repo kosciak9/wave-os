@@ -534,12 +534,11 @@ local function toggleMaximizedColumn()
 end
 
 setColumnHeights = function(windows, heights, focused)
-    local values = {}
-    for index = 1, #windows do
-        values[index] = string.format("%.8f", heights[index])
+    for index, window in ipairs(windows) do
+        dispatch(hl.dsp.focus({ window = window }))
+        dispatch(hl.dsp.layout(string.format("rowresize %.8f", heights[index])))
     end
     dispatch(hl.dsp.focus({ window = focused }))
-    dispatch(hl.dsp.layout("rowresize all " .. table.concat(values, ",")))
 end
 
 local function switchPresetWindowHeight()
@@ -637,6 +636,10 @@ local function centerColumn()
         local x = monitor.x + (monitor.width / monitor.scale - focused.size.x) / 2
         dispatch(hl.dsp.window.move({ window = focused, x = x, y = focused.at.y }))
     end
+end
+
+local function reorderWorkspace(direction)
+    dispatch(hl.dsp.workspace.move({ direction = direction }))
 end
 
 local function resizeWindowHeight(amount)
@@ -803,10 +806,10 @@ hl.bind(mod .. " + CTRL + I", function()
     moveColumnToWorkspaceRelative(-1)
 end)
 
-hl.bind(mod .. " + SHIFT + Page_Down", hl.dsp.workspace.move({ direction = "down" }))
-hl.bind(mod .. " + SHIFT + U", hl.dsp.workspace.move({ direction = "down" }))
-hl.bind(mod .. " + SHIFT + Page_Up", hl.dsp.workspace.move({ direction = "up" }))
-hl.bind(mod .. " + SHIFT + I", hl.dsp.workspace.move({ direction = "up" }))
+hl.bind(mod .. " + SHIFT + Page_Down", function() reorderWorkspace("down") end)
+hl.bind(mod .. " + SHIFT + U", function() reorderWorkspace("down") end)
+hl.bind(mod .. " + SHIFT + Page_Up", function() reorderWorkspace("up") end)
+hl.bind(mod .. " + SHIFT + I", function() reorderWorkspace("up") end)
 
 hl.bind(mod .. " + mouse_down", function()
     withWorkspaceWheelCooldown(function()
