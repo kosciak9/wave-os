@@ -70,7 +70,7 @@ hl.config({
     },
     decoration = {
         rounding = 4,
-        border_part_of_window = false,
+        border_part_of_window = true,
         shadow = {
             enabled = true,
             range = 30,
@@ -534,11 +534,12 @@ local function toggleMaximizedColumn()
 end
 
 setColumnHeights = function(windows, heights, focused)
-    for index, window in ipairs(windows) do
-        dispatch(hl.dsp.focus({ window = window }))
-        dispatch(hl.dsp.layout(string.format("rowresize %.8f", heights[index])))
+    local values = {}
+    for index = 1, #windows do
+        values[index] = string.format("%.8f", heights[index])
     end
     dispatch(hl.dsp.focus({ window = focused }))
+    dispatch(hl.dsp.layout("rowresize all " .. table.concat(values, ",")))
 end
 
 local function switchPresetWindowHeight()
@@ -904,15 +905,15 @@ hl.bind("F11", hl.dsp.exec_cmd("/home/kosciak/projects/personal/niri-things/scri
 hl.bind("F12", hl.dsp.exec_cmd("/home/kosciak/projects/personal/niri-things/scripts/connect-headphones.zsh"))
 
 local volumeUpCommand =
-    [[sh -c 'wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+; status="$(wpctl get-volume @DEFAULT_AUDIO_SINK@)"; hyprctl dispatch event "wave:osd:volume:$status"']]
+    [[sh -c 'wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+; status="$(wpctl get-volume @DEFAULT_AUDIO_SINK@)"; qs -c wave ipc call osd volume "$status"']]
 local volumeDownCommand =
-    [[sh -c 'wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-; status="$(wpctl get-volume @DEFAULT_AUDIO_SINK@)"; hyprctl dispatch event "wave:osd:volume:$status"']]
+    [[sh -c 'wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-; status="$(wpctl get-volume @DEFAULT_AUDIO_SINK@)"; qs -c wave ipc call osd volume "$status"']]
 local volumeMuteCommand =
-    [[sh -c 'wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle; status="$(wpctl get-volume @DEFAULT_AUDIO_SINK@)"; hyprctl dispatch event "wave:osd:volume:$status"']]
+    [[sh -c 'wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle; status="$(wpctl get-volume @DEFAULT_AUDIO_SINK@)"; qs -c wave ipc call osd volume "$status"']]
 local brightnessUpCommand =
-    [[sh -c 'brightnessctl -e4 -n2 set 5%+; status="$(brightnessctl -m | { IFS=, read -r device class current percent maximum; printf "%s" "$percent"; })"; hyprctl dispatch event "wave:osd:brightness:$status"']]
+    [[sh -c 'brightnessctl -e4 -n2 set 5%+; status="$(brightnessctl -m | { IFS=, read -r device class current percent maximum; printf "%s" "$percent"; })"; qs -c wave ipc call osd brightness "$status"']]
 local brightnessDownCommand =
-    [[sh -c 'brightnessctl -e4 -n2 set 5%-; status="$(brightnessctl -m | { IFS=, read -r device class current percent maximum; printf "%s" "$percent"; })"; hyprctl dispatch event "wave:osd:brightness:$status"']]
+    [[sh -c 'brightnessctl -e4 -n2 set 5%-; status="$(brightnessctl -m | { IFS=, read -r device class current percent maximum; printf "%s" "$percent"; })"; qs -c wave ipc call osd brightness "$status"']]
 
 hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd(volumeUpCommand), { locked = true, repeating = true })
 hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd(volumeDownCommand), { locked = true, repeating = true })
