@@ -49,4 +49,8 @@ ShellRoot {
         targetScreen: root.primaryScreen
         service: notifications
     }
+
+    OpenCodeToasts {
+        targetScreen: root.primaryScreen
+    }
 }

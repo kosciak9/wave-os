@@ -34,6 +34,7 @@ in
     };
     packages = with pkgs; [
       brightnessctl
+      chromium
       fd
       git-credential-manager
       hyprsunset
@@ -448,6 +449,15 @@ in
     "nvim/lsp".source = ./nvim/lsp;
     "nvim/lua".source = ./nvim/lua;
     "nvim/queries".source = ./nvim/queries;
+    "opencode/agent".source = ./opencode/agent;
+    "opencode/command".source = ./opencode/command;
+    "opencode/opencode-quota".source = ./opencode/opencode-quota;
+    "opencode/opencode.jsonc" = {
+      source = ./opencode/opencode.jsonc;
+      force = true;
+    };
+    "opencode/plugin".source = ./opencode/plugin;
+    "opencode/tui.jsonc".source = ./opencode/tui.jsonc;
     "Kvantum/Kanagawa".source = "${kanagawa-kvantum}/share/Kvantum/Kanagawa";
     "Kvantum/kvantum.kvconfig".text = ''
       [General]
