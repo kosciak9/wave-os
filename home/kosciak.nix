@@ -11,7 +11,7 @@ let
   wallpaper =
     pkgs.runCommand "kanagawa-wallpaper.png" { nativeBuildInputs = [ pkgs.imagemagick ]; }
       ''
-        magick -size 2560x1600 'xc:#1f1f28' "png:$out"
+        magick -size 2560x1600 'xc:#16161d' "png:$out"
       '';
 in
 {
@@ -35,8 +35,12 @@ in
     packages = with pkgs; [
       brightnessctl
       chromium
+      difftastic
+      emacs
       fd
+      git-absorb
       git-credential-manager
+      git-lfs
       hyprsunset
       hyprshot
       (iosevka-bin.override { variant = "SGr-IosevkaTerm"; })
@@ -61,6 +65,12 @@ in
       zsh-completions
       inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
     ];
+  };
+
+  home.file = {
+    ".emacs.d/init.el".source = ./emacs/init.el;
+    ".emacs.d/sanemacs.el".source = ./emacs/sanemacs.el;
+    ".emacs.d/kanagawa-theme.el".source = ./emacs/kanagawa-theme.el;
   };
 
   fonts.fontconfig.enable = true;
@@ -92,6 +102,22 @@ in
 
   programs.git = {
     enable = true;
+    includes = [
+      {
+        condition = "gitdir:~/projects/alergeek/";
+        contents.user = {
+          name = "Franciszek Madej";
+          email = "franek@alergeek.ventures";
+        };
+      }
+      {
+        condition = "gitdir:~/Developer/alergeek/";
+        contents.user = {
+          name = "Franciszek Madej";
+          email = "franek@alergeek.ventures";
+        };
+      }
+    ];
     settings = {
       user = {
         name = "Franciszek Madej";
@@ -99,6 +125,33 @@ in
       };
       core = {
         editor = "nvim";
+        pager = "delta";
+      };
+      absorb = {
+        maxStack = 100;
+        oneFixupPerCommit = true;
+        autoStageIfNothingStaged = true;
+        fixupTargetAlwaysSHA = true;
+        forceAuthor = true;
+      };
+      difftool = {
+        prompt = false;
+        difftastic.cmd = "difft \"$LOCAL\" \"$REMOTE\"";
+      };
+      pager.difftool = true;
+      color.ui = true;
+      alias = {
+        lg = "lg1";
+        lg1 = "lg1-specific --all";
+        lg2 = "lg2-specific --all";
+        lg3 = "lg3-specific --all";
+        lg1-specific = "log --graph --abbrev-commit --decorate --format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(white)%s%C(reset) %C(dim white)- %an%C(reset)%C(auto)%d%C(reset)'";
+        lg2-specific = "log --graph --abbrev-commit --decorate --format=format:'%C(bold blue)%h%C(reset) - %C(bold cyan)%aD%C(reset) %C(bold green)(%ar)%C(reset)%C(auto)%d%C(reset)%n''          %C(white)%s%C(reset) %C(dim white)- %an%C(reset)'";
+        lg3-specific = "log --graph --decorate --format=format:'%C(bold blue)%h%C(reset) - %C(bold cyan)%aD%C(reset) %C(bold green)(%ar)%C(reset)%C(auto)%d%C(reset)%n''          %C(white)%s%C(reset)%n''          %C(dim white)- %an <%ae> %C(reset) %C(dim white)(committer: %cn <%ce>)%C(reset)'";
+        spellcheck = false;
+        prune-branches = "!git remote prune origin && git branch -vv | grep ': gone]' | awk '{print $1}' | xargs -r git branch -d";
+        dft = "difftool";
+        difft = "!difft";
       };
       credential = {
         helper = "manager";
@@ -334,10 +387,21 @@ in
         prefix-highlight
       ];
       extraConfig = ''
+        bind h select-pane -L
+        bind l select-pane -R
+        bind k select-pane -U
+        bind j select-pane -D
         set-option -g allow-rename off
         set-option -g focus-events on
         set-option -sa terminal-features ',xterm-ghostty:RGB'
         set -g status-style bg='#1f1f28'
+        set -g @prefix_highlight_prefix_prompt ' λ '
+        set -g @prefix_highlight_fg '#FF9E3B'
+        set -g @prefix_highlight_bg 'black'
+        set -g status-left '#[fg=#54546D]  #S  '
+        set -g status-right '#{prefix_highlight}'
+        set -g window-status-format '#[fg=#49443C] #I '
+        set -g window-status-current-format '#[fg=black,bg=#727169] #I '
       '';
     };
     ghostty = {
@@ -529,127 +593,10 @@ in
 
   wayland.windowManager.hyprland = {
     enable = true;
-    configType = "hyprlang";
+    configType = "lua";
     package = null;
     portalPackage = null;
     systemd.enable = false;
-    settings = {
-      monitor = [
-        "eDP-1,2560x1600@165,0x0,1.6,vrr,1"
-        "desc:GIGA-BYTE TECHNOLOGY CO.\\, LTD. M28U 24030B004813,3840x2160@143.999,0x-900,1.875"
-        "desc:Dell Inc. DELL P2720DC H88QK53,2560x1440@59.951,0x0,1.25"
-        "desc:Dell Inc. DELL P2720D D94ZS03,2560x1440@59.951,2048x0,1.25"
-        ",preferred,auto,auto"
-      ];
-
-      input = {
-        kb_layout = "pl";
-        follow_mouse = 1;
-        touchpad = {
-          tap-to-click = true;
-          disable_while_typing = true;
-          natural_scroll = true;
-          scroll_factor = 0.1;
-        };
-      };
-
-      gesture = [
-        "3, horizontal, scrollMove"
-        "3, vertical, workspace"
-      ];
-
-      general = {
-        layout = "scrolling";
-        gaps_in = 8;
-        gaps_out = 24;
-        border_size = 2;
-        "col.active_border" = "rgb(938056)";
-        "col.inactive_border" = "rgb(717c7c)";
-      };
-
-      animations = {
-        enabled = true;
-        # Niri defaults: 150 ms open/close and critically damped movement.
-        bezier = [
-          "niriOpen, 0.155022, 1.056612, 0.360227, 0.981250"
-          "niriClose, 0.333333, 0.666667, 0.666667, 1.000000"
-          "niriSpring, 0.326467, 0.688594, 0.114413, 1.000000"
-        ];
-        animation = [
-          "global, 1, 1.5, niriClose"
-          "windows, 1, 3.2564, niriSpring"
-          "windowsIn, 1, 1.5, niriOpen, popin 50%"
-          "windowsOut, 1, 1.5, niriClose, popin 80%"
-          "fadeIn, 1, 1.5, niriOpen"
-          "fadeOut, 1, 1.5, niriClose"
-          "layersIn, 1, 1.5, niriOpen, fade"
-          "layersOut, 1, 1.5, niriClose, fade"
-          "fadeLayersIn, 1, 1.5, niriOpen"
-          "fadeLayersOut, 1, 1.5, niriClose"
-          "workspaces, 1, 2.9126, niriSpring, slidevert"
-        ];
-      };
-
-      scrolling.fullscreen_on_one_column = true;
-      decoration = {
-        rounding = 4;
-        shadow.enabled = true;
-      };
-      misc = {
-        disable_hyprland_logo = true;
-        force_default_wallpaper = 0;
-      };
-
-      bind = [
-        "SUPER, RETURN, exec, ghostty"
-        "SUPER, SPACE, exec, vicinae toggle"
-        "SUPER ALT, L, exec, loginctl lock-session"
-        "SUPER, W, killactive"
-        "SUPER, H, movefocus, l"
-        "SUPER, J, movefocus, d"
-        "SUPER, K, movefocus, u"
-        "SUPER, L, movefocus, r"
-        "SUPER CTRL, H, movewindow, l"
-        "SUPER CTRL, J, movewindow, d"
-        "SUPER CTRL, K, movewindow, u"
-        "SUPER CTRL, L, movewindow, r"
-        "SUPER, F, fullscreen, 1"
-        "SUPER SHIFT, F, fullscreen, 0"
-        "SUPER, V, togglefloating"
-        "SUPER SHIFT, E, exit"
-        ", Print, exec, hyprshot -m region"
-      ]
-      ++ (builtins.concatLists (
-        builtins.genList (
-          i:
-          let
-            workspace = i + 1;
-            key = if workspace == 10 then "0" else toString workspace;
-          in
-          [
-            "SUPER, ${key}, workspace, ${toString workspace}"
-            "SUPER CTRL, ${key}, movetoworkspace, ${toString workspace}"
-          ]
-        ) 10
-      ));
-
-      bindel = [
-        ", XF86AudioRaiseVolume, exec, wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+"
-        ", XF86AudioLowerVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"
-        ", XF86MonBrightnessUp, exec, brightnessctl -e4 -n2 set 5%+"
-        ", XF86MonBrightnessDown, exec, brightnessctl -e4 -n2 set 5%-"
-      ];
-      bindl = [
-        ", XF86AudioMute, exec, wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
-        ", XF86AudioMicMute, exec, wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"
-        ", XF86AudioPlay, exec, playerctl play-pause"
-        ", XF86AudioNext, exec, playerctl next"
-        ", XF86AudioPrev, exec, playerctl previous"
-      ];
-      bindm = [
-        "SUPER, mouse:272, movewindow"
-        "SUPER, mouse:273, resizewindow"
-      ];
-    };
+    extraConfig = builtins.readFile ./hyprland.lua;
   };
 }

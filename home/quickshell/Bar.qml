@@ -102,13 +102,22 @@ PanelWindow {
             return Quickshell.shellDir + "/assets/" + (icons[name] || "square.svg")
         }
 
+        Connections {
+            target: Hyprland
+
+            function onRawEvent(event) {
+                if (event.name === "workspaceorder")
+                    Hyprland.refreshWorkspaces()
+            }
+        }
+
         Repeater {
             model: ScriptModel {
                 values: [...Hyprland.workspaces.values]
                     .filter(workspace => workspace.id > 0
                         && workspace.monitor !== null
                         && workspace.monitor.name === workspacesWidget.screenName)
-                    .sort((left, right) => left.id - right.id)
+                    .sort((left, right) => (left.lastIpcObject.index || left.id) - (right.lastIpcObject.index || right.id))
             }
 
             delegate: Rectangle {

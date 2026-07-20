@@ -53,4 +53,12 @@ ShellRoot {
     OpenCodeToasts {
         targetScreen: root.primaryScreen
     }
+
+    HotkeyOverlay {
+        targetScreen: root.primaryScreen
+    }
+
+    Osd {
+        targetScreen: root.primaryScreen
+    }
 }
