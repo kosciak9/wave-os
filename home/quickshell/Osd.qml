@@ -3,7 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import Quickshell.Hyprland
+import Quickshell.Io
 import "Theme.js" as Theme
 
 PanelWindow {
@@ -55,16 +55,15 @@ PanelWindow {
 
     mask: Region { item: background }
 
-    Connections {
-        target: Hyprland
+    IpcHandler {
+        target: "osd"
 
-        function onRawEvent(event) {
-            if (event.name !== "custom")
-                return
-            if (event.data.startsWith("wave:osd:volume:"))
-                root.showVolume(event.data.slice(16))
-            else if (event.data.startsWith("wave:osd:brightness:"))
-                root.showBrightness(event.data.slice(20))
+        function volume(data: string): void {
+            root.showVolume(data)
+        }
+
+        function brightness(data: string): void {
+            root.showBrightness(data)
         }
     }
 
