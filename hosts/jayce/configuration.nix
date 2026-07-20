@@ -92,6 +92,9 @@
     hyprland = {
       enable = true;
       withUWSM = true;
+      package = pkgs.hyprland.overrideAttrs (old: {
+        patches = (old.patches or [ ]) ++ [ ../../patches/hyprland-niri-parity.patch ];
+      });
     };
     zsh = {
       enable = true;

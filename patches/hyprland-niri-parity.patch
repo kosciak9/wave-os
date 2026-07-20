@@ -1,0 +1,701 @@
+diff --git a/src/Compositor.cpp b/src/Compositor.cpp
+index f9ef1a38..a2983589 100644
+--- a/src/Compositor.cpp
++++ b/src/Compositor.cpp
+@@ -1270,6 +1270,67 @@ PHLWORKSPACE CCompositor::getWorkspaceByID(const WORKSPACEID& id) {
+     return nullptr;
+ }
+ 
++std::vector<PHLWORKSPACE> CCompositor::getWorkspacesOnMonitor(PHLMONITOR monitor) const {
++    std::vector<PHLWORKSPACE> result;
++
++    for (const auto& ref : m_workspaces) {
++        const auto workspace = ref.lock();
++        if (valid(workspace) && !workspace->m_isSpecialWorkspace && workspace->m_monitor == monitor)
++            result.emplace_back(workspace);
++    }
++
++    return result;
++}
++
++std::optional<size_t> CCompositor::getWorkspaceOrderIndex(PHLWORKSPACE workspace) const {
++    if (!valid(workspace) || workspace->m_isSpecialWorkspace)
++        return std::nullopt;
++
++    const auto monitor = workspace->m_monitor.lock();
++    if (!monitor)
++        return std::nullopt;
++
++    const auto ordered = getWorkspacesOnMonitor(monitor);
++    const auto it      = std::ranges::find(ordered, workspace);
++    if (it == ordered.end())
++        return std::nullopt;
++
++    return std::distance(ordered.begin(), it);
++}
++
++PHLWORKSPACE CCompositor::getWorkspaceInOrder(PHLWORKSPACE workspace, int64_t offset) const {
++    const auto index = getWorkspaceOrderIndex(workspace);
++    if (!index)
++        return nullptr;
++
++    const auto ordered = getWorkspacesOnMonitor(workspace->m_monitor.lock());
++    const auto target  = sc<int64_t>(*index) + offset;
++    if (target < 0 || target >= sc<int64_t>(ordered.size()))
++        return nullptr;
++
++    return ordered[target];
++}
++
++bool CCompositor::reorderWorkspace(PHLWORKSPACE workspace, int direction) {
++    if (!valid(workspace) || workspace->m_isSpecialWorkspace || direction == 0)
++        return false;
++
++    const auto adjacent = getWorkspaceInOrder(workspace, direction < 0 ? -1 : 1);
++    if (!adjacent)
++        return false;
++
++    const auto workspaceIt = std::ranges::find_if(m_workspaces, [&](const auto& ref) { return ref.lock() == workspace; });
++    const auto adjacentIt  = std::ranges::find_if(m_workspaces, [&](const auto& ref) { return ref.lock() == adjacent; });
++    if (workspaceIt == m_workspaces.end() || adjacentIt == m_workspaces.end())
++        return false;
++
++    std::iter_swap(workspaceIt, adjacentIt);
++    workspace->m_events.orderChanged.emit();
++    adjacent->m_events.orderChanged.emit();
++    g_pEventManager->postEvent(SHyprIPCEvent{"workspaceorder", workspace->m_monitor->m_name});
++    return true;
++}
++
+ PHLWINDOW CCompositor::getUrgentWindow() {
+     for (auto const& w : m_windows) {
+         if (w->m_isMapped && w->m_isUrgent)
+diff --git a/src/Compositor.hpp b/src/Compositor.hpp
+index 98473358..675f8c41 100644
+--- a/src/Compositor.hpp
++++ b/src/Compositor.hpp
+@@ -111,6 +111,10 @@ class CCompositor {
+     PHLWORKSPACE           getWorkspaceByID(const WORKSPACEID&);
+     PHLWORKSPACE           getWorkspaceByName(const std::string&);
+     PHLWORKSPACE           getWorkspaceByString(const std::string&);
++    std::vector<PHLWORKSPACE>           getWorkspacesOnMonitor(PHLMONITOR) const;
++    std::optional<size_t>               getWorkspaceOrderIndex(PHLWORKSPACE) const;
++    PHLWORKSPACE                        getWorkspaceInOrder(PHLWORKSPACE, int64_t offset) const;
++    bool                                reorderWorkspace(PHLWORKSPACE, int direction);
+     PHLWINDOW              getUrgentWindow();
+     bool                   isWindowActive(PHLWINDOW);
+     void                   changeWindowZOrder(PHLWINDOW, bool);
+diff --git a/src/config/lua/bindings/LuaBindingsDispatchers.cpp b/src/config/lua/bindings/LuaBindingsDispatchers.cpp
+index 379cccef..31830ea4 100644
+--- a/src/config/lua/bindings/LuaBindingsDispatchers.cpp
++++ b/src/config/lua/bindings/LuaBindingsDispatchers.cpp
+@@ -1207,6 +1207,22 @@ static int dsp_moveCurrentWorkspaceToMonitor(lua_State* L) {
+     return Internal::checkResult(L, CA::moveToMonitor(PCURRENTWORKSPACE, PMONITOR));
+ }
+ 
++static int dsp_reorderWorkspace(lua_State* L) {
++    const auto   direction = sc<int>(lua_tointeger(L, lua_upvalueindex(1)));
++    PHLWORKSPACE workspace;
++    if (lua_isnil(L, lua_upvalueindex(2))) {
++        const auto monitor = Desktop::focusState()->monitor();
++        workspace          = monitor ? monitor->m_activeWorkspace : nullptr;
++    } else
++        workspace = g_pCompositor->getWorkspaceByString(lua_tostring(L, lua_upvalueindex(2)));
++
++    if (!workspace)
++        return Internal::dispatcherError(L, "Workspace not found", WARN, C_NOTFOUND);
++
++    g_pCompositor->reorderWorkspace(workspace, direction);
++    return Internal::pushSuccessResult(L);
++}
++
+ static int dsp_swapActiveWorkspaces(lua_State* L) {
+     const auto PMON1 = g_pCompositor->getMonitorFromString(lua_tostring(L, lua_upvalueindex(1)));
+     const auto PMON2 = g_pCompositor->getMonitorFromString(lua_tostring(L, lua_upvalueindex(2)));
+@@ -1241,6 +1257,21 @@ static int hlWorkspaceMove(lua_State* L) {
+     if (!lua_istable(L, 1))
+         return Internal::configError(L, "hl.workspace.move: expected a table, e.g. { monitor = \"DP-1\" }");
+ 
++    const auto direction = Internal::tableOptStr(L, 1, "direction");
++    if (direction) {
++        if (*direction != "up" && *direction != "down")
++            return Internal::configError(L, "hl.workspace.move: direction must be 'up' or 'down'");
++
++        const auto id = Internal::tableOptWorkspaceSelector(L, 1, "workspace", "hl.workspace.move");
++        lua_pushinteger(L, *direction == "up" ? -1 : 1);
++        if (id)
++            lua_pushstring(L, id->c_str());
++        else
++            lua_pushnil(L);
++        lua_pushcclosure(L, dsp_reorderWorkspace, 2);
++        return 1;
++    }
++
+     const auto mon = Internal::requireTableFieldMonitorSelector(L, 1, "monitor", "hl.workspace.move");
+ 
+     auto       id = Internal::tableOptWorkspaceSelector(L, 1, "workspace", "hl.workspace.move");
+diff --git a/src/config/lua/objects/LuaWorkspace.cpp b/src/config/lua/objects/LuaWorkspace.cpp
+index e1b95faa..8839aa37 100644
+--- a/src/config/lua/objects/LuaWorkspace.cpp
++++ b/src/config/lua/objects/LuaWorkspace.cpp
+@@ -103,7 +103,13 @@ static int workspaceIndex(lua_State* L) {
+ 
+     if (key == "id")
+         lua_pushinteger(L, sc<lua_Integer>(ws->m_id));
+-    else if (key == "name")
++    else if (key == "index") {
++        const auto index = g_pCompositor->getWorkspaceOrderIndex(ws);
++        if (index)
++            lua_pushinteger(L, sc<lua_Integer>(*index + 1));
++        else
++            lua_pushnil(L);
++    } else if (key == "name")
+         lua_pushstring(L, ws->m_name.c_str());
+     else if (key == "monitor") {
+         const auto mon = ws->m_monitor.lock();
+diff --git a/src/config/values/ConfigValues.cpp b/src/config/values/ConfigValues.cpp
+index 23cad96e..c09d0d06 100644
+--- a/src/config/values/ConfigValues.cpp
++++ b/src/config/values/ConfigValues.cpp
+@@ -672,7 +672,7 @@ std::vector<SP<IValue>> Values::getConfigValues() {
+                  {.refresh = Supplementary::REFRESH_LAYOUTS}),
+         MS<Float>("scrolling:column_width", "the default width of a column.", 0.5, {.min = 0.1, .max = 1.0}),
+         MS<Int>("scrolling:focus_fit_method", "When a column is focused, what method should be used to bring it into view", 1,
+-                {.min = 0, .max = 1, .map = OptionMap{{"center", 0}, {"fit", 1}}}),
++                {.min = 0, .max = 2, .map = OptionMap{{"center", 0}, {"fit", 1}, {"on_overflow", 2}}}),
+         MS<Bool>("scrolling:follow_focus", "when a window is focused, should the layout move to bring it into view automatically", true),
+         MS<Float>("scrolling:follow_min_visible", "when a window is focused, require that at least a given fraction of it is visible for focus to follow", 0.4,
+                   {.min = 0.0, .max = 1.0}),
+diff --git a/src/debug/HyprCtl.cpp b/src/debug/HyprCtl.cpp
+index 812aeb71..858d011f 100644
+--- a/src/debug/HyprCtl.cpp
++++ b/src/debug/HyprCtl.cpp
+@@ -482,9 +482,12 @@ std::string CHyprCtl::getWorkspaceData(PHLWORKSPACE w, eHyprCtlOutputFormat form
+         layoutName             = Layout::Supplementary::algoMatcher()->getNameForTiledAlgo(&typeid(*TILED_ALGO.get()));
+     }
+ 
++    const auto orderIndex = g_pCompositor->getWorkspaceOrderIndex(w);
++
+     if (format == eHyprCtlOutputFormat::FORMAT_JSON) {
+         return std::format(R"#({{
+     "id": {},
++    "index": {},
+     "name": "{}",
+     "monitor": "{}",
+     "monitorID": {},
+@@ -495,7 +498,7 @@ std::string CHyprCtl::getWorkspaceData(PHLWORKSPACE w, eHyprCtlOutputFormat form
+     "ispersistent": {},
+     "tiledLayout": "{}"
+ }})#",
+-                           w->m_id, escapeJSONStrings(w->m_name), escapeJSONStrings(PMONITOR ? PMONITOR->m_name : "?"),
++                           w->m_id, orderIndex ? *orderIndex + 1 : 0, escapeJSONStrings(w->m_name), escapeJSONStrings(PMONITOR ? PMONITOR->m_name : "?"),
+                            escapeJSONStrings(PMONITOR ? std::to_string(PMONITOR->m_id) : "null"), w->getWindows(), w->m_hasFullscreenWindow ? "true" : "false",
+                            rc<uintptr_t>(PLASTW.get()), PLASTW ? escapeJSONStrings(PLASTW->m_title) : "", w->isPersistent() ? "true" : "false", escapeJSONStrings(layoutName));
+     } else {
+diff --git a/src/desktop/Workspace.hpp b/src/desktop/Workspace.hpp
+index 6fff4353..9c1f7811 100644
+--- a/src/desktop/Workspace.hpp
++++ b/src/desktop/Workspace.hpp
+@@ -88,6 +88,7 @@ class CWorkspace {
+         CSignalT<> renamed;
+         CSignalT<> monitorChanged;
+         CSignalT<> activeChanged;
++        CSignalT<> orderChanged;
+     } m_events;
+ 
+   private:
+diff --git a/src/helpers/Monitor.cpp b/src/helpers/Monitor.cpp
+index 5d1a7ef9..be0f59b6 100644
+--- a/src/helpers/Monitor.cpp
++++ b/src/helpers/Monitor.cpp
+@@ -1460,7 +1460,11 @@ void CMonitor::changeWorkspace(const PHLWORKSPACE& pWorkspace, bool internal, bo
+     pWorkspace->m_visible = true;
+ 
+     if (!internal) {
+-        const auto ANIMTOLEFT = POLDWORKSPACE && (shouldWraparound(pWorkspace->m_id, POLDWORKSPACE->m_id) ^ (pWorkspace->m_id > POLDWORKSPACE->m_id));
++        const auto OLDINDEX   = g_pCompositor->getWorkspaceOrderIndex(POLDWORKSPACE);
++        const auto NEWINDEX   = g_pCompositor->getWorkspaceOrderIndex(pWorkspace);
++        const auto ANIMTOLEFT = POLDWORKSPACE && OLDINDEX && NEWINDEX ?
++            *NEWINDEX > *OLDINDEX :
++            POLDWORKSPACE && (shouldWraparound(pWorkspace->m_id, POLDWORKSPACE->m_id) ^ (pWorkspace->m_id > POLDWORKSPACE->m_id));
+         const auto ANIMSTYLE  = pWorkspace->m_animationStyle;
+         if (POLDWORKSPACE)
+             g_pDesktopAnimationManager->startAnimation(POLDWORKSPACE, CDesktopAnimationManager::ANIMATION_TYPE_OUT, ANIMTOLEFT, false, ANIMSTYLE);
+diff --git a/src/layout/algorithm/tiled/scrolling/ScrollTapeController.cpp b/src/layout/algorithm/tiled/scrolling/ScrollTapeController.cpp
+index 722b9bd8..ce27d525 100644
+--- a/src/layout/algorithm/tiled/scrolling/ScrollTapeController.cpp
++++ b/src/layout/algorithm/tiled/scrolling/ScrollTapeController.cpp
+@@ -226,7 +226,7 @@ double CScrollTapeController::calculateCameraOffset(const CBox& usableArea, bool
+ 
+     // if the offset is negative but we already extended and fit method is not center, reset offset to 0
+     static const auto PFITMETHOD = CConfigValue<Hyprlang::INT>("scrolling:focus_fit_method");
+-    if (maxExtent > usablePrimary && m_offset < 0.0 && *PFITMETHOD != 0)
++    if (maxExtent > usablePrimary && m_offset < 0.0 && *PFITMETHOD == 1)
+         m_offset = 0.0;
+ 
+     return m_offset;
+diff --git a/src/layout/algorithm/tiled/scrolling/ScrollingAlgorithm.cpp b/src/layout/algorithm/tiled/scrolling/ScrollingAlgorithm.cpp
+index f200130a..14ca45b9 100644
+--- a/src/layout/algorithm/tiled/scrolling/ScrollingAlgorithm.cpp
++++ b/src/layout/algorithm/tiled/scrolling/ScrollingAlgorithm.cpp
+@@ -400,16 +400,48 @@ void SScrollingData::fitCol(SP<SColumnData> c) {
+         controller->fitStrip(colIdx, USABLE, *PFSONONE);
+ }
+ 
+-void SScrollingData::centerOrFitCol(SP<SColumnData> c) {
++void SScrollingData::centerOrFitCol(SP<SColumnData> c, SP<SColumnData> previous) {
+     if (!c)
+         return;
+ 
+     static const auto PFITMETHOD = CConfigValue<Config::INTEGER>("scrolling:focus_fit_method");
+ 
+-    if (*PFITMETHOD == 1)
++    if (*PFITMETHOD == 0) {
++        centerCol(c);
++        return;
++    }
++
++    if (*PFITMETHOD == 1 || !previous || previous == c) {
+         fitCol(c);
+-    else
++        return;
++    }
++
++    const auto TARGETIDX = idx(c);
++    const auto PREVIDX   = idx(previous);
++    if (TARGETIDX < 0 || PREVIDX < 0) {
++        fitCol(c);
++        return;
++    }
++
++    const auto SOURCEIDX = PREVIDX > TARGETIDX ? TARGETIDX + 1 : TARGETIDX - 1;
++    if (SOURCEIDX < 0 || SOURCEIDX >= sc<int64_t>(columns.size())) {
++        fitCol(c);
++        return;
++    }
++
++    static const auto PFSONONE    = CConfigValue<Config::INTEGER>("scrolling:fullscreen_on_one_column");
++    const auto        USABLE      = algorithm->usableArea();
++    const auto        PRIMARY     = controller->isPrimaryHorizontal() ? USABLE.w : USABLE.h;
++    const auto        TARGETSTART = controller->calculateStripStart(TARGETIDX, USABLE, *PFSONONE);
++    const auto        SOURCESTART = controller->calculateStripStart(SOURCEIDX, USABLE, *PFSONONE);
++    const auto        TARGETEND   = TARGETSTART + controller->calculateStripSize(TARGETIDX, USABLE, *PFSONONE);
++    const auto        SOURCEEND   = SOURCESTART + controller->calculateStripSize(SOURCEIDX, USABLE, *PFSONONE);
++    const auto        SPAN        = std::max(TARGETEND, SOURCEEND) - std::min(TARGETSTART, SOURCESTART);
++
++    if (SPAN > PRIMARY + 0.5)
+         centerCol(c);
++    else
++        fitCol(c);
+ }
+ 
+ SP<SColumnData> SScrollingData::atCenter() {
+@@ -592,9 +624,6 @@ CScrollingAlgorithm::CScrollingAlgorithm() {
+ 
+         static const auto PFOLLOW_FOCUS = CConfigValue<Config::INTEGER>("scrolling:follow_focus");
+ 
+-        if (!*PFOLLOW_FOCUS && !Desktop::isHardInputFocusReason(reason))
+-            return;
+-
+         if (pWindow->m_workspace != m_parent->space()->workspace())
+             return;
+ 
+@@ -602,6 +631,14 @@ CScrollingAlgorithm::CScrollingAlgorithm() {
+         if (!TARGET || TARGET->floating())
+             return;
+ 
++        const auto TARGETDATA = dataFor(TARGET);
++        const auto TARGETCOL  = TARGETDATA ? TARGETDATA->column.lock() : nullptr;
++        const auto PREVIOUS   = m_lastFocusedColumn.lock();
++        m_lastFocusedColumn   = TARGETCOL;
++
++        if (!*PFOLLOW_FOCUS && !Desktop::isHardInputFocusReason(reason))
++            return;
++
+         // if follow_focus != 0, focuswindow always moves scrolling view
+         // if follow_focus != 0, change in a group's current window state always moves scrolling view
+         // if follow_focus != 0, moving a window into group via the corresponding dispatches `moveintogroup`, `movewindoworgroup` always moves scrolling view
+@@ -609,9 +646,10 @@ CScrollingAlgorithm::CScrollingAlgorithm() {
+         if (*PFOLLOW_FOCUS &&
+             (reason == Desktop::FOCUS_REASON_DISPATCH_FOCUSWINDOW || reason == Desktop::FOCUS_REASON_GROUP_CURRENT_WINDOW_CHANGE ||
+              reason == Desktop::FOCUS_REASON_DISPATCH_MOVEWINDOWINTOGROUP || reason == Desktop::FOCUS_REASON_SWITCH_TO_WINDOW_SOFT))
+-            focusOnInput(TARGET, INPUT_MODE_HARD);
++            focusOnInput(TARGET, INPUT_MODE_HARD, PREVIOUS);
+         else
+-            focusOnInput(TARGET, reason == Desktop::FOCUS_REASON_CLICK ? INPUT_MODE_CLICK : (Desktop::isHardInputFocusReason(reason) ? INPUT_MODE_HARD : INPUT_MODE_SOFT));
++            focusOnInput(TARGET, reason == Desktop::FOCUS_REASON_CLICK ? INPUT_MODE_CLICK : (Desktop::isHardInputFocusReason(reason) ? INPUT_MODE_HARD : INPUT_MODE_SOFT),
++                         PREVIOUS);
+     });
+ 
+     // Initialize default widths and direction
+@@ -627,7 +665,7 @@ CScrollingAlgorithm::~CScrollingAlgorithm() {
+     m_focusCallback.reset();
+ }
+ 
+-void CScrollingAlgorithm::focusOnInput(SP<ITarget> target, eInputMode input) {
++void CScrollingAlgorithm::focusOnInput(SP<ITarget> target, eInputMode input, SP<SColumnData> previous) {
+     static const auto PFOLLOW_FOCUS_MIN_PERC = CConfigValue<Config::FLOAT>("scrolling:follow_min_visible");
+ 
+     if (!target || target->space() != m_parent->space())
+@@ -662,11 +700,7 @@ void CScrollingAlgorithm::focusOnInput(SP<ITarget> target, eInputMode input) {
+     if (m_scrollingData->visible(TARGETDATA->column.lock(), true) && input != INPUT_MODE_HARD)
+         return;
+ 
+-    static const auto PFITMETHOD = CConfigValue<Config::INTEGER>("scrolling:focus_fit_method");
+-    if (*PFITMETHOD == 1)
+-        m_scrollingData->fitCol(TARGETDATA->column.lock());
+-    else
+-        m_scrollingData->centerCol(TARGETDATA->column.lock());
++    m_scrollingData->centerOrFitCol(TARGETDATA->column.lock(), previous);
+     m_scrollingData->recalculate();
+ }
+ 
+@@ -1378,14 +1412,6 @@ Config::ErrorResult CScrollingAlgorithm::layoutMsg(const std::string_view& sv) {
+     const auto notFound   = [](std::string msg) { return Config::configError(std::move(msg), Config::eConfigErrorLevel::WARNING, Config::eConfigErrorCode::NOT_FOUND); };
+     const auto stateErr   = [](std::string msg) { return Config::configError(std::move(msg), Config::eConfigErrorLevel::WARNING, Config::eConfigErrorCode::INVALID_STATE); };
+ 
+-    auto       centerOrFit = [this](const SP<SColumnData> COL) -> void {
+-        static const auto PFITMETHOD = CConfigValue<Config::INTEGER>("scrolling:focus_fit_method");
+-        if (*PFITMETHOD == 1)
+-            m_scrollingData->fitCol(COL);
+-        else
+-            m_scrollingData->centerCol(COL);
+-    };
+-
+     const auto ARGS = CVarList(std::string{sv}, 0, ' ');
+     if (ARGS[0] == "move") {
+         if (ARGS[1] == "+col" || ARGS[1] == "col") {
+@@ -1403,7 +1429,7 @@ Config::ErrorResult CScrollingAlgorithm::layoutMsg(const std::string_view& sv) {
+                 return {};
+             }
+ 
+-            centerOrFit(COL);
++            m_scrollingData->centerOrFitCol(COL, TDATA->column.lock());
+             m_scrollingData->recalculate();
+ 
+             focusTargetUpdate(COL->targetDatas.front()->target.lock());
+@@ -1429,7 +1455,7 @@ Config::ErrorResult CScrollingAlgorithm::layoutMsg(const std::string_view& sv) {
+             if (!COL)
+                 return {};
+ 
+-            centerOrFit(COL);
++            m_scrollingData->centerOrFitCol(COL, TDATA->column.lock());
+             m_scrollingData->recalculate();
+ 
+             focusTargetUpdate(COL->targetDatas.back()->target.lock());
+@@ -1711,7 +1737,7 @@ Config::ErrorResult CScrollingAlgorithm::layoutMsg(const std::string_view& sv) {
+             auto PREV = m_scrollingData->prev(TDATA->column.lock());
+             if (!PREV) {
+                 if (*PNOFALLBACK) {
+-                    centerOrFit(TDATA->column.lock());
++                    m_scrollingData->centerOrFitCol(TDATA->column.lock(), TDATA->column.lock());
+                     m_scrollingData->recalculate();
+                     if (TDATA->target->window())
+                         g_pCompositor->warpCursorTo(TDATA->target->window()->middle());
+@@ -1723,7 +1749,7 @@ Config::ErrorResult CScrollingAlgorithm::layoutMsg(const std::string_view& sv) {
+             auto pTargetData = findBestNeighbor(TDATA, PREV);
+             if (pTargetData) {
+                 focusTargetUpdate(pTargetData->target.lock());
+-                centerOrFit(PREV);
++                m_scrollingData->centerOrFitCol(PREV, TDATA->column.lock());
+                 m_scrollingData->recalculate();
+                 if (pTargetData->target->window())
+                     g_pCompositor->warpCursorTo(pTargetData->target->window()->middle());
+@@ -1733,7 +1759,7 @@ Config::ErrorResult CScrollingAlgorithm::layoutMsg(const std::string_view& sv) {
+             auto NEXT = m_scrollingData->next(TDATA->column.lock());
+             if (!NEXT) {
+                 if (*PNOFALLBACK) {
+-                    centerOrFit(TDATA->column.lock());
++                    m_scrollingData->centerOrFitCol(TDATA->column.lock(), TDATA->column.lock());
+                     m_scrollingData->recalculate();
+                     if (TDATA->target->window())
+                         g_pCompositor->warpCursorTo(TDATA->target->window()->middle());
+@@ -1745,7 +1771,7 @@ Config::ErrorResult CScrollingAlgorithm::layoutMsg(const std::string_view& sv) {
+             auto pTargetData = findBestNeighbor(TDATA, NEXT);
+             if (pTargetData) {
+                 focusTargetUpdate(pTargetData->target.lock());
+-                centerOrFit(NEXT);
++                m_scrollingData->centerOrFitCol(NEXT, TDATA->column.lock());
+                 m_scrollingData->recalculate();
+                 if (pTargetData->target->window())
+                     g_pCompositor->warpCursorTo(pTargetData->target->window()->middle());
+@@ -1945,8 +1971,7 @@ SP<SColumnData> CScrollingAlgorithm::snapToProjectedOffset(double projectedNorma
+         return std::abs(projectedOffset - center) <= std::abs(projectedOffset - edge) ? center : edge;
+     };
+ 
+-    auto considerColumn = [&](size_t index) {
+-        const double offset         = *PFITMETHOD == 1 ? fitOffsetFor(index) : centerOffsetFor(index);
++    auto considerOffset = [&](size_t index, double offset) {
+         const double delta          = std::abs(offset - projectedOffset);
+         const double start          = controller.calculateStripStart(index, USABLE, *PFSONONE);
+         const double size           = controller.calculateStripSize(index, USABLE, *PFSONONE);
+@@ -1963,8 +1988,26 @@ SP<SColumnData> CScrollingAlgorithm::snapToProjectedOffset(double projectedNorma
+         }
+     };
+ 
+-    for (size_t i = 0; i < controller.stripCount(); ++i)
+-        considerColumn(i);
++    auto pairOverflows = [&](size_t first, size_t second) {
++        const double firstStart  = controller.calculateStripStart(first, USABLE, *PFSONONE);
++        const double secondStart = controller.calculateStripStart(second, USABLE, *PFSONONE);
++        const double firstEnd    = firstStart + controller.calculateStripSize(first, USABLE, *PFSONONE);
++        const double secondEnd   = secondStart + controller.calculateStripSize(second, USABLE, *PFSONONE);
++        return std::max(firstEnd, secondEnd) - std::min(firstStart, secondStart) > usablePrimary + 0.5;
++    };
++
++    for (size_t i = 0; i < controller.stripCount(); ++i) {
++        if (*PFITMETHOD == 0) {
++            considerOffset(i, centerOffsetFor(i));
++        } else if (*PFITMETHOD == 1) {
++            considerOffset(i, fitOffsetFor(i));
++        } else {
++            const double start = controller.calculateStripStart(i, USABLE, *PFSONONE);
++            const double size  = controller.calculateStripSize(i, USABLE, *PFSONONE);
++            considerOffset(i, i + 1 < controller.stripCount() && pairOverflows(i, i + 1) ? centerOffsetFor(i) : start);
++            considerOffset(i, i > 0 && pairOverflows(i, i - 1) ? centerOffsetFor(i) : start + size - usablePrimary);
++        }
++    }
+ 
+     if (!foundSnap)
+         return nullptr;
+diff --git a/src/layout/algorithm/tiled/scrolling/ScrollingAlgorithm.hpp b/src/layout/algorithm/tiled/scrolling/ScrollingAlgorithm.hpp
+index 867b86e8..422dac64 100644
+--- a/src/layout/algorithm/tiled/scrolling/ScrollingAlgorithm.hpp
++++ b/src/layout/algorithm/tiled/scrolling/ScrollingAlgorithm.hpp
+@@ -81,7 +81,7 @@ namespace Layout::Tiled {
+         bool                         visible(SP<SColumnData> c, bool full = false);
+         void                         centerCol(SP<SColumnData> c);
+         void                         fitCol(SP<SColumnData> c);
+-        void                         centerOrFitCol(SP<SColumnData> c);
++        void                         centerOrFitCol(SP<SColumnData> c, SP<SColumnData> previous = nullptr);
+ 
+         void                         recalculate(bool forceInstant = false);
+ 
+@@ -167,7 +167,7 @@ namespace Layout::Tiled {
+ 
+         void                                focusTargetUpdate(SP<ITarget> target);
+         void                                moveTargetTo(SP<ITarget> t, Math::eDirection dir, bool silent);
+-        void                                focusOnInput(SP<ITarget> target, eInputMode input);
++        void                                focusOnInput(SP<ITarget> target, eInputMode input, SP<SColumnData> previous = nullptr);
+ 
+         void                                expelTarget(SP<SScrollingTargetData> tdata, SP<SColumnData> srcCol, std::optional<int64_t> insertIdx);
+ 
+@@ -175,6 +175,7 @@ namespace Layout::Tiled {
+ 
+         std::vector<SFullscreenScrollState> m_fullscreenTargets;
+         bool                                m_lastFullscreenCover = false;
++        WP<SColumnData>                     m_lastFocusedColumn;
+ 
+         friend struct SScrollingData;
+     };
+diff --git a/src/managers/input/UnifiedWorkspaceSwipeGesture.cpp b/src/managers/input/UnifiedWorkspaceSwipeGesture.cpp
+index e2eac693..82fd04b4 100644
+--- a/src/managers/input/UnifiedWorkspaceSwipeGesture.cpp
++++ b/src/managers/input/UnifiedWorkspaceSwipeGesture.cpp
+@@ -53,20 +53,16 @@ void CUnifiedWorkspaceSwipeGesture::update(double delta) {
+     m_avgSpeed = (m_avgSpeed * m_speedPoints + abs(d)) / (m_speedPoints + 1);
+     m_speedPoints++;
+ 
+-    auto workspaceIDLeft  = getWorkspaceIDNameFromString((*PSWIPEUSER ? "r-1" : "m-1")).id;
+-    auto workspaceIDRight = getWorkspaceIDNameFromString((*PSWIPEUSER ? "r+1" : "m+1")).id;
+-
+-    if ((workspaceIDLeft == WORKSPACE_INVALID || workspaceIDRight == WORKSPACE_INVALID || workspaceIDLeft == m_workspaceBegin->m_id) && !*PSWIPENEW) {
+-        m_workspaceBegin = nullptr; // invalidate the swipe
+-        return;
+-    }
++    const auto PWORKSPACEL      = *PSWIPEUSER ? g_pCompositor->getWorkspaceByID(getWorkspaceIDNameFromString("r-1").id) : g_pCompositor->getWorkspaceInOrder(m_workspaceBegin, -1);
++    const auto PWORKSPACER      = *PSWIPEUSER ? g_pCompositor->getWorkspaceByID(getWorkspaceIDNameFromString("r+1").id) : g_pCompositor->getWorkspaceInOrder(m_workspaceBegin, 1);
++    const auto workspaceIDLeft  = PWORKSPACEL ? PWORKSPACEL->m_id : WORKSPACE_INVALID;
++    const auto workspaceIDRight = PWORKSPACER ? PWORKSPACER->m_id : WORKSPACE_INVALID;
+ 
+     m_workspaceBegin->m_forceRendering = true;
+ 
+     m_delta = std::clamp(m_delta, sc<double>(-SWIPEDISTANCE), sc<double>(SWIPEDISTANCE));
+ 
+-    if ((m_workspaceBegin->m_id == workspaceIDLeft && *PSWIPENEW && (m_delta < 0)) ||
+-        (m_delta > 0 && m_workspaceBegin->getWindows() == 0 && workspaceIDRight <= m_workspaceBegin->m_id) || (m_delta < 0 && m_workspaceBegin->m_id <= workspaceIDLeft)) {
++    if ((m_delta < 0 && !PWORKSPACEL) || (m_delta > 0 && !PWORKSPACER && !*PSWIPENEW)) {
+ 
+         m_delta = 0;
+         g_pHyprRenderer->damageMonitor(m_monitor.lock());
+@@ -82,9 +78,9 @@ void CUnifiedWorkspaceSwipeGesture::update(double delta) {
+     }
+ 
+     if (m_delta < 0) {
+-        const auto PWORKSPACE = g_pCompositor->getWorkspaceByID(workspaceIDLeft);
++        const auto PWORKSPACE = PWORKSPACEL;
+ 
+-        if (workspaceIDLeft > m_workspaceBegin->m_id || !PWORKSPACE) {
++        if (!PWORKSPACE) {
+             if (*PSWIPENEW) {
+                 g_pHyprRenderer->damageMonitor(m_monitor.lock());
+ 
+@@ -104,8 +100,6 @@ void CUnifiedWorkspaceSwipeGesture::update(double delta) {
+         PWORKSPACE->m_alpha->setValueAndWarp(1.f);
+ 
+         if (workspaceIDLeft != workspaceIDRight && workspaceIDRight != m_workspaceBegin->m_id) {
+-            const auto PWORKSPACER = g_pCompositor->getWorkspaceByID(workspaceIDRight);
+-
+             if (PWORKSPACER) {
+                 PWORKSPACER->m_forceRendering = false;
+                 PWORKSPACER->m_alpha->setValueAndWarp(0.f);
+@@ -122,9 +116,9 @@ void CUnifiedWorkspaceSwipeGesture::update(double delta) {
+ 
+         PWORKSPACE->updateWindowDecos();
+     } else {
+-        const auto PWORKSPACE = g_pCompositor->getWorkspaceByID(workspaceIDRight);
++        const auto PWORKSPACE = PWORKSPACER;
+ 
+-        if (workspaceIDRight < m_workspaceBegin->m_id || !PWORKSPACE) {
++        if (!PWORKSPACE) {
+             if (*PSWIPENEW) {
+                 g_pHyprRenderer->damageMonitor(m_monitor.lock());
+ 
+@@ -144,8 +138,6 @@ void CUnifiedWorkspaceSwipeGesture::update(double delta) {
+         PWORKSPACE->m_alpha->setValueAndWarp(1.f);
+ 
+         if (workspaceIDLeft != workspaceIDRight && workspaceIDLeft != m_workspaceBegin->m_id) {
+-            const auto PWORKSPACEL = g_pCompositor->getWorkspaceByID(workspaceIDLeft);
+-
+             if (PWORKSPACEL) {
+                 PWORKSPACEL->m_forceRendering = false;
+                 PWORKSPACEL->m_alpha->setValueAndWarp(0.f);
+@@ -189,18 +181,17 @@ void CUnifiedWorkspaceSwipeGesture::end() {
+     const bool  VERTANIMS     = ANIMSTYLE == "slidevert" || ANIMSTYLE.starts_with("slidefadevert");
+ 
+     // commit
+-    auto       workspaceIDLeft  = getWorkspaceIDNameFromString((*PSWIPEUSER ? "r-1" : "m-1")).id;
+-    auto       workspaceIDRight = getWorkspaceIDNameFromString((*PSWIPEUSER ? "r+1" : "m+1")).id;
++    auto       PWORKSPACEL      = *PSWIPEUSER ? g_pCompositor->getWorkspaceByID(getWorkspaceIDNameFromString("r-1").id) : g_pCompositor->getWorkspaceInOrder(m_workspaceBegin, -1);
++    auto       PWORKSPACER      = *PSWIPEUSER ? g_pCompositor->getWorkspaceByID(getWorkspaceIDNameFromString("r+1").id) : g_pCompositor->getWorkspaceInOrder(m_workspaceBegin, 1);
++    auto       workspaceIDLeft  = PWORKSPACEL ? PWORKSPACEL->m_id : WORKSPACE_INVALID;
++    auto       workspaceIDRight = PWORKSPACER ? PWORKSPACER->m_id : WORKSPACE_INVALID;
+     const auto SWIPEDISTANCE    = std::clamp(*PSWIPEDIST, sc<int64_t>(1LL), sc<int64_t>(UINT32_MAX));
+ 
+     // If we've been swiping off the right end with PSWIPENEW enabled, there is
+     // no workspace there yet, and we need to choose an ID for a new one now.
+-    if (workspaceIDRight <= m_workspaceBegin->m_id && *PSWIPENEW)
++    if (!PWORKSPACER && *PSWIPENEW)
+         workspaceIDRight = getWorkspaceIDNameFromString("r+1").id;
+ 
+-    auto         PWORKSPACER = g_pCompositor->getWorkspaceByID(workspaceIDRight); // not guaranteed if PSWIPENEW || PSWIPENUMBER
+-    auto         PWORKSPACEL = g_pCompositor->getWorkspaceByID(workspaceIDLeft);  // not guaranteed if PSWIPENUMBER
+-
+     const auto   RENDEROFFSETMIDDLE = m_workspaceBegin->m_renderOffset->value();
+     const auto   XDISTANCE          = m_monitor->m_size.x + *PWORKSPACEGAP;
+     const auto   YDISTANCE          = m_monitor->m_size.y + *PWORKSPACEGAP;
+diff --git a/src/protocols/ExtWorkspace.cpp b/src/protocols/ExtWorkspace.cpp
+index ac7c7277..e561ec31 100644
+--- a/src/protocols/ExtWorkspace.cpp
++++ b/src/protocols/ExtWorkspace.cpp
+@@ -93,6 +93,7 @@ CExtWorkspaceResource::CExtWorkspaceResource(WP<CExtWorkspaceManagerResource> ma
+         if (m_manager)
+             m_manager->scheduleDone();
+     });
++    m_listeners.orderChanged = m_workspace->m_events.orderChanged.listen([this] { sendCoordinates(); });
+ 
+     m_resource->setOnDestroy([this](auto) { PROTO::extWorkspace->destroyWorkspace(m_self); });
+     m_resource->setDestroy([this](auto) { PROTO::extWorkspace->destroyWorkspace(m_self); });
+@@ -109,18 +110,7 @@ CExtWorkspaceResource::CExtWorkspaceResource(WP<CExtWorkspaceManagerResource> ma
+ 
+     m_resource->sendName(m_workspace->m_name.c_str());
+ 
+-    wl_array coordinates;
+-    wl_array_init(&coordinates);
+-
+-    auto id = m_workspace->m_id;
+-    if (id < 0 && !m_workspace->m_name.empty())
+-        id += UINT32_MAX - 1337;
+-
+-    if (id > 0)
+-        *sc<uint32_t*>(wl_array_add(&coordinates, sizeof(uint32_t))) = id;
+-
+-    m_resource->sendCoordinates(&coordinates);
+-    wl_array_release(&coordinates);
++    sendCoordinates();
+ 
+     sendState();
+     sendCapabilities();
+@@ -133,6 +123,21 @@ bool CExtWorkspaceResource::good() const {
+     return m_resource;
+ }
+ 
++void CExtWorkspaceResource::sendCoordinates() {
++    wl_array coordinates;
++    wl_array_init(&coordinates);
++
++    const auto index = g_pCompositor->getWorkspaceOrderIndex(m_workspace.lock());
++    if (index)
++        *sc<uint32_t*>(wl_array_add(&coordinates, sizeof(uint32_t))) = *index + 1;
++
++    m_resource->sendCoordinates(&coordinates);
++    wl_array_release(&coordinates);
++
++    if (m_manager)
++        m_manager->scheduleDone();
++}
++
+ bool CExtWorkspaceResource::isActive() const {
+     if (!m_workspace)
+         return false;
+diff --git a/src/protocols/ExtWorkspace.hpp b/src/protocols/ExtWorkspace.hpp
+index ba4aeeae..83e5004a 100644
+--- a/src/protocols/ExtWorkspace.hpp
++++ b/src/protocols/ExtWorkspace.hpp
+@@ -58,6 +58,7 @@ class CExtWorkspaceResource {
+     void                             sendState();
+     void                             sendCapabilities();
+     void                             sendGroup();
++    void                             sendCoordinates();
+ 
+     struct {
+         bool          activate   = false;
+@@ -70,6 +71,7 @@ class CExtWorkspaceResource {
+         CHyprSignalListener activeChanged;
+         CHyprSignalListener monitorChanged;
+         CHyprSignalListener renamed;
++        CHyprSignalListener orderChanged;
+     } m_listeners;
+ 
+     friend class CExtWorkspaceManagerResource;
+diff --git a/src/config/lua/objects/LuaWindow.cpp b/src/config/lua/objects/LuaWindow.cpp
+index 41edcc7f..29ce071a 100644
+--- a/src/config/lua/objects/LuaWindow.cpp
++++ b/src/config/lua/objects/LuaWindow.cpp
+@@ -211,6 +211,9 @@ static int windowIndex(lua_State* L) {
+                     lua_pushnumber(L, col->getColumnWidth());
+                     lua_setfield(L, -2, "width");
+ 
++                    lua_pushnumber(L, col->getTargetSize(data));
++                    lua_setfield(L, -2, "height");
++
+                     lua_newtable(L);
+                     int i = 1;
+                     for (const auto& td : col->targetDatas) {
+diff --git a/src/layout/algorithm/tiled/scrolling/ScrollingAlgorithm.cpp b/src/layout/algorithm/tiled/scrolling/ScrollingAlgorithm.cpp
+index 14ca45b9..493671b2 100644
+--- a/src/layout/algorithm/tiled/scrolling/ScrollingAlgorithm.cpp
++++ b/src/layout/algorithm/tiled/scrolling/ScrollingAlgorithm.cpp
+@@ -1476,6 +1476,22 @@ Config::ErrorResult CScrollingAlgorithm::layoutMsg(const std::string_view& sv) {
+         const auto ATCENTER = m_scrollingData->atCenter();
+ 
+         focusTargetUpdate(ATCENTER ? (*ATCENTER->targetDatas.begin())->target.lock() : nullptr);
++    } else if (ARGS[0] == "rowresize") {
++        const auto TDATA = dataFor(Desktop::focusState()->window() ? Desktop::focusState()->window()->layoutTarget() : nullptr);
++        if (!TDATA)
++            return noTarget("no window");
++
++        const auto COL = TDATA->column.lock();
++        if (!COL)
++            return stateErr("no current col");
++
++        float size = 0.F;
++        try {
++            size = std::stof(ARGS[1]);
++        } catch (...) { return invalidArg("invalid row size"); }
++
++        COL->setTargetSize(TDATA, std::clamp(size, MIN_ROW_HEIGHT, MAX_ROW_HEIGHT));
++        m_scrollingData->recalculate();
+     } else if (ARGS[0] == "colresize") {
+         const auto TDATA = dataFor(Desktop::focusState()->window() ? Desktop::focusState()->window()->layoutTarget() : nullptr);
+ 
