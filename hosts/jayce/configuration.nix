@@ -89,6 +89,9 @@
 
   programs = {
     fuse.enable = true;
+    gnupg.agent = {
+      enable = true;
+    };
     hyprland = {
       enable = true;
       withUWSM = true;
@@ -137,6 +140,8 @@
     sessionVariables.NIXOS_OZONE_WL = "1";
     systemPackages = with pkgs; [
       git
+      gnupg
+      pinentry-gnome3
       vim
       wget
     ];
