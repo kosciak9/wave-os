@@ -4,7 +4,7 @@ hl.monitor({
     output = "eDP-1",
     mode = "2560x1600@165.000",
     position = "auto",
-    scale = 1.5,
+    scale = 1.6,
     vrr = 1,
 })
 
@@ -96,6 +96,7 @@ hl.config({
     misc = {
         background_color = "rgb(16161d)",
         disable_hyprland_logo = true,
+        disable_splash_rendering = true,
         force_default_wallpaper = 0,
     },
 })
