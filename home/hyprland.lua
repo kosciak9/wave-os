@@ -56,13 +56,13 @@ hl.config({
     },
     general = {
         layout = "scrolling",
-        gaps_in = 24,
+        gaps_in = 8,
         gaps_out = 24,
-        border_size = 0,
+        border_size = 2,
         no_focus_fallback = true,
         col = {
             active_border = "rgb(938056)",
-            inactive_border = "rgb(717c7c)",
+            inactive_border = "rgba(00000000)",
         },
     },
     scrolling = {
@@ -143,9 +143,9 @@ hl.config({
             hideOverlayLayers = false,
             drawActiveWorkspace = true,
             hideRealLayers = true,
-            affectStrut = true,
-            overrideGaps = true,
-            gapsIn = 24,
+            affectStrut = false,
+            overrideGaps = false,
+            gapsIn = 8,
             gapsOut = 24,
             autoDrag = true,
             autoScroll = true,
@@ -205,7 +205,7 @@ end
 hl.window_rule({
     name = "default-window-appearance",
     match = { class = ".*" },
-    border_size = 0,
+    border_size = 2,
     rounding = 4,
     idle_inhibit = "fullscreen",
 })
@@ -615,41 +615,10 @@ local function resizeWindowHeight(amount)
     end
 end
 
-local function updateFocusRings()
-    local activeMonitor = hl.get_active_monitor()
-    for _, window in ipairs(hl.get_windows({ mapped = true })) do
-        dispatch(hl.dsp.window.set_prop({ window = window, prop = "border_size", value = "0" }))
-    end
-
-    for _, monitor in ipairs(hl.get_monitors()) do
-        local workspace = monitor.active_workspace
-        local window = workspace and workspace.last_window
-        if window then
-            local color = window.urgent and "rgb(e46876)"
-                or (monitor == activeMonitor and "rgb(938056)" or "rgb(717c7c)")
-            dispatch(hl.dsp.window.set_prop({ window = window, prop = "border_size", value = "2" }))
-            dispatch(hl.dsp.window.set_prop({ window = window, prop = "active_border_color", value = color }))
-            dispatch(hl.dsp.window.set_prop({ window = window, prop = "inactive_border_color", value = color }))
-        end
-    end
-end
-
-local eventSubscriptions = {}
-for _, event in ipairs({
-    "hyprland.start",
-    "monitor.focused",
-    "window.active",
-    "window.open",
-    "window.close",
-    "window.urgent",
-    "workspace.active",
-}) do
-    eventSubscriptions[#eventSubscriptions + 1] = hl.on(event, updateFocusRings)
-end
-
 local function triggerBlackout()
     dispatch(hl.dsp.exec_cmd("qs -c wave ipc call blackout trigger"))
 end
+local eventSubscriptions = {}
 for _, event in ipairs({ "monitor.added", "monitor.removed" }) do
     eventSubscriptions[#eventSubscriptions + 1] = hl.on(event, triggerBlackout)
 end
