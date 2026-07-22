@@ -53,6 +53,7 @@ in
       nodejs
       noto-fonts
       noto-fonts-color-emoji
+      obsidian
       opencode
       playerctl
       pulseaudio
