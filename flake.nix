@@ -3,6 +3,14 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nix-darwin = {
+      url = "github:nix-darwin/nix-darwin";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    determinate = {
+      url = "https://flakehub.com/f/DeterminateSystems/determinate/3";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     nixos-hardware = {
       url = "github:NixOS/nixos-hardware";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -35,6 +43,8 @@
       nixos-hardware,
       home-manager,
       sops-nix,
+      nix-darwin,
+      determinate,
       ...
     }:
     let
@@ -48,16 +58,8 @@
         system = darwinSystem;
         config.allowUnfree = true;
       };
-      kanagawa-kvantum = pkgs.stdenvNoCC.mkDerivation {
-        pname = "kanagawa-kvantum";
-        version = "0-unstable-2026-02-10";
+      kanagawa-kvantum = pkgs.callPackage ./packages/kanagawa-kvantum.nix {
         src = inputs.kanagawa-kvantum;
-        installPhase = ''
-          runHook preInstall
-          mkdir -p "$out/share/Kvantum"
-          cp -r Kanagawa "$out/share/Kvantum/"
-          runHook postInstall
-        '';
       };
     in
     {
@@ -65,7 +67,33 @@
         inherit system;
         modules = [
           nixos-hardware.nixosModules.framework-16-7040-amd
-          ./hosts/jayce/configuration.nix
+          ./hosts/jayce/default.nix
+          home-manager.nixosModules.home-manager
+          ({ ... }:
+            {
+              home-manager.useGlobalPkgs = true;
+              home-manager.useUserPackages = true;
+              home-manager.extraSpecialArgs = {
+                inherit inputs kanagawa-kvantum;
+              };
+              home-manager.sharedModules = [ sops-nix.homeManagerModules.sops ];
+              home-manager.users.kosciak = ./hosts/jayce/home.nix;
+            })
+        ];
+      };
+
+      darwinConfigurations.renekton = nix-darwin.lib.darwinSystem {
+        system = darwinSystem;
+        modules = [
+          determinate.darwinModules.default
+          home-manager.darwinModules.home-manager
+          ./hosts/renekton/default.nix
+          ({ ... }:
+            {
+              home-manager.useGlobalPkgs = true;
+              home-manager.useUserPackages = true;
+              home-manager.users.kosciak = ./hosts/renekton/home.nix;
+            })
         ];
       };
 
@@ -76,23 +104,14 @@
         };
         modules = [
           sops-nix.homeManagerModules.sops
-          ./home/kosciak.nix
+          ./hosts/jayce/home.nix
         ];
       };
 
       homeConfigurations."kosciak@renekton" = home-manager.lib.homeManagerConfiguration {
         pkgs = darwinPkgs;
         modules = [
-          ./home/git.nix
-          ./home/neovim.nix
-          ./home/starship.nix
-          {
-            home.username = "kosciak";
-            home.homeDirectory = "/Users/kosciak";
-            home.stateVersion = "26.05";
-            programs.home-manager.enable = true;
-            xdg.enable = true;
-          }
+          ./hosts/renekton/home.nix
         ];
       };
 

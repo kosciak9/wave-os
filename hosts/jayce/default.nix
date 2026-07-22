@@ -1,7 +1,7 @@
 { pkgs, ... }:
 
 {
-  imports = [ ./hardware-configuration.nix ];
+  imports = [ ./hardware.nix ];
 
   nix.settings.experimental-features = [
     "nix-command"
@@ -96,7 +96,7 @@
       enable = true;
       withUWSM = true;
       package = pkgs.hyprland.overrideAttrs (old: {
-        patches = (old.patches or [ ]) ++ [ ../../patches/hyprland-niri-parity.patch ];
+        patches = (old.patches or [ ]) ++ [ ./desktop/hyprland-niri-parity.patch ];
       });
     };
     zsh = {

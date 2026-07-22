@@ -16,9 +16,10 @@ let
 in
 {
   imports = [
-    ./git.nix
-    ./neovim.nix
-    ./starship.nix
+    ../../modules/home/git.nix
+    ../../modules/home/neovim
+    ../../modules/home/opencode
+    ../../modules/home/starship
   ];
 
   home = {
@@ -141,13 +142,13 @@ in
       gcwip = "git commit --no-verify -m wip";
       l = "eza --git -h -g -H -l";
       n = "nvim";
-      nvimrc = "$EDITOR ~/projects/personal/wave-os/home/nvim/init.lua";
+      nvimrc = "$EDITOR ~/projects/personal/wave-os/modules/home/neovim/config/init.lua";
       rm = "echo 'This is not the command you are looking for.'; false";
       sudo = "sudo ";
       vim = "nvim";
-      vimrc = "$EDITOR ~/projects/personal/wave-os/home/nvim/init.lua";
+      vimrc = "$EDITOR ~/projects/personal/wave-os/modules/home/neovim/config/init.lua";
       sc-suspend = "systemctl suspend";
-      zshrc = "$EDITOR ~/projects/personal/wave-os/home/kosciak.nix";
+      zshrc = "$EDITOR ~/projects/personal/wave-os/hosts/jayce/home.nix";
     };
     initContent = lib.mkMerge [
       (lib.mkOrder 850 ''
@@ -214,7 +215,7 @@ in
     quickshell = {
       enable = true;
       activeConfig = "wave";
-      configs.wave = ./quickshell;
+      configs.wave = ./desktop/quickshell;
       systemd = {
         enable = true;
         target = "graphical-session.target";
@@ -366,15 +367,6 @@ in
       selection-background = 2d4f67
       selection-foreground = c8c093
     '';
-    "opencode/agent".source = ./opencode/agent;
-    "opencode/command".source = ./opencode/command;
-    "opencode/opencode-quota".source = ./opencode/opencode-quota;
-    "opencode/opencode.jsonc" = {
-      source = ./opencode/opencode.jsonc;
-      force = true;
-    };
-    "opencode/plugin".source = ./opencode/plugin;
-    "opencode/tui.jsonc".source = ./opencode/tui.jsonc;
     "Kvantum/Kanagawa".source = "${kanagawa-kvantum}/share/Kvantum/Kanagawa";
     "Kvantum/kvantum.kvconfig".text = ''
       [General]
@@ -441,6 +433,6 @@ in
     package = null;
     portalPackage = null;
     systemd.enable = false;
-    extraConfig = builtins.readFile ./hyprland.lua;
+    extraConfig = builtins.readFile ./desktop/hyprland.lua;
   };
 }

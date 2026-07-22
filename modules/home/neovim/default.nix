@@ -10,7 +10,7 @@
     defaultEditor = true;
     viAlias = true;
     vimAlias = true;
-    initLua = builtins.readFile ./nvim/init.lua;
+    initLua = builtins.readFile ./config/init.lua;
     plugins = with pkgs.vimPlugins; [
       kanagawa-nvim
       hardtime-nvim
@@ -84,8 +84,8 @@
   };
 
   xdg.configFile = {
-    "nvim/lsp".source = ./nvim/lsp;
-    "nvim/lua".source = ./nvim/lua;
-    "nvim/queries".source = ./nvim/queries;
+    "nvim/lsp".source = ./config/lsp;
+    "nvim/lua".source = ./config/lua;
+    "nvim/queries".source = ./config/queries;
   };
 }
