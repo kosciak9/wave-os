@@ -83,6 +83,7 @@
       homeConfigurations."kosciak@renekton" = home-manager.lib.homeManagerConfiguration {
         pkgs = darwinPkgs;
         modules = [
+          ./home/git.nix
           ./home/neovim.nix
           {
             home.username = "kosciak";
