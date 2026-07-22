@@ -40,7 +40,6 @@ in
     packages = with pkgs; [
       brightnessctl
       chromium
-      emacs
       fd
       hyprsunset
       hyprshot
@@ -66,12 +65,6 @@ in
       zsh-completions
       inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
     ];
-  };
-
-  home.file = {
-    ".emacs.d/init.el".source = ./emacs/init.el;
-    ".emacs.d/sanemacs.el".source = ./emacs/sanemacs.el;
-    ".emacs.d/kanagawa-theme.el".source = ./emacs/kanagawa-theme.el;
   };
 
   fonts.fontconfig.enable = true;
