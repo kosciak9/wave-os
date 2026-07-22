@@ -8,11 +8,7 @@
 }:
 
 let
-  wallpaper =
-    pkgs.runCommand "kanagawa-wallpaper.png" { nativeBuildInputs = [ pkgs.imagemagick ]; }
-      ''
-        magick -size 2560x1600 'xc:#16161d' "png:$out"
-      '';
+  wallpaper = "/home/kosciak/.config/secrets/wallpapers/kanagawa-black-centered.png";
 in
 {
   imports = [
