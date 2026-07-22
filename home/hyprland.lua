@@ -802,5 +802,23 @@ hl.bind("ALT + Print", hl.dsp.exec_cmd("hyprshot -m window -m active " .. screen
 
 hl.bind(mod .. " + SHIFT + P", hl.dsp.dpms({ action = "disable" }))
 
+local volumeUpCommand =
+    [[sh -c 'wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+; status="$(wpctl get-volume @DEFAULT_AUDIO_SINK@)"; qs -c wave ipc call osd volume "$status"']]
+local volumeDownCommand =
+    [[sh -c 'wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-; status="$(wpctl get-volume @DEFAULT_AUDIO_SINK@)"; qs -c wave ipc call osd volume "$status"']]
+local volumeMuteCommand =
+    [[sh -c 'wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle; status="$(wpctl get-volume @DEFAULT_AUDIO_SINK@)"; qs -c wave ipc call osd volume "$status"']]
+local brightnessUpCommand =
+    [[sh -c 'brightnessctl -e4 -n2 set 5%+; status="$(brightnessctl -m | { IFS=, read -r device class current percent maximum; printf "%s" "$percent"; })"; qs -c wave ipc call osd brightness "$status"']]
+local brightnessDownCommand =
+    [[sh -c 'brightnessctl -e4 -n2 set 5%-; status="$(brightnessctl -m | { IFS=, read -r device class current percent maximum; printf "%s" "$percent"; })"; qs -c wave ipc call osd brightness "$status"']]
+
+hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd(volumeUpCommand), { locked = true, repeating = true })
+hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd(volumeDownCommand), { locked = true, repeating = true })
+hl.bind("XF86AudioMute", hl.dsp.exec_cmd(volumeMuteCommand), { locked = true })
+hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"), { locked = true })
+hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd(brightnessUpCommand), { locked = true, repeating = true })
+hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd(brightnessDownCommand), { locked = true, repeating = true })
+
 hl.bind(mod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true })
 hl.bind(mod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
