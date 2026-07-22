@@ -85,6 +85,7 @@
         modules = [
           ./home/git.nix
           ./home/neovim.nix
+          ./home/starship.nix
           {
             home.username = "kosciak";
             home.homeDirectory = "/Users/kosciak";

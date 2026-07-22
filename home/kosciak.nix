@@ -18,6 +18,7 @@ in
   imports = [
     ./git.nix
     ./neovim.nix
+    ./starship.nix
   ];
 
   home = {
@@ -220,11 +221,6 @@ in
       };
     };
     password-store.enable = true;
-    starship = {
-      enable = true;
-      enableZshIntegration = false;
-      settings = builtins.fromTOML (builtins.readFile ./starship.toml);
-    };
     tmux = {
       enable = true;
       baseIndex = 1;
