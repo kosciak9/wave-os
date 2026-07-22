@@ -3,6 +3,7 @@
     ../../modules/home/git.nix
     ../../modules/home/neovim
     ../../modules/home/starship
+    ./aerospace.nix
   ];
 
   home.username = "kosciak";

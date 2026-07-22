@@ -23,7 +23,6 @@
   ];
 
   environment.systemPackages = with pkgs; [
-    aerospace
     bat
     delta
     difftastic
@@ -39,7 +38,6 @@
     git
     gnupg
     infisical
-    jankyborders
     pass
     pinentry_mac
     podman
@@ -80,18 +78,6 @@
 
   system.defaults.CustomUserPreferences."com.apple.dock" = {
     show-recents-count = 1;
-  };
-
-  launchd.user.agents.aerospace = {
-    serviceConfig = {
-      ProgramArguments = [
-        "/bin/sh"
-        "-c"
-        "exec /run/current-system/sw/bin/aerospace"
-      ];
-      RunAtLoad = true;
-      KeepAlive = true;
-    };
   };
 
   services.tailscale.enable = true;
