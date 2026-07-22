@@ -39,8 +39,13 @@
     }:
     let
       system = "x86_64-linux";
+      darwinSystem = "aarch64-darwin";
       pkgs = import nixpkgs {
         inherit system;
+        config.allowUnfree = true;
+      };
+      darwinPkgs = import nixpkgs {
+        system = darwinSystem;
         config.allowUnfree = true;
       };
       kanagawa-kvantum = pkgs.stdenvNoCC.mkDerivation {
@@ -72,6 +77,20 @@
         modules = [
           sops-nix.homeManagerModules.sops
           ./home/kosciak.nix
+        ];
+      };
+
+      homeConfigurations."kosciak@renekton" = home-manager.lib.homeManagerConfiguration {
+        pkgs = darwinPkgs;
+        modules = [
+          ./home/neovim.nix
+          {
+            home.username = "kosciak";
+            home.homeDirectory = "/Users/kosciak";
+            home.stateVersion = "26.05";
+            programs.home-manager.enable = true;
+            xdg.enable = true;
+          }
         ];
       };
 
