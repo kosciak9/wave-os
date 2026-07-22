@@ -84,6 +84,7 @@ local function parent(path)
 	if not path then
 		return nil
 	end
+
 	return vim.fs.dirname(path)
 end
 
@@ -152,11 +153,21 @@ function M.has_eslint(bufnr)
 end
 
 function M.oxlint_root(bufnr)
-	return parent(M.find_upward(bufnr, M.oxlint_files))
+	local oxlint_config = M.find_upward(bufnr, M.oxlint_files)
+	if oxlint_config then
+		return parent(oxlint_config)
+	end
+
+	return nil
 end
 
 function M.oxfmt_root(bufnr)
-	return parent(M.find_upward(bufnr, M.oxfmt_files))
+	local oxfmt_config = M.find_upward(bufnr, M.oxfmt_files)
+	if oxfmt_config then
+		return parent(oxfmt_config)
+	end
+
+	return nil
 end
 
 function M.has_prettier(bufnr)

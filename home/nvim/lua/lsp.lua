@@ -1,3 +1,4 @@
+-- global LSP defaults
 vim.lsp.config("*", {
 	root_markers = { ".git" },
 	capabilities = {
@@ -7,6 +8,10 @@ vim.lsp.config("*", {
 	},
 })
 
+-- when LSP gets enabled - run these
+-- 1. add keybinds for code action, hover, go to definition, jump between
+--    diagnostics
+-- 2. enable completions
 vim.api.nvim_create_autocmd("LspAttach", {
 	group = vim.api.nvim_create_augroup("lsp_config", {}),
 	callback = function(ev)
@@ -37,11 +42,7 @@ vim.api.nvim_create_autocmd("LspAttach", {
 	end,
 })
 
-for _, name in ipairs({ "lua_ls", "harper_ls", "eslint", "yamlls", "jsonls", "expert" }) do
-	local path = ("%s/lsp/%s.lua"):format(vim.fn.stdpath("config"), name)
-	vim.lsp.config(name, dofile(path))
-end
-
+-- enable all LSP servers (Neovim 0.12 autoloads from lsp/ folder)
 vim.lsp.enable({
 	"lua_ls",
 	"harper_ls",

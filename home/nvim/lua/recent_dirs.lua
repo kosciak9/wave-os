@@ -1,6 +1,6 @@
 local M = {}
 
-local uv = vim.uv
+local uv = vim.uv or vim.loop
 
 M.limit = 20
 M.path = vim.fn.stdpath("state") .. "/recent-dirs.json"
@@ -15,7 +15,10 @@ local function normalize(dir)
 		return nil
 	end
 
-	path = vim.fs.normalize(path)
+	if vim.fs and vim.fs.normalize then
+		path = vim.fs.normalize(path)
+	end
+
 	path = path:gsub("/+$", "")
 	if path == "" then
 		path = "/"

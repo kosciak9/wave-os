@@ -1,4 +1,7 @@
+-- vim-matchup reads this during plugin load.
 vim.g.matchup_matchparen_offscreen = { method = "popup" }
+
+-- Plugin acquisition, updates, and native builds are owned by Home Manager/Nix.
 
 require("kanagawa").setup({
 	compile = true,
@@ -52,6 +55,19 @@ end
 
 require("nvim-surround").setup()
 
+-- Default nvim-surround keymaps:
+--   insert: <C-g>s{char} surrounds the cursor, e.g. <C-g>s" -> "|"
+--   insert: <C-g>S{char} surrounds the cursor on new lines
+--   normal: ys{motion}{char} surrounds a motion/text object, e.g. ysiw"
+--   normal: yss{char} surrounds the current line
+--   normal: yS{motion}{char} / ySS{char} surround on new lines
+--   normal: ds{char} deletes a surrounding pair, e.g. ds"
+--   normal: cs{target}{replacement} changes a pair, e.g. cs'"
+--   normal: cS{target}{replacement} changes a pair onto new lines
+--   visual: S{char} surrounds the selection
+--   visual: gS{char} surrounds the selection on new lines
+
+-- mini.family - icons and dashboard (start)
 require("mini.icons").setup()
 MiniIcons.mock_nvim_web_devicons()
 require("picker").setup()
@@ -88,11 +104,14 @@ require("conform").setup({
 		json = js_formatters,
 		markdown = { "markdownlint", "prettierd", "prettier", stop_after_first = true },
 	},
+
 	default_format_opts = {
 		lsp_format = "fallback",
 	},
-	format_on_save = function()
-		return { timeout_ms = 500, lsp_format = "fallback" }
+
+	---@diagnostic disable-next-line: unused-local
+	format_on_save = function(_bufnr)
+		return { timeout_ms = 500, lsp_fallback = true }
 	end,
 })
 
@@ -122,6 +141,9 @@ vim.keymap.set(
 	{ desc = "Accept a word of Copilot suggestion" }
 )
 
+-- Tree-sitter parsers are provisioned by Home Manager/Nix.
+vim.treesitter.language.register("tsx", { "javascriptreact", "typescriptreact" })
+
 vim.api.nvim_create_autocmd("FileType", {
 	pattern = {
 		"markdown",
@@ -134,7 +156,6 @@ vim.api.nvim_create_autocmd("FileType", {
 		"graphql",
 		"python",
 		"yaml",
-		"yaml.docker-compose",
 		"html",
 		"scss",
 		"lua",
@@ -150,11 +171,6 @@ vim.api.nvim_create_autocmd("FileType", {
 require("oil").setup({
 	default_file_explorer = true,
 	delete_to_trash = true,
-	lsp_file_methods = {
-		enabled = true,
-		timeout_ms = 2000,
-		autosave_changes = "unmodified",
-	},
 	view_options = {
 		show_hidden = true,
 	},

@@ -201,7 +201,7 @@ local function tree_label(buf)
 	if path:sub(1, 6) == "oil://" then
 		path = path:sub(7)
 	end
-	return vim.fn.fnamemodify(path, ":~")
+	return vim.fn.fnamemodify(path, ":~"):sub(1, -1) or "tree"
 end
 
 local function is_active(winid)
@@ -287,7 +287,7 @@ local git_cache = {
 }
 
 local function git_root_from_cwd()
-	local cwd = vim.uv.cwd()
+	local cwd = vim.loop.cwd()
 	if not cwd or cwd == "" then
 		return nil
 	end
@@ -317,14 +317,19 @@ local function render_git_counts(branch, counts)
 		if counts.changed > 0 then
 			table.insert(chunks, wrap("~" .. counts.changed .. " ", "StatuslineGitChange"))
 		end
+	end
+
+	if counts then
 		return " " .. table.concat(chunks)
 	end
 
-	return " "
+	if not counts then
+		return " "
+	end
 end
 
 function M.refresh_git_cache(force)
-	local now = vim.uv.now()
+	local now = vim.loop.now()
 	if not force and now - git_cache.last_refresh < git_cache.refresh_delay_ms then
 		return
 	end
@@ -367,6 +372,7 @@ function M.render()
 	local winid = vim.g.statusline_winid or vim.api.nvim_get_current_win()
 	local buf = vim.api.nvim_win_get_buf(winid)
 	local is_tree = tree_buffer(buf)
+
 	local modified = vim.api.nvim_get_option_value("modified", { buf = buf })
 	local is_active_win = is_active(winid)
 
