@@ -63,6 +63,7 @@
       defaultSession = "hyprland-uwsm";
       gdm.enable = true;
     };
+    flatpak.enable = true;
     fprintd.enable = true;
     gnome.gnome-keyring.enable = true;
     power-profiles-daemon.enable = true;

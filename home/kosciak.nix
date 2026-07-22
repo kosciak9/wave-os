@@ -81,6 +81,23 @@ in
   };
 
   programs.home-manager.enable = true;
+  services.flatpak = {
+    enable = true;
+    remotes = [
+      {
+        name = "flathub";
+        location = "https://dl.flathub.org/repo/flathub.flatpakrepo";
+      }
+    ];
+    packages = [
+      "com.slack.Slack"
+      "org.telegram.desktop"
+    ];
+    update.auto = {
+      enable = true;
+      onCalendar = "daily";
+    };
+  };
   xdg.enable = true;
 
   xdg.userDirs = {

@@ -13,6 +13,8 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    nix-flatpak.url = "github:gmodena/nix-flatpak?ref=v0.7.0";
+
     sops-nix = {
       url = "github:Mic92/sops-nix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -34,6 +36,7 @@
       nixpkgs,
       nixos-hardware,
       home-manager,
+      nix-flatpak,
       sops-nix,
       ...
     }:
@@ -71,6 +74,7 @@
         };
         modules = [
           sops-nix.homeManagerModules.sops
+          nix-flatpak.homeManagerModules.nix-flatpak
           ./home/kosciak.nix
         ];
       };
