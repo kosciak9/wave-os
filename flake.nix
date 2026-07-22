@@ -21,6 +21,8 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    nix-flatpak.url = "github:gmodena/nix-flatpak?ref=v0.7.0";
+
     sops-nix = {
       url = "github:Mic92/sops-nix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -42,6 +44,7 @@
       nixpkgs,
       nixos-hardware,
       home-manager,
+      nix-flatpak,
       sops-nix,
       nix-darwin,
       determinate,
@@ -79,7 +82,10 @@
               home-manager.extraSpecialArgs = {
                 inherit inputs kanagawa-kvantum;
               };
-              home-manager.sharedModules = [ sops-nix.homeManagerModules.sops ];
+              home-manager.sharedModules = [
+                sops-nix.homeManagerModules.sops
+                nix-flatpak.homeManagerModules.nix-flatpak
+              ];
               home-manager.users.kosciak = ./hosts/jayce/home.nix;
             })
         ];
@@ -107,6 +113,7 @@
         };
         modules = [
           sops-nix.homeManagerModules.sops
+          nix-flatpak.homeManagerModules.nix-flatpak
           ./hosts/jayce/home.nix
         ];
       };
