@@ -9,6 +9,86 @@
 
 let
   wallpaper = "/home/kosciak/.config/secrets/wallpapers/kanagawa-black-centered.png";
+  sessionTarget = "wayland-session@hyprland.desktop.target";
+  geocluePackage = pkgs.geoclue2-with-demo-agent;
+  hyprspace = pkgs.hyprlandPlugins.hyprspace.overrideAttrs (old: {
+    patches = (old.patches or [ ]) ++ [ ./desktop/hyprspace-lua.patch ];
+  });
+  backlightDim = pkgs.writeShellApplication {
+    name = "wave-backlight-dim";
+    runtimeInputs = with pkgs; [
+      brightnessctl
+      coreutils
+      hyprland
+      jq
+    ];
+    text = builtins.readFile ./scripts/backlight-dim.sh;
+  };
+  lidHandler = pkgs.writeShellApplication {
+    name = "wave-lid-handler";
+    runtimeInputs = with pkgs; [
+      coreutils
+      hyprland
+      jq
+      quickshell
+      systemd
+    ];
+    text = builtins.readFile ./scripts/lid-handler.sh;
+  };
+  nightLight = pkgs.writeShellApplication {
+    name = "wave-night-light";
+    runtimeInputs = with pkgs; [
+      coreutils
+      gawk
+      hyprland
+      sunwait
+    ];
+    text = builtins.replaceStrings
+      [ "@where-am-i@" ]
+      [ "${geocluePackage}/libexec/geoclue-2.0/demos/where-am-i" ]
+      (builtins.readFile ./scripts/night-light.sh);
+  };
+  overviewOpen = pkgs.writeShellApplication {
+    name = "wave-overview-open";
+    runtimeInputs = [ pkgs.hyprland ];
+    text = ''
+      hyprctl eval 'hl.plugin.overview.open()' >/dev/null
+    '';
+  };
+  lockStatus = pkgs.writeShellApplication {
+    name = "wave-lock-status";
+    runtimeInputs = [ pkgs.coreutils ];
+    text = ''
+      capacity="AC"
+      for battery in /sys/class/power_supply/BAT*; do
+        if [[ -r "$battery/capacity" ]]; then
+          read -r capacity < "$battery/capacity"
+          break
+        fi
+      done
+
+      charging=""
+      for supply in /sys/class/power_supply/*; do
+        [[ -r "$supply/type" && -r "$supply/online" ]] || continue
+        read -r type < "$supply/type"
+        case "$type" in
+          Mains|USB|USB_C|Wireless)
+            read -r online < "$supply/online"
+            if [[ $online == 1 ]]; then
+              charging=" ⚡"
+              break
+            fi
+            ;;
+        esac
+      done
+
+      if [[ $capacity =~ ^[0-9]+$ ]]; then
+        printf '%s\n%s%%%s\n' "$(hostname)" "$capacity" "$charging"
+      else
+        printf '%s\n%s%s\n' "$(hostname)" "$capacity" "$charging"
+      fi
+    '';
+  };
 in
 {
   imports = [
@@ -32,7 +112,8 @@ in
       ANDROID_HOME = "$HOME/.local/share/android-sdk";
       GTK_USE_PORTAL = "1";
       OPENCODE_ATTACH_TARGET = "localhost:51199";
-      QT_QPA_PLATFORM = "wayland;xcb";
+      QT_QPA_PLATFORM = "wayland";
+      _JAVA_AWT_WM_NONREPARENTING = "1";
       QT_STYLE_OVERRIDE = "kvantum";
     };
     packages = with pkgs; [
@@ -233,7 +314,7 @@ in
       configs.wave = ./desktop/quickshell;
       systemd = {
         enable = true;
-        target = "graphical-session.target";
+        target = sessionTarget;
       };
     };
     password-store.enable = true;
@@ -293,6 +374,11 @@ in
       settings = {
         general.hide_cursor = true;
         auth.fingerprint.enabled = true;
+        animations = {
+          enabled = true;
+          bezier = "snappy, 0.16, 1, 0.3, 1";
+          animation = "global, 1, 2, snappy";
+        };
         background = [
           {
             monitor = "";
@@ -307,12 +393,15 @@ in
             monitor = "";
             size = "250, 50";
             outline_thickness = 2;
+            rounding = 2;
             outer_color = "rgb(126, 156, 216)";
             inner_color = "rgb(31, 31, 40)";
             font_color = "rgb(220, 215, 186)";
             font_family = "OverpassM Nerd Font Mono";
             fade_on_empty = true;
             placeholder_text = "";
+            fail_color = "rgb(195, 64, 67)";
+            fail_text = "";
             position = "0, 30";
             halign = "center";
             valign = "bottom";
@@ -321,13 +410,61 @@ in
         label = [
           {
             monitor = "";
-            text = ''cmd[update:1000] date +"%H:%M"'';
+            text = ''cmd[update:1000] date +"%H"'';
             color = "rgb(220, 215, 186)";
-            font_size = 100;
+            font_size = 180;
             font_family = "OverpassM Nerd Font Mono Bold";
-            position = "0, 120";
-            halign = "center";
+            position = "38%, 116";
+            halign = "left";
             valign = "center";
+            shadow_passes = 1;
+            shadow_size = 5;
+            shadow_color = "rgb(0, 0, 0)";
+            shadow_boost = 1.5;
+          }
+          {
+            monitor = "";
+            text = ''cmd[update:1000] date +"%M"'';
+            color = "rgb(220, 215, 186)";
+            font_size = 180;
+            font_family = "OverpassM Nerd Font Mono Bold";
+            position = "38%, -116";
+            halign = "left";
+            valign = "center";
+            shadow_passes = 1;
+            shadow_size = 5;
+            shadow_color = "rgb(0, 0, 0)";
+            shadow_boost = 1.5;
+          }
+          {
+            monitor = "";
+            text = ''cmd[update:60000] printf "%s\n%s" "$(date +%a)" "$(date +'%d %b')"'';
+            text_align = "left";
+            color = "rgb(149, 127, 184)";
+            font_size = 28;
+            font_family = "OverpassM Nerd Font Mono";
+            position = "52%, 116";
+            halign = "left";
+            valign = "center";
+            shadow_passes = 1;
+            shadow_size = 3;
+            shadow_color = "rgb(0, 0, 0)";
+            shadow_boost = 1.5;
+          }
+          {
+            monitor = "";
+            text = "cmd[update:30000] ${lib.getExe lockStatus}";
+            text_align = "left";
+            color = "rgb(149, 127, 184)";
+            font_size = 28;
+            font_family = "OverpassM Nerd Font Mono";
+            position = "52%, -116";
+            halign = "left";
+            valign = "center";
+            shadow_passes = 1;
+            shadow_size = 3;
+            shadow_color = "rgb(0, 0, 0)";
+            shadow_boost = 1.5;
           }
         ];
       };
@@ -359,6 +496,13 @@ in
   };
 
   xdg.configFile = {
+    "waycorner/config.toml".text = ''
+      [overview]
+      enter_command = [ "${lib.getExe overviewOpen}" ]
+      locations = [ "top_left" ]
+      size = 10
+      timeout_ms = 250
+    '';
     "ghostty/themes/kanagawa".text = ''
       palette = 0=#16161d
       palette = 1=#c34043
@@ -394,22 +538,23 @@ in
     settings = {
       general = {
         lock_cmd = "pidof hyprlock || hyprlock";
-        before_sleep_cmd = "loginctl lock-session";
-        after_sleep_cmd = "hyprctl dispatch dpms on";
+        before_sleep_cmd = "systemctl --user stop wave-backlight-dim.service; loginctl lock-session";
+        after_sleep_cmd = ''hyprctl dispatch 'hl.dsp.dpms({ action = "enable" })'';
       };
       listener = [
+        {
+          timeout = 240;
+          on-timeout = "systemctl --user start wave-backlight-dim.service";
+          on-resume = "systemctl --user stop wave-backlight-dim.service";
+        }
         {
           timeout = 300;
           on-timeout = "loginctl lock-session";
         }
         {
           timeout = 600;
-          on-timeout = "hyprctl dispatch dpms off";
-          on-resume = "hyprctl dispatch dpms on";
-        }
-        {
-          timeout = 1800;
-          on-timeout = "systemctl suspend";
+          on-timeout = ''hyprctl dispatch 'hl.dsp.dpms({ action = "disable" })'';
+          on-resume = ''hyprctl dispatch 'hl.dsp.dpms({ action = "enable" })'';
         }
       ];
     };
@@ -429,17 +574,107 @@ in
     };
   };
 
-  systemd.user.services.vicinae = {
-    Unit = {
-      Description = "Vicinae launcher daemon";
-      After = [ "graphical-session.target" ];
-      PartOf = [ "graphical-session.target" ];
+  systemd.user.services = {
+    vicinae = {
+      Unit = {
+        Description = "Vicinae launcher daemon";
+        After = [ "graphical-session.target" ];
+        PartOf = [ "graphical-session.target" ];
+      };
+      Service = {
+        ExecStart = "${lib.getExe pkgs.vicinae} server --replace";
+        Restart = "on-failure";
+      };
+      Install.WantedBy = [ "graphical-session.target" ];
     };
-    Service = {
-      ExecStart = "${lib.getExe pkgs.vicinae} server --replace";
-      Restart = "on-failure";
+
+    quickshell.Unit = {
+      After = lib.mkForce [ "wayland-session-waitenv.service" ];
+      PartOf = [ sessionTarget ];
+      ConditionEnvironment = "WAYLAND_DISPLAY";
     };
-    Install.WantedBy = [ "graphical-session.target" ];
+
+    wave-blackout = {
+      Unit.Description = "Trigger the Quickshell display blackout";
+      Service = {
+        Type = "oneshot";
+        ExecStart = "${lib.getExe pkgs.quickshell} -c wave ipc call blackout trigger";
+      };
+    };
+
+    wave-backlight-dim = {
+      Unit = {
+        Description = "Cancellable idle backlight dimmer";
+        PartOf = [ sessionTarget "hypridle.service" ];
+      };
+      Service = {
+        Type = "simple";
+        ExecStart = lib.getExe backlightDim;
+        TimeoutStopSec = 3;
+      };
+    };
+
+    wave-lid-handler = {
+      Unit = {
+        Description = "Hyprland-aware laptop lid policy";
+        After = [ "wayland-session-waitenv.service" "quickshell.service" ];
+        PartOf = [ sessionTarget ];
+        ConditionEnvironment = "WAYLAND_DISPLAY";
+      };
+      Service = {
+        ExecStart = "${pkgs.systemd}/bin/systemd-inhibit --what=handle-lid-switch --mode=block --who=wave-lid-handler --why='Wave lid policy is healthy' ${lib.getExe lidHandler}";
+        Restart = "always";
+        RestartSec = 1;
+      };
+      Install.WantedBy = [ sessionTarget ];
+    };
+
+    hyprsunset = {
+      Unit = {
+        Description = "Hyprsunset color temperature daemon";
+        After = [ "wayland-session-waitenv.service" ];
+        PartOf = [ sessionTarget ];
+        ConditionEnvironment = "WAYLAND_DISPLAY";
+      };
+      Service = {
+        ExecStart = "${lib.getExe pkgs.hyprsunset} --identity";
+        Restart = "on-failure";
+        RestartSec = 1;
+      };
+      Install.WantedBy = [ sessionTarget ];
+    };
+
+    wave-night-light = {
+      Unit = {
+        Description = "Location-aware civil-twilight night light";
+        Wants = [ "geoclue-agent.service" ];
+        After = [ "wayland-session-waitenv.service" "hyprsunset.service" "geoclue-agent.service" ];
+        Requires = [ "hyprsunset.service" ];
+        PartOf = [ sessionTarget ];
+        ConditionEnvironment = "WAYLAND_DISPLAY";
+      };
+      Service = {
+        ExecStart = lib.getExe nightLight;
+        Restart = "always";
+        RestartSec = 5;
+      };
+      Install.WantedBy = [ sessionTarget ];
+    };
+
+    waycorner = {
+      Unit = {
+        Description = "Top-left overview hot corner";
+        After = [ "wayland-session-waitenv.service" ];
+        PartOf = [ sessionTarget ];
+        ConditionEnvironment = "WAYLAND_DISPLAY";
+      };
+      Service = {
+        ExecStart = lib.getExe pkgs.waycorner;
+        Restart = "on-failure";
+        RestartSec = 1;
+      };
+      Install.WantedBy = [ sessionTarget ];
+    };
   };
 
   wayland.windowManager.hyprland = {
@@ -448,6 +683,7 @@ in
     package = null;
     portalPackage = null;
     systemd.enable = false;
+    plugins = [ hyprspace ];
     extraConfig = builtins.readFile ./desktop/hyprland.lua;
   };
 }

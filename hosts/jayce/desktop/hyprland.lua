@@ -12,7 +12,7 @@ hl.monitor({
     output = "desc:GIGA-BYTE TECHNOLOGY CO., LTD. M28U 24030B004813",
     mode = "3840x2160@143.999",
     position = "0x-900",
-    scale = 1.8,
+    scale = 1.875,
 })
 
 hl.monitor({
@@ -39,7 +39,12 @@ hl.monitor({
 hl.config({
     input = {
         kb_layout = "pl",
-        follow_mouse = 0,
+        repeat_delay = 300,
+        repeat_rate = 50,
+        follow_mouse = 1,
+        focus_on_close = 1,
+        mouse_refocus = true,
+        float_switch_override_focus = 0,
         sensitivity = 0.0,
         scroll_factor = 0.3,
         touchpad = {
@@ -51,7 +56,7 @@ hl.config({
     },
     general = {
         layout = "scrolling",
-        gaps_in = 12,
+        gaps_in = 24,
         gaps_out = 24,
         border_size = 0,
         no_focus_fallback = true,
@@ -65,12 +70,20 @@ hl.config({
         column_width = 0.66667,
         focus_fit_method = 2,
         explicit_column_widths = "0.33333, 0.66667, 1.0",
+        follow_focus = true,
+        follow_min_visible = 0.4,
+        direction = "right",
         wrap_focus = false,
         wrap_swapcol = false,
     },
     decoration = {
         rounding = 4,
-        border_part_of_window = true,
+        border_part_of_window = false,
+        dim_modal = true,
+        dim_inactive = false,
+        blur = {
+            enabled = true,
+        },
         shadow = {
             enabled = true,
             range = 30,
@@ -79,25 +92,76 @@ hl.config({
         },
     },
     cursor = {
-        no_warps = true,
+        no_warps = false,
     },
     animations = {
         enabled = true,
         workspace_wraparound = false,
     },
     gestures = {
-        workspace_swipe_create_new = true,
+        workspace_swipe_create_new = false,
         workspace_swipe_use_r = false,
     },
     binds = {
         scroll_event_delay = 0,
         window_direction_monitor_fallback = false,
     },
+    xwayland = {
+        force_zero_scaling = false,
+    },
     misc = {
         background_color = "rgb(16161d)",
         disable_hyprland_logo = true,
         disable_splash_rendering = true,
         force_default_wallpaper = 0,
+        always_follow_on_dnd = true,
+        layers_hog_keyboard_focus = true,
+        focus_on_activate = false,
+        middle_click_paste = false,
+        mouse_move_enables_dpms = true,
+        key_press_enables_dpms = true,
+        on_focus_under_fullscreen = 2,
+    },
+    plugin = {
+        overview = {
+            panelColor = "rgba(16161dee)",
+            panelBorderColor = "rgb(363646)",
+            workspaceActiveBackground = "rgba(2d4f67dd)",
+            workspaceInactiveBackground = "rgba(1f1f28dd)",
+            workspaceActiveBorder = "rgb(938056)",
+            workspaceInactiveBorder = "rgb(717c7c)",
+            panelHeight = 250,
+            panelBorderWidth = 2,
+            workspaceMargin = 12,
+            workspaceBorderSize = 2,
+            reservedArea = 0,
+            adaptiveHeight = false,
+            centerAligned = true,
+            onBottom = false,
+            hideBackgroundLayers = false,
+            hideTopLayers = false,
+            hideOverlayLayers = false,
+            drawActiveWorkspace = true,
+            hideRealLayers = true,
+            affectStrut = true,
+            overrideGaps = true,
+            gapsIn = 24,
+            gapsOut = 24,
+            autoDrag = true,
+            autoScroll = true,
+            exitOnClick = true,
+            switchOnDrop = false,
+            exitOnSwitch = true,
+            showNewWorkspace = true,
+            showEmptyWorkspace = true,
+            showSpecialWorkspace = false,
+            disableGestures = true,
+            reverseSwipe = false,
+            disableBlur = false,
+            overrideAnimSpeed = 0.0,
+            dragAlpha = 0.2,
+            exitKey = "Escape",
+        },
     },
 })
 
@@ -143,6 +207,7 @@ hl.window_rule({
     match = { class = ".*" },
     border_size = 0,
     rounding = 4,
+    idle_inhibit = "fullscreen",
 })
 
 hl.window_rule({
@@ -185,15 +250,6 @@ hl.window_rule({
 
 local function dispatch(dispatcher)
     return hl.dispatch(dispatcher)
-end
-
-local nativeBind = hl.bind
-hl.bind = function(keys, action, options)
-    options = options or {}
-    if options.repeating == nil and not keys:find("mouse", 1, true) then
-        options.repeating = true
-    end
-    return nativeBind(keys, action, options)
 end
 
 local function orderedWorkspaces(monitor)
@@ -350,70 +406,6 @@ local function moveDirection(direction)
     end
 end
 
-local function focusColumnEdge(first)
-    local active, column = activeColumn()
-    if not active then
-        return
-    end
-    if active.floating then
-        focusFloating(first and "left" or "right", true)
-        return
-    end
-    if not column then
-        return
-    end
-
-    for _ = 1, 128 do
-        local _, current = activeColumn()
-        if not current or (first and current.index == 0) then
-            return
-        end
-
-        if not first then
-            local maxIndex = current.index
-            for _, window in ipairs(active.workspace:get_windows()) do
-                local layout = window.layout
-                local other = layout and layout.name == "scrolling" and layout.column
-                if other then
-                    maxIndex = math.max(maxIndex, other.index)
-                end
-            end
-            if current.index == maxIndex then
-                return
-            end
-        end
-
-        dispatch(hl.dsp.layout(first and "move -col" or "move +col"))
-    end
-end
-
-local function moveColumnEdge(first)
-    for _ = 1, 128 do
-        local _, column = activeColumn()
-        if not column then
-            return
-        end
-
-        local edge = first and column.index == 0
-        if not first then
-            local maxIndex = column.index
-            for _, window in ipairs(hl.get_active_workspace():get_windows()) do
-                local layout = window.layout
-                local other = layout and layout.name == "scrolling" and layout.column
-                if other then
-                    maxIndex = math.max(maxIndex, other.index)
-                end
-            end
-            edge = column.index == maxIndex
-        end
-
-        if edge then
-            return
-        end
-        dispatch(hl.dsp.layout(first and "swapcol l" or "swapcol r"))
-    end
-end
-
 local setColumnHeights
 
 local function moveColumnToWorkspace(target)
@@ -506,31 +498,6 @@ local function switchFloatingFocus()
     end
     if candidate then
         dispatch(hl.dsp.focus({ window = candidate }))
-    end
-end
-
-local maximizedColumns = {}
-local function toggleMaximizedColumn()
-    local _, column = activeColumn()
-    if not column or not column.windows[1] then
-        return
-    end
-
-    local restoreWidth
-    for _, window in ipairs(column.windows) do
-        restoreWidth = restoreWidth or maximizedColumns[window.stable_id]
-    end
-
-    if column.width > 0.999 and restoreWidth then
-        dispatch(hl.dsp.layout(string.format("colresize %.8f", restoreWidth)))
-        for _, window in ipairs(column.windows) do
-            maximizedColumns[window.stable_id] = nil
-        end
-    else
-        for _, window in ipairs(column.windows) do
-            maximizedColumns[window.stable_id] = column.width
-        end
-        dispatch(hl.dsp.layout("colresize 1.0"))
     end
 end
 
@@ -640,10 +607,6 @@ local function centerColumn()
     end
 end
 
-local function reorderWorkspace(direction)
-    dispatch(hl.dsp.workspace.move({ direction = direction }))
-end
-
 local function resizeWindowHeight(amount)
     local monitor = hl.get_active_monitor()
     if monitor then
@@ -684,6 +647,13 @@ for _, event in ipairs({
     eventSubscriptions[#eventSubscriptions + 1] = hl.on(event, updateFocusRings)
 end
 
+local function triggerBlackout()
+    dispatch(hl.dsp.exec_cmd("qs -c wave ipc call blackout trigger"))
+end
+for _, event in ipairs({ "monitor.added", "monitor.removed" }) do
+    eventSubscriptions[#eventSubscriptions + 1] = hl.on(event, triggerBlackout)
+end
+
 local workspaceWheelReady = true
 local workspaceWheelTimer
 local function withWorkspaceWheelCooldown(action)
@@ -698,8 +668,6 @@ local function withWorkspaceWheelCooldown(action)
         workspaceWheelTimer = nil
     end, { timeout = 150, type = "oneshot" })
 end
-
-hl.bind(mod .. " + SHIFT + slash", hl.dsp.event("wave:hotkey-overlay"))
 
 hl.bind(mod .. " + RETURN", hl.dsp.exec_cmd("ghostty"))
 hl.bind(mod .. " + SPACE", hl.dsp.exec_cmd("vicinae toggle"))
@@ -756,19 +724,6 @@ hl.bind(mod .. " + CTRL + K", function()
     moveDirection("up")
 end)
 
-hl.bind(mod .. " + HOME", function()
-    focusColumnEdge(true)
-end)
-hl.bind(mod .. " + END", function()
-    focusColumnEdge(false)
-end)
-hl.bind(mod .. " + CTRL + HOME", function()
-    moveColumnEdge(true)
-end)
-hl.bind(mod .. " + CTRL + END", function()
-    moveColumnEdge(false)
-end)
-
 for _, direction in ipairs({ "left", "down", "up", "right" }) do
     local key = direction
     hl.bind(mod .. " + SHIFT + " .. key, hl.dsp.focus({ monitor = direction }))
@@ -783,18 +738,6 @@ for key, direction in pairs({ H = "left", J = "down", K = "up", L = "right" }) d
     end)
 end
 
-hl.bind(mod .. " + Page_Down", function()
-    focusWorkspaceRelative(1)
-end)
-hl.bind(mod .. " + U", function()
-    focusWorkspaceRelative(1)
-end)
-hl.bind(mod .. " + Page_Up", function()
-    focusWorkspaceRelative(-1)
-end)
-hl.bind(mod .. " + I", function()
-    focusWorkspaceRelative(-1)
-end)
 hl.bind(mod .. " + CTRL + Page_Down", function()
     moveColumnToWorkspaceRelative(1)
 end)
@@ -807,11 +750,6 @@ end)
 hl.bind(mod .. " + CTRL + I", function()
     moveColumnToWorkspaceRelative(-1)
 end)
-
-hl.bind(mod .. " + SHIFT + Page_Down", function() reorderWorkspace("down") end)
-hl.bind(mod .. " + SHIFT + U", function() reorderWorkspace("down") end)
-hl.bind(mod .. " + SHIFT + Page_Up", function() reorderWorkspace("up") end)
-hl.bind(mod .. " + SHIFT + I", function() reorderWorkspace("up") end)
 
 hl.bind(mod .. " + mouse_down", function()
     withWorkspaceWheelCooldown(function()
@@ -868,25 +806,22 @@ for index = 1, 9 do
     end)
 end
 
-hl.bind(mod .. " + bracketleft", hl.dsp.layout("consume_or_expel prev"))
-hl.bind(mod .. " + bracketright", hl.dsp.layout("consume_or_expel next"))
 hl.bind(mod .. " + comma", hl.dsp.layout("consume"))
 hl.bind(mod .. " + period", hl.dsp.layout("expel"))
 
 hl.bind(mod .. " + R", switchPresetColumnWidth)
 hl.bind(mod .. " + SHIFT + R", switchPresetWindowHeight)
 hl.bind(mod .. " + CTRL + R", resetWindowHeights)
-hl.bind(mod .. " + F", toggleMaximizedColumn)
 hl.bind(mod .. " + SHIFT + F", hl.dsp.window.fullscreen({ mode = "fullscreen" }))
 hl.bind(mod .. " + C", centerColumn)
-hl.bind(mod .. " + minus", hl.dsp.layout("colresize -0.1"), { repeating = true })
-hl.bind(mod .. " + equal", hl.dsp.layout("colresize +0.1"), { repeating = true })
+hl.bind(mod .. " + minus", hl.dsp.layout("colresize -0.1"))
+hl.bind(mod .. " + equal", hl.dsp.layout("colresize +0.1"))
 hl.bind(mod .. " + SHIFT + minus", function()
     resizeWindowHeight(-0.1)
-end, { repeating = true })
+end)
 hl.bind(mod .. " + SHIFT + equal", function()
     resizeWindowHeight(0.1)
-end, { repeating = true })
+end)
 
 hl.bind(mod .. " + V", hl.dsp.window.float({ action = "toggle" }))
 hl.bind(mod .. " + SHIFT + V", switchFloatingFocus)
@@ -896,35 +831,7 @@ hl.bind("Print", hl.dsp.exec_cmd("hyprshot -m region " .. screenshotOutput))
 hl.bind("CTRL + Print", hl.dsp.exec_cmd("hyprshot -m output -m active " .. screenshotOutput))
 hl.bind("ALT + Print", hl.dsp.exec_cmd("hyprshot -m window -m active " .. screenshotOutput))
 
-local quitCommand =
-    [[test "$(hyprland-dialog --title "Quit Hyprland?" --text "Exit the current desktop session?" --buttons "Quit;Cancel")" = "Quit" && hyprctl dispatch exit]]
-hl.bind(mod .. " + SHIFT + E", hl.dsp.exec_cmd(quitCommand))
-hl.bind("CTRL + ALT + DELETE", hl.dsp.exec_cmd(quitCommand))
 hl.bind(mod .. " + SHIFT + P", hl.dsp.dpms({ action = "disable" }))
-
-hl.bind("F11", hl.dsp.exec_cmd("/home/kosciak/projects/personal/niri-things/scripts/currently-playing.zsh"))
-hl.bind("F12", hl.dsp.exec_cmd("/home/kosciak/projects/personal/niri-things/scripts/connect-headphones.zsh"))
-
-local volumeUpCommand =
-    [[sh -c 'wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+; status="$(wpctl get-volume @DEFAULT_AUDIO_SINK@)"; qs -c wave ipc call osd volume "$status"']]
-local volumeDownCommand =
-    [[sh -c 'wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-; status="$(wpctl get-volume @DEFAULT_AUDIO_SINK@)"; qs -c wave ipc call osd volume "$status"']]
-local volumeMuteCommand =
-    [[sh -c 'wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle; status="$(wpctl get-volume @DEFAULT_AUDIO_SINK@)"; qs -c wave ipc call osd volume "$status"']]
-local brightnessUpCommand =
-    [[sh -c 'brightnessctl -e4 -n2 set 5%+; status="$(brightnessctl -m | { IFS=, read -r device class current percent maximum; printf "%s" "$percent"; })"; qs -c wave ipc call osd brightness "$status"']]
-local brightnessDownCommand =
-    [[sh -c 'brightnessctl -e4 -n2 set 5%-; status="$(brightnessctl -m | { IFS=, read -r device class current percent maximum; printf "%s" "$percent"; })"; qs -c wave ipc call osd brightness "$status"']]
-
-hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd(volumeUpCommand), { locked = true, repeating = true })
-hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd(volumeDownCommand), { locked = true, repeating = true })
-hl.bind("XF86AudioMute", hl.dsp.exec_cmd(volumeMuteCommand), { locked = true })
-hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"), { locked = true })
-hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd(brightnessUpCommand), { locked = true, repeating = true })
-hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd(brightnessDownCommand), { locked = true, repeating = true })
-hl.bind("XF86AudioPlay", hl.dsp.exec_cmd("playerctl play-pause"))
-hl.bind("XF86AudioNext", hl.dsp.exec_cmd("playerctl next"))
-hl.bind("XF86AudioPrev", hl.dsp.exec_cmd("playerctl previous"))
 
 hl.bind(mod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true })
 hl.bind(mod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
