@@ -65,7 +65,30 @@
     };
     flatpak.enable = true;
     fprintd.enable = true;
+    geoclue2 = {
+      enable = true;
+      enableDemoAgent = true;
+      enableNmea = false;
+      enable3G = false;
+      enableCDMA = false;
+      enableModemGPS = false;
+      enableWifi = true;
+      geoProviderUrl = "https://api.beacondb.net/v1/geolocate";
+      submitData = true;
+      submissionUrl = "https://api.beacondb.net/v2/geosubmit";
+      submissionNick = "wave-client";
+      appConfig.geoclue-where-am-i = {
+        desktopID = "geoclue-where-am-i";
+        isAllowed = true;
+        isSystem = false;
+      };
+    };
     gnome.gnome-keyring.enable = true;
+    logind.settings.Login = {
+      HandleLidSwitch = "suspend";
+      HandleLidSwitchDocked = "suspend";
+      HandleLidSwitchExternalPower = "suspend";
+    };
     power-profiles-daemon.enable = true;
     upower.enable = true;
     tailscale.enable = true;
@@ -96,6 +119,7 @@
     hyprland = {
       enable = true;
       withUWSM = true;
+      xwayland.enable = true;
       package = pkgs.hyprland.overrideAttrs (old: {
         patches = (old.patches or [ ]) ++ [ ../../patches/hyprland-niri-parity.patch ];
       });
@@ -104,6 +128,17 @@
       enable = true;
       enableGlobalCompInit = false;
     };
+  };
+
+  systemd.services.wave-blackout-before-sleep = {
+    description = "Trigger Wave OS blackout before sleep";
+    wantedBy = [ "sleep.target" ];
+    before = [ "sleep.target" ];
+    serviceConfig.Type = "oneshot";
+    script = ''
+      ${pkgs.systemd}/bin/systemctl --user --machine=kosciak@.host start wave-blackout.service || true
+      ${pkgs.coreutils}/bin/sleep 0.08
+    '';
   };
 
   security = {

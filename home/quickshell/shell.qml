@@ -25,40 +25,19 @@ ShellRoot {
         return builtIn || first
     }
 
-    NotificationService {
-        id: notifications
-    }
-
     Variants {
         model: Quickshell.screens
 
         delegate: Component {
             Bar {
                 primary: modelData === root.primaryScreen
-                notificationService: notifications
             }
         }
     }
 
-    NotificationPopups {
-        targetScreen: root.primaryScreen
-        service: notifications
-    }
-
-    NotificationCenter {
-        targetScreen: root.primaryScreen
-        service: notifications
-    }
+    Blackout {}
 
     OpenCodeToasts {
-        targetScreen: root.primaryScreen
-    }
-
-    HotkeyOverlay {
-        targetScreen: root.primaryScreen
-    }
-
-    Osd {
         targetScreen: root.primaryScreen
     }
 }

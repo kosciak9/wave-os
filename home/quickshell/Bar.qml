@@ -14,7 +14,6 @@ PanelWindow {
 
     required property var modelData
     required property bool primary
-    required property var notificationService
 
     screen: modelData
     color: "transparent"
@@ -61,7 +60,7 @@ PanelWindow {
 
         onClicked: function(mouse) {
             if (mouse.button === Qt.LeftButton)
-                mode = (mode + 1) % 2
+                mode = (mode + 1) % 3
         }
 
         Image {
@@ -73,9 +72,10 @@ PanelWindow {
         }
 
         Text {
+            visible: networkWidget.activeNetwork === null || networkWidget.mode !== 0
             text: networkWidget.activeNetwork === null
                 ? "Not connected"
-                : networkWidget.mode === 0
+                : networkWidget.mode === 1
                     ? networkWidget.strength + "%"
                     : networkWidget.activeNetwork.name + " (" + networkWidget.strength + "%)"
             color: Theme.oldWhite
@@ -226,55 +226,6 @@ PanelWindow {
         }
     }
 
-    component NotificationBellWidget: WidgetButton {
-        id: bellWidget
-
-        required property var service
-        active: service.centerVisible || service.dnd
-        activeColor: service.dnd ? Theme.waveBlue2 : Theme.sumiInk3
-
-        onClicked: function(mouse) {
-            if (mouse.button === Qt.LeftButton)
-                service.toggleCenter()
-        }
-
-        Item {
-            implicitWidth: 20
-            implicitHeight: 20
-
-            Image {
-                anchors.centerIn: parent
-                width: 15
-                height: 15
-                source: Quickshell.shellDir + (bellWidget.service.dnd ? "/assets/half-moon.svg" : "/assets/bell.svg")
-                fillMode: Image.PreserveAspectFit
-                opacity: 0.8
-            }
-
-            Rectangle {
-                anchors.top: parent.top
-                anchors.right: parent.right
-                anchors.topMargin: -2
-                anchors.rightMargin: -4
-                visible: bellWidget.service.count > 0 && !bellWidget.service.dnd
-                width: Math.max(12, countLabel.implicitWidth + 6)
-                height: 12
-                radius: 6
-                color: Theme.waveBlue2
-
-                Text {
-                    id: countLabel
-                    anchors.centerIn: parent
-                    text: bellWidget.service.count > 99 ? "99+" : bellWidget.service.count
-                    color: Theme.fujiWhite
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 8
-                    font.weight: Font.Bold
-                }
-            }
-        }
-    }
-
     component BatteryWidget: WidgetButton {
         id: batteryWidget
 
@@ -413,11 +364,6 @@ PanelWindow {
                 TrayWidget {
                     visible: root.primary
                     panelWindow: root
-                }
-
-                NotificationBellWidget {
-                    visible: root.primary
-                    service: root.notificationService
                 }
 
                 BatteryWidget { barVisible: root.primary }
