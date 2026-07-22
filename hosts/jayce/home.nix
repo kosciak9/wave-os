@@ -42,6 +42,7 @@ in
       hyprsunset
       hyprshot
       (iosevka-bin.override { variant = "SGr-IosevkaTerm"; })
+      jq
       kanagawa-kvantum
       karla
       kdePackages.qtstyleplugin-kvantum
