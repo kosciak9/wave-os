@@ -41,7 +41,7 @@ hl.config({
         kb_layout = "pl",
         repeat_delay = 300,
         repeat_rate = 50,
-        follow_mouse = 1,
+        follow_mouse = 0,
         focus_on_close = 1,
         mouse_refocus = true,
         float_switch_override_focus = 0,
