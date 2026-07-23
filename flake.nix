@@ -63,6 +63,9 @@
       };
     in
     {
+      # TODO: Generated manuals remain enabled despite Determinate Nix's contextless options.json warning.
+      # Remove this note after NixOS/nixpkgs#485682, nix-community/home-manager#8942,
+      # and a matching nix-darwin fix land.
       nixosConfigurations.jayce = nixpkgs.lib.nixosSystem {
         inherit system;
         modules = [
