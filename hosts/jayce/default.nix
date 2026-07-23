@@ -183,5 +183,9 @@
     ];
   };
 
+  # Install the standard proportional Overpass family system-wide; the
+  # Nerd Font variant in Home Manager provides the terminal-focused fonts.
+  fonts.packages = [ pkgs.overpass ];
+
   system.stateVersion = "26.05";
 }
