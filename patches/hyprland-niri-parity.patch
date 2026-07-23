@@ -178,6 +178,10 @@ diff --git a/src/layout/algorithm/tiled/scrolling/ScrollTapeController.cpp b/src
 index 722b9bd..ce27d52 100644
 --- a/src/layout/algorithm/tiled/scrolling/ScrollTapeController.cpp
 +++ b/src/layout/algorithm/tiled/scrolling/ScrollTapeController.cpp
+@@ -156,1 +156,1 @@
+-    const double cameraOffset    = calculateCameraOffset(usableArea, fullscreenOnOne);
++    const double cameraOffset    = std::round(calculateCameraOffset(usableArea, fullscreenOnOne));
+
 @@ -226,7 +226,7 @@ double CScrollTapeController::calculateCameraOffset(const CBox& usableArea, bool
 
      // if the offset is negative but we already extended and fit method is not center, reset offset to 0
@@ -357,6 +361,17 @@ index f200130..0ed75ff 100644
      const auto ARGS = CVarList(std::string{sv}, 0, ' ');
      if (ARGS[0] == "move") {
          if (ARGS[1] == "+col" || ARGS[1] == "col") {
+@@ -1396,10 +1428,5 @@ Config::ErrorResult CScrollingAlgorithm::layoutMsg(const std::string_view& sv) {
+             const auto COL = m_scrollingData->next(TDATA->column.lock());
+             if (!COL) {
+-                // move to max
+-                double maxOffset = m_scrollingData->maxWidth();
+-                m_scrollingData->controller->setOffset(maxOffset);
+-                m_scrollingData->recalculate();
+-                focusTargetUpdate(nullptr);
+                 return {};
+             }
+
 @@ -1403,7 +1435,7 @@ Config::ErrorResult CScrollingAlgorithm::layoutMsg(const std::string_view& sv) {
                  return {};
              }
