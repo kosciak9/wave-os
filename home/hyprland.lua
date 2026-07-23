@@ -41,9 +41,10 @@ hl.config({
         kb_layout = "pl",
         repeat_delay = 300,
         repeat_rate = 50,
-        follow_mouse = 0,
+        follow_mouse = 2,
         focus_on_close = 1,
         mouse_refocus = true,
+        off_window_axis_events = 1,
         float_switch_override_focus = 0,
         sensitivity = 0.0,
         scroll_factor = 0.3,
@@ -92,7 +93,7 @@ hl.config({
         },
     },
     cursor = {
-        no_warps = false,
+        no_warps = true,
     },
     animations = {
         enabled = true,
