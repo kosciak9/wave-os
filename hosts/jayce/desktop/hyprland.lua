@@ -501,10 +501,56 @@ local function switchFloatingFocus()
     end
 end
 
+local maximizedColumns = {}
+local function toggleMaximizedColumn()
+    local _, column = activeColumn()
+    if not column or not column.windows[1] then
+        return
+    end
+
+    local restoreWidth
+    for _, window in ipairs(column.windows) do
+        restoreWidth = restoreWidth or maximizedColumns[window.stable_id]
+    end
+
+    if column.width > 0.999 and restoreWidth then
+        dispatch(hl.dsp.layout(string.format("colresize %.8f", restoreWidth)))
+        for _, window in ipairs(column.windows) do
+            maximizedColumns[window.stable_id] = nil
+        end
+    else
+        for _, window in ipairs(column.windows) do
+            maximizedColumns[window.stable_id] = column.width
+        end
+        dispatch(hl.dsp.layout("colresize 1.0"))
+    end
+end
+
 setColumnHeights = function(windows, heights, focused)
+    local count = #windows
+    if count <= 1 then
+        return
+    end
+
+    local valid = true
+    for index = 1, count do
+        local value = heights[index]
+        if type(value) ~= "number" or value ~= value or not (value < math.huge) or not (value > 0) then
+            valid = false
+            break
+        end
+    end
+
+    if not valid then
+        heights = {}
+        for index = 1, count do
+            heights[index] = 1 / count
+        end
+    end
+
     local values = {}
-    for index = 1, #windows do
-        values[index] = string.format("%.8f", heights[index])
+    for index = 1, count do
+        values[index] = string.format("%.8f", math.max(0.1, heights[index]))
     end
     dispatch(hl.dsp.focus({ window = focused }))
     dispatch(hl.dsp.layout("rowresize all " .. table.concat(values, ",")))
@@ -781,6 +827,7 @@ hl.bind(mod .. " + period", hl.dsp.layout("expel"))
 hl.bind(mod .. " + R", switchPresetColumnWidth)
 hl.bind(mod .. " + SHIFT + R", switchPresetWindowHeight)
 hl.bind(mod .. " + CTRL + R", resetWindowHeights)
+hl.bind(mod .. " + F", toggleMaximizedColumn)
 hl.bind(mod .. " + SHIFT + F", hl.dsp.window.fullscreen({ mode = "fullscreen" }))
 hl.bind(mod .. " + C", centerColumn)
 hl.bind(mod .. " + minus", hl.dsp.layout("colresize -0.1"))
