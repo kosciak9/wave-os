@@ -1,5 +1,4 @@
 {
-  config,
   lib,
   pkgs,
   inputs,
@@ -11,9 +10,6 @@ let
   wallpaper = "/home/kosciak/.config/secrets/wallpapers/kanagawa-black-centered.png";
   sessionTarget = "wayland-session@hyprland.desktop.target";
   geocluePackage = pkgs.geoclue2-with-demo-agent;
-  hyprspace = pkgs.hyprlandPlugins.hyprspace.overrideAttrs (old: {
-    patches = (old.patches or [ ]) ++ [ ./desktop/hyprspace-lua.patch ];
-  });
   backlightDim = pkgs.writeShellApplication {
     name = "wave-backlight-dim";
     runtimeInputs = with pkgs; [
@@ -43,17 +39,11 @@ let
       hyprland
       sunwait
     ];
-    text = builtins.replaceStrings
-      [ "@where-am-i@" ]
-      [ "${geocluePackage}/libexec/geoclue-2.0/demos/where-am-i" ]
-      (builtins.readFile ./scripts/night-light.sh);
-  };
-  overviewOpen = pkgs.writeShellApplication {
-    name = "wave-overview-open";
-    runtimeInputs = [ pkgs.hyprland ];
-    text = ''
-      hyprctl eval 'hl.plugin.overview.open()' >/dev/null
-    '';
+    text =
+      builtins.replaceStrings
+        [ "@where-am-i@" ]
+        [ "${geocluePackage}/libexec/geoclue-2.0/demos/where-am-i" ]
+        (builtins.readFile ./scripts/night-light.sh);
   };
   lockStatus = pkgs.writeShellApplication {
     name = "wave-lock-status";
@@ -496,13 +486,6 @@ in
   };
 
   xdg.configFile = {
-    "waycorner/config.toml".text = ''
-      [overview]
-      enter_command = [ "${lib.getExe overviewOpen}" ]
-      locations = [ "top_left" ]
-      size = 10
-      timeout_ms = 250
-    '';
     "ghostty/themes/kanagawa".text = ''
       palette = 0=#16161d
       palette = 1=#c34043
@@ -605,7 +588,10 @@ in
     wave-backlight-dim = {
       Unit = {
         Description = "Cancellable idle backlight dimmer";
-        PartOf = [ sessionTarget "hypridle.service" ];
+        PartOf = [
+          sessionTarget
+          "hypridle.service"
+        ];
       };
       Service = {
         Type = "simple";
@@ -617,7 +603,10 @@ in
     wave-lid-handler = {
       Unit = {
         Description = "Hyprland-aware laptop lid policy";
-        After = [ "wayland-session-waitenv.service" "quickshell.service" ];
+        After = [
+          "wayland-session-waitenv.service"
+          "quickshell.service"
+        ];
         PartOf = [ sessionTarget ];
         ConditionEnvironment = "WAYLAND_DISPLAY";
       };
@@ -648,7 +637,11 @@ in
       Unit = {
         Description = "Location-aware civil-twilight night light";
         Wants = [ "geoclue-agent.service" ];
-        After = [ "wayland-session-waitenv.service" "hyprsunset.service" "geoclue-agent.service" ];
+        After = [
+          "wayland-session-waitenv.service"
+          "hyprsunset.service"
+          "geoclue-agent.service"
+        ];
         Requires = [ "hyprsunset.service" ];
         PartOf = [ sessionTarget ];
         ConditionEnvironment = "WAYLAND_DISPLAY";
@@ -661,20 +654,6 @@ in
       Install.WantedBy = [ sessionTarget ];
     };
 
-    waycorner = {
-      Unit = {
-        Description = "Top-left overview hot corner";
-        After = [ "wayland-session-waitenv.service" ];
-        PartOf = [ sessionTarget ];
-        ConditionEnvironment = "WAYLAND_DISPLAY";
-      };
-      Service = {
-        ExecStart = lib.getExe pkgs.waycorner;
-        Restart = "on-failure";
-        RestartSec = 1;
-      };
-      Install.WantedBy = [ sessionTarget ];
-    };
   };
 
   wayland.windowManager.hyprland = {
@@ -683,7 +662,6 @@ in
     package = null;
     portalPackage = null;
     systemd.enable = false;
-    plugins = [ hyprspace ];
     extraConfig = builtins.readFile ./desktop/hyprland.lua;
   };
 }
