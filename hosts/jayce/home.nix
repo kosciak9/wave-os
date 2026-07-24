@@ -149,147 +149,110 @@ in
     x11.enable = true;
   };
 
-  programs.home-manager.enable = true;
-  services.flatpak = {
-    enable = true;
-    remotes = [
-      {
-        name = "flathub";
-        location = "https://dl.flathub.org/repo/flathub.flatpakrepo";
-      }
-    ];
-    packages = [
-      "com.slack.Slack"
-      "org.telegram.desktop"
-    ];
-    update.auto = {
-      enable = true;
-      onCalendar = "daily";
-    };
-  };
-  xdg.enable = true;
-
-  xdg.userDirs = {
-    enable = true;
-    createDirectories = true;
-    desktop = "$HOME";
-    download = "$HOME/downloads";
-    templates = "$HOME";
-    publicShare = "$HOME/public";
-    documents = "$HOME/documents";
-    music = "$HOME/media";
-    pictures = "$HOME/media";
-    videos = "$HOME/media";
-  };
-
-  programs.zsh = {
-    enable = true;
-    enableCompletion = true;
-    autosuggestion.enable = true;
-    fastSyntaxHighlighting.enable = true;
-    history = {
-      append = true;
-      expireDuplicatesFirst = true;
-      extended = true;
-      findNoDups = true;
-      ignoreAllDups = true;
-      ignoreDups = true;
-      ignorePatterns = [
-        "ls*"
-        "cd*"
-        "pwd*"
-        "exit*"
-      ];
-      ignoreSpace = true;
-      saveNoDups = true;
-      save = 10000000;
-      size = 10000000;
-      share = true;
-    };
-    oh-my-zsh = {
-      enable = true;
-      plugins = [
-        "git"
-        "pass"
-        "systemd"
-      ];
-    };
-    setOptions = [
-      "BANG_HIST"
-      "HIST_BEEP"
-      "HIST_REDUCE_BLANKS"
-      "HIST_VERIFY"
-      "INC_APPEND_HISTORY"
-    ];
-    shellAliases = {
-      caffeinate = "echo 'preventing idle and lid sleep' && systemd-inhibit --what=idle:sleep:handle-lid-switch --who=caffeinate --why=Caffeinate sleep infinity";
-      cp = "cp -rv --reflink=auto";
-      gcawip = "git commit --amend --no-verify -m wip";
-      gcwip = "git commit --no-verify -m wip";
-      l = "eza --git -h -g -H -l";
-      n = "nvim";
-      nvimrc = "$EDITOR ~/projects/personal/wave-os/modules/home/neovim/config/init.lua";
-      rm = "echo 'This is not the command you are looking for.'; false";
-      sudo = "sudo ";
-      vim = "nvim";
-      vimrc = "$EDITOR ~/projects/personal/wave-os/modules/home/neovim/config/init.lua";
-      sc-suspend = "systemctl suspend";
-      zshrc = "$EDITOR ~/projects/personal/wave-os/hosts/jayce/home.nix";
-    };
-    initContent = lib.mkMerge [
-      (lib.mkOrder 850 ''
-        if [[ -n $TTY && $options[zle] = on ]]; then
-          source "$ZSH/plugins/vi-mode/vi-mode.plugin.zsh"
-        fi
-      '')
-      (lib.mkOrder 900 ''
-        if [[ -n $TTY && $options[zle] = on ]]; then
-          source "${pkgs.zsh-fzf-tab}/share/fzf-tab/fzf-tab.plugin.zsh"
-        fi
-      '')
-      (lib.mkOrder 910 ''
-        if [[ -n $TTY && $options[zle] = on ]]; then
-          source <("${lib.getExe pkgs.fzf}" --zsh)
-        fi
-      '')
-      (lib.mkOrder 1000 ''
-        if [[ -n $TTY && $options[zle] = on && $TERM != dumb ]]; then
-          eval "$("${lib.getExe pkgs.starship}" init zsh)"
-        fi
-
-        export FZF_DEFAULT_COMMAND="fd --hidden --follow --exclude .git --exclude node_modules"
-        export FZF_DEFAULT_OPTS='
-          --layout=reverse
-          --color=fg:#dcd7ba,bg:#1f1f28,hl:#7e9cd8
-          --color=fg+:#dcd7ba,bg+:#2a2a37,hl+:#7fb4ca
-          --color=info:#a3aab0,prompt:#d27e99,pointer:#957fb8
-          --color=marker:#98bb6c,spinner:#957fb8,header:#7e9cd8'
-        export OPENCODE_ATTACH_TARGET="''${OPENCODE_ATTACH_TARGET:-localhost:51199}"
-
-        zstyle ':fzf-tab:complete:cd:*' disabled-on any
-
-        if (( $+commands[wt] )); then
-          eval "$(command wt config shell init zsh)"
-        fi
-
-        cpu_count() {
-          if (( $+commands[nproc] )); then
-            nproc
-          else
-            sysctl -n hw.ncpu
-          fi
-        }
-        export MIX_OS_DEPS_COMPILE_PARTITION_COUNT=$(( $(cpu_count) / 2 ))
-
-        oc() {
-          export OPENCODE_SERVER_PASSWORD="''${OPENCODE_SERVER_PASSWORD:-$(pass show opencode.localhost/opencode)}"
-          command opencode attach "$OPENCODE_ATTACH_TARGET" --dir "$PWD" "$@"
-        }
-      '')
-    ];
-  };
-
   programs = {
+    home-manager.enable = true;
+    zsh = {
+      enable = true;
+      enableCompletion = true;
+      autosuggestion.enable = true;
+      fastSyntaxHighlighting.enable = true;
+      history = {
+        append = true;
+        expireDuplicatesFirst = true;
+        extended = true;
+        findNoDups = true;
+        ignoreAllDups = true;
+        ignoreDups = true;
+        ignorePatterns = [
+          "ls*"
+          "cd*"
+          "pwd*"
+          "exit*"
+        ];
+        ignoreSpace = true;
+        saveNoDups = true;
+        save = 10000000;
+        size = 10000000;
+        share = true;
+      };
+      oh-my-zsh = {
+        enable = true;
+        plugins = [
+          "git"
+          "pass"
+          "systemd"
+        ];
+      };
+      setOptions = [
+        "BANG_HIST"
+        "HIST_BEEP"
+        "HIST_REDUCE_BLANKS"
+        "HIST_VERIFY"
+        "INC_APPEND_HISTORY"
+      ];
+      shellAliases = {
+        caffeinate = "echo 'preventing idle and lid sleep' && systemd-inhibit --what=idle:sleep:handle-lid-switch --who=caffeinate --why=Caffeinate sleep infinity";
+        cp = "cp -rv --reflink=auto";
+        gcawip = "git commit --amend --no-verify -m wip";
+        gcwip = "git commit --no-verify -m wip";
+        l = "eza --git -h -g -H -l";
+        n = "nvim";
+        nvimrc = "$EDITOR ~/projects/personal/wave-os/modules/home/neovim/config/init.lua";
+        rm = "echo 'This is not the command you are looking for.'; false";
+        sudo = "sudo ";
+        vim = "nvim";
+        vimrc = "$EDITOR ~/projects/personal/wave-os/modules/home/neovim/config/init.lua";
+        sc-suspend = "systemctl suspend";
+        zshrc = "$EDITOR ~/projects/personal/wave-os/hosts/jayce/home.nix";
+      };
+      initContent = lib.mkMerge [
+        (lib.mkOrder 850 ''
+          if [[ -n $TTY && $options[zle] = on ]]; then
+            source "$ZSH/plugins/vi-mode/vi-mode.plugin.zsh"
+          fi
+        '')
+        (lib.mkOrder 900 ''
+          if [[ -n $TTY && $options[zle] = on ]]; then
+            source "${pkgs.zsh-fzf-tab}/share/fzf-tab/fzf-tab.plugin.zsh"
+          fi
+        '')
+        (lib.mkOrder 910 ''
+          if [[ -n $TTY && $options[zle] = on ]]; then
+            source <("${lib.getExe pkgs.fzf}" --zsh)
+          fi
+        '')
+        (lib.mkOrder 1000 ''
+          export FZF_DEFAULT_COMMAND="fd --hidden --follow --exclude .git --exclude node_modules"
+          export FZF_DEFAULT_OPTS='
+            --layout=reverse
+            --color=fg:#dcd7ba,bg:#1f1f28,hl:#7e9cd8
+            --color=fg+:#dcd7ba,bg+:#2a2a37,hl+:#7fb4ca
+            --color=info:#a3aab0,prompt:#d27e99,pointer:#957fb8
+            --color=marker:#98bb6c,spinner:#957fb8,header:#7e9cd8'
+          export OPENCODE_ATTACH_TARGET="''${OPENCODE_ATTACH_TARGET:-localhost:51199}"
+
+          zstyle ':fzf-tab:complete:cd:*' disabled-on any
+
+          if (( $+commands[wt] )); then
+            eval "$(command wt config shell init zsh)"
+          fi
+
+          cpu_count() {
+            if (( $+commands[nproc] )); then
+              nproc
+            else
+              sysctl -n hw.ncpu
+            fi
+          }
+          export MIX_OS_DEPS_COMPILE_PARTITION_COUNT=$(( $(cpu_count) / 2 ))
+
+          oc() {
+            export OPENCODE_SERVER_PASSWORD="''${OPENCODE_SERVER_PASSWORD:-$(pass show opencode.localhost/opencode)}"
+            command opencode attach "$OPENCODE_ATTACH_TARGET" --dir "$PWD" "$@"
+          }
+        '')
+      ];
+    };
     eza = {
       enable = true;
       enableZshIntegration = false;
@@ -465,6 +428,111 @@ in
     };
   };
 
+  services = {
+    flatpak = {
+      enable = true;
+      remotes = [
+        {
+          name = "flathub";
+          location = "https://dl.flathub.org/repo/flathub.flatpakrepo";
+        }
+      ];
+      packages = [
+        "com.slack.Slack"
+        "org.telegram.desktop"
+      ];
+      update.auto = {
+        enable = true;
+        onCalendar = "daily";
+      };
+    };
+    hypridle = {
+      enable = true;
+      settings = {
+        general = {
+          lock_cmd = "pidof hyprlock || hyprlock";
+          before_sleep_cmd = "systemctl --user stop wave-backlight-dim.service; loginctl lock-session";
+          after_sleep_cmd = ''hyprctl dispatch 'hl.dsp.dpms({ action = "enable" })'';
+        };
+        listener = [
+          {
+            timeout = 240;
+            on-timeout = "systemctl --user start wave-backlight-dim.service";
+            on-resume = "systemctl --user stop wave-backlight-dim.service";
+          }
+          {
+            timeout = 300;
+            on-timeout = "loginctl lock-session";
+          }
+          {
+            timeout = 600;
+            on-timeout = ''hyprctl dispatch 'hl.dsp.dpms({ action = "disable" })'';
+            on-resume = ''hyprctl dispatch 'hl.dsp.dpms({ action = "enable" })'';
+          }
+        ];
+      };
+    };
+    hyprpaper = {
+      enable = true;
+      settings = {
+        ipc = "on";
+        splash = false;
+        wallpaper = [
+          {
+            monitor = "*";
+            path = "${wallpaper}";
+          }
+        ];
+      };
+    };
+  };
+
+  xdg = {
+    enable = true;
+    userDirs = {
+      enable = true;
+      createDirectories = true;
+      desktop = "$HOME";
+      download = "$HOME/downloads";
+      templates = "$HOME";
+      publicShare = "$HOME/public";
+      documents = "$HOME/documents";
+      music = "$HOME/media";
+      pictures = "$HOME/media";
+      videos = "$HOME/media";
+    };
+    configFile = {
+      "ghostty/themes/kanagawa".text = ''
+        palette = 0=#16161d
+        palette = 1=#c34043
+        palette = 2=#76946a
+        palette = 3=#c0a36e
+        palette = 4=#7e9cd8
+        palette = 5=#957fb8
+        palette = 6=#6a9589
+        palette = 7=#c8c093
+        palette = 8=#727169
+        palette = 9=#e82424
+        palette = 10=#98bb6c
+        palette = 11=#e6c384
+        palette = 12=#7fb4ca
+        palette = 13=#938aa9
+        palette = 14=#7aa89f
+        palette = 15=#dcd7ba
+        background = 1f1f28
+        foreground = dcd7ba
+        cursor-color = c8c093
+        selection-background = 2d4f67
+        selection-foreground = c8c093
+      '';
+      "Kvantum/Kanagawa".source = "${kanagawa-kvantum}/share/Kvantum/Kanagawa";
+      "Kvantum/kvantum.kvconfig".text = ''
+        [General]
+        theme=Kanagawa
+      '';
+    };
+  };
+
   gtk = {
     enable = true;
     theme = {
@@ -484,79 +552,6 @@ in
     platformTheme.name = "qtct";
     style.name = "kvantum";
   };
-
-  xdg.configFile = {
-    "ghostty/themes/kanagawa".text = ''
-      palette = 0=#16161d
-      palette = 1=#c34043
-      palette = 2=#76946a
-      palette = 3=#c0a36e
-      palette = 4=#7e9cd8
-      palette = 5=#957fb8
-      palette = 6=#6a9589
-      palette = 7=#c8c093
-      palette = 8=#727169
-      palette = 9=#e82424
-      palette = 10=#98bb6c
-      palette = 11=#e6c384
-      palette = 12=#7fb4ca
-      palette = 13=#938aa9
-      palette = 14=#7aa89f
-      palette = 15=#dcd7ba
-      background = 1f1f28
-      foreground = dcd7ba
-      cursor-color = c8c093
-      selection-background = 2d4f67
-      selection-foreground = c8c093
-    '';
-    "Kvantum/Kanagawa".source = "${kanagawa-kvantum}/share/Kvantum/Kanagawa";
-    "Kvantum/kvantum.kvconfig".text = ''
-      [General]
-      theme=Kanagawa
-    '';
-  };
-
-  services.hypridle = {
-    enable = true;
-    settings = {
-      general = {
-        lock_cmd = "pidof hyprlock || hyprlock";
-        before_sleep_cmd = "systemctl --user stop wave-backlight-dim.service; loginctl lock-session";
-        after_sleep_cmd = ''hyprctl dispatch 'hl.dsp.dpms({ action = "enable" })'';
-      };
-      listener = [
-        {
-          timeout = 240;
-          on-timeout = "systemctl --user start wave-backlight-dim.service";
-          on-resume = "systemctl --user stop wave-backlight-dim.service";
-        }
-        {
-          timeout = 300;
-          on-timeout = "loginctl lock-session";
-        }
-        {
-          timeout = 600;
-          on-timeout = ''hyprctl dispatch 'hl.dsp.dpms({ action = "disable" })'';
-          on-resume = ''hyprctl dispatch 'hl.dsp.dpms({ action = "enable" })'';
-        }
-      ];
-    };
-  };
-
-  services.hyprpaper = {
-    enable = true;
-    settings = {
-      ipc = "on";
-      splash = false;
-      wallpaper = [
-        {
-          monitor = "*";
-          path = "${wallpaper}";
-        }
-      ];
-    };
-  };
-
   systemd.user.services = {
     vicinae = {
       Unit = {
