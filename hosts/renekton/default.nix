@@ -1,8 +1,36 @@
 { pkgs, ... }:
 
 {
-  system.primaryUser = "kosciak";
-  system.stateVersion = 1;
+  system = {
+    primaryUser = "kosciak";
+    stateVersion = 1;
+
+    defaults = {
+      dock = {
+        show-process-indicators = true;
+        show-recents = true;
+        wvous-tl-corner = 2; # Mission Control
+        wvous-tr-corner = 1; # Disabled
+        wvous-bl-corner = 1; # Disabled
+        wvous-br-corner = 1; # Disabled
+      };
+
+      NSGlobalDomain = {
+        AppleInterfaceStyle = "Dark";
+      };
+
+      CustomUserPreferences = {
+        NSGlobalDomain = {
+          AppleAccentColor = 1; # Orange
+          AppleAquaColorVariant = 1;
+        };
+
+        "com.apple.dock" = {
+          show-recents-count = 1;
+        };
+      };
+    };
+  };
 
   networking = {
     hostName = "renekton";
@@ -59,26 +87,6 @@
     pkgs.noto-fonts
     pkgs.noto-fonts-color-emoji
   ];
-
-  system.defaults.dock = {
-    show-process-indicators = true;
-    show-recents = true;
-    wvous-tl-corner = 2; # Mission Control
-    wvous-tr-corner = 1; # Disabled
-    wvous-bl-corner = 1; # Disabled
-    wvous-br-corner = 1; # Disabled
-  };
-
-  system.defaults.NSGlobalDomain.AppleInterfaceStyle = "Dark";
-
-  system.defaults.CustomUserPreferences.NSGlobalDomain = {
-    AppleAccentColor = 1; # Orange
-    AppleAquaColorVariant = 1;
-  };
-
-  system.defaults.CustomUserPreferences."com.apple.dock" = {
-    show-recents-count = 1;
-  };
 
   services.tailscale.enable = true;
 

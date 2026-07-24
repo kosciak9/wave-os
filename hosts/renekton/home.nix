@@ -6,9 +6,11 @@
     ./aerospace.nix
   ];
 
-  home.username = "kosciak";
-  home.homeDirectory = "/Users/kosciak";
-  home.stateVersion = "26.05";
+  home = {
+    username = "kosciak";
+    homeDirectory = "/Users/kosciak";
+    stateVersion = "26.05";
+  };
   programs.home-manager.enable = true;
   xdg.enable = true;
 }

@@ -31,7 +31,12 @@ stdenvNoCC.mkDerivation {
     unzip -q $src
     install -Dm755 opencode $out/bin/.opencode-unwrapped
     makeBinaryWrapper $out/bin/.opencode-unwrapped $out/bin/opencode \
-      --prefix PATH : ${lib.makeBinPath [ ripgrep sysctl ]} \
+      --prefix PATH : ${
+        lib.makeBinPath [
+          ripgrep
+          sysctl
+        ]
+      } \
       --set OPENCODE_DISABLE_AUTOUPDATE true
 
     runHook postInstall

@@ -75,21 +75,20 @@
           nixos-hardware.nixosModules.framework-16-7040-amd
           ./hosts/jayce/default.nix
           home-manager.nixosModules.home-manager
-          (
-            { ... }:
-            {
-              home-manager.useGlobalPkgs = true;
-              home-manager.useUserPackages = true;
-              home-manager.extraSpecialArgs = {
+          (_: {
+            home-manager = {
+              useGlobalPkgs = true;
+              useUserPackages = true;
+              extraSpecialArgs = {
                 inherit inputs kanagawa-kvantum;
               };
-              home-manager.sharedModules = [
+              sharedModules = [
                 sops-nix.homeManagerModules.sops
                 nix-flatpak.homeManagerModules.nix-flatpak
               ];
-              home-manager.users.kosciak = ./hosts/jayce/home.nix;
-            }
-          )
+              users.kosciak = ./hosts/jayce/home.nix;
+            };
+          })
         ];
       };
 
@@ -99,14 +98,13 @@
           determinate.darwinModules.default
           home-manager.darwinModules.home-manager
           ./hosts/renekton/default.nix
-          (
-            { ... }:
-            {
-              home-manager.useGlobalPkgs = true;
-              home-manager.useUserPackages = true;
-              home-manager.users.kosciak = ./hosts/renekton/home.nix;
-            }
-          )
+          (_: {
+            home-manager = {
+              useGlobalPkgs = true;
+              useUserPackages = true;
+              users.kosciak = ./hosts/renekton/home.nix;
+            };
+          })
         ];
       };
 

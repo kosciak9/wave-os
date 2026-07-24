@@ -24,8 +24,7 @@
       ];
       RunAtLoad = true;
       KeepAlive = true;
-      EnvironmentVariables.PATH =
-        "${config.home.profileDirectory}/bin:/run/current-system/sw/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin";
+      EnvironmentVariables.PATH = "${config.home.profileDirectory}/bin:/run/current-system/sw/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin";
     };
   };
 }

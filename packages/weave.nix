@@ -22,7 +22,11 @@ stdenvNoCC.mkDerivation {
     hash = "sha256-fc/OJY16pWLAAoc4facLw+IshqzC5SFDF+xre6uS2FY=";
   };
 
-  nativeBuildInputs = [ gnutar gzip darwin.cctools ];
+  nativeBuildInputs = [
+    gnutar
+    gzip
+    darwin.cctools
+  ];
 
   unpackPhase = ''
     runHook preUnpack
@@ -46,7 +50,10 @@ stdenvNoCC.mkDerivation {
   meta = {
     description = "Entity-level semantic merge CLI";
     homepage = "https://github.com/Ataraxy-Labs/weave";
-    license = with lib.licenses; [ mit asl20 ];
+    license = with lib.licenses; [
+      mit
+      asl20
+    ];
     mainProgram = "weave";
     platforms = [ "aarch64-darwin" ];
   };
