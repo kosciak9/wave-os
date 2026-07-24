@@ -37,6 +37,11 @@
       url = "github:LuDreamst/Kanagawa-Kvantum";
       flake = false;
     };
+
+    ghostty-cursor-shaders = {
+      url = "github:sahaj-b/ghostty-cursor-shaders";
+      flake = false;
+    };
   };
 
   outputs =
@@ -81,6 +86,7 @@
               useUserPackages = true;
               extraSpecialArgs = {
                 inherit inputs kanagawa-kvantum;
+                ghosttyCursorShaders = inputs.ghostty-cursor-shaders;
               };
               sharedModules = [
                 sops-nix.homeManagerModules.sops
@@ -102,6 +108,9 @@
             home-manager = {
               useGlobalPkgs = true;
               useUserPackages = true;
+              extraSpecialArgs = {
+                ghosttyCursorShaders = inputs.ghostty-cursor-shaders;
+              };
               users.kosciak = ./hosts/renekton/home.nix;
             };
           })
@@ -112,6 +121,7 @@
         inherit pkgs;
         extraSpecialArgs = {
           inherit inputs kanagawa-kvantum;
+          ghosttyCursorShaders = inputs.ghostty-cursor-shaders;
         };
         modules = [
           sops-nix.homeManagerModules.sops
@@ -122,6 +132,9 @@
 
       homeConfigurations."kosciak@renekton" = home-manager.lib.homeManagerConfiguration {
         pkgs = darwinPkgs;
+        extraSpecialArgs = {
+          ghosttyCursorShaders = inputs.ghostty-cursor-shaders;
+        };
         modules = [
           ./hosts/renekton/home.nix
         ];
