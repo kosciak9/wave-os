@@ -82,6 +82,7 @@ let
 in
 {
   imports = [
+    ../../modules/home/devenv
     ../../modules/home/git.nix
     ../../modules/home/neovim
     ../../modules/home/opencode

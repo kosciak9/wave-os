@@ -1,1 +1,4 @@
 /result
+/.devenv/
+/devenv.local.nix
+/devenv.local.yaml
