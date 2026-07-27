@@ -175,7 +175,7 @@ index 5d1a7ef9ce55058bbb9c61b6a3112aac84e799d5..be0f59b6d912b1cd34531eda0c6d6afd
          if (POLDWORKSPACE)
              g_pDesktopAnimationManager->startAnimation(POLDWORKSPACE, CDesktopAnimationManager::ANIMATION_TYPE_OUT, ANIMTOLEFT, false, ANIMSTYLE);
 diff --git a/src/layout/algorithm/tiled/scrolling/ScrollTapeController.cpp b/src/layout/algorithm/tiled/scrolling/ScrollTapeController.cpp
-index 722b9bd8b05499285cb34cb5857190fb22c9f45f..5828e8d639d4b57429da70bc68778957bc82238a 100644
+index 722b9bd8b05499285cb34cb5857190fb22c9f45f..ad6c9d3cffd5500da0664cdfa88e466914927bc5 100644
 --- a/src/layout/algorithm/tiled/scrolling/ScrollTapeController.cpp
 +++ b/src/layout/algorithm/tiled/scrolling/ScrollTapeController.cpp
 @@ -153,7 +153,7 @@ CBox CScrollTapeController::calculateStripBox(size_t stripIndex, const CBox& usa
@@ -187,17 +187,23 @@ index 722b9bd8b05499285cb34cb5857190fb22c9f45f..5828e8d639d4b57429da70bc68778957
 
      // calculate position along primary axis (strip position)
      double primaryPos  = calculateStripStart(stripIndex, usableArea, fullscreenOnOne);
-@@ -226,7 +226,7 @@ double CScrollTapeController::calculateCameraOffset(const CBox& usableArea, bool
+@@ -221,12 +221,12 @@ double CScrollTapeController::calculateCameraOffset(const CBox& usableArea, bool
+         return m_offset;
+
+     // if the content fits in viewport, center it
+-    if (maxExtent < usablePrimary)
++    if (maxExtent <= usablePrimary + 0.5)
+         m_offset = std::round((maxExtent - usablePrimary) / 2.0);
 
      // if the offset is negative but we already extended and fit method is not center, reset offset to 0
      static const auto PFITMETHOD = CConfigValue<Hyprlang::INT>("scrolling:focus_fit_method");
 -    if (maxExtent > usablePrimary && m_offset < 0.0 && *PFITMETHOD != 0)
-+    if (maxExtent > usablePrimary && m_offset < 0.0 && *PFITMETHOD == 1)
++    if (maxExtent > usablePrimary + 0.5 && m_offset < 0.0 && *PFITMETHOD == 1)
          m_offset = 0.0;
 
      return m_offset;
 diff --git a/src/layout/algorithm/tiled/scrolling/ScrollingAlgorithm.cpp b/src/layout/algorithm/tiled/scrolling/ScrollingAlgorithm.cpp
-index f200130a2c4f1ff3d010e51ecd5505cab7901ef9..ecaecc53bc081b6db955107fb0d29a07fe028b6e 100644
+index f200130a2c4f1ff3d010e51ecd5505cab7901ef9..88905bb45378c7fad9532fce493adb14f9083345 100644
 --- a/src/layout/algorithm/tiled/scrolling/ScrollingAlgorithm.cpp
 +++ b/src/layout/algorithm/tiled/scrolling/ScrollingAlgorithm.cpp
 @@ -20,6 +20,8 @@
@@ -487,47 +493,112 @@ index f200130a2c4f1ff3d010e51ecd5505cab7901ef9..ecaecc53bc081b6db955107fb0d29a07
                  m_scrollingData->recalculate();
                  if (pTargetData->target->window())
                      g_pCompositor->warpCursorTo(pTargetData->target->window()->middle());
-@@ -1945,8 +2030,7 @@ SP<SColumnData> CScrollingAlgorithm::snapToProjectedOffset(double projectedNorma
+@@ -1897,7 +1982,7 @@ void CScrollingAlgorithm::snapToGrid() {
+     snapToProjectedOffset(normalizedTapeOffset());
+ }
+
+-SP<SColumnData> CScrollingAlgorithm::snapToProjectedOffset(double projectedNormalizedOffset) {
++SP<SColumnData> CScrollingAlgorithm::snapToProjectedOffset(double projectedNormalizedOffset, SP<SColumnData> anchor) {
+     static const auto PFSONONE   = CConfigValue<Config::INTEGER>("scrolling:fullscreen_on_one_column");
+     static const auto PFITMETHOD = CConfigValue<Config::INTEGER>("scrolling:focus_fit_method");
+
+@@ -1916,6 +2001,8 @@ SP<SColumnData> CScrollingAlgorithm::snapToProjectedOffset(double projectedNorma
+         return nullptr;
+
+     const double projectedOffset = projectedNormalizedOffset * usablePrimary;
++    const bool   contentFits     = maxExtent <= usablePrimary + 0.5;
++    const double fittedCameraOffset = std::round((maxExtent - usablePrimary) / 2.0);
+
+     double       bestOffset      = 0.0;
+     double       bestDelta       = 0.0;
+@@ -1930,6 +2017,11 @@ SP<SColumnData> CScrollingAlgorithm::snapToProjectedOffset(double projectedNorma
+         return start - (usablePrimary - size) / 2.0;
+     };
+
++    const int64_t anchorIndex = anchor ? m_scrollingData->idx(anchor) : -1;
++    const double  comparisonOffset = contentFits && anchorIndex >= 0 ?
++        centerOffsetFor(anchorIndex) + (projectedOffset - fittedCameraOffset) :
++        projectedOffset;
++
+     auto fitOffsetFor = [&](size_t index) {
+         const double start = controller.calculateStripStart(index, USABLE, *PFSONONE);
+         const double size  = controller.calculateStripSize(index, USABLE, *PFSONONE);
+@@ -1945,14 +2037,14 @@ SP<SColumnData> CScrollingAlgorithm::snapToProjectedOffset(double projectedNorma
          return std::abs(projectedOffset - center) <= std::abs(projectedOffset - edge) ? center : edge;
      };
 
 -    auto considerColumn = [&](size_t index) {
 -        const double offset         = *PFITMETHOD == 1 ? fitOffsetFor(index) : centerOffsetFor(index);
+-        const double delta          = std::abs(offset - projectedOffset);
 +    auto considerOffset = [&](size_t index, double offset) {
-         const double delta          = std::abs(offset - projectedOffset);
++        const double delta          = std::abs(offset - comparisonOffset);
          const double start          = controller.calculateStripStart(index, USABLE, *PFSONONE);
          const double size           = controller.calculateStripSize(index, USABLE, *PFSONONE);
-@@ -1963,8 +2047,26 @@ SP<SColumnData> CScrollingAlgorithm::snapToProjectedOffset(double projectedNorma
+-        const double centerDelta    = std::abs((start + size / 2.0) - (projectedOffset + usablePrimary / 2.0));
+-        const bool   betterFit      = delta < bestDelta;
+-        const bool   betterTieBreak = delta == bestDelta && centerDelta < bestCenterDelta;
++        const double centerDelta    = std::abs((start + size / 2.0) - (comparisonOffset + usablePrimary / 2.0));
++        const bool   anchorTie      = anchorIndex >= 0 && static_cast<int64_t>(index) == anchorIndex && std::abs(delta - bestDelta) <= 1e-6;
++        const bool   betterFit      = delta < bestDelta - 1e-6;
++        const bool   betterTieBreak = std::abs(delta - bestDelta) <= 1e-6 && (anchorTie || centerDelta < bestCenterDelta);
+
+         if (!foundSnap || betterFit || betterTieBreak) {
+             bestOffset      = offset;
+@@ -1963,13 +2055,20 @@ SP<SColumnData> CScrollingAlgorithm::snapToProjectedOffset(double projectedNorma
          }
      };
 
 -    for (size_t i = 0; i < controller.stripCount(); ++i)
 -        considerColumn(i);
-+    auto pairOverflows = [&](size_t first, size_t second) {
-+        const double firstStart  = controller.calculateStripStart(first, USABLE, *PFSONONE);
-+        const double secondStart = controller.calculateStripStart(second, USABLE, *PFSONONE);
-+        const double firstEnd    = firstStart + controller.calculateStripSize(first, USABLE, *PFSONONE);
-+        const double secondEnd   = secondStart + controller.calculateStripSize(second, USABLE, *PFSONONE);
-+        return std::max(firstEnd, secondEnd) - std::min(firstStart, secondStart) > usablePrimary + 0.5;
-+    };
-+
 +    for (size_t i = 0; i < controller.stripCount(); ++i) {
-+        if (*PFITMETHOD == 0) {
++        if (contentFits || *PFITMETHOD == 0) {
 +            considerOffset(i, centerOffsetFor(i));
 +        } else if (*PFITMETHOD == 1) {
 +            considerOffset(i, fitOffsetFor(i));
 +        } else {
-+            const double start = controller.calculateStripStart(i, USABLE, *PFSONONE);
-+            const double size  = controller.calculateStripSize(i, USABLE, *PFSONONE);
-+            considerOffset(i, i + 1 < controller.stripCount() && pairOverflows(i, i + 1) ? centerOffsetFor(i) : start);
-+            considerOffset(i, i > 0 && pairOverflows(i, i - 1) ? centerOffsetFor(i) : start + size - usablePrimary);
++            considerOffset(i, centerOffsetFor(i));
 +        }
 +    }
 
      if (!foundSnap)
          return nullptr;
+
+-    controller.setOffset(bestOffset);
++    controller.setOffset(contentFits ? fittedCameraOffset : bestOffset);
+     m_scrollingData->recalculate();
+
+     if (bestIndex < m_scrollingData->columns.size())
+@@ -1978,9 +2077,15 @@ SP<SColumnData> CScrollingAlgorithm::snapToProjectedOffset(double projectedNorma
+     return nullptr;
+ }
+
+-void CScrollingAlgorithm::focusColumn(SP<SColumnData> column) {
++void CScrollingAlgorithm::focusColumn(SP<SColumnData> column, bool preserveCamera) {
++    const double cameraOffset = preserveCamera ? m_scrollingData->controller->getOffset() : 0.0;
++
+     if (!column || column->targetDatas.empty()) {
+         focusTargetUpdate(nullptr);
++        if (preserveCamera) {
++            m_scrollingData->controller->setOffset(cameraOffset);
++            m_scrollingData->recalculate();
++        }
+         return;
+     }
+
+@@ -1998,6 +2103,11 @@ void CScrollingAlgorithm::focusColumn(SP<SColumnData> column) {
+     }
+
+     focusTargetUpdate(targetData ? targetData->target.lock() : nullptr);
++
++    if (preserveCamera) {
++        m_scrollingData->controller->setOffset(cameraOffset);
++        m_scrollingData->recalculate();
++    }
+ }
+
+ SP<SColumnData> CScrollingAlgorithm::getColumnAtViewportCenter() {
 diff --git a/src/layout/algorithm/tiled/scrolling/ScrollingAlgorithm.hpp b/src/layout/algorithm/tiled/scrolling/ScrollingAlgorithm.hpp
-index 867b86e84613a42898166bf2322cb4cf351493bc..422dac64f7a5cb2add3cf5fc6056a18a1f9550ad 100644
+index 867b86e84613a42898166bf2322cb4cf351493bc..fb92ae95137c639155f7d60ac009221316c6212b 100644
 --- a/src/layout/algorithm/tiled/scrolling/ScrollingAlgorithm.hpp
 +++ b/src/layout/algorithm/tiled/scrolling/ScrollingAlgorithm.hpp
 @@ -81,7 +81,7 @@ namespace Layout::Tiled {
@@ -538,6 +609,17 @@ index 867b86e84613a42898166bf2322cb4cf351493bc..422dac64f7a5cb2add3cf5fc6056a18a
 +        void                         centerOrFitCol(SP<SColumnData> c, SP<SColumnData> previous = nullptr);
 
          void                         recalculate(bool forceInstant = false);
+
+@@ -117,8 +117,8 @@ namespace Layout::Tiled {
+         void                             moveTape(float delta);
+         void                             moveTapeNormalized(double delta);
+         void                             snapToGrid();
+-        SP<SColumnData>                  snapToProjectedOffset(double projectedNormalizedOffset);
+-        void                             focusColumn(SP<SColumnData> column);
++        SP<SColumnData>                  snapToProjectedOffset(double projectedNormalizedOffset, SP<SColumnData> anchor = nullptr);
++        void                             focusColumn(SP<SColumnData> column, bool preserveCamera = false);
+         SP<SColumnData>                  getColumnAtViewportCenter();
+         SP<SColumnData>                  currentColumn();
 
 @@ -167,7 +167,7 @@ namespace Layout::Tiled {
 
@@ -556,6 +638,24 @@ index 867b86e84613a42898166bf2322cb4cf351493bc..422dac64f7a5cb2add3cf5fc6056a18a
 
          friend struct SScrollingData;
      };
+diff --git a/src/managers/SessionLockManager.cpp b/src/managers/SessionLockManager.cpp
+index 6e45c92343a92baa3800089916f9b0f7f1f7e9a9..b142ede87e6151ac775a87bd883d057027fd7d83 100644
+--- a/src/managers/SessionLockManager.cpp
++++ b/src/managers/SessionLockManager.cpp
+@@ -77,8 +77,12 @@ void CSessionLockManager::onNewSessionLock(SP<CSessionLock> pLock) {
+     });
+
+     m_sessionLock->listeners.unlock = pLock->m_events.unlockAndDestroy.listen([this] {
++        const auto FOCUSED = Desktop::focusState()->window();
+         m_sessionLock.reset();
+-        g_pInputManager->refocus();
++        if (FOCUSED)
++            Desktop::focusState()->fullWindowFocus(FOCUSED, Desktop::FOCUS_REASON_DESKTOP_STATE_CHANGE);
++        else
++            g_pInputManager->refocus();
+
+         for (auto const& m : g_pCompositor->m_monitors)
+             g_pHyprRenderer->damageMonitor(m);
 diff --git a/src/managers/input/UnifiedWorkspaceSwipeGesture.cpp b/src/managers/input/UnifiedWorkspaceSwipeGesture.cpp
 index e2eac6938c8bdec67abd9cbb56808f3d635740fe..82fd04b4ad544b1cb760ad23fb4599568d911f2a 100644
 --- a/src/managers/input/UnifiedWorkspaceSwipeGesture.cpp
@@ -652,11 +752,95 @@ index e2eac6938c8bdec67abd9cbb56808f3d635740fe..82fd04b4ad544b1cb760ad23fb459956
      const auto   RENDEROFFSETMIDDLE = m_workspaceBegin->m_renderOffset->value();
      const auto   XDISTANCE          = m_monitor->m_size.x + *PWORKSPACEGAP;
      const auto   YDISTANCE          = m_monitor->m_size.y + *PWORKSPACEGAP;
+diff --git a/src/managers/input/trackpad/gestures/ScrollMoveGesture.cpp b/src/managers/input/trackpad/gestures/ScrollMoveGesture.cpp
+index 1fbbb104f634d9d514912c0a88c9dc483b49c90b..8cf0746b5ffa4b1a6a9dc8fff6585dcdf9bbf465 100644
+--- a/src/managers/input/trackpad/gestures/ScrollMoveGesture.cpp
++++ b/src/managers/input/trackpad/gestures/ScrollMoveGesture.cpp
+@@ -57,6 +57,7 @@ void CScrollMoveTrackpadGesture::begin(const ITrackpadGesture::STrackpadGestureB
+     m_hasLastUpdate      = false;
+     m_lastUpdateTimeMs   = 0;
+     m_velocity           = 0.0;
++    m_accumulatedOffsetDelta = 0.0;
+
+     m_startedOffset = LAYOUT ? LAYOUT->normalizedTapeOffset() : 0.0;
+     m_startedColumn = LAYOUT ? LAYOUT->currentColumn() : nullptr;
+@@ -80,6 +81,7 @@ void CScrollMoveTrackpadGesture::update(const ITrackpadGesture::STrackpadGesture
+     const double NORMALIZED_OFFSET_DELTA = -NORMALIZED_DELTA;
+
+     SCROLLING->moveTapeNormalized(NORMALIZED_DELTA);
++    m_accumulatedOffsetDelta += NORMALIZED_OFFSET_DELTA;
+
+     if (!e.swipe)
+         return;
+@@ -108,6 +110,7 @@ void CScrollMoveTrackpadGesture::end(const ITrackpadGesture::STrackpadGestureEnd
+         m_wasScrollingLayout = false;
+         m_hasLastUpdate      = false;
+         m_velocity           = 0.0;
++        m_accumulatedOffsetDelta = 0.0;
+         return;
+     }
+
+@@ -115,16 +118,21 @@ void CScrollMoveTrackpadGesture::end(const ITrackpadGesture::STrackpadGestureEnd
+
+     const bool   CANCELLED = e.swipe && e.swipe->cancelled;
+     const double Δ         = (CANCELLED ? 0.0 : std::clamp(m_velocity / SCROLL_GESTURE_VELOCITY_DECAY, -SCROLL_GESTURE_MAX_PROJECTION, SCROLL_GESTURE_MAX_PROJECTION));
+-    const double PROJECTED = SCROLLING->normalizedTapeOffset() + Δ;
++    const double PROJECTED = m_startedOffset + m_accumulatedOffsetDelta + Δ;
+
+-    if (*PSNAP) {
+-        const auto LANDED = SCROLLING->snapToProjectedOffset(PROJECTED);
++    if (CANCELLED) {
++        SCROLLING->moveTapeNormalized(SCROLLING->normalizedTapeOffset() - m_startedOffset);
++        SCROLLING->focusColumn(m_startedColumn.lock(), true);
++        m_wasScrollingLayout = false;
++        m_hasLastUpdate      = false;
++        m_velocity            = 0.0;
++        m_accumulatedOffsetDelta = 0.0;
++        return;
++    }
+
+-        // if we land on the same thing we started, move the tape back
+-        if (LANDED == m_startedColumn && LANDED)
+-            SCROLLING->moveTapeNormalized(SCROLLING->normalizedTapeOffset() - m_startedOffset);
+-        else
+-            SCROLLING->focusColumn(LANDED);
++    if (*PSNAP) {
++        const auto LANDED = SCROLLING->snapToProjectedOffset(PROJECTED, m_startedColumn.lock());
++        SCROLLING->focusColumn(LANDED, true);
+     } else {
+         SCROLLING->moveTape(Δ);
+         const auto COL = SCROLLING->getColumnAtViewportCenter();
+@@ -142,4 +150,5 @@ void CScrollMoveTrackpadGesture::end(const ITrackpadGesture::STrackpadGestureEnd
+     m_wasScrollingLayout = false;
+     m_hasLastUpdate      = false;
+     m_velocity           = 0.0;
++    m_accumulatedOffsetDelta = 0.0;
+ }
+diff --git a/src/managers/input/trackpad/gestures/ScrollMoveGesture.hpp b/src/managers/input/trackpad/gestures/ScrollMoveGesture.hpp
+index 26e51e00903fccf57137b742e900cd1f51dcc2c1..aa0cb3ccf671ff9fd89c4233c7ff3d14c0d36dbd 100644
+--- a/src/managers/input/trackpad/gestures/ScrollMoveGesture.hpp
++++ b/src/managers/input/trackpad/gestures/ScrollMoveGesture.hpp
+@@ -23,5 +23,6 @@ class CScrollMoveTrackpadGesture : public ITrackpadGesture {
+     uint32_t                       m_lastUpdateTimeMs   = 0;
+     double                         m_velocity           = 0.0;
+     double                         m_startedOffset      = 0.0;
++    double                         m_accumulatedOffsetDelta = 0.0;
+     WP<Layout::Tiled::SColumnData> m_startedColumn      = nullptr;
+ };
 diff --git a/src/protocols/ExtWorkspace.cpp b/src/protocols/ExtWorkspace.cpp
-index ac7c7277962825919c49f2bf771638dac7f95232..4c9d99def568dc4758fe608a5fa7aea573ada565 100644
+index ac7c7277962825919c49f2bf771638dac7f95232..8dd2c1e188e2b58bff21ae170a59639db9c11c82 100644
 --- a/src/protocols/ExtWorkspace.cpp
 +++ b/src/protocols/ExtWorkspace.cpp
-@@ -85,7 +85,10 @@ CExtWorkspaceResource::CExtWorkspaceResource(WP<CExtWorkspaceManagerResource> ma
+@@ -78,6 +78,8 @@ CExtWorkspaceResource::CExtWorkspaceResource(WP<CExtWorkspaceManagerResource> ma
+
+         if (m_manager)
+             m_manager->scheduleDone();
++        if (m_manager)
++            m_manager->scheduleCoordinateRefresh();
+     });
+
+     m_listeners.activeChanged = m_workspace->m_events.activeChanged.listen([this] {
+@@ -85,7 +87,12 @@ CExtWorkspaceResource::CExtWorkspaceResource(WP<CExtWorkspaceManagerResource> ma
          sendCapabilities();
      });
 
@@ -664,11 +848,13 @@ index ac7c7277962825919c49f2bf771638dac7f95232..4c9d99def568dc4758fe608a5fa7aea5
 +    m_listeners.monitorChanged = m_workspace->m_events.monitorChanged.listen([this] {
 +        sendGroup();
 +        sendCoordinates();
++        if (m_manager)
++            m_manager->scheduleCoordinateRefresh();
 +    });
 
      m_listeners.renamed = m_workspace->m_events.renamed.listen([this] {
          m_resource->sendName(m_workspace->m_name.c_str());
-@@ -109,18 +112,7 @@ CExtWorkspaceResource::CExtWorkspaceResource(WP<CExtWorkspaceManagerResource> ma
+@@ -109,18 +116,7 @@ CExtWorkspaceResource::CExtWorkspaceResource(WP<CExtWorkspaceManagerResource> ma
 
      m_resource->sendName(m_workspace->m_name.c_str());
 
@@ -688,7 +874,7 @@ index ac7c7277962825919c49f2bf771638dac7f95232..4c9d99def568dc4758fe608a5fa7aea5
 
      sendState();
      sendCapabilities();
-@@ -133,6 +125,21 @@ bool CExtWorkspaceResource::good() const {
+@@ -133,6 +129,21 @@ bool CExtWorkspaceResource::good() const {
      return m_resource;
  }
 
@@ -710,8 +896,29 @@ index ac7c7277962825919c49f2bf771638dac7f95232..4c9d99def568dc4758fe608a5fa7aea5
  bool CExtWorkspaceResource::isActive() const {
      if (!m_workspace)
          return false;
+@@ -258,6 +269,20 @@ void CExtWorkspaceManagerResource::scheduleDone() {
+         self->m_resource->sendDone();
+     });
+ }
++void CExtWorkspaceManagerResource::scheduleCoordinateRefresh() {
++    if (m_coordinatesRefreshScheduled)
++        return;
++    m_coordinatesRefreshScheduled = true;
++    g_pEventLoopManager->doLater([self = m_self] {
++        if (!self || !self->m_resource)
++            return;
++        self->m_coordinatesRefreshScheduled = false;
++        for (auto& workspace : PROTO::extWorkspace->m_workspaces) {
++            if (workspace->m_manager == self && workspace->m_workspace && workspace->good())
++                workspace->sendCoordinates();
++        }
++    });
++}
+
+ WP<CExtWorkspaceGroupResource> CExtWorkspaceManagerResource::findGroup(const PHLMONITORREF& monitor) const {
+     auto iter = std::ranges::find_if(PROTO::extWorkspace->m_groups,
 diff --git a/src/protocols/ExtWorkspace.hpp b/src/protocols/ExtWorkspace.hpp
-index ba4aeeae6daa0c882a985b331b5aec8b3593428b..f756754034e2f69b684d12f5d01d49c65296b073 100644
+index ba4aeeae6daa0c882a985b331b5aec8b3593428b..a173be9c5553498e0985cae5a48934da3769d27e 100644
 --- a/src/protocols/ExtWorkspace.hpp
 +++ b/src/protocols/ExtWorkspace.hpp
 @@ -58,6 +58,7 @@ class CExtWorkspaceResource {
@@ -722,3 +929,19 @@ index ba4aeeae6daa0c882a985b331b5aec8b3593428b..f756754034e2f69b684d12f5d01d49c6
 
      struct {
          bool          activate   = false;
+@@ -87,6 +88,7 @@ class CExtWorkspaceManagerResource {
+     void                                         onWorkspaceCreated(const PHLWORKSPACE& workspace);
+
+     void                                         scheduleDone();
++    void                                         scheduleCoordinateRefresh();
+     [[nodiscard]] WP<CExtWorkspaceGroupResource> findGroup(const PHLMONITORREF& monitor) const;
+     void                                         sendGroupToWorkspaces(const WP<CExtWorkspaceGroupResource>& group);
+
+@@ -94,6 +96,7 @@ class CExtWorkspaceManagerResource {
+
+   private:
+     bool m_doneScheduled = false;
++    bool m_coordinatesRefreshScheduled = false;
+ };
+
+ class CExtWorkspaceProtocol : public IWaylandProtocol {

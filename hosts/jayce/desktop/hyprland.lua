@@ -434,8 +434,9 @@ local function moveColumnToWorkspaceRelative(offset)
     end
 end
 
+local monitorDirections = { left = "l", right = "r", up = "u", down = "d" }
 local function moveColumnToMonitor(direction)
-    local monitor = hl.get_monitor(direction)
+    local monitor = hl.get_monitor(monitorDirections[direction])
     if monitor then
         moveColumnToWorkspace(monitor.active_workspace)
     end
@@ -475,6 +476,7 @@ local function toggleMaximizedColumn()
 
     if column.width > 0.999 and restoreWidth then
         dispatch(hl.dsp.layout(string.format("colresize %.8f", restoreWidth)))
+        dispatch(hl.dsp.layout("center"))
         for _, window in ipairs(column.windows) do
             maximizedColumns[window.stable_id] = nil
         end
@@ -701,13 +703,13 @@ end)
 
 for _, direction in ipairs({ "left", "down", "up", "right" }) do
     local key = direction
-    hl.bind(mod .. " + SHIFT + " .. key, hl.dsp.focus({ monitor = direction }))
+    hl.bind(mod .. " + SHIFT + " .. key, hl.dsp.focus({ monitor = monitorDirections[direction] }))
     hl.bind(mod .. " + SHIFT + CTRL + " .. key, function()
         moveColumnToMonitor(direction)
     end)
 end
 for key, direction in pairs({ H = "left", J = "down", K = "up", L = "right" }) do
-    hl.bind(mod .. " + SHIFT + " .. key, hl.dsp.focus({ monitor = direction }))
+    hl.bind(mod .. " + SHIFT + " .. key, hl.dsp.focus({ monitor = monitorDirections[direction] }))
     hl.bind(mod .. " + SHIFT + CTRL + " .. key, function()
         moveColumnToMonitor(direction)
     end)

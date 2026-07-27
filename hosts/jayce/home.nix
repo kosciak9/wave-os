@@ -433,7 +433,7 @@ in
         general = {
           lock_cmd = "pidof hyprlock || hyprlock";
           before_sleep_cmd = "systemctl --user stop wave-backlight-dim.service; loginctl lock-session";
-          after_sleep_cmd = ''hyprctl dispatch 'hl.dsp.dpms({ action = "enable" })'';
+          after_sleep_cmd = "hyprctl dispatch 'hl.dsp.dpms({ action = \"enable\" })'";
         };
         listener = [
           {
@@ -447,8 +447,8 @@ in
           }
           {
             timeout = 600;
-            on-timeout = ''hyprctl dispatch 'hl.dsp.dpms({ action = "disable" })'';
-            on-resume = ''hyprctl dispatch 'hl.dsp.dpms({ action = "enable" })'';
+            on-timeout = "hyprctl dispatch 'hl.dsp.dpms({ action = \"disable\" })'";
+            on-resume = "hyprctl dispatch 'hl.dsp.dpms({ action = \"enable\" })'";
           }
         ];
       };
