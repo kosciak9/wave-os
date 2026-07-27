@@ -58,7 +58,7 @@
     fd
     gh
     httpie
-    (callPackage ../../packages/neovide-darwin.nix { })
+    neovide
     neovim
     nodejs
     opencode
