@@ -1,6 +1,6 @@
 # Agent guidance
 
-- Home Manager installs the native devenv hook for repository auto-activation. `devenv allow` is the one-time per-repository trust command; agents must not run it without explicit permission because it writes user-level trust state. Manual entry is `devenv shell`.
+- Home Manager installs `devenv` and its native Zsh hook for trusted-repository auto-activation. Keep aliases and plugins in `modules/home/zsh`; do not duplicate or override them in devenv. Run agent commands non-interactively with `devenv shell -- <command>`.
 - `devenv.lock` must be generated or updated by devenv, never manually authored.
 - Validate in this order, from cheapest to most expensive: `nix-format`, `nix-format-check`, `nix-lint`, `nix-eval-config`, `nix-flake-check`, then `nix-validate`. Run `devenv test` for full validation.
 - Prefer evaluation before builds. Preserve `flake.lock` during validation by using the provided scripts' `--no-write-lock-file` flags.
