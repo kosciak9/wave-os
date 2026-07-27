@@ -1,5 +1,12 @@
 { pkgs, ... }:
 
+let
+  wavePowerProfilePolicy = pkgs.writeScriptBin "wave-power-profile-policy" ''
+    #!${pkgs.python3.withPackages (pythonPackages: [ pythonPackages.dbus-next ])}/bin/python3
+    ${builtins.readFile ./scripts/power-profile-policy.py}
+  '';
+in
+
 {
   imports = [ ./hardware.nix ];
 
@@ -21,6 +28,10 @@
       efi.canTouchEfiVariables = true;
     };
     plymouth.enable = true;
+    kernel.sysctl = {
+      "vm.dirty_writeback_centisecs" = 6000;
+      "vm.laptop_mode" = 5;
+    };
   };
 
   networking = {
@@ -47,7 +58,6 @@
     };
   };
   console.keyMap = "pl2";
-  services.xserver.xkb.layout = "pl";
 
   hardware = {
     bluetooth = {
@@ -59,6 +69,10 @@
   };
 
   services = {
+    udev.extraRules = ''
+      SUBSYSTEM=="hidraw", ATTRS{idVendor}=="32ac", TAG+="uaccess"
+    '';
+    xserver.xkb.layout = "pl";
     displayManager = {
       defaultSession = "hyprland-uwsm";
       gdm.enable = true;
@@ -111,6 +125,46 @@
     };
   };
 
+  systemd.services.wave-power-profile-policy = {
+    description = "Select the power profile based on AC power state";
+    # The daemon units also pull this policy back in after PartOf stops it on
+    # their restart; no after=multi-user.target cycle is introduced.
+    wantedBy = [
+      "multi-user.target"
+      "power-profiles-daemon.service"
+      "upower.service"
+    ];
+    wants = [
+      "power-profiles-daemon.service"
+      "upower.service"
+    ];
+    after = [
+      "dbus.service"
+      "power-profiles-daemon.service"
+      "upower.service"
+    ];
+    partOf = [
+      "power-profiles-daemon.service"
+      "upower.service"
+    ];
+    serviceConfig = {
+      Type = "simple";
+      ExecStart = "${wavePowerProfilePolicy}/bin/wave-power-profile-policy";
+      Restart = "on-failure";
+      RestartSec = 5;
+      User = "root";
+      Group = "root";
+      NoNewPrivileges = true;
+      PrivateTmp = true;
+      ProtectHome = true;
+      ProtectSystem = "strict";
+      RestrictAddressFamilies = [ "AF_UNIX" ];
+      CapabilityBoundingSet = "";
+    };
+  };
+
+  virtualisation.podman.enable = true;
+
   programs = {
     fuse.enable = true;
     gnupg.agent = {
@@ -150,10 +204,19 @@
   xdg.portal = {
     enable = true;
     extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
-    config.common.default = [
-      "hyprland"
-      "gtk"
-    ];
+    config.common = {
+      default = [
+        "hyprland"
+        "gtk"
+      ];
+      "org.freedesktop.impl.portal.ScreenCast" = [ "hyprland" ];
+      "org.freedesktop.impl.portal.Screenshot" = [ "hyprland" ];
+      "org.freedesktop.impl.portal.GlobalShortcuts" = [ "hyprland" ];
+      "org.freedesktop.impl.portal.FileChooser" = [ "gtk" ];
+      "org.freedesktop.impl.portal.Access" = [ "gtk" ];
+      "org.freedesktop.impl.portal.Notification" = [ "gtk" ];
+      "org.freedesktop.impl.portal.Secret" = [ "gnome-keyring" ];
+    };
   };
 
   zramSwap = {
@@ -179,6 +242,8 @@
       git
       gnupg
       pinentry-gnome3
+      podman-compose
+      qmk_hid
       vim
       wget
     ];

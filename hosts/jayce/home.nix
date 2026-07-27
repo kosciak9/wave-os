@@ -313,6 +313,13 @@ in
         "com.slack.Slack"
         "org.telegram.desktop"
       ];
+      overrides = {
+        global.Context.filesystems = [
+          "~/.themes:ro"
+          "~/.icons:ro"
+          "xdg-config/gtk-4.0:ro"
+        ];
+      };
       update.auto = {
         enable = true;
         onCalendar = "daily";
