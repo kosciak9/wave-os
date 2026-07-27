@@ -5,6 +5,7 @@
     ../../modules/home/git.nix
     ../../modules/home/neovim
     ../../modules/home/starship
+    ../../modules/home/zsh
     ./aerospace.nix
   ];
 
