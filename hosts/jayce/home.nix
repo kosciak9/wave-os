@@ -130,6 +130,7 @@ in
       opencode
       playerctl
       pulseaudio
+      pwvucontrol
       ripgrep
       trash-cli
       vicinae
