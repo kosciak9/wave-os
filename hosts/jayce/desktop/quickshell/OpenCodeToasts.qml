@@ -96,7 +96,7 @@ Scope {
                     }
 
                     width: toastColumn.width
-                    implicitHeight: toastContent.implicitHeight + 40
+                    implicitHeight: toastContent.implicitHeight + 24
                     radius: 8
                     color: toastPointer.containsMouse ? "#352A1F" : "#1F1A14"
                     border.width: 1
@@ -122,14 +122,15 @@ Scope {
                             right: parent.right
                             margins: 0
                         }
-                        anchors.leftMargin: 18
-                        anchors.rightMargin: 18
-                        anchors.topMargin: 20
+                        anchors.leftMargin: 16
+                        anchors.rightMargin: 16
+                        anchors.topMargin: 12
                         spacing: 16
 
                         Image {
                             width: 28
                             height: 28
+                            anchors.verticalCenter: parent.verticalCenter
                             source: Quickshell.shellDir + "/assets/opencode.svg"
                             fillMode: Image.PreserveAspectFit
                             smooth: true
