@@ -1,6 +1,6 @@
 # Agent guidance
 
-- Home Manager installs `devenv` and enables direnv's Zsh integration for trusted-repository auto-activation. Keep aliases and plugins in `modules/home/zsh`; do not duplicate or override them in devenv. Run agent commands non-interactively with `devenv shell -- <command>`.
+- Home Manager installs `devenv` and its native Zsh hook for trusted-repository auto-activation. Keep aliases and plugins in `modules/home/zsh`; do not duplicate or override them in devenv. You should have access to all devenv tools, if not - ask user to allow the directory.
 - `devenv.lock` must be generated or updated by devenv, never manually authored.
 - Validate in this order, from cheapest to most expensive: `nix-format`, `nix-format-check`, `nix-lint`, `nix-eval-config`, `nix-flake-check`, then `nix-validate`. Run `devenv test` for full validation.
 - Prefer evaluation before builds. Preserve `flake.lock` during validation by using the provided scripts' `--no-write-lock-file` flags.
