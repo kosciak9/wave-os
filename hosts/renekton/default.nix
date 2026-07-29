@@ -78,7 +78,6 @@
     zoxide
     zsh
     yadm
-    tmux
   ];
 
   fonts.packages = [

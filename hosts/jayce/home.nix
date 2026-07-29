@@ -164,36 +164,6 @@ in
       };
     };
     password-store.enable = true;
-    tmux = {
-      enable = true;
-      baseIndex = 1;
-      escapeTime = 10;
-      historyLimit = 50000;
-      keyMode = "vi";
-      prefix = "C-a";
-      terminal = "screen-256color";
-      plugins = with pkgs.tmuxPlugins; [
-        sensible
-        prefix-highlight
-      ];
-      extraConfig = ''
-        bind h select-pane -L
-        bind l select-pane -R
-        bind k select-pane -U
-        bind j select-pane -D
-        set-option -g allow-rename off
-        set-option -g focus-events on
-        set-option -sa terminal-features ',xterm-ghostty:RGB'
-        set -g status-style bg='#1f1f28'
-        set -g @prefix_highlight_prefix_prompt ' λ '
-        set -g @prefix_highlight_fg '#FF9E3B'
-        set -g @prefix_highlight_bg 'black'
-        set -g status-left '#[fg=#54546D]  #S  '
-        set -g status-right '#{prefix_highlight}'
-        set -g window-status-format '#[fg=#49443C] #I '
-        set -g window-status-current-format '#[fg=black,bg=#727169] #I '
-      '';
-    };
     hyprlock = {
       enable = true;
       settings = {
