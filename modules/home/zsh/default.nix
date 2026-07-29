@@ -29,7 +29,6 @@
         ignoreAllDups = true;
         ignoreDups = true;
         ignorePatterns = [
-          "ls*"
           "cd*"
           "pwd*"
           "exit*"
