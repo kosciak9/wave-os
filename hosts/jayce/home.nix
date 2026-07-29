@@ -128,7 +128,6 @@ in
       noto-fonts
       noto-fonts-color-emoji
       obsidian
-      opencode
       playerctl
       pulseaudio
       pwvucontrol

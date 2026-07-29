@@ -44,12 +44,6 @@
   };
 
   nixpkgs.config.allowUnfree = true;
-  nixpkgs.overlays = [
-    (final: _prev: {
-      opencode = final.callPackage ../../packages/opencode-darwin.nix { };
-    })
-  ];
-
   environment.systemPackages = with pkgs; [
     bat
     delta
@@ -61,7 +55,6 @@
     neovide
     neovim
     nodejs
-    opencode
     fzf
     git
     gnupg
@@ -77,7 +70,6 @@
     (callPackage ../../packages/weave.nix { })
     zoxide
     zsh
-    yadm
   ];
 
   fonts.packages = [

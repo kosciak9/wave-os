@@ -4,6 +4,7 @@
     ../../modules/home/ghostty
     ../../modules/home/git.nix
     ../../modules/home/neovim
+    ../../modules/home/opencode
     ../../modules/home/starship
     ../../modules/home/zsh
     ./aerospace.nix

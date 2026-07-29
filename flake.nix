@@ -62,9 +62,13 @@
         inherit system;
         config.allowUnfree = true;
       };
+      darwinOpencodeOverlay = final: _prev: {
+        opencode = final.callPackage ./packages/opencode-darwin.nix { };
+      };
       darwinPkgs = import nixpkgs {
         system = darwinSystem;
         config.allowUnfree = true;
+        overlays = [ darwinOpencodeOverlay ];
       };
       kanagawa-kvantum = pkgs.callPackage ./packages/kanagawa-kvantum.nix {
         src = inputs.kanagawa-kvantum;
@@ -104,6 +108,7 @@
           determinate.darwinModules.default
           home-manager.darwinModules.home-manager
           ./hosts/renekton/default.nix
+          (_: { nixpkgs.overlays = [ darwinOpencodeOverlay ]; })
           (_: {
             home-manager = {
               useGlobalPkgs = true;
