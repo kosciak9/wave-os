@@ -4,6 +4,9 @@
 # Feel free to omit keys that you don't use in your config.
 # If the key is absent in your config the default value is taken from this config
 
+# Config version
+config-version = 2
+
 # You can use it to add commands that run after login to macOS user session.
 # 'start-at-login' needs to be 'true' for 'after-login-command' to work
 # Available commands: https://nikitabobko.github.io/AeroSpace/commands.html
@@ -50,6 +53,9 @@ gaps.outer.bottom =     16
 gaps.outer.top =        16
 gaps.outer.right =      16
 
+# Workspaces that stay open even when empty
+persistent-workspaces = ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
+
 # Visual indent makes it easier to understand that containers of the same orientation are nested.
 # If you have 'enable-normalization-opposite-orientation-for-nested-containers' enabled then
 # there is no way to observe the indent
@@ -59,6 +65,7 @@ gaps.outer.right =      16
 # See: https://nikitabobko.github.io/AeroSpace/guide.html#binding-modes
 # 'main' binding mode must be always presented
 [mode.main.binding]
+cmd-space = 'exec-and-forget vicinae toggle'
 
 # All possible keys:
 # - Letters.        a, b, c, ..., z

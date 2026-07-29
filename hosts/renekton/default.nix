@@ -1,6 +1,10 @@
 { pkgs, ... }:
 
 {
+  imports = [
+    ./spotlight.nix
+  ];
+
   system = {
     primaryUser = "kosciak";
     stateVersion = 1;

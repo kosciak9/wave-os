@@ -3,6 +3,10 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    # Vicinae intentionally keeps its release-tested Nixpkgs pin; following repository Nixpkgs triggers the known qtkeychain Darwin ld64 crash.
+    vicinae = {
+      url = "github:vicinaehq/vicinae/v0.24.0";
+    };
     nix-darwin = {
       url = "github:nix-darwin/nix-darwin";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -114,6 +118,7 @@
               useGlobalPkgs = true;
               useUserPackages = true;
               extraSpecialArgs = {
+                inherit inputs;
                 ghosttyCursorShaders = inputs.ghostty-cursor-shaders;
               };
               users.kosciak = ./hosts/renekton/home.nix;
@@ -138,6 +143,7 @@
       homeConfigurations."kosciak@renekton" = home-manager.lib.homeManagerConfiguration {
         pkgs = darwinPkgs;
         extraSpecialArgs = {
+          inherit inputs;
           ghosttyCursorShaders = inputs.ghostty-cursor-shaders;
         };
         modules = [

@@ -88,6 +88,7 @@ in
     ../../modules/home/neovim
     ../../modules/home/opencode
     ../../modules/home/starship
+    ../../modules/home/vicinae
     ../../modules/home/zsh
   ];
 
@@ -133,7 +134,6 @@ in
       pwvucontrol
       ripgrep
       trash-cli
-      vicinae
       wl-clipboard
       worktrunk
       inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
@@ -378,19 +378,6 @@ in
     style.name = "kvantum";
   };
   systemd.user.services = {
-    vicinae = {
-      Unit = {
-        Description = "Vicinae launcher daemon";
-        After = [ "graphical-session.target" ];
-        PartOf = [ "graphical-session.target" ];
-      };
-      Service = {
-        ExecStart = "${lib.getExe pkgs.vicinae} server --replace";
-        Restart = "on-failure";
-      };
-      Install.WantedBy = [ "graphical-session.target" ];
-    };
-
     quickshell.Unit = {
       After = lib.mkForce [ "wayland-session-waitenv.service" ];
       PartOf = [ sessionTarget ];

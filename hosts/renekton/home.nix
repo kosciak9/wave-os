@@ -6,6 +6,7 @@
     ../../modules/home/neovim
     ../../modules/home/opencode
     ../../modules/home/starship
+    ../../modules/home/vicinae
     ../../modules/home/zsh
     ./aerospace.nix
   ];
