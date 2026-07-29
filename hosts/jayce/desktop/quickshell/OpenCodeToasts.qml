@@ -128,8 +128,8 @@ Scope {
                         spacing: 16
 
                         Image {
-                            width: 28
-                            height: 28
+                            width: 24
+                            height: 24
                             anchors.verticalCenter: parent.verticalCenter
                             source: Quickshell.shellDir + "/assets/opencode.svg"
                             fillMode: Image.PreserveAspectFit
@@ -148,7 +148,7 @@ Scope {
                                 color: Theme.surimiOrange
                                 elide: Text.ElideRight
                                 font.family: Theme.fontFamily
-                                font.pixelSize: 10
+                                font.pixelSize: 8
                                 font.weight: Font.Bold
                                 font.letterSpacing: 1
                             }
@@ -162,7 +162,7 @@ Scope {
                                 maximumLineCount: 4
                                 elide: Text.ElideRight
                                 font.family: Theme.fontFamily
-                                font.pixelSize: 13
+                                font.pixelSize: 11
                                 font.weight: Font.Bold
                             }
                         }
