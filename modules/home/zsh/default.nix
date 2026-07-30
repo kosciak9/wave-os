@@ -112,6 +112,7 @@
           export MIX_OS_DEPS_COMPILE_PARTITION_COUNT=$(( $(cpu_count) / 2 ))
 
           oc() {
+            export OPENCODE_SERVER_USERNAME="''${OPENCODE_SERVER_USERNAME:-opencode}"
             export OPENCODE_SERVER_PASSWORD="''${OPENCODE_SERVER_PASSWORD:-$(pass show opencode.localhost/opencode)}"
             command opencode attach "$OPENCODE_ATTACH_TARGET" --dir "$PWD" "$@"
           }

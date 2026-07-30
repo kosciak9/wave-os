@@ -2,6 +2,7 @@
 
 {
   imports = [
+    ../../modules/caddy/darwin.nix
     ./spotlight.nix
   ];
 

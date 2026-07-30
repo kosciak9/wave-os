@@ -1,0 +1,19 @@
+{
+	admin 127.0.0.1:2019
+	skip_install_trust
+	pki {
+		ca local {
+			name "Wave OS Development CA"
+			root {
+				format pem_file
+				cert {$WAVE_DEVELOPMENT_CA_CERT}
+				key {$WAVE_DEVELOPMENT_CA_KEY}
+			}
+		}
+	}
+}
+
+https://opencode.localhost {
+	tls internal
+	reverse_proxy 127.0.0.1:51199
+}

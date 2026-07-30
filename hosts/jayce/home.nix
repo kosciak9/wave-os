@@ -87,6 +87,7 @@ in
     ../../modules/home/git.nix
     ../../modules/home/neovim
     ../../modules/home/opencode
+    ../../modules/home/opencode/linux.nix
     ../../modules/home/starship
     ../../modules/home/vicinae
     ../../modules/home/zsh

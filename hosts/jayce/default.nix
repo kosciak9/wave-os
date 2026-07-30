@@ -8,7 +8,10 @@ let
 in
 
 {
-  imports = [ ./hardware.nix ];
+  imports = [
+    ../../modules/caddy/linux.nix
+    ./hardware.nix
+  ];
 
   nix.settings.experimental-features = [
     "nix-command"
