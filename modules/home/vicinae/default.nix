@@ -5,12 +5,19 @@
   ...
 }:
 
+let
+  passExtension =
+    inputs.vicinae-extensions.packages.${pkgs.stdenv.hostPlatform.system}.pass.overrideAttrs
+      (oldAttrs: {
+        patches = (oldAttrs.patches or [ ]) ++ [ ./pass-gpg-agent.patch ];
+      });
+in
 {
   imports = [ inputs.vicinae.homeManagerModules.default ];
 
   programs.vicinae = {
     enable = true;
-    extensions = [ ];
+    extensions = [ passExtension ];
     settings = {
       font = {
         normal = {
@@ -36,10 +43,22 @@
     systemd = lib.mkIf pkgs.stdenv.isLinux {
       enable = true;
       autoStart = true;
+      environment.PATH = "${
+        lib.makeBinPath [
+          pkgs.gnupg
+          pkgs.oath-toolkit
+        ]
+      }:/run/current-system/sw/bin:/usr/bin:/bin:/usr/sbin:/sbin";
     };
     launchd = lib.mkIf pkgs.stdenv.isDarwin {
       enable = true;
       autoStart = true;
+      environment.PATH = "${
+        lib.makeBinPath [
+          pkgs.gnupg
+          pkgs.oath-toolkit
+        ]
+      }:/run/current-system/sw/bin:/usr/bin:/bin:/usr/sbin:/sbin";
     };
   };
 }

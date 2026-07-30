@@ -1,0 +1,53 @@
+diff --git a/package.json b/package.json
+--- a/package.json
++++ b/package.json
+@@ -31,12 +31,4 @@
+       "required": true
+     },
+-    {
+-      "name": "gpgPassphrase",
+-      "type": "password",
+-      "title": "GPG Passphrase (optional)",
+-      "description": "Used with loopback mode if your key requires a passphrase",
+-      "default": "",
+-      "required": false
+-    },
+     {
+       "name": "additionalPath",
+       "type": "textfield",
+diff --git a/src/services/passctl.ts b/src/services/passctl.ts
+--- a/src/services/passctl.ts
++++ b/src/services/passctl.ts
+@@ -6,12 +6,4 @@
+-export async function isGpgUnlocked(preferences: Preferences) {
+-  try {
+-    await runCommand(
+-      "sh",
+-      ["-c", "echo test | gpg --clearsign --batch --yes --pinentry-mode=error"],
+-      preferences,
+-    );
+-    return false;
+-  } catch {
+-    return true;
+-  }
+-}
++export async function isGpgUnlocked(_preferences: Preferences) {
++  // Actual decryption delegates unlock handling to gpg-agent/pinentry.
++  return false;
++}
+@@ -31,7 +23,7 @@ export async function decryptPasswordEntry(
+ export async function decryptPasswordEntry(
+   entry: string,
+   preferences: Preferences,
+-  gpgPassword?: string,
++  _gpgPassword?: string,
+ ): Promise<string> {
+   const filePath = path.join(preferences.passwordStorePath, `${entry}.gpg`);
+   const stats = await safeStat(filePath);
+@@ -42,5 +34 @@ export async function decryptPasswordEntry(
+-  const args = ["--batch", "--yes"];
+-  if (gpgPassword) {
+-    args.push("--pinentry-mode=loopback", "--passphrase", gpgPassword);
+-  }
+-  args.push("-d", filePath);
++  const args = ["--batch", "--yes", "-d", filePath];
