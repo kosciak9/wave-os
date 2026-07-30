@@ -47,16 +47,10 @@ let
       ) settings
     )
     + "\n";
-  themeId = "{7efc2a80-496f-49b1-88db-4ddd7d312757}";
-  themeXpi = pkgs.fetchurl {
-    url = "https://addons.mozilla.org/firefox/downloads/file/4847676/kanagawa_wave_dark_theme-2.5.xpi";
-    hash = "sha256-V9qf5D4sN6Xp7qrzUBKOlMNzhp4Eo0WsuF3JE3KCSVM=";
-  };
   profileIniAbsolutePath = "${config.home.homeDirectory}/${profilesIniPath}";
   managedFilePaths = [
     profileIniAbsolutePath
     "${config.home.homeDirectory}/${profilePath}/user.js"
-    "${config.home.homeDirectory}/${profilePath}/extensions/${themeId}.xpi"
   ]
   ++ lib.optional (
     cfg.userChrome != null
@@ -150,10 +144,6 @@ in
         };
         "${profilePath}/user.js" = {
           text = userJs;
-          force = true;
-        };
-        "${profilePath}/extensions/${themeId}.xpi" = {
-          source = themeXpi;
           force = true;
         };
         "${profilePath}/chrome/userChrome.css" = mkIf (cfg.userChrome != null) {
