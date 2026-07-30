@@ -45,7 +45,6 @@
         plugins = [
           "git"
           "pass"
-          "systemd"
         ];
       };
       setOptions = [
@@ -56,18 +55,14 @@
         "INC_APPEND_HISTORY"
       ];
       shellAliases = {
-        caffeinate = "echo 'preventing idle and lid sleep' && systemd-inhibit --what=idle:sleep:handle-lid-switch --who=caffeinate --why=Caffeinate sleep infinity";
-        cp = "cp -rv --reflink=auto";
         gcawip = "git commit --amend --no-verify -m wip";
         gcwip = "git commit --no-verify -m wip";
         l = "eza --git -h -g -H -l";
         n = "nvim";
         nvimrc = "$EDITOR ~/projects/personal/wave-os/modules/home/neovim/config/init.lua";
-        rm = "echo 'This is not the command you are looking for.'; false";
         sudo = "sudo ";
         vim = "nvim";
         vimrc = "$EDITOR ~/projects/personal/wave-os/modules/home/neovim/config/init.lua";
-        sc-suspend = "systemctl suspend";
         zshrc = "$EDITOR ~/projects/personal/wave-os/modules/home/zsh/default.nix";
       };
       initContent = lib.mkMerge [

@@ -83,6 +83,8 @@ symbol = "󱁢 "
 
 [nix_shell]
 symbol = " "
+format = "[${symbol}devenv](bold blue) "
+heuristic = false
 
 [container]
 symbol = ""

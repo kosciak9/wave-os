@@ -50,30 +50,18 @@
 
   nixpkgs.config.allowUnfree = true;
   environment.systemPackages = with pkgs; [
-    bat
-    delta
-    difftastic
-    eza
     fd
-    gh
-    httpie
     neovide
     neovim
     nodejs
-    fzf
-    git
     gnupg
-    infisical
     pass
     pinentry_mac
     podman
     ripgrep
-    starship
     syncthing-macos
     tailscale
     tree-sitter
-    (callPackage ../../packages/weave.nix { })
-    zoxide
     zsh
   ];
 

@@ -82,6 +82,7 @@ let
 in
 {
   imports = [
+    ../../modules/home/cli
     ../../modules/home/devenv
     ../../modules/home/ghostty
     ../../modules/home/git.nix
@@ -90,7 +91,9 @@ in
     ../../modules/home/opencode/linux.nix
     ../../modules/home/starship
     ../../modules/home/vicinae
+    ../../modules/home/zoxide
     ../../modules/home/zsh
+    ../../modules/home/zsh/linux.nix
   ];
 
   home = {
@@ -136,7 +139,6 @@ in
       ripgrep
       trash-cli
       wl-clipboard
-      worktrunk
       inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
     ];
   };
@@ -263,10 +265,6 @@ in
           }
         ];
       };
-    };
-    zoxide = {
-      enable = true;
-      enableZshIntegration = true;
     };
   };
 

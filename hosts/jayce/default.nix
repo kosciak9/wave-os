@@ -242,13 +242,10 @@ in
   environment = {
     sessionVariables.NIXOS_OZONE_WL = "1";
     systemPackages = with pkgs; [
-      git
       gnupg
       pinentry-gnome3
       podman-compose
       qmk_hid
-      vim
-      wget
     ];
   };
 
