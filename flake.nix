@@ -62,17 +62,18 @@
     let
       system = "x86_64-linux";
       darwinSystem = "aarch64-darwin";
+      opencodeOverlay = final: _prev: {
+        opencode = final.callPackage ./packages/opencode-darwin.nix { };
+      };
       pkgs = import nixpkgs {
         inherit system;
         config.allowUnfree = true;
-      };
-      darwinOpencodeOverlay = final: _prev: {
-        opencode = final.callPackage ./packages/opencode-darwin.nix { };
+        overlays = [ opencodeOverlay ];
       };
       darwinPkgs = import nixpkgs {
         system = darwinSystem;
         config.allowUnfree = true;
-        overlays = [ darwinOpencodeOverlay ];
+        overlays = [ opencodeOverlay ];
       };
       kanagawa-kvantum = pkgs.callPackage ./packages/kanagawa-kvantum.nix {
         src = inputs.kanagawa-kvantum;
@@ -88,6 +89,7 @@
           nixos-hardware.nixosModules.framework-16-7040-amd
           ./hosts/jayce/default.nix
           home-manager.nixosModules.home-manager
+          (_: { nixpkgs.overlays = [ opencodeOverlay ]; })
           (_: {
             home-manager = {
               useGlobalPkgs = true;
@@ -112,7 +114,7 @@
           determinate.darwinModules.default
           home-manager.darwinModules.home-manager
           ./hosts/renekton/default.nix
-          (_: { nixpkgs.overlays = [ darwinOpencodeOverlay ]; })
+          (_: { nixpkgs.overlays = [ opencodeOverlay ]; })
           (_: {
             home-manager = {
               useGlobalPkgs = true;

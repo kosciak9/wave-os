@@ -8,19 +8,33 @@
   lib,
 }:
 
+let
+  version = "1.18.9";
+  release =
+    if stdenvNoCC.hostPlatform.isDarwin then
+      {
+        asset = "opencode-darwin-arm64.zip";
+        hash = "sha256-b5mLfau5QluzSP0NiK/rkqFEIncSMc7JsPQ3S5Rzl+Y=";
+      }
+    else
+      {
+        asset = "opencode-linux-x64.tar.gz";
+        hash = "sha256-oPpLe4vay9AT55pfadQiDTa1Rc0+opa6dl8wFvpQG1s=";
+      };
+in
 stdenvNoCC.mkDerivation {
   pname = "opencode";
-  version = "1.18.3";
+  inherit version;
 
   src = fetchurl {
-    url = "https://github.com/anomalyco/opencode/releases/download/v1.18.3/opencode-darwin-arm64.zip";
-    hash = "sha256-lG9isVVji5ERRLe+9SDuSmRC9pYpeQeHNGO8o1JOQO8=";
+    url = "https://github.com/anomalyco/opencode/releases/download/v${version}/${release.asset}";
+    inherit (release) hash;
   };
 
   nativeBuildInputs = [
     makeBinaryWrapper
-    unzip
-  ];
+  ]
+  ++ lib.optionals stdenvNoCC.hostPlatform.isDarwin [ unzip ];
 
   dontUnpack = true;
   dontStrip = true;
@@ -28,7 +42,7 @@ stdenvNoCC.mkDerivation {
   installPhase = ''
     runHook preInstall
 
-    unzip -q $src
+    ${if stdenvNoCC.hostPlatform.isDarwin then "unzip -q $src" else "tar -xzf $src"}
     install -Dm755 opencode $out/bin/.opencode-unwrapped
     makeBinaryWrapper $out/bin/.opencode-unwrapped $out/bin/opencode \
       --prefix PATH : ${
@@ -47,7 +61,10 @@ stdenvNoCC.mkDerivation {
     homepage = "https://github.com/anomalyco/opencode";
     license = lib.licenses.mit;
     mainProgram = "opencode";
-    platforms = [ "aarch64-darwin" ];
+    platforms = [
+      "aarch64-darwin"
+      "x86_64-linux"
+    ];
     sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
   };
 }
