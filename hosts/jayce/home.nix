@@ -140,11 +140,8 @@ in
       ripgrep
       trash-cli
       wl-clipboard
-<<<<<<< HEAD
       inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
-=======
       worktrunk
->>>>>>> 2a5d563 (feat(home): manage zen settings across hosts)
     ];
   };
 

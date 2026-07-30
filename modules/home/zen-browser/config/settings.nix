@@ -10,4 +10,5 @@
   "zen.view.compact.hide-toolbar" = false;
   "zen.view.compact.animate-sidebar" = true;
   "zen.view.compact.show-sidebar-and-toolbar-on-hover" = true;
+  "zen.keyboard.shortcuts.version" = 19;
 }
