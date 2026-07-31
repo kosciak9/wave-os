@@ -26,6 +26,7 @@
       enable = true;
       package = null;
       profileName = "wave";
+      installId = "6ED35B3CA1B5D3AF";
     };
     ghostty.settings = {
       macos-titlebar-style = "hidden";

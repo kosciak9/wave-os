@@ -68,6 +68,12 @@ let
     IsRelative=1
     Path=${profileIniPath}
     Default=1
+    ${lib.optionalString (cfg.installId != null) ''
+
+      [Install${cfg.installId}]
+      Default=${profileIniPath}
+      Locked=1
+    ''}
   '';
 in
 {
@@ -84,6 +90,12 @@ in
       type = types.strMatching "^[A-Za-z0-9][A-Za-z0-9._-]*$";
       default = "wave";
       description = "Deterministic Zen profile name.";
+    };
+
+    installId = mkOption {
+      type = types.nullOr (types.strMatching "^[0-9A-F]+$");
+      default = null;
+      description = "Optional Zen installation identifier used to select the managed profile.";
     };
 
     settings = mkOption {
