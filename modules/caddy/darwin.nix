@@ -26,7 +26,7 @@ in
   launchd.daemons.caddy.serviceConfig = {
     EnvironmentVariables = {
       HOME = "/var/lib/caddy";
-      WAVE_DEVELOPMENT_CA_CERT = toString developmentRootCa;
+      WAVE_DEVELOPMENT_CA_CERT = "${developmentRootCa}";
       WAVE_DEVELOPMENT_CA_KEY = "/Users/kosciak/.config/secrets/development-ca/root.key";
       XDG_CONFIG_HOME = "/var/lib/caddy/config";
       XDG_DATA_HOME = "/var/lib/caddy";
