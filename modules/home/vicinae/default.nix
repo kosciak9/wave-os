@@ -1,5 +1,6 @@
 {
   inputs,
+  config,
   lib,
   pkgs,
   ...
@@ -107,6 +108,7 @@ in
       autoStart = true;
       environment.PATH = "${
         lib.makeBinPath [
+          config.home.path
           pkgs.gnupg
           pkgs.oath-toolkit
         ]
@@ -117,6 +119,7 @@ in
       autoStart = true;
       environment.PATH = "${
         lib.makeBinPath [
+          config.home.path
           pkgs.gnupg
           pkgs.oath-toolkit
         ]
