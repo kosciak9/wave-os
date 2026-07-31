@@ -1,6 +1,8 @@
 {
-  stdenvNoCC,
+  stdenv,
+  autoPatchelfHook,
   fetchurl,
+  glibc,
   makeBinaryWrapper,
   unzip,
   ripgrep,
@@ -11,7 +13,7 @@
 let
   version = "1.18.9";
   release =
-    if stdenvNoCC.hostPlatform.isDarwin then
+    if stdenv.hostPlatform.isDarwin then
       {
         asset = "opencode-darwin-arm64.zip";
         hash = "sha256-b5mLfau5QluzSP0NiK/rkqFEIncSMc7JsPQ3S5Rzl+Y=";
@@ -22,7 +24,7 @@ let
         hash = "sha256-oPpLe4vay9AT55pfadQiDTa1Rc0+opa6dl8wFvpQG1s=";
       };
 in
-stdenvNoCC.mkDerivation {
+stdenv.mkDerivation {
   pname = "opencode";
   inherit version;
 
@@ -34,7 +36,10 @@ stdenvNoCC.mkDerivation {
   nativeBuildInputs = [
     makeBinaryWrapper
   ]
-  ++ lib.optionals stdenvNoCC.hostPlatform.isDarwin [ unzip ];
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [ unzip ]
+  ++ lib.optionals stdenv.hostPlatform.isLinux [ autoPatchelfHook ];
+
+  buildInputs = lib.optionals stdenv.hostPlatform.isLinux [ glibc ];
 
   dontUnpack = true;
   dontStrip = true;
@@ -42,7 +47,7 @@ stdenvNoCC.mkDerivation {
   installPhase = ''
     runHook preInstall
 
-    ${if stdenvNoCC.hostPlatform.isDarwin then "unzip -q $src" else "tar -xzf $src"}
+    ${if stdenv.hostPlatform.isDarwin then "unzip -q $src" else "tar -xzf $src"}
     install -Dm755 opencode $out/bin/.opencode-unwrapped
     makeBinaryWrapper $out/bin/.opencode-unwrapped $out/bin/opencode \
       --prefix PATH : ${
