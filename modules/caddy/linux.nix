@@ -8,7 +8,7 @@ in
 
   services.caddy = {
     enable = true;
-    extraConfig = builtins.readFile ./Caddyfile;
+    configFile = ./Caddyfile;
   };
 
   systemd.services.caddy = {
