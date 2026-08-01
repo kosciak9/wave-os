@@ -3,6 +3,7 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    devenv-nixpkgs.url = "github:NixOS/nixpkgs/b266e7d2fc3562d97a8b5ed91cc914e8dac4a4c1";
     # Vicinae intentionally keeps its release-tested Nixpkgs pin; following repository Nixpkgs triggers the known qtkeychain Darwin ld64 crash.
     vicinae = {
       url = "github:vicinaehq/vicinae/v0.24.0";
@@ -67,18 +68,19 @@
     let
       system = "x86_64-linux";
       darwinSystem = "aarch64-darwin";
-      opencodeOverlay = final: _prev: {
+      packageOverlay = final: _prev: {
         opencode = final.callPackage ./packages/opencode-darwin.nix { };
+        kanagawa-gtk-theme = final.callPackage ./packages/kanagawa-gtk-theme.nix { };
       };
       pkgs = import nixpkgs {
         inherit system;
         config.allowUnfree = true;
-        overlays = [ opencodeOverlay ];
+        overlays = [ packageOverlay ];
       };
       darwinPkgs = import nixpkgs {
         system = darwinSystem;
         config.allowUnfree = true;
-        overlays = [ opencodeOverlay ];
+        overlays = [ packageOverlay ];
       };
       kanagawa-kvantum = pkgs.callPackage ./packages/kanagawa-kvantum.nix {
         src = inputs.kanagawa-kvantum;
@@ -94,7 +96,7 @@
           nixos-hardware.nixosModules.framework-16-7040-amd
           ./hosts/jayce/default.nix
           home-manager.nixosModules.home-manager
-          (_: { nixpkgs.overlays = [ opencodeOverlay ]; })
+          (_: { nixpkgs.overlays = [ packageOverlay ]; })
           (_: {
             home-manager = {
               useGlobalPkgs = true;
@@ -119,7 +121,7 @@
           determinate.darwinModules.default
           home-manager.darwinModules.home-manager
           ./hosts/renekton/default.nix
-          (_: { nixpkgs.overlays = [ opencodeOverlay ]; })
+          (_: { nixpkgs.overlays = [ packageOverlay ]; })
           (_: {
             home-manager = {
               useGlobalPkgs = true;

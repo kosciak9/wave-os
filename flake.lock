@@ -59,6 +59,22 @@
         "url": "https://install.determinate.systems/determinate-nixd/tag/v3.21.8/x86_64-linux"
       }
     },
+    "devenv-nixpkgs": {
+      "locked": {
+        "lastModified": 1785264067,
+        "narHash": "sha256-HevLsehJQgz1xpoXK+Gk+fQTIMGZnnrp39J+1O3LvJc=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "b266e7d2fc3562d97a8b5ed91cc914e8dac4a4c1",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "b266e7d2fc3562d97a8b5ed91cc914e8dac4a4c1",
+        "type": "github"
+      }
+    },
     "flake-compat": {
       "flake": false,
       "locked": {
@@ -380,6 +396,7 @@
     "root": {
       "inputs": {
         "determinate": "determinate",
+        "devenv-nixpkgs": "devenv-nixpkgs",
         "ghostty-cursor-shaders": "ghostty-cursor-shaders",
         "home-manager": "home-manager",
         "kanagawa-kvantum": "kanagawa-kvantum",

@@ -1,7 +1,7 @@
-{ pkgs, ... }:
+{ inputs, pkgs, ... }:
 
 {
-  home.packages = [ pkgs.devenv ];
+  home.packages = [ inputs.devenv-nixpkgs.legacyPackages.${pkgs.stdenv.hostPlatform.system}.devenv ];
 
   programs.direnv = {
     enable = true;
