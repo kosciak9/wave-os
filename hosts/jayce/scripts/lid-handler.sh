@@ -134,7 +134,7 @@ restore_internal() {
     [[ -s $state_file ]] || return
     trigger_blackout
     write_state "$(jq '.phase = "opening"' "$state_file")"
-    hyprctl eval 'hl.monitor({ output = "eDP-1", mode = "2560x1600@165.000", position = "auto", scale = 1.6, vrr = 1 })' \
+    hyprctl eval 'hl.monitor({ output = "eDP-1", mode = "2560x1600@165.000", position = "auto", scale = 1.6, vrr = 2 })' \
         >/dev/null 2>&1 || true
     for _ in {1..40}; do
         monitor_exists eDP-1 && break

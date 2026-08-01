@@ -5,7 +5,7 @@ hl.monitor({
     mode = "2560x1600@165.000",
     position = "auto",
     scale = 1.6,
-    vrr = 1,
+    vrr = 2,
 })
 
 hl.monitor({
