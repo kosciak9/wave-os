@@ -475,6 +475,9 @@ in
     package = null;
     portalPackage = null;
     systemd.enable = false;
-    extraConfig = builtins.readFile ./desktop/hyprland.lua;
+    extraConfig = ''
+      hl.plugin.load("${pkgs.hyprland-scroll-overview}/lib/scrolloverview.so")
+      ${builtins.readFile ./desktop/hyprland.lua}
+    '';
   };
 }

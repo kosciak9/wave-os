@@ -52,6 +52,11 @@
       url = "github:sahaj-b/ghostty-cursor-shaders";
       flake = false;
     };
+
+    hyprland-scroll-overview = {
+      url = "github:yayuuu/hyprland-scroll-overview/cfc23b194ba9378d1606c7aa73060f6ffbe38445";
+      flake = false;
+    };
   };
 
   outputs =
@@ -68,10 +73,22 @@
     let
       system = "x86_64-linux";
       darwinSystem = "aarch64-darwin";
-      packageOverlay = final: _prev: {
-        opencode = final.callPackage ./packages/opencode-darwin.nix { };
-        kanagawa-gtk-theme = final.callPackage ./packages/kanagawa-gtk-theme.nix { };
-      };
+      packageOverlay =
+        final: prev:
+        {
+          opencode = final.callPackage ./packages/opencode-darwin.nix { };
+          kanagawa-gtk-theme = final.callPackage ./packages/kanagawa-gtk-theme.nix { };
+        }
+        // prev.lib.optionalAttrs prev.stdenv.isLinux {
+          wave-hyprland = prev.hyprland.overrideAttrs (old: {
+            patches = (old.patches or [ ]) ++ [ ./hosts/jayce/desktop/hyprland-niri-parity.patch ];
+          });
+          hyprland-scroll-overview = final.callPackage ./packages/hyprland-scroll-overview.nix {
+            src = inputs.hyprland-scroll-overview;
+            hyprland = final.wave-hyprland;
+            version = inputs.hyprland-scroll-overview.shortRev or "unstable";
+          };
+        };
       pkgs = import nixpkgs {
         inherit system;
         config.allowUnfree = true;

@@ -35,6 +35,14 @@ ShellRoot {
         }
     }
 
+    Variants {
+        model: Quickshell.screens
+
+        delegate: Component {
+            HotCorner {}
+        }
+    }
+
     Blackout {}
 
     OpenCodeToasts {

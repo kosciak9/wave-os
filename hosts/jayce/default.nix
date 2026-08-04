@@ -177,9 +177,7 @@ in
       enable = true;
       withUWSM = true;
       xwayland.enable = true;
-      package = pkgs.hyprland.overrideAttrs (old: {
-        patches = (old.patches or [ ]) ++ [ ./desktop/hyprland-niri-parity.patch ];
-      });
+      package = pkgs.wave-hyprland;
     };
     zsh = {
       enable = true;

@@ -37,6 +37,23 @@ hl.monitor({
 })
 
 hl.config({
+    plugin = {
+        scrolloverview = {
+            scale = 0.5,
+            workspace_gap = 24,
+            layout = "vertical",
+            input = {
+                touchpad_scroll_factor = 10.0,
+                scrolling_mode = 2,
+                scroll_event_delay = 0,
+            },
+            wallpaper = 0,
+            blur = false,
+            shadow = {
+                enabled = false,
+            },
+        },
+    },
     input = {
         kb_layout = "pl",
         repeat_delay = 300,
@@ -650,6 +667,9 @@ hl.bind(mod .. " + RETURN", hl.dsp.exec_cmd("ghostty"))
 hl.bind(mod .. " + SPACE", hl.dsp.exec_cmd("vicinae toggle"))
 hl.bind(mod .. " + ALT + L", hl.dsp.exec_cmd("loginctl lock-session"))
 hl.bind(mod .. " + W", hl.dsp.window.close())
+hl.bind(mod .. " + G", function()
+    hl.plugin.scrolloverview.overview("toggle")
+end)
 
 hl.bind(mod .. " + left", function()
     focusDirection("left")

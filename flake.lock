@@ -190,6 +190,23 @@
         "type": "github"
       }
     },
+    "hyprland-scroll-overview": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784111647,
+        "narHash": "sha256-hjzhIWCmaqVtyCy2ZE1+pM3Q2BvAGuC8zQZSj1AtORA=",
+        "owner": "yayuuu",
+        "repo": "hyprland-scroll-overview",
+        "rev": "cfc23b194ba9378d1606c7aa73060f6ffbe38445",
+        "type": "github"
+      },
+      "original": {
+        "owner": "yayuuu",
+        "repo": "hyprland-scroll-overview",
+        "rev": "cfc23b194ba9378d1606c7aa73060f6ffbe38445",
+        "type": "github"
+      }
+    },
     "kanagawa-kvantum": {
       "flake": false,
       "locked": {
@@ -399,6 +416,7 @@
         "devenv-nixpkgs": "devenv-nixpkgs",
         "ghostty-cursor-shaders": "ghostty-cursor-shaders",
         "home-manager": "home-manager",
+        "hyprland-scroll-overview": "hyprland-scroll-overview",
         "kanagawa-kvantum": "kanagawa-kvantum",
         "nix-darwin": "nix-darwin",
         "nix-flatpak": "nix-flatpak",
