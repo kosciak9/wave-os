@@ -43,7 +43,7 @@ hl.config({
             workspace_gap = 24,
             layout = "vertical",
             input = {
-                touchpad_scroll_factor = 10.0,
+                touchpad_scroll_factor = 20.0,
                 scrolling_mode = 2,
                 scroll_event_delay = 0,
             },
@@ -167,8 +167,8 @@ hl.animation({ leaf = "fadeLayersIn", enabled = true, speed = 1.5, bezier = "nir
 hl.animation({ leaf = "fadeLayersOut", enabled = true, speed = 1.5, bezier = "niriClose" })
 hl.animation({ leaf = "workspaces", enabled = true, speed = 2.9126, bezier = "niriSpring", style = "slidevert" })
 
-hl.gesture({ fingers = 3, direction = "horizontal", action = "scroll_move" })
-hl.gesture({ fingers = 3, direction = "vertical", action = "workspace" })
+hl.gesture({ fingers = 3, direction = "horizontal", action = "scroll_move", scale = 1.8 })
+hl.gesture({ fingers = 3, direction = "vertical", action = "workspace", scale = 1.8 })
 
 local workspaceNames = { "web", "code", "chat", "notes", "music" }
 for index, name in ipairs(workspaceNames) do

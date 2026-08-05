@@ -388,6 +388,7 @@ in
       After = lib.mkForce [ "wayland-session-waitenv.service" ];
       PartOf = [ sessionTarget ];
       ConditionEnvironment = "WAYLAND_DISPLAY";
+      "X-Restart-Triggers" = [ "${./desktop/quickshell}" ];
     };
 
     wave-blackout = {
