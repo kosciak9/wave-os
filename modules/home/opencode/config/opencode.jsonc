@@ -29,6 +29,15 @@
       ],
       "enabled": true,
     },
+    "brave-search": {
+      "type": "local",
+      "command": [
+        "sh",
+        "-c",
+        "BRAVE_API_KEY=$(pass show search.brave.com/mcp-api-key) || exit $?; export BRAVE_API_KEY; exec npx -y @brave/brave-search-mcp-server@2.1.0 --transport stdio",
+      ],
+      "enabled": true,
+    },
     "context7": {
       "type": "local",
       "command": [
