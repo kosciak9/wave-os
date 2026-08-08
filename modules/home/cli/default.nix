@@ -1,6 +1,8 @@
-{ pkgs, ... }:
+{ inputs, pkgs, ... }:
 
 let
+  # Mirror the AUR package's core dependencies so optional database drivers stay optional.
+  sqlit = inputs.sqlit.lib.${pkgs.stdenv.hostPlatform.system}.makeSqlit { };
   weave = pkgs.callPackage ../../../packages/weave.nix { };
   worktrunk = pkgs.worktrunk.overrideAttrs {
     # TODO: Re-enable checks when Worktrunk process-table tests support Darwin sandboxes.
@@ -15,6 +17,7 @@ in
     gh
     httpie
     infisical
+    sqlit
     weave
     worktrunk
   ];
