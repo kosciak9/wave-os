@@ -51,7 +51,7 @@ Scope {
         visible: root.targetScreen !== null && toastModel.count > 0
         color: "transparent"
         implicitWidth: 336
-        implicitHeight: toastColumn.implicitHeight + 16
+        implicitHeight: toastColumn.height + 16
         exclusionMode: ExclusionMode.Ignore
 
         anchors {
@@ -73,7 +73,23 @@ Scope {
                 margins: 8
             }
             width: 320
+            height: implicitHeight
             spacing: 8
+
+            Behavior on height {
+                NumberAnimation {
+                    duration: Theme.normalDuration
+                    easing.type: Easing.OutCubic
+                }
+            }
+
+            move: Transition {
+                NumberAnimation {
+                    properties: "y"
+                    duration: Theme.normalDuration
+                    easing.type: Easing.OutCubic
+                }
+            }
 
             Repeater {
                 model: toastModel
@@ -86,11 +102,13 @@ Scope {
                     required property string stageName
                     required property string messageText
                     property bool shown: false
+                    property bool entered: false
 
                     function dismiss(): void {
                         if (!shown)
                             return
 
+                        entered = false
                         shown = false
                         removeTimer.start()
                     }
@@ -102,15 +120,24 @@ Scope {
                     border.width: 1
                     border.color: Theme.surimiOrange
                     opacity: shown ? 1 : 0
+                    transform: Translate {
+                        y: toast.entered ? 0 : 8
+                        Behavior on y {
+                            NumberAnimation { duration: Theme.slowDuration; easing.type: Easing.OutCubic }
+                        }
+                    }
 
-                    Component.onCompleted: shown = true
+                    Component.onCompleted: {
+                        entered = true
+                        shown = true
+                    }
 
                     Behavior on color {
-                        ColorAnimation { duration: 150 }
+                        ColorAnimation { duration: Theme.normalDuration }
                     }
 
                     Behavior on opacity {
-                        NumberAnimation { duration: 100 }
+                        NumberAnimation { duration: Theme.normalDuration }
                     }
 
                     Row {
@@ -184,7 +211,7 @@ Scope {
 
                     Timer {
                         id: removeTimer
-                        interval: 100
+                        interval: Theme.slowDuration
                         repeat: false
                         onTriggered: root.dismissToast(toast.toastId)
                     }

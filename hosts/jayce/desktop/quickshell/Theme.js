@@ -15,3 +15,6 @@ var carpYellow = "#E6C384"
 var surimiOrange = "#FFA066"
 var waveRed = "#E46876"
 var fontFamily = "OverpassM Nerd Font Mono"
+var fastDuration = 90
+var normalDuration = 150
+var slowDuration = 220

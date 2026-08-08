@@ -13,6 +13,7 @@ PanelWindow {
     property string label: ""
     property real value: 0
     property bool muted: false
+    property bool fadingOut: true
 
     function showVolume(data) {
         const match = data.match(/Volume:\s+([0-9.]+)/)
@@ -22,6 +23,7 @@ PanelWindow {
         label = data.includes("MUTED") ? "MUTED" : "VOLUME"
         value = Math.max(0, Math.min(1, Number(match[1])))
         muted = data.includes("MUTED")
+        fadingOut = false
         visible = true
         hideTimer.restart()
     }
@@ -34,6 +36,7 @@ PanelWindow {
         label = "BRIGHTNESS"
         value = Math.max(0, Math.min(1, Number(match[1]) / 100))
         muted = false
+        fadingOut = false
         visible = true
         hideTimer.restart()
     }
@@ -44,7 +47,6 @@ PanelWindow {
     implicitWidth: 320
     implicitHeight: 76
     exclusionMode: ExclusionMode.Ignore
-
     anchors {
         bottom: true
     }
@@ -70,7 +72,7 @@ PanelWindow {
     Timer {
         id: hideTimer
         interval: 1400
-        onTriggered: root.visible = false
+        onTriggered: root.fadingOut = true
     }
 
     Rectangle {
@@ -78,8 +80,24 @@ PanelWindow {
         anchors.fill: parent
         radius: 8
         color: Theme.sumiInk0
+        opacity: root.fadingOut ? 0 : 1
         border.width: 1
         border.color: Theme.sumiInk3
+        onOpacityChanged: {
+            if (root.fadingOut && root.visible && opacity <= 0.01)
+                root.visible = false
+        }
+
+        Behavior on opacity {
+            NumberAnimation { duration: Theme.normalDuration; easing.type: Easing.OutCubic }
+        }
+        transform: Translate {
+            id: slideTransform
+            y: root.fadingOut ? 10 : 0
+            Behavior on y {
+                NumberAnimation { duration: Theme.normalDuration; easing.type: Easing.OutCubic }
+            }
+        }
 
         RowLayout {
             anchors.fill: parent
@@ -120,7 +138,7 @@ PanelWindow {
                         color: root.muted ? Theme.waveRed : Theme.crystalBlue
 
                         Behavior on width {
-                            NumberAnimation { duration: 90 }
+                            NumberAnimation { duration: Theme.fastDuration }
                         }
                     }
                 }

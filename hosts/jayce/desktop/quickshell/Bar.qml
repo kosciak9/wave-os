@@ -60,7 +60,7 @@ PanelWindow {
 
         onClicked: function(mouse) {
             if (mouse.button === Qt.LeftButton)
-                mode = (mode + 1) % 3
+                mode = (mode + 1) % 2
         }
 
         Image {
@@ -72,12 +72,11 @@ PanelWindow {
         }
 
         Text {
-            visible: networkWidget.activeNetwork === null || networkWidget.mode !== 0
             text: networkWidget.activeNetwork === null
                 ? "Not connected"
-                : networkWidget.mode === 1
+                : networkWidget.mode === 0
                     ? networkWidget.strength + "%"
-                    : networkWidget.activeNetwork.name + " (" + networkWidget.strength + "%)"
+                    : networkWidget.strength + "% · " + networkWidget.activeNetwork.name
             color: Theme.oldWhite
             font.family: Theme.fontFamily
             font.pixelSize: 11
@@ -131,16 +130,36 @@ PanelWindow {
                 color: modelData.focused
                     ? Theme.sumiInk3
                     : workspacePointer.containsMouse ? Theme.sumiInk2 : "transparent"
-                opacity: modelData.toplevels.values.length > 0 || modelData.focused ? 1 : 0.3
+                opacity: entered
+                    ? (modelData.toplevels.values.length > 0 || modelData.focused ? 1 : 0.3)
+                    : 0
                 border.width: modelData.urgent ? 1 : 0
                 border.color: Theme.waveRed
+                property bool entered: false
+                transform: Translate {
+                    y: workspaceButton.entered ? 0 : -6
+                    Behavior on y {
+                        NumberAnimation { duration: Theme.slowDuration; easing.type: Easing.OutCubic }
+                    }
+                }
+                scale: !entered ? 0.96 : workspacePointer.pressed ? 0.96 : workspacePointer.containsMouse ? 1.03 : 1
+
+                Component.onCompleted: entered = true
 
                 Behavior on color {
-                    ColorAnimation { duration: 150 }
+                    ColorAnimation { duration: Theme.normalDuration }
                 }
 
                 Behavior on opacity {
-                    NumberAnimation { duration: 150 }
+                    NumberAnimation { duration: Theme.normalDuration }
+                }
+
+                Behavior on scale {
+                    NumberAnimation { duration: Theme.fastDuration; easing.type: Easing.OutCubic }
+                }
+
+                Behavior on border.width {
+                    NumberAnimation { duration: Theme.fastDuration }
                 }
 
                 Image {
@@ -179,9 +198,28 @@ PanelWindow {
                 height: 32
                 radius: 3
                 color: trayPointer.containsMouse ? Theme.sumiInk2 : "transparent"
+                property bool entered: false
+                opacity: entered ? 1 : 0
+                transform: Translate {
+                    y: trayItem.entered ? 0 : -6
+                    Behavior on y {
+                        NumberAnimation { duration: Theme.slowDuration; easing.type: Easing.OutCubic }
+                    }
+                }
+                scale: !entered ? 0.96 : trayPointer.pressed ? 0.96 : trayPointer.containsMouse ? 1.03 : 1
+
+                Component.onCompleted: entered = true
 
                 Behavior on color {
-                    ColorAnimation { duration: 150 }
+                    ColorAnimation { duration: Theme.normalDuration }
+                }
+
+                Behavior on opacity {
+                    NumberAnimation { duration: Theme.normalDuration }
+                }
+
+                Behavior on scale {
+                    NumberAnimation { duration: Theme.fastDuration; easing.type: Easing.OutCubic }
                 }
 
                 IconImage {
@@ -336,6 +374,22 @@ PanelWindow {
         height: 32
         radius: 6
         color: Theme.sumiInk0
+        property bool revealed: false
+        opacity: revealed ? 1 : 0
+        transform: Translate {
+            id: revealTransform
+            y: barBackground.revealed ? 0 : -8
+            Behavior on y {
+                NumberAnimation { duration: Theme.slowDuration; easing.type: Easing.OutCubic }
+            }
+        }
+
+        Component.onCompleted: revealed = true
+
+        Behavior on opacity {
+            NumberAnimation { duration: Theme.slowDuration; easing.type: Easing.OutCubic }
+        }
+
 
         Item {
             anchors.fill: parent

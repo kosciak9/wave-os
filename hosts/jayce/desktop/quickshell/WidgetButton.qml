@@ -19,10 +19,22 @@ Rectangle {
     implicitHeight: Math.max(32, contentRow.implicitHeight + verticalPadding * 2)
     radius: 3
     color: active ? activeColor : pointer.containsMouse ? Theme.sumiInk2 : "transparent"
-    opacity: inactiveOpacity
+    opacity: inactiveOpacity * (pointer.pressed ? 0.82 : 1)
 
     Behavior on color {
-        ColorAnimation { duration: 150 }
+        ColorAnimation { duration: Theme.normalDuration }
+    }
+
+    Behavior on implicitWidth {
+        NumberAnimation { duration: Theme.normalDuration; easing.type: Easing.OutCubic }
+    }
+
+    Behavior on opacity {
+        NumberAnimation { duration: Theme.fastDuration }
+    }
+
+    Behavior on scale {
+        NumberAnimation { duration: Theme.fastDuration; easing.type: Easing.OutCubic }
     }
 
     Row {
@@ -38,4 +50,6 @@ Rectangle {
         onClicked: function(mouse) { root.clicked(mouse) }
         onWheel: function(wheel) { root.scrolled(wheel) }
     }
+
+    scale: pointer.pressed ? 0.96 : pointer.containsMouse ? 1.02 : 1
 }
