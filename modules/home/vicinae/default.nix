@@ -7,6 +7,11 @@
 }:
 
 let
+  vicinae =
+    inputs.vicinae.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs
+      (oldAttrs: {
+        patches = (oldAttrs.patches or [ ]) ++ [ ./launcher-window-position.patch ];
+      });
   passExtension =
     inputs.vicinae-extensions.packages.${pkgs.stdenv.hostPlatform.system}.pass.overrideAttrs
       (oldAttrs: {
@@ -18,6 +23,7 @@ in
 
   programs.vicinae = {
     enable = true;
+    package = vicinae;
     extensions = [ passExtension ];
     settings = {
       font = {
