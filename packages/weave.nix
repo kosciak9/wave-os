@@ -16,31 +16,31 @@ let
     {
       "x86_64-linux" = {
         cli = {
-          url = "https://github.com/Ataraxy-Labs/weave/releases/download/v0.3.6/weave-cli-x86_64-unknown-linux-gnu.tar.gz";
-          hash = "sha256-Ny194xZtPOJ+UTGMEvVzQzoMhjCThywv8qz0L4okf4I=";
+          url = "https://github.com/Ataraxy-Labs/weave/releases/download/v0.5.1/weave-cli-x86_64-unknown-linux-gnu.tar.gz";
+          hash = "sha256-Y6aLAeredco0fRzI2wJEoRzzZGvnc0HGmirfeCI/xr0=";
         };
         driver = {
-          url = "https://github.com/Ataraxy-Labs/weave/releases/download/v0.3.6/weave-driver-x86_64-unknown-linux-gnu.tar.gz";
-          hash = "sha256-tjbDjUOic3bd85xOSNqkJ74fhVvMva/ERJY+dUAgZ3M=";
+          url = "https://github.com/Ataraxy-Labs/weave/releases/download/v0.5.1/weave-driver-x86_64-unknown-linux-gnu.tar.gz";
+          hash = "sha256-CytlzsS5RSd12uFAPMhNB8tp2ktVNv34zNL/yVF3F9s=";
         };
       };
       "aarch64-darwin" = {
         cli = {
-          url = "https://github.com/Ataraxy-Labs/weave/releases/download/v0.3.6/weave-cli-aarch64-apple-darwin.tar.gz";
-          hash = "sha256-HKSXj9RQkCLPdOi9euTPFAKMbfGyEw4ch2E4BImW9Tc=";
+          url = "https://github.com/Ataraxy-Labs/weave/releases/download/v0.5.1/weave-cli-aarch64-apple-darwin.tar.gz";
+          hash = "sha256-C/QcpfiWGw2f2ZeyMDL4K3Db1uT0ZjO4lrAjeiUnEng=";
         };
         driver = {
-          url = "https://github.com/Ataraxy-Labs/weave/releases/download/v0.3.6/weave-driver-aarch64-apple-darwin.tar.gz";
-          hash = "sha256-fc/OJY16pWLAAoc4facLw+IshqzC5SFDF+xre6uS2FY=";
+          url = "https://github.com/Ataraxy-Labs/weave/releases/download/v0.5.1/weave-driver-aarch64-apple-darwin.tar.gz";
+          hash = "sha256-hn+X5FTiI9hOWD+Ba21lD40NSNhzrCAG5RdDKjSt2W4=";
         };
       };
     }
     .${stdenvNoCC.hostPlatform.system}
-      or (throw "weave 0.3.6 is unsupported on ${stdenvNoCC.hostPlatform.system}; supported systems are x86_64-linux and aarch64-darwin");
+      or (throw "weave 0.5.1 is unsupported on ${stdenvNoCC.hostPlatform.system}; supported systems are x86_64-linux and aarch64-darwin");
 in
 stdenvNoCC.mkDerivation {
   pname = "weave-merge";
-  version = "0.3.6";
+  version = "0.5.1";
 
   src = fetchurl {
     inherit (target.cli) url hash;
