@@ -1,35 +1,28 @@
 {
   lib,
+  sassc,
   stdenvNoCC,
   fetchFromGitHub,
 }:
 
 stdenvNoCC.mkDerivation {
   pname = "kanagawa-gtk-theme";
-  version = "0-unstable-2023-07-03";
+  version = "0-unstable-2025-10-23";
 
   src = fetchFromGitHub {
     owner = "Fausto-Korpsvart";
     repo = "Kanagawa-GKT-Theme";
-    rev = "35936a1e3bbd329339991b29725fc1f67f192c1e";
-    hash = "sha256-BZRmjVas8q6zsYbXFk4bCk5Ec/3liy9PQ8fqFGHAXe0=";
+    rev = "55ca4ba249eba21f861b9866b71ab41bb8930318";
+    hash = "sha256-UdMoMx2DoovcxSp/zBZ3PRv/Qpj+prd0uPm1gmdak2E=";
   };
 
   installPhase = ''
     runHook preInstall
 
     mkdir -p "$out/share/themes"
-    for theme in themes/*/; do
-      [ -f "$theme/index.theme" ] || continue
-      themeDir="''${theme%/}"
-      themeName="''${themeDir##*/}"
-      mkdir -p "$out/share/themes/$themeName"
-      cp "$theme/index.theme" "$out/share/themes/$themeName/"
-      for gtkVersion in gtk-3.0 gtk-4.0; do
-        if [ -d "$theme/$gtkVersion" ]; then
-          cp -r "$theme/$gtkVersion" "$out/share/themes/$themeName/"
-        fi
-      done
+    name=Kanagawa PATH="${sassc}/bin:$PATH" bash themes/install.sh --dest "$out/share/themes" --tweaks outline
+    for theme in "$out/share/themes"/*/; do
+      [ -f "$theme/index.theme" ] || rm -rf "$theme"
     done
 
     runHook postInstall

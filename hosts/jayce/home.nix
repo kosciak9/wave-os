@@ -367,13 +367,17 @@ in
         [General]
         theme=Kanagawa
       '';
+      "gtk-4.0/assets".source = "${pkgs.kanagawa-gtk-theme}/share/themes/Kanagawa-Dark/gtk-4.0/assets";
+      "gtk-4.0/gtk.css".source = "${pkgs.kanagawa-gtk-theme}/share/themes/Kanagawa-Dark/gtk-4.0/gtk.css";
+      "gtk-4.0/gtk-dark.css".source =
+        "${pkgs.kanagawa-gtk-theme}/share/themes/Kanagawa-Dark/gtk-4.0/gtk-dark.css";
     };
   };
 
   gtk = {
     enable = true;
     theme = {
-      name = "Kanagawa-B-LB";
+      name = "Kanagawa-Dark";
       package = pkgs.kanagawa-gtk-theme;
     };
     iconTheme = {
