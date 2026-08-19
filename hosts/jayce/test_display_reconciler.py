@@ -22,6 +22,12 @@ MONITORS = [
 
 
 class DisplayStateTests(unittest.TestCase):
+    def test_managed_workspace_policy(self):
+        self.assertTrue(MODULE.managed_workspace({"id": 1, "ispersistent": True, "windows": 0}))
+        self.assertTrue(MODULE.managed_workspace({"id": 2, "ispersistent": False, "windows": 1}))
+        self.assertFalse(MODULE.managed_workspace({"id": 3, "ispersistent": False, "windows": 0}))
+        self.assertFalse(MODULE.managed_workspace({"id": 0, "ispersistent": True, "windows": 1}))
+
     def test_automatic_evacuation_preserves_desired_owner(self):
         ownership = MODULE.Ownership({
             "workspaces": {"2": {"current_connector": "DP-1",
@@ -132,6 +138,7 @@ class DisplayStateTests(unittest.TestCase):
         })
         ownership.mappings(MONITORS)
         self.assertTrue(MODULE.event_refreshes_snapshot("workspacev2"))
+        self.assertTrue(MODULE.event_refreshes_snapshot("createworkspacev2"))
         # The daemon defers this snapshot; the move/removal boundary wins.
         ownership.move_event(2, "eDP-1")
         ownership.monitor_removed("DP-1")
@@ -165,7 +172,7 @@ class DisplayStateTests(unittest.TestCase):
     def test_due_suspend_retry_runs_only_when_closed_and_headless(self):
         reconciler = MODULE.Reconciler(tempfile.mktemp())
         reconciler.suspend_retry_at = time.monotonic() - 1
-        with mock.patch.object(MODULE, "json_command", return_value=[{"name": "eDP-1"}]), \
+        with mock.patch.object(MODULE, "json_query", return_value=[{"name": "eDP-1"}]), \
                 mock.patch.object(MODULE, "lid_state", return_value="closed"), \
                 mock.patch.object(reconciler, "close") as close:
             reconciler.retry_suspend_if_due()
@@ -174,14 +181,14 @@ class DisplayStateTests(unittest.TestCase):
     def test_suspend_retry_not_due_or_topology_changed_is_cancelled(self):
         reconciler = MODULE.Reconciler(tempfile.mktemp())
         reconciler.suspend_retry_at = time.monotonic() + 100
-        with mock.patch.object(MODULE, "json_command", return_value=[{"name": "eDP-1"}]), \
+        with mock.patch.object(MODULE, "json_query", return_value=[{"name": "eDP-1"}]), \
                 mock.patch.object(MODULE, "lid_state", return_value="closed"), \
                 mock.patch.object(reconciler, "close") as close:
             reconciler.retry_suspend_if_due()
         close.assert_not_called()
         self.assertGreater(reconciler.suspend_retry_at, time.monotonic())
         reconciler.suspend_retry_at = time.monotonic() - 1
-        with mock.patch.object(MODULE, "json_command", return_value=[
+        with mock.patch.object(MODULE, "json_query", return_value=[
             {"name": "eDP-1"}, {"name": "DP-1"}
         ]), mock.patch.object(MODULE, "lid_state", return_value="closed"):
             reconciler.retry_suspend_if_due()
@@ -242,7 +249,7 @@ class DisplayStateTests(unittest.TestCase):
         reconciler.begin_monitor_reconnect("DP-9", stable)
         monitors = [{"name": "DP-9", "description": "Dell,P2720D",
                      "focused": False, "activeWorkspace": {"id": 9}}]
-        with mock.patch.object(MODULE, "json_command", side_effect=[
+        with mock.patch.object(MODULE, "json_query", side_effect=[
             monitors, [{"id": 9, "monitor": "DP-9"}]
         ]):
             reconciler.snapshot()
@@ -294,7 +301,7 @@ class DisplayStateTests(unittest.TestCase):
         reconciler.begin_topology_transition()
         monitors = [{"name": "DP-1", "description": "Dell,P2720D",
                      "activeWorkspace": {"id": 9}}]
-        with mock.patch.object(MODULE, "json_command", side_effect=[
+        with mock.patch.object(MODULE, "json_query", side_effect=[
             monitors, [{"id": 9, "monitor": "DP-1"}]
         ]):
             reconciler.snapshot()
@@ -313,6 +320,112 @@ class DisplayStateTests(unittest.TestCase):
                 mock.patch.object(reconciler, "restore_outputs") as restore:
             reconciler.close()
         restore.assert_called_once_with(monitors)
+
+    def test_close_ignores_empty_nonpersistent_placeholder(self):
+        reconciler = MODULE.Reconciler(tempfile.mktemp())
+        reconciler.ownership.workspace(5, current="eDP-1", desired="description:Dell P2720D")
+        monitors = [{"name": "eDP-1"}, {"name": "DP-4", "focused": True}]
+        workspaces = [
+            {"id": 5, "monitor": "eDP-1", "ispersistent": True, "windows": 0},
+            {"id": 7, "monitor": "eDP-1", "ispersistent": False, "windows": 0},
+        ]
+        with mock.patch.object(reconciler, "snapshot", return_value=monitors), \
+                mock.patch.object(MODULE, "json_query", side_effect=[workspaces, [
+                    {"id": 7, "monitor": "eDP-1", "ispersistent": False, "windows": 0},
+                ]]), \
+                mock.patch.object(reconciler, "move") as move, \
+                mock.patch.object(reconciler, "blackout"), \
+                mock.patch.object(MODULE, "run", return_value=MODULE.CommandResult(0, "", "")) as run:
+            reconciler.close()
+        move.assert_called_once_with(5, "DP-4")
+        self.assertTrue(any("disabled = true" in call.args[2] for call in run.call_args_list))
+        self.assertEqual(
+            reconciler.ownership.data["workspaces"]["5"]["desired_identity"],
+            "description:Dell P2720D",
+        )
+
+    def test_close_keeps_internal_monitor_for_managed_workspace(self):
+        reconciler = MODULE.Reconciler(tempfile.mktemp())
+        monitors = [{"name": "eDP-1"}, {"name": "DP-4", "focused": True}]
+        workspaces = [{"id": 6, "monitor": "eDP-1", "ispersistent": False, "windows": 2}]
+        with mock.patch.object(reconciler, "snapshot", return_value=monitors), \
+                mock.patch.object(MODULE, "json_query", side_effect=[workspaces, workspaces]), \
+                mock.patch.object(reconciler, "move"), \
+                mock.patch.object(reconciler, "blackout"), \
+                mock.patch.object(MODULE, "run", return_value=MODULE.CommandResult(0, "", "")) as run:
+            reconciler.close()
+        self.assertFalse(any("disabled = true" in call.args[2] for call in run.call_args_list))
+
+    def test_destroy_event_removes_all_workspace_state(self):
+        reconciler = MODULE.Reconciler(tempfile.mktemp())
+        reconciler.ownership.workspace(6, current="DP-1", desired="description:Dell P2720D")
+        reconciler.ownership.data["last_active"] = {
+            "description:Dell P2720D": 6,
+            "description:Other": 7,
+        }
+        reconciler.ownership.pending["6"] = object()
+        reconciler.generated["6"] = ("DP-1", time.monotonic())
+        reconciler.destroy_workspace(6)
+        self.assertNotIn("6", reconciler.ownership.data["workspaces"])
+        self.assertNotIn("description:Dell P2720D", reconciler.ownership.data["last_active"])
+        self.assertEqual(reconciler.ownership.data["last_active"]["description:Other"], 7)
+        self.assertNotIn("6", reconciler.ownership.pending)
+        self.assertNotIn("6", reconciler.generated)
+
+    def test_successful_snapshot_prunes_stale_workspace(self):
+        reconciler = MODULE.Reconciler(tempfile.mktemp())
+        reconciler.ownership.workspace(6, current="DP-1", desired="description:Dell P2720D")
+        with mock.patch.object(MODULE, "json_query", side_effect=[
+            [{"name": "DP-1", "description": "Dell,P2720D"}],
+            [{"id": 7, "monitor": "DP-1"}],
+        ]):
+            reconciler.snapshot()
+        self.assertNotIn("6", reconciler.ownership.data["workspaces"])
+
+    def test_successful_snapshot_tracks_only_managed_workspaces(self):
+        reconciler = MODULE.Reconciler(tempfile.mktemp())
+        reconciler.ownership.workspace(7, current="eDP-1", desired="description:Laptop Panel")
+        workspaces = [
+            {"id": 7, "monitor": "eDP-1", "ispersistent": False, "windows": 0},
+            {"id": 8, "monitor": "DP-1", "ispersistent": False, "windows": 2},
+        ]
+        with mock.patch.object(MODULE, "json_query", side_effect=[
+            [{"name": "eDP-1"}, {"name": "DP-1"}], workspaces,
+        ]):
+            reconciler.snapshot()
+        self.assertNotIn("7", reconciler.ownership.data["workspaces"])
+        self.assertEqual(
+            reconciler.ownership.data["workspaces"]["8"]["current_connector"],
+            "DP-1",
+        )
+
+    def test_failed_workspace_snapshot_does_not_prune_state(self):
+        reconciler = MODULE.Reconciler(tempfile.mktemp())
+        reconciler.ownership.workspace(6, current="DP-1", desired="description:Dell P2720D")
+        with mock.patch.object(MODULE, "json_query", side_effect=[
+            [{"name": "DP-1", "description": "Dell,P2720D"}], None,
+        ]):
+            reconciler.snapshot()
+        self.assertIn("6", reconciler.ownership.data["workspaces"])
+
+    def test_failed_monitor_snapshot_preserves_state(self):
+        reconciler = MODULE.Reconciler(tempfile.mktemp())
+        reconciler.ownership.workspace(6, current="DP-1", desired="description:Dell P2720D")
+        with mock.patch.object(MODULE, "json_query", return_value=None):
+            self.assertIsNone(reconciler.snapshot())
+        self.assertIn("6", reconciler.ownership.data["workspaces"])
+
+    def test_create_and_destroy_events_are_classified_and_parsed(self):
+        self.assertTrue(MODULE.event_refreshes_snapshot("createworkspacev2"))
+        self.assertFalse(MODULE.event_refreshes_snapshot("destroyworkspacev2"))
+        self.assertEqual(
+            MODULE.parse_event("createworkspacev2>>7,7"),
+            ("createworkspacev2", ["7", "7"]),
+        )
+        self.assertEqual(
+            MODULE.parse_event("destroyworkspacev2>>7,7"),
+            ("destroyworkspacev2", ["7", "7"]),
+        )
 
 
 if __name__ == "__main__":

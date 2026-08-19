@@ -39,6 +39,17 @@ def positive(value):
         return False
 
 
+def managed_workspace(workspace):
+    """Whether Hyprland's workspace is one we must migrate and own."""
+    if not isinstance(workspace, dict) or not positive(workspace.get("id")):
+        return False
+    try:
+        has_windows = int(workspace.get("windows", 0)) > 0
+    except (TypeError, ValueError):
+        has_windows = False
+    return bool(workspace.get("ispersistent")) or has_windows
+
+
 def next_suspend_retry_delay(delay):
     return min(max(delay * 2.0, 1.0), 30.0)
 
@@ -200,15 +211,16 @@ def run(*args, timeout=8):
         return CommandResult(127, "", str(error))
 
 
-def json_command(*args):
+def json_query(*args):
+    """Return parsed JSON, or None when the command/query was not reliable."""
     result = run(*args)
     if not result.ok:
-        return []
+        return None
     try:
         return json.loads(result.stdout)
     except ValueError:
         print("wave-display-reconciler: invalid JSON from %s" % " ".join(args), file=sys.stderr)
-        return []
+        return None
 
 
 def lid_state():
@@ -294,11 +306,25 @@ class Reconciler:
         time.sleep(0.08)
 
     def snapshot(self):
-        monitors = json_command("hyprctl", "monitors", "-j")
+        monitors = json_query("hyprctl", "monitors", "-j")
+        if not isinstance(monitors, list) or any(not isinstance(m, dict) for m in monitors):
+            return None
+        workspace_list = json_query("hyprctl", "workspaces", "-j")
+        if (not isinstance(workspace_list, list)
+                or any(not isinstance(w, dict) for w in workspace_list)):
+            return None
         self.ownership.mappings(monitors)
-        for workspace in json_command("hyprctl", "workspaces", "-j"):
+        managed_ids = {
+            str(workspace.get("id"))
+            for workspace in workspace_list
+            if managed_workspace(workspace)
+        }
+        for workspace_id in list(self.ownership.data["workspaces"]):
+            if positive(workspace_id) and workspace_id not in managed_ids:
+                self.destroy_workspace(workspace_id)
+        for workspace in workspace_list:
             workspace_id = workspace.get("id")
-            if not positive(workspace_id):
+            if not managed_workspace(workspace):
                 continue
             connector = workspace.get("monitor", "")
             stable = self.ownership.connector_to_identity.get(connector, connector_identity(connector))
@@ -319,6 +345,19 @@ class Reconciler:
         save_state(self.state_path, self.ownership)
         return monitors
 
+    def destroy_workspace(self, workspace_id):
+        key = str(workspace_id)
+        if not positive(key):
+            return
+        self.ownership.data["workspaces"].pop(key, None)
+        self.ownership.data["last_active"] = {
+            stable: active_id
+            for stable, active_id in self.ownership.data["last_active"].items()
+            if str(active_id) != key
+        }
+        self.ownership.pending.pop(key, None)
+        self.generated.pop(key, None)
+
     def move(self, workspace_id, target):
         key = str(workspace_id)
         if self.ownership.data["workspaces"].get(key, {}).get("current_connector") == target:
@@ -330,8 +369,10 @@ class Reconciler:
             self.generated.pop(key, None)
             return False
         for _ in range(15):
-            current = json_command("hyprctl", "workspaces", "-j")
-            if any(str(w.get("id")) == key and w.get("monitor") == target for w in current):
+            current = json_query("hyprctl", "workspaces", "-j")
+            if isinstance(current, list) and any(
+                str(w.get("id")) == key and w.get("monitor") == target for w in current
+            ):
                 self.ownership.workspace(key, current=target)
                 save_state(self.state_path, self.ownership)
                 return True
@@ -417,6 +458,8 @@ class Reconciler:
     def close(self):
         with self.lock:
             monitors = self.snapshot()
+            if monitors is None:
+                return
             policy, _ = lid_policy(monitors)
             if policy == "suspend":
                 if not self.suspend_requested and time.monotonic() >= self.suspend_retry_at:
@@ -448,14 +491,22 @@ class Reconciler:
                 return
             self.blackout()
             run("systemctl", "--user", "stop", "wave-backlight-dim.service")
+            workspace_list = json_query("hyprctl", "workspaces", "-j")
+            if not isinstance(workspace_list, list):
+                return
             internal_workspaces = [
-                w["id"] for w in json_command("hyprctl", "workspaces", "-j")
-                if w.get("monitor") == INTERNAL and positive(w.get("id"))
+                w["id"] for w in workspace_list
+                if w.get("monitor") == INTERNAL and managed_workspace(w)
             ]
             for workspace_id in internal_workspaces:
                 self.move(workspace_id, target)
-            remaining = json_command("hyprctl", "workspaces", "-j")
-            if not any(w.get("monitor") == INTERNAL and positive(w.get("id")) for w in remaining):
+            remaining = json_query("hyprctl", "workspaces", "-j")
+            if not isinstance(remaining, list):
+                return
+            if not any(
+                w.get("monitor") == INTERNAL and managed_workspace(w)
+                for w in remaining
+            ):
                 result = run("hyprctl", "eval", 'hl.monitor({ output = "eDP-1", disabled = true })')
                 if result.ok:
                     self.closed_migrated = True
@@ -474,6 +525,9 @@ class Reconciler:
                 run("hyprctl", "reload")
                 for _ in range(40):
                     monitors = self.snapshot()
+                    if monitors is None:
+                        time.sleep(0.1)
+                        continue
                     if any(m.get("name") == INTERNAL for m in monitors):
                         self.restore_outputs(monitors)
                         self.lid_action = "open"
@@ -490,6 +544,8 @@ class Reconciler:
     def reconcile(self):
         with self.lock:
             monitors = self.snapshot()
+            if monitors is None:
+                return
             if lid_state() == "closed":
                 return self.close()
             if not any(monitor.get("name") == INTERNAL for monitor in monitors):
@@ -509,7 +565,9 @@ class Reconciler:
         """Retry denied suspend without blocking the selector loop."""
         if not self.suspend_retry_at or self.suspend_requested:
             return
-        monitors = json_command("hyprctl", "monitors", "-j")
+        monitors = json_query("hyprctl", "monitors", "-j")
+        if not isinstance(monitors, list):
+            return
         if lid_state() != "closed" or any(m.get("name") != INTERNAL for m in monitors):
             self.suspend_retry_at = 0.0
             self.suspend_delay = 1.0
@@ -532,7 +590,7 @@ def parse_event(line):
 
 
 def event_refreshes_snapshot(event):
-    return event in ("workspacev2", "focusedmonv2")
+    return event in ("workspacev2", "focusedmonv2", "createworkspacev2")
 
 
 def notify(action):
@@ -610,6 +668,9 @@ def daemon():
                                 workspace_id, _, destination = parts
                                 generated = reconciler.consume_generated(workspace_id, destination)
                                 reconciler.ownership.move_event(workspace_id, destination, generated)
+                            elif event == "destroyworkspacev2" and parts:
+                                reconciler.destroy_workspace(parts[0])
+                                save_state(reconciler.state_path, reconciler.ownership)
                             elif event == "monitorremovedv2" and len(parts) >= 2:
                                 deferred_snapshot_at = None
                                 reconciler.ownership.monitor_removed(parts[1])
