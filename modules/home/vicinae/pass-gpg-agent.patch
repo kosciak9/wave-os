@@ -1,7 +1,9 @@
 diff --git a/package.json b/package.json
+index 2cb436b..ddf18d6 100644
 --- a/package.json
 +++ b/package.json
-@@ -31,12 +31,4 @@
+@@ -30,14 +30,6 @@
+       "default": "~/.password-store",
        "required": true
      },
 -    {
@@ -15,39 +17,248 @@ diff --git a/package.json b/package.json
      {
        "name": "additionalPath",
        "type": "textfield",
+diff --git a/src/pass.tsx b/src/pass.tsx
+index 40ab63e..23c7414 100644
+--- a/src/pass.tsx
++++ b/src/pass.tsx
+@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
+ import {
+   Action,
+   ActionPanel,
+-  Form,
+   Icon,
+   List,
+   Toast,
+@@ -94,7 +93,6 @@ export default function Command() {
+                         password={entry.value}
+                         showOtpFirst={entry.showOtpFirst}
+                         action={preferences.action}
+-                        gpgPassword={preferences.gpgPassphrase}
+                       />,
+                     );
+                   }}
+@@ -113,20 +111,15 @@ function PasswordOptionsView({
+   password,
+   showOtpFirst,
+   action,
+-  gpgPassword,
+ }: {
+   password: string;
+   showOtpFirst?: boolean;
+   action: "paste" | "copy";
+-  gpgPassword?: string;
+ }) {
+   const [isLoading, setIsLoading] = useState(true);
+   const [options, setOptions] = useState<PasswordOption[]>([]);
+   const [error, setError] = useState<string | undefined>();
+   const [retryToken, setRetryToken] = useState(0);
+-  const [useSavedPassphrase, setUseSavedPassphrase] = useState(true);
+-  const { push } = useNavigation();
+-  const effectiveGpgPassword = useSavedPassphrase ? gpgPassword : undefined;
+
+   useEffect(() => {
+     let disposed = false;
+@@ -138,7 +131,6 @@ function PasswordOptionsView({
+         const plaintext = await decryptPasswordEntry(
+           password,
+           preferences,
+-          effectiveGpgPassword,
+         );
+         const { options: parsed, warnings } = await buildPasswordOptions({
+           plaintext,
+@@ -177,7 +169,7 @@ function PasswordOptionsView({
+     return () => {
+       disposed = true;
+     };
+-  }, [password, preferences, showOtpFirst, effectiveGpgPassword, retryToken]);
++  }, [password, preferences, showOtpFirst, retryToken]);
+
+   return (
+     <List
+@@ -190,28 +182,6 @@ function PasswordOptionsView({
+           description={error}
+           actions={
+             <ActionPanel>
+-              <Action
+-                title="Enter GPG Passphrase"
+-                icon={Icon.Key}
+-                onAction={() => {
+-                  push(
+-                    <PasswordEntryForm
+-                      entry={password}
+-                      showOtpFirst={showOtpFirst}
+-                    />,
+-                  );
+-                }}
+-              />
+-              {gpgPassword && useSavedPassphrase ? (
+-                <Action
+-                  title="Try System Pinentry"
+-                  icon={Icon.Key}
+-                  onAction={() => {
+-                    setUseSavedPassphrase(false);
+-                    setRetryToken((token) => token + 1);
+-                  }}
+-                />
+-              ) : null}
+               <Action
+                 title="Retry"
+                 icon={Icon.RotateAntiClockwise}
+@@ -259,45 +229,6 @@ function PasswordOptionsView({
+   );
+ }
+
+-const PasswordEntryForm = ({
+-  entry,
+-  showOtpFirst,
+-}: {
+-  entry: string;
+-  showOtpFirst?: boolean;
+-}) => {
+-  const { push } = useNavigation();
+-  return (
+-    <Form
+-      actions={
+-        <ActionPanel>
+-          <Action.SubmitForm
+-            title="Unlock GPG Key"
+-            onSubmit={(values) => {
+-              const password = values.password?.toString() || "";
+-              if (!password) return;
+-              push(
+-                <PasswordOptionsView
+-                  password={entry}
+-                  showOtpFirst={showOtpFirst}
+-                  action={preferences.action}
+-                  gpgPassword={password}
+-                />,
+-              );
+-            }}
+-          />
+-        </ActionPanel>
+-      }
+-    >
+-      <Form.PasswordField
+-        id="password"
+-        title="Password"
+-        placeholder="Enter GPG passphrase"
+-      />
+-    </Form>
+-  );
+-};
+-
+ function orderEntries(
+   entries: string[],
+   lastUsed?: string | null,
+diff --git a/src/preferences.ts b/src/preferences.ts
+index ec046ca..c901e61 100644
+--- a/src/preferences.ts
++++ b/src/preferences.ts
+@@ -4,7 +4,6 @@ import { Schema } from "@/types";
+
+ type RawPreferences = {
+   passwordStorePath?: string;
+-  gpgPassphrase?: string;
+   additionalPath?: string;
+   otpAfterPassword?: boolean;
+   lastUsedTtl?: string;
+@@ -14,7 +13,6 @@ type RawPreferences = {
+
+ export type Preferences = {
+   passwordStorePath: string;
+-  gpgPassphrase?: string;
+   additionalPath?: string;
+   otpAfterPassword: boolean;
+   lastUsedTtlSeconds: number;
+@@ -27,7 +25,6 @@ export function getPreferences(): Preferences {
+   const path = raw.passwordStorePath || process.env.PASSWORD_STORE_DIR || "~/.password-store";
+   return {
+     passwordStorePath: resolveAbsolutePath(path),
+-    gpgPassphrase: sanitizeString(raw.gpgPassphrase),
+     additionalPath: sanitizeString(raw.additionalPath),
+     otpAfterPassword: raw.otpAfterPassword ?? true,
+     lastUsedTtlSeconds: parsePositiveInt(raw.lastUsedTtl, 120),
 diff --git a/src/services/passctl.ts b/src/services/passctl.ts
+index 635f6d0..284205d 100644
 --- a/src/services/passctl.ts
 +++ b/src/services/passctl.ts
-@@ -6,12 +6,4 @@
--export async function isGpgUnlocked(preferences: Preferences) {
--  try {
--    await runCommand(
--      "sh",
--      ["-c", "echo test | gpg --clearsign --batch --yes --pinentry-mode=error"],
--      preferences,
--    );
--    return false;
--  } catch {
--    return true;
--  }
--}
-+export async function isGpgUnlocked(_preferences: Preferences) {
-+  // Actual decryption delegates unlock handling to gpg-agent/pinentry.
-+  return false;
-+}
-@@ -31,7 +23,7 @@ export async function decryptPasswordEntry(
+@@ -20,7 +20,6 @@ export async function listPasswordEntries(
  export async function decryptPasswordEntry(
    entry: string,
    preferences: Preferences,
 -  gpgPassword?: string,
-+  _gpgPassword?: string,
  ): Promise<string> {
    const filePath = path.join(preferences.passwordStorePath, `${entry}.gpg`);
    const stats = await safeStat(filePath);
-@@ -42,5 +34 @@ export async function decryptPasswordEntry(
--  const args = ["--batch", "--yes"];
--  if (gpgPassword) {
--    args.push("--pinentry-mode=loopback", "--passphrase", gpgPassword);
+@@ -28,41 +27,26 @@ export async function decryptPasswordEntry(
+     throw new Error(`Entry "${entry}" was not found in the password store`);
+   }
+
+-  const usesLoopback = Boolean(gpgPassword);
+-  const args = buildDecryptArgs(filePath, usesLoopback);
++  const args = buildDecryptArgs(filePath);
+
+   try {
+     const stdout = await runCommand("gpg", args, preferences, {
+-      input: gpgPassword ? `${gpgPassword}\n` : undefined,
+       timeoutMs: GPG_TIMEOUT_MS,
+     });
+     return stdout.replace(/\r\n/g, "\n");
+   } catch (error) {
+     if (error instanceof CommandError) {
+-      throw new Error(formatGpgError(error, usesLoopback));
++      throw new Error(formatGpgError(error));
+     }
+     throw error;
+   }
+ }
+
+-function buildDecryptArgs(filePath: string, usesLoopback: boolean): string[] {
+-  const args = ["--quiet", "--yes"];
+-
+-  if (usesLoopback) {
+-    args.push(
+-      "--batch",
+-      "--pinentry-mode",
+-      "loopback",
+-      "--passphrase-fd",
+-      "0",
+-    );
 -  }
--  args.push("-d", filePath);
-+  const args = ["--batch", "--yes", "-d", filePath];
+-
+-  args.push("--decrypt", "--output", "-", filePath);
+-  return args;
++function buildDecryptArgs(filePath: string): string[] {
++  return ["--quiet", "--yes", "--decrypt", "--output", "-", filePath];
+ }
+
+-function formatGpgError(error: CommandError, usesLoopback: boolean): string {
++function formatGpgError(error: CommandError): string {
+   const raw = `${error.stderr ?? ""}\n${error.message}`.toLowerCase();
+
+   if (error.code === "ENOENT") {
+@@ -70,22 +54,11 @@ function formatGpgError(error: CommandError, usesLoopback: boolean): string {
+   }
+
+   if (raw.includes("timed out") || raw.includes("interrupted")) {
+-    return "GPG did not finish. A pinentry prompt may be hidden or unavailable; unlock your key in a terminal or enter the GPG passphrase in the extension.";
+-  }
+-
+-  if (usesLoopback && /bad passphrase|bad session key|decryption failed.*bad/.test(raw)) {
+-    return "Incorrect GPG passphrase.";
+-  }
+-
+-  if (
+-    usesLoopback &&
+-    (/setting pinentry mode.*failed|not supported|not allowed|allow-loopback|forbidden/.test(raw))
+-  ) {
+-    return "GPG loopback pinentry is not enabled. Add 'allow-loopback-pinentry' to ~/.gnupg/gpg-agent.conf, restart gpg-agent, or clear the saved passphrase and use your system pinentry.";
++    return "GPG did not finish. A pinentry prompt may be hidden or unavailable; unlock your key in a terminal or configure pinentry for gpg-agent.";
+   }
+
+   if (/no pinentry|pinentry|inappropriate ioctl|can't get input|batchmode/.test(raw)) {
+-    return "GPG needs a passphrase but no pinentry prompt is available. Configure pinentry for gpg-agent or enter the GPG passphrase in the extension.";
++    return "GPG needs a passphrase but no pinentry prompt is available. Configure pinentry for gpg-agent.";
+   }
+
+   if (/no secret key|secret key not available|decryption failed.*secret key/.test(raw)) {
