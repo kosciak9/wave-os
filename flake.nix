@@ -116,6 +116,7 @@
         inherit system;
         modules = [
           nixos-hardware.nixosModules.framework-16-7040-amd
+          inputs.vicinae.nixosModules.default
           ./hosts/jayce/default.nix
           home-manager.nixosModules.home-manager
           (_: { nixpkgs.overlays = [ packageOverlay ]; })
@@ -134,6 +135,12 @@
               users.kosciak = ./hosts/jayce/home.nix;
             };
           })
+          (
+            { config, ... }:
+            {
+              programs.vicinae.input-server.package = config.home-manager.users.kosciak.programs.vicinae.package;
+            }
+          )
         ];
       };
 
