@@ -103,7 +103,7 @@ in
     gnome.gnome-keyring.enable = true;
     logind.settings.Login = {
       HandleLidSwitch = "suspend";
-      HandleLidSwitchDocked = "suspend";
+      HandleLidSwitchDocked = "ignore";
       HandleLidSwitchExternalPower = "suspend";
     };
     power-profiles-daemon.enable = true;

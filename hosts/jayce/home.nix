@@ -20,17 +20,21 @@ let
     ];
     text = builtins.readFile ./scripts/backlight-dim.sh;
   };
-  lidHandler = pkgs.writeShellApplication {
-    name = "wave-lid-handler";
+  displayReconciler = pkgs.writeShellApplication {
+    name = "wave-display-reconciler";
     runtimeInputs = with pkgs; [
       coreutils
       hyprland
-      jq
       quickshell
       systemd
+      python3
     ];
-    text = builtins.readFile ./scripts/lid-handler.sh;
+    text = ''
+      exec ${pkgs.python3}/bin/python3 ${pkgs.writeText "wave-display-reconciler.py" (builtins.readFile ./scripts/display-reconciler.py)} "$@"
+    '';
   };
+  displayReconcilerPath = lib.getExe displayReconciler;
+  displayReconcilerRuntime = [ displayReconciler ];
   nightLight = pkgs.writeShellApplication {
     name = "wave-night-light";
     runtimeInputs = with pkgs; [
@@ -115,34 +119,36 @@ in
       _JAVA_AWT_WM_NONREPARENTING = "1";
       QT_STYLE_OVERRIDE = "kvantum";
     };
-    packages = with pkgs; [
-      brightnessctl
-      chromium
-      fd
-      hyprsunset
-      hyprshot
-      (iosevka-bin.override { variant = "SGr-IosevkaTerm"; })
-      jq
-      kanagawa-kvantum
-      karla
-      kdePackages.qtstyleplugin-kvantum
-      nerd-fonts.iosevka
-      nerd-fonts.overpass
-      nerd-fonts.symbols-only
-      neovide
-      nodejs
-      noto-fonts
-      noto-fonts-color-emoji
-      obsidian
-      playerctl
-      pulseaudio
-      pwvucontrol
-      ripgrep
-      trash-cli
-      wl-clipboard
-      inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
-      worktrunk
-    ];
+    packages =
+      (with pkgs; [
+        brightnessctl
+        chromium
+        fd
+        hyprsunset
+        hyprshot
+        (iosevka-bin.override { variant = "SGr-IosevkaTerm"; })
+        jq
+        kanagawa-kvantum
+        karla
+        kdePackages.qtstyleplugin-kvantum
+        nerd-fonts.iosevka
+        nerd-fonts.overpass
+        nerd-fonts.symbols-only
+        neovide
+        nodejs
+        noto-fonts
+        noto-fonts-color-emoji
+        obsidian
+        playerctl
+        pulseaudio
+        pwvucontrol
+        ripgrep
+        trash-cli
+        wl-clipboard
+        inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
+        worktrunk
+      ])
+      ++ displayReconcilerRuntime;
   };
 
   fonts.fontconfig.enable = true;
@@ -414,9 +420,9 @@ in
       };
     };
 
-    wave-lid-handler = {
+    wave-display-reconciler = {
       Unit = {
-        Description = "Hyprland-aware laptop lid policy";
+        Description = "Event-driven Hyprland display reconciler";
         After = [
           "wayland-session-waitenv.service"
           "quickshell.service"
@@ -425,7 +431,22 @@ in
         ConditionEnvironment = "WAYLAND_DISPLAY";
       };
       Service = {
-        ExecStart = "${pkgs.systemd}/bin/systemd-inhibit --what=handle-lid-switch --mode=block --who=wave-lid-handler --why='Wave lid policy is healthy' ${lib.getExe lidHandler}";
+        ExecStart = "${displayReconcilerPath} daemon";
+        Restart = "on-failure";
+        RestartSec = 1;
+      };
+      Install.WantedBy = [ sessionTarget ];
+    };
+
+    wave-lid-inhibit = {
+      Unit = {
+        Description = "Keep lid ownership with the Wave session";
+        After = [ "wayland-session-waitenv.service" ];
+        PartOf = [ sessionTarget ];
+        ConditionEnvironment = "WAYLAND_DISPLAY";
+      };
+      Service = {
+        ExecStart = "${pkgs.systemd}/bin/systemd-inhibit --what=handle-lid-switch --mode=block --who=wave-display-reconciler --why='Wave display policy owns lid actions' ${pkgs.coreutils}/bin/sleep infinity";
         Restart = "always";
         RestartSec = 1;
       };

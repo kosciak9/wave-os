@@ -9,7 +9,7 @@ hl.monitor({
 })
 
 hl.monitor({
-    output = "desc:GIGA-BYTE TECHNOLOGY CO., LTD. M28U 24030B004813",
+    output = "desc:GIGA-BYTE TECHNOLOGY CO. LTD. M28U 24030B004813",
     mode = "3840x2160@143.999",
     position = "0x-900",
     scale = 1.875,
@@ -452,6 +452,16 @@ local function moveColumnToWorkspaceRelative(offset)
 end
 
 local monitorDirections = { left = "l", right = "r", up = "u", down = "d" }
+local function focusMonitor(direction)
+    dispatch(hl.dsp.focus({ monitor = monitorDirections[direction] }))
+    local monitor = hl.get_active_monitor()
+    if monitor then
+        local x = monitor.x + monitor.width / monitor.scale / 2
+        local y = monitor.y + monitor.height / monitor.scale / 2
+        dispatch(hl.dsp.cursor.move({ x = x, y = y }))
+    end
+end
+
 local function moveColumnToMonitor(direction)
     local monitor = hl.get_monitor(monitorDirections[direction])
     if monitor then
@@ -723,13 +733,17 @@ end)
 
 for _, direction in ipairs({ "left", "down", "up", "right" }) do
     local key = direction
-    hl.bind(mod .. " + SHIFT + " .. key, hl.dsp.focus({ monitor = monitorDirections[direction] }))
+    hl.bind(mod .. " + SHIFT + " .. key, function()
+        focusMonitor(direction)
+    end)
     hl.bind(mod .. " + SHIFT + CTRL + " .. key, function()
         moveColumnToMonitor(direction)
     end)
 end
 for key, direction in pairs({ H = "left", J = "down", K = "up", L = "right" }) do
-    hl.bind(mod .. " + SHIFT + " .. key, hl.dsp.focus({ monitor = monitorDirections[direction] }))
+    hl.bind(mod .. " + SHIFT + " .. key, function()
+        focusMonitor(direction)
+    end)
     hl.bind(mod .. " + SHIFT + CTRL + " .. key, function()
         moveColumnToMonitor(direction)
     end)
@@ -830,6 +844,8 @@ hl.bind("CTRL + Print", hl.dsp.exec_cmd("hyprshot -m output -m active " .. scree
 hl.bind("ALT + Print", hl.dsp.exec_cmd("hyprshot -m window -m active " .. screenshotOutput))
 
 hl.bind(mod .. " + SHIFT + P", hl.dsp.dpms({ action = "disable" }))
+hl.bind("switch:on:Lid Switch", hl.dsp.exec_cmd("wave-display-reconciler notify lid-close"))
+hl.bind("switch:off:Lid Switch", hl.dsp.exec_cmd("wave-display-reconciler notify lid-open"))
 
 local volumeUpCommand =
     [[sh -c 'wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+; status="$(wpctl get-volume @DEFAULT_AUDIO_SINK@)"; qs -c wave ipc call osd volume "$status"']]
