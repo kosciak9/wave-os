@@ -130,10 +130,9 @@ in
 
   systemd.services.wave-power-profile-policy = {
     description = "Select the power profile based on AC power state";
-    # The daemon units also pull this policy back in after PartOf stops it on
-    # their restart; no after=multi-user.target cycle is introduced.
+    # The daemon units pull this policy in and restart it after PartOf stops it;
+    # keep it out of multi-user.target to avoid an ordering cycle.
     wantedBy = [
-      "multi-user.target"
       "power-profiles-daemon.service"
       "upower.service"
     ];

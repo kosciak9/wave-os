@@ -13,7 +13,7 @@ vim.o.termguicolors = true
 vim.cmd("colorscheme kanagawa")
 
 require("hardtime").setup({
-	disabled_filetypes = { "qf", "netrw", "lazy", "oil" },
+	disabled_filetypes = { qf = true, netrw = true, lazy = true, oil = true },
 })
 
 require("gitsigns").setup()

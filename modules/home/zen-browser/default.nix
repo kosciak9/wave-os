@@ -15,17 +15,18 @@ let
   cfg = config.programs.zen-browser;
   jsonFormat = pkgs.formats.json { };
   profileRoot =
-    if pkgs.stdenv.isDarwin then
+    if pkgs.stdenv.hostPlatform.isDarwin then
       "Library/Application Support/Zen"
     else
       lib.removePrefix "${config.home.homeDirectory}/" "${config.xdg.configHome}/zen";
   profilePath =
-    if pkgs.stdenv.isDarwin then
+    if pkgs.stdenv.hostPlatform.isDarwin then
       "${profileRoot}/Profiles/${cfg.profileName}"
     else
       "${profileRoot}/${cfg.profileName}";
   profilesIniPath = "${profileRoot}/profiles.ini";
-  profileIniPath = if pkgs.stdenv.isDarwin then "Profiles/${cfg.profileName}" else cfg.profileName;
+  profileIniPath =
+    if pkgs.stdenv.hostPlatform.isDarwin then "Profiles/${cfg.profileName}" else cfg.profileName;
   settings =
     cfg.settings
     // lib.optionalAttrs (cfg.userChrome != null && builtins.readFile cfg.userChrome != "") {

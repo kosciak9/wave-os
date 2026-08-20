@@ -8,7 +8,7 @@
 {
   programs.ghostty = {
     enable = true;
-    package = if pkgs.stdenv.isLinux then pkgs.ghostty else null;
+    package = if pkgs.stdenv.hostPlatform.isLinux then pkgs.ghostty else null;
     settings = {
       font-family = [
         "OverpassM Nerd Font"

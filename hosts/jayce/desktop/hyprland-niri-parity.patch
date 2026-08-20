@@ -1,95 +1,8 @@
-diff --git a/src/Compositor.cpp b/src/Compositor.cpp
-index f9ef1a38b960ac3d5193296fb84935371e49f717..408c462a999589da44c5b8debd5fdf3fdde700f5 100644
---- a/src/Compositor.cpp
-+++ b/src/Compositor.cpp
-@@ -1270,6 +1270,48 @@ PHLWORKSPACE CCompositor::getWorkspaceByID(const WORKSPACEID& id) {
-     return nullptr;
- }
-
-+std::vector<PHLWORKSPACE> CCompositor::getWorkspacesOnMonitor(PHLMONITOR monitor) const {
-+    std::vector<PHLWORKSPACE> result;
-+
-+    for (const auto& ref : m_workspaces) {
-+        const auto workspace = ref.lock();
-+        if (valid(workspace) && !workspace->m_isSpecialWorkspace && workspace->m_monitor == monitor)
-+            result.emplace_back(workspace);
-+    }
-+
-+    return result;
-+}
-+
-+std::optional<size_t> CCompositor::getWorkspaceOrderIndex(PHLWORKSPACE workspace) const {
-+    if (!valid(workspace) || workspace->m_isSpecialWorkspace)
-+        return std::nullopt;
-+
-+    const auto monitor = workspace->m_monitor.lock();
-+    if (!monitor)
-+        return std::nullopt;
-+
-+    const auto ordered = getWorkspacesOnMonitor(monitor);
-+    const auto it      = std::ranges::find(ordered, workspace);
-+    if (it == ordered.end())
-+        return std::nullopt;
-+
-+    return std::distance(ordered.begin(), it);
-+}
-+
-+PHLWORKSPACE CCompositor::getWorkspaceInOrder(PHLWORKSPACE workspace, int64_t offset) const {
-+    const auto index = getWorkspaceOrderIndex(workspace);
-+    if (!index)
-+        return nullptr;
-+
-+    const auto ordered = getWorkspacesOnMonitor(workspace->m_monitor.lock());
-+    const auto target  = sc<int64_t>(*index) + offset;
-+    if (target < 0 || target >= sc<int64_t>(ordered.size()))
-+        return nullptr;
-+
-+    return ordered[target];
-+}
-+
-+
- PHLWINDOW CCompositor::getUrgentWindow() {
-     for (auto const& w : m_windows) {
-         if (w->m_isMapped && w->m_isUrgent)
-diff --git a/src/Compositor.hpp b/src/Compositor.hpp
-index 98473358ec51ca1d4d8d778891ad73b0f02c5ba6..fdb237c23baad77f40df9a9691a4676dc13aa28c 100644
---- a/src/Compositor.hpp
-+++ b/src/Compositor.hpp
-@@ -111,6 +111,9 @@ class CCompositor {
-     PHLWORKSPACE           getWorkspaceByID(const WORKSPACEID&);
-     PHLWORKSPACE           getWorkspaceByName(const std::string&);
-     PHLWORKSPACE           getWorkspaceByString(const std::string&);
-+    std::vector<PHLWORKSPACE>           getWorkspacesOnMonitor(PHLMONITOR) const;
-+    std::optional<size_t>               getWorkspaceOrderIndex(PHLWORKSPACE) const;
-+    PHLWORKSPACE                        getWorkspaceInOrder(PHLWORKSPACE, int64_t offset) const;
-     PHLWINDOW              getUrgentWindow();
-     bool                   isWindowActive(PHLWINDOW);
-     void                   changeWindowZOrder(PHLWINDOW, bool);
-diff --git a/src/config/lua/bindings/LuaBindingsDispatchers.cpp b/src/config/lua/bindings/LuaBindingsDispatchers.cpp
-index 379cccef625b5a942032e99d704ba0dd2d7cd5cb..cb998bc5fc40a1d87766cdd79de06f6c470476e5 100644
---- a/src/config/lua/bindings/LuaBindingsDispatchers.cpp
-+++ b/src/config/lua/bindings/LuaBindingsDispatchers.cpp
-@@ -1207,6 +1207,7 @@ static int dsp_moveCurrentWorkspaceToMonitor(lua_State* L) {
-     return Internal::checkResult(L, CA::moveToMonitor(PCURRENTWORKSPACE, PMONITOR));
- }
-
-+
- static int dsp_swapActiveWorkspaces(lua_State* L) {
-     const auto PMON1 = g_pCompositor->getMonitorFromString(lua_tostring(L, lua_upvalueindex(1)));
-     const auto PMON2 = g_pCompositor->getMonitorFromString(lua_tostring(L, lua_upvalueindex(2)));
-@@ -1241,6 +1242,7 @@ static int hlWorkspaceMove(lua_State* L) {
-     if (!lua_istable(L, 1))
-         return Internal::configError(L, "hl.workspace.move: expected a table, e.g. { monitor = \"DP-1\" }");
-
-+
-     const auto mon = Internal::requireTableFieldMonitorSelector(L, 1, "monitor", "hl.workspace.move");
-
-     auto       id = Internal::tableOptWorkspaceSelector(L, 1, "workspace", "hl.workspace.move");
 diff --git a/src/config/lua/objects/LuaWindow.cpp b/src/config/lua/objects/LuaWindow.cpp
-index 41edcc7877bb527e9871b80b801baf79a5d71b60..29ce07100867865185cb238aea6aa177f15eb0c3 100644
+index 992b0c0..533bf69 100644
 --- a/src/config/lua/objects/LuaWindow.cpp
 +++ b/src/config/lua/objects/LuaWindow.cpp
-@@ -211,6 +211,9 @@ static int windowIndex(lua_State* L) {
+@@ -216,6 +216,9 @@ static int windowIndex(lua_State* L) {
                      lua_pushnumber(L, col->getColumnWidth());
                      lua_setfield(L, -2, "width");
 
@@ -100,16 +13,24 @@ index 41edcc7877bb527e9871b80b801baf79a5d71b60..29ce07100867865185cb238aea6aa177
                      int i = 1;
                      for (const auto& td : col->targetDatas) {
 diff --git a/src/config/lua/objects/LuaWorkspace.cpp b/src/config/lua/objects/LuaWorkspace.cpp
-index e1b95faa0121924dfcd6a4f11bfc8a18072b36a3..8839aa377acaab1f6ac4fb9e6450e3f00b539bc1 100644
+index 4a054c9..d35d83a 100644
 --- a/src/config/lua/objects/LuaWorkspace.cpp
 +++ b/src/config/lua/objects/LuaWorkspace.cpp
-@@ -103,7 +103,13 @@ static int workspaceIndex(lua_State* L) {
+@@ -13,6 +13,7 @@
+ #include "../../../layout/algorithm/TiledAlgorithm.hpp"
+ #include "../../../layout/supplementary/WorkspaceAlgoMatcher.hpp"
+ #include "../../../Compositor.hpp"
++#include "../../../state/WorkspaceState.hpp"
+
+ #include <algorithm>
+ #include <string_view>
+@@ -104,7 +105,13 @@ static int workspaceIndex(lua_State* L) {
 
      if (key == "id")
          lua_pushinteger(L, sc<lua_Integer>(ws->m_id));
 -    else if (key == "name")
 +    else if (key == "index") {
-+        const auto index = g_pCompositor->getWorkspaceOrderIndex(ws);
++        const auto index = State::workspaceState()->workspaceOrderIndex(ws);
 +        if (index)
 +            lua_pushinteger(L, sc<lua_Integer>(*index + 1));
 +        else
@@ -119,10 +40,10 @@ index e1b95faa0121924dfcd6a4f11bfc8a18072b36a3..8839aa377acaab1f6ac4fb9e6450e3f0
      else if (key == "monitor") {
          const auto mon = ws->m_monitor.lock();
 diff --git a/src/config/values/ConfigValues.cpp b/src/config/values/ConfigValues.cpp
-index 23cad96e46099e60a2dadb54e6bdb43ebeba5a95..c09d0d068342731bf3a47a5f2b4fc76156fc088a 100644
+index 4954aeb..371b9df 100644
 --- a/src/config/values/ConfigValues.cpp
 +++ b/src/config/values/ConfigValues.cpp
-@@ -672,7 +672,7 @@ std::vector<SP<IValue>> Values::getConfigValues() {
+@@ -701,7 +701,7 @@ std::vector<SP<IValue>> Values::getConfigValues() {
                   {.refresh = Supplementary::REFRESH_LAYOUTS}),
          MS<Float>("scrolling:column_width", "the default width of a column.", 0.5, {.min = 0.1, .max = 1.0}),
          MS<Int>("scrolling:focus_fit_method", "When a column is focused, what method should be used to bring it into view", 1,
@@ -132,14 +53,14 @@ index 23cad96e46099e60a2dadb54e6bdb43ebeba5a95..c09d0d068342731bf3a47a5f2b4fc761
          MS<Float>("scrolling:follow_min_visible", "when a window is focused, require that at least a given fraction of it is visible for focus to follow", 0.4,
                    {.min = 0.0, .max = 1.0}),
 diff --git a/src/debug/HyprCtl.cpp b/src/debug/HyprCtl.cpp
-index 812aeb71cabe7a630701885c254ac8487df7b1d8..858d011fcb895489e4d261b5fdf8d5af5776fd4a 100644
+index 060e25b..853d4fc 100644
 --- a/src/debug/HyprCtl.cpp
 +++ b/src/debug/HyprCtl.cpp
-@@ -482,9 +482,12 @@ std::string CHyprCtl::getWorkspaceData(PHLWORKSPACE w, eHyprCtlOutputFormat form
+@@ -494,9 +494,12 @@ std::string CHyprCtl::getWorkspaceData(PHLWORKSPACE w, eHyprCtlOutputFormat form
          layoutName             = Layout::Supplementary::algoMatcher()->getNameForTiledAlgo(&typeid(*TILED_ALGO.get()));
      }
 
-+    const auto orderIndex = g_pCompositor->getWorkspaceOrderIndex(w);
++    const auto orderIndex = State::workspaceState()->workspaceOrderIndex(w);
 +
      if (format == eHyprCtlOutputFormat::FORMAT_JSON) {
          return std::format(R"#({{
@@ -148,37 +69,20 @@ index 812aeb71cabe7a630701885c254ac8487df7b1d8..858d011fcb895489e4d261b5fdf8d5af
      "name": "{}",
      "monitor": "{}",
      "monitorID": {},
-@@ -495,7 +498,7 @@ std::string CHyprCtl::getWorkspaceData(PHLWORKSPACE w, eHyprCtlOutputFormat form
+@@ -507,7 +510,7 @@ std::string CHyprCtl::getWorkspaceData(PHLWORKSPACE w, eHyprCtlOutputFormat form
      "ispersistent": {},
      "tiledLayout": "{}"
  }})#",
 -                           w->m_id, escapeJSONStrings(w->m_name), escapeJSONStrings(PMONITOR ? PMONITOR->m_name : "?"),
 +                           w->m_id, orderIndex ? *orderIndex + 1 : 0, escapeJSONStrings(w->m_name), escapeJSONStrings(PMONITOR ? PMONITOR->m_name : "?"),
-                            escapeJSONStrings(PMONITOR ? std::to_string(PMONITOR->m_id) : "null"), w->getWindows(), w->m_hasFullscreenWindow ? "true" : "false",
-                            rc<uintptr_t>(PLASTW.get()), PLASTW ? escapeJSONStrings(PLASTW->m_title) : "", w->isPersistent() ? "true" : "false", escapeJSONStrings(layoutName));
-     } else {
-diff --git a/src/helpers/Monitor.cpp b/src/helpers/Monitor.cpp
-index 5d1a7ef9ce55058bbb9c61b6a3112aac84e799d5..be0f59b6d912b1cd34531eda0c6d6afdf26ea427 100644
---- a/src/helpers/Monitor.cpp
-+++ b/src/helpers/Monitor.cpp
-@@ -1460,7 +1460,11 @@ void CMonitor::changeWorkspace(const PHLWORKSPACE& pWorkspace, bool internal, bo
-     pWorkspace->m_visible = true;
-
-     if (!internal) {
--        const auto ANIMTOLEFT = POLDWORKSPACE && (shouldWraparound(pWorkspace->m_id, POLDWORKSPACE->m_id) ^ (pWorkspace->m_id > POLDWORKSPACE->m_id));
-+        const auto OLDINDEX   = g_pCompositor->getWorkspaceOrderIndex(POLDWORKSPACE);
-+        const auto NEWINDEX   = g_pCompositor->getWorkspaceOrderIndex(pWorkspace);
-+        const auto ANIMTOLEFT = POLDWORKSPACE && OLDINDEX && NEWINDEX ?
-+            *NEWINDEX > *OLDINDEX :
-+            POLDWORKSPACE && (shouldWraparound(pWorkspace->m_id, POLDWORKSPACE->m_id) ^ (pWorkspace->m_id > POLDWORKSPACE->m_id));
-         const auto ANIMSTYLE  = pWorkspace->m_animationStyle;
-         if (POLDWORKSPACE)
-             g_pDesktopAnimationManager->startAnimation(POLDWORKSPACE, CDesktopAnimationManager::ANIMATION_TYPE_OUT, ANIMTOLEFT, false, ANIMSTYLE);
+                            escapeJSONStrings(PMONITOR ? std::to_string(PMONITOR->m_id) : "null"), w->getWindowCount(),
+                            Fullscreen::controller()->hasFullscreen(w) ? "true" : "false", rc<uintptr_t>(PLASTW.get()), PLASTW ? escapeJSONStrings(PLASTW->m_title) : "",
+                            w->isPersistent() ? "true" : "false", escapeJSONStrings(layoutName));
 diff --git a/src/layout/algorithm/tiled/scrolling/ScrollTapeController.cpp b/src/layout/algorithm/tiled/scrolling/ScrollTapeController.cpp
-index 722b9bd8b05499285cb34cb5857190fb22c9f45f..ad6c9d3cffd5500da0664cdfa88e466914927bc5 100644
+index cd07057..3566883 100644
 --- a/src/layout/algorithm/tiled/scrolling/ScrollTapeController.cpp
 +++ b/src/layout/algorithm/tiled/scrolling/ScrollTapeController.cpp
-@@ -153,7 +153,7 @@ CBox CScrollTapeController::calculateStripBox(size_t stripIndex, const CBox& usa
+@@ -161,7 +161,7 @@ CBox CScrollTapeController::calculateStripBox(size_t stripIndex, const CBox& usa
 
      const double usableSecondary = getSecondary(usableArea.size());
      const double usablePrimary   = getPrimary(usableArea.size());
@@ -187,26 +91,26 @@ index 722b9bd8b05499285cb34cb5857190fb22c9f45f..ad6c9d3cffd5500da0664cdfa88e4669
 
      // calculate position along primary axis (strip position)
      double primaryPos  = calculateStripStart(stripIndex, usableArea, fullscreenOnOne);
-@@ -221,12 +221,12 @@ double CScrollTapeController::calculateCameraOffset(const CBox& usableArea, bool
+@@ -229,12 +229,12 @@ double CScrollTapeController::calculateCameraOffset(const CBox& usableArea, bool
          return m_offset;
 
      // if the content fits in viewport, center it
 -    if (maxExtent < usablePrimary)
 +    if (maxExtent <= usablePrimary + 0.5)
-         m_offset = std::round((maxExtent - usablePrimary) / 2.0);
+         setOffset(std::round((maxExtent - usablePrimary) / 2.0));
 
      // if the offset is negative but we already extended and fit method is not center, reset offset to 0
      static const auto PFITMETHOD = CConfigValue<Hyprlang::INT>("scrolling:focus_fit_method");
 -    if (maxExtent > usablePrimary && m_offset < 0.0 && *PFITMETHOD != 0)
 +    if (maxExtent > usablePrimary + 0.5 && m_offset < 0.0 && *PFITMETHOD == 1)
-         m_offset = 0.0;
+         setOffset(0.0);
 
      return m_offset;
 diff --git a/src/layout/algorithm/tiled/scrolling/ScrollingAlgorithm.cpp b/src/layout/algorithm/tiled/scrolling/ScrollingAlgorithm.cpp
-index f200130a2c4f1ff3d010e51ecd5505cab7901ef9..88905bb45378c7fad9532fce493adb14f9083345 100644
+index 4aa1185..645e61c 100644
 --- a/src/layout/algorithm/tiled/scrolling/ScrollingAlgorithm.cpp
 +++ b/src/layout/algorithm/tiled/scrolling/ScrollingAlgorithm.cpp
-@@ -20,6 +20,8 @@
+@@ -26,6 +26,8 @@
  #include <hyprutils/string/ConstVarList.hpp>
  #include <hyprutils/utils/ScopeGuard.hpp>
 
@@ -215,7 +119,7 @@ index f200130a2c4f1ff3d010e51ecd5505cab7901ef9..88905bb45378c7fad9532fce493adb14
  using namespace Hyprutils::String;
  using namespace Hyprutils::Utils;
  using namespace Layout;
-@@ -400,16 +402,48 @@ void SScrollingData::fitCol(SP<SColumnData> c) {
+@@ -406,16 +408,48 @@ void SScrollingData::fitCol(SP<SColumnData> c) {
          controller->fitStrip(colIdx, USABLE, *PFSONONE);
  }
 
@@ -267,7 +171,7 @@ index f200130a2c4f1ff3d010e51ecd5505cab7901ef9..88905bb45378c7fad9532fce493adb14
  }
 
  SP<SColumnData> SScrollingData::atCenter() {
-@@ -592,9 +626,6 @@ CScrollingAlgorithm::CScrollingAlgorithm() {
+@@ -637,9 +671,6 @@ CScrollingAlgorithm::CScrollingAlgorithm() : m_scrollingFullscreenHandler(makeUn
 
          static const auto PFOLLOW_FOCUS = CConfigValue<Config::INTEGER>("scrolling:follow_focus");
 
@@ -277,7 +181,7 @@ index f200130a2c4f1ff3d010e51ecd5505cab7901ef9..88905bb45378c7fad9532fce493adb14
          if (pWindow->m_workspace != m_parent->space()->workspace())
              return;
 
-@@ -602,6 +633,14 @@ CScrollingAlgorithm::CScrollingAlgorithm() {
+@@ -647,6 +678,14 @@ CScrollingAlgorithm::CScrollingAlgorithm() : m_scrollingFullscreenHandler(makeUn
          if (!TARGET || TARGET->floating())
              return;
 
@@ -292,7 +196,7 @@ index f200130a2c4f1ff3d010e51ecd5505cab7901ef9..88905bb45378c7fad9532fce493adb14
          // if follow_focus != 0, focuswindow always moves scrolling view
          // if follow_focus != 0, change in a group's current window state always moves scrolling view
          // if follow_focus != 0, moving a window into group via the corresponding dispatches `moveintogroup`, `movewindoworgroup` always moves scrolling view
-@@ -609,9 +648,10 @@ CScrollingAlgorithm::CScrollingAlgorithm() {
+@@ -654,9 +693,10 @@ CScrollingAlgorithm::CScrollingAlgorithm() : m_scrollingFullscreenHandler(makeUn
          if (*PFOLLOW_FOCUS &&
              (reason == Desktop::FOCUS_REASON_DISPATCH_FOCUSWINDOW || reason == Desktop::FOCUS_REASON_GROUP_CURRENT_WINDOW_CHANGE ||
               reason == Desktop::FOCUS_REASON_DISPATCH_MOVEWINDOWINTOGROUP || reason == Desktop::FOCUS_REASON_SWITCH_TO_WINDOW_SOFT))
@@ -305,7 +209,7 @@ index f200130a2c4f1ff3d010e51ecd5505cab7901ef9..88905bb45378c7fad9532fce493adb14
      });
 
      // Initialize default widths and direction
-@@ -627,7 +667,7 @@ CScrollingAlgorithm::~CScrollingAlgorithm() {
+@@ -669,7 +709,7 @@ CScrollingAlgorithm::~CScrollingAlgorithm() {
      m_focusCallback.reset();
  }
 
@@ -314,7 +218,7 @@ index f200130a2c4f1ff3d010e51ecd5505cab7901ef9..88905bb45378c7fad9532fce493adb14
      static const auto PFOLLOW_FOCUS_MIN_PERC = CConfigValue<Config::FLOAT>("scrolling:follow_min_visible");
 
      if (!target || target->space() != m_parent->space())
-@@ -662,11 +702,7 @@ void CScrollingAlgorithm::focusOnInput(SP<ITarget> target, eInputMode input) {
+@@ -704,11 +744,7 @@ void CScrollingAlgorithm::focusOnInput(SP<ITarget> target, eInputMode input) {
      if (m_scrollingData->visible(TARGETDATA->column.lock(), true) && input != INPUT_MODE_HARD)
          return;
 
@@ -327,36 +231,29 @@ index f200130a2c4f1ff3d010e51ecd5505cab7901ef9..88905bb45378c7fad9532fce493adb14
      m_scrollingData->recalculate();
  }
 
-@@ -686,13 +722,22 @@ void CScrollingAlgorithm::newTarget(SP<ITarget> target) {
-         m_scrollingData->fitCol(col);
-     } else {
-         if (g_layoutManager->dragController()->wasDraggingWindow() && g_layoutManager->dragController()->draggingTiled()) {
-+            SP<SColumnData> col;
-             if (droppingOn) {
--                const auto IDX = droppingColumn->idx(droppingOn->layoutTarget());
--                const auto TOP = droppingOn->getWindowIdealBoundingBoxIgnoreReserved().middle().y > g_pInputManager->getMouseCoordsInternal().y;
--                droppingColumn->add(target, TOP ? (IDX == 0 ? -1 : IDX - 1) : (IDX));
--            } else
--                droppingColumn->add(target);
--            m_scrollingData->fitCol(droppingColumn);
+@@ -746,12 +782,15 @@ void CScrollingAlgorithm::newTarget(SP<ITarget> target) {
+             if (!WITHIN_RANGE) {
+                 // we are not within edge range, so we drop into the column
+
+-                if (droppingOn) {
+-                    const auto IDX = droppingColumn->idx(droppingOn->layoutTarget());
+-                    const auto TOP = droppingOn->getWindowIdealBoundingBoxIgnoreReserved().middle().y > g_pInputManager->getMouseCoordsInternal().y;
+-                    droppingColumn->add(target, TOP ? (IDX == 0 ? -1 : IDX - 1) : (IDX));
+-                } else
+-                    droppingColumn->add(target);
 +                const auto IDX = m_scrollingData->idx(droppingColumn);
 +                const auto BOX = droppingOn->getWindowIdealBoundingBoxIgnoreReserved();
 +                const auto POS = g_pInputManager->getMouseCoordsInternal();
-+
 +                bool before = m_scrollingData->controller->isPrimaryHorizontal() ? POS.x < BOX.middle().x : POS.y < BOX.middle().y;
 +                if (m_scrollingData->controller->isReversed())
 +                    before = !before;
-+
-+                col = IDX == -1 ? m_scrollingData->add(width) : m_scrollingData->add(before ? IDX - 1 : IDX, width);
-+            } else {
-+                col = droppingColumn;
-+            }
-+            col->add(target);
-+            m_scrollingData->fitCol(col);
-         } else {
-             auto idx = m_scrollingData->idx(droppingColumn);
-             auto col = idx == -1 ? m_scrollingData->add(width) : m_scrollingData->add(idx, width);
-@@ -1378,14 +1423,6 @@ Config::ErrorResult CScrollingAlgorithm::layoutMsg(const std::string_view& sv) {
++                auto col = IDX == -1 ? m_scrollingData->add(width) : m_scrollingData->add(before ? IDX - 1 : IDX, width);
++                col->add(target);
++                droppingColumn = col;
+             } else {
+                 // we are within the edge drop, make a new column
+
+@@ -1148,14 +1187,6 @@ Config::ErrorResult CScrollingAlgorithm::layoutMsg(const std::string_view& sv) {
      const auto notFound   = [](std::string msg) { return Config::configError(std::move(msg), Config::eConfigErrorLevel::WARNING, Config::eConfigErrorCode::NOT_FOUND); };
      const auto stateErr   = [](std::string msg) { return Config::configError(std::move(msg), Config::eConfigErrorLevel::WARNING, Config::eConfigErrorCode::INVALID_STATE); };
 
@@ -371,7 +268,7 @@ index f200130a2c4f1ff3d010e51ecd5505cab7901ef9..88905bb45378c7fad9532fce493adb14
      const auto ARGS = CVarList(std::string{sv}, 0, ' ');
      if (ARGS[0] == "move") {
          if (ARGS[1] == "+col" || ARGS[1] == "col") {
-@@ -1395,15 +1432,10 @@ Config::ErrorResult CScrollingAlgorithm::layoutMsg(const std::string_view& sv) {
+@@ -1165,15 +1196,10 @@ Config::ErrorResult CScrollingAlgorithm::layoutMsg(const std::string_view& sv) {
 
              const auto COL = m_scrollingData->next(TDATA->column.lock());
              if (!COL) {
@@ -388,7 +285,7 @@ index f200130a2c4f1ff3d010e51ecd5505cab7901ef9..88905bb45378c7fad9532fce493adb14
              m_scrollingData->recalculate();
 
              focusTargetUpdate(COL->targetDatas.front()->target.lock());
-@@ -1429,7 +1461,7 @@ Config::ErrorResult CScrollingAlgorithm::layoutMsg(const std::string_view& sv) {
+@@ -1199,7 +1225,7 @@ Config::ErrorResult CScrollingAlgorithm::layoutMsg(const std::string_view& sv) {
              if (!COL)
                  return {};
 
@@ -397,7 +294,7 @@ index f200130a2c4f1ff3d010e51ecd5505cab7901ef9..88905bb45378c7fad9532fce493adb14
              m_scrollingData->recalculate();
 
              focusTargetUpdate(COL->targetDatas.back()->target.lock());
-@@ -1450,6 +1482,59 @@ Config::ErrorResult CScrollingAlgorithm::layoutMsg(const std::string_view& sv) {
+@@ -1220,6 +1246,59 @@ Config::ErrorResult CScrollingAlgorithm::layoutMsg(const std::string_view& sv) {
          const auto ATCENTER = m_scrollingData->atCenter();
 
          focusTargetUpdate(ATCENTER ? (*ATCENTER->targetDatas.begin())->target.lock() : nullptr);
@@ -457,7 +354,16 @@ index f200130a2c4f1ff3d010e51ecd5505cab7901ef9..88905bb45378c7fad9532fce493adb14
      } else if (ARGS[0] == "colresize") {
          const auto TDATA = dataFor(Desktop::focusState()->window() ? Desktop::focusState()->window()->layoutTarget() : nullptr);
 
-@@ -1711,7 +1796,7 @@ Config::ErrorResult CScrollingAlgorithm::layoutMsg(const std::string_view& sv) {
+@@ -1345,7 +1424,7 @@ Config::ErrorResult CScrollingAlgorithm::layoutMsg(const std::string_view& sv) {
+                 WDATA->column->setColumnWidth(rem);
+
+                 m_scrollingData->controller->setOffset(0);
+-                centerOrFit(USED_COL);
++                m_scrollingData->centerOrFitCol(USED_COL);
+                 m_scrollingData->recalculate();
+             }
+
+@@ -1501,7 +1580,7 @@ Config::ErrorResult CScrollingAlgorithm::layoutMsg(const std::string_view& sv) {
              auto PREV = m_scrollingData->prev(TDATA->column.lock());
              if (!PREV) {
                  if (*PNOFALLBACK) {
@@ -465,8 +371,8 @@ index f200130a2c4f1ff3d010e51ecd5505cab7901ef9..88905bb45378c7fad9532fce493adb14
 +                    m_scrollingData->centerOrFitCol(TDATA->column.lock(), TDATA->column.lock());
                      m_scrollingData->recalculate();
                      if (TDATA->target->window())
-                         g_pCompositor->warpCursorTo(TDATA->target->window()->middle());
-@@ -1723,7 +1808,7 @@ Config::ErrorResult CScrollingAlgorithm::layoutMsg(const std::string_view& sv) {
+                         Pointer::pointerController()->warpTo(TDATA->target->window()->middle());
+@@ -1513,7 +1592,7 @@ Config::ErrorResult CScrollingAlgorithm::layoutMsg(const std::string_view& sv) {
              auto pTargetData = findBestNeighbor(TDATA, PREV);
              if (pTargetData) {
                  focusTargetUpdate(pTargetData->target.lock());
@@ -474,8 +380,8 @@ index f200130a2c4f1ff3d010e51ecd5505cab7901ef9..88905bb45378c7fad9532fce493adb14
 +                m_scrollingData->centerOrFitCol(PREV, TDATA->column.lock());
                  m_scrollingData->recalculate();
                  if (pTargetData->target->window())
-                     g_pCompositor->warpCursorTo(pTargetData->target->window()->middle());
-@@ -1733,7 +1818,7 @@ Config::ErrorResult CScrollingAlgorithm::layoutMsg(const std::string_view& sv) {
+                     Pointer::pointerController()->warpTo(pTargetData->target->window()->middle());
+@@ -1523,7 +1602,7 @@ Config::ErrorResult CScrollingAlgorithm::layoutMsg(const std::string_view& sv) {
              auto NEXT = m_scrollingData->next(TDATA->column.lock());
              if (!NEXT) {
                  if (*PNOFALLBACK) {
@@ -483,8 +389,8 @@ index f200130a2c4f1ff3d010e51ecd5505cab7901ef9..88905bb45378c7fad9532fce493adb14
 +                    m_scrollingData->centerOrFitCol(TDATA->column.lock(), TDATA->column.lock());
                      m_scrollingData->recalculate();
                      if (TDATA->target->window())
-                         g_pCompositor->warpCursorTo(TDATA->target->window()->middle());
-@@ -1745,7 +1830,7 @@ Config::ErrorResult CScrollingAlgorithm::layoutMsg(const std::string_view& sv) {
+                         Pointer::pointerController()->warpTo(TDATA->target->window()->middle());
+@@ -1535,7 +1614,7 @@ Config::ErrorResult CScrollingAlgorithm::layoutMsg(const std::string_view& sv) {
              auto pTargetData = findBestNeighbor(TDATA, NEXT);
              if (pTargetData) {
                  focusTargetUpdate(pTargetData->target.lock());
@@ -492,8 +398,8 @@ index f200130a2c4f1ff3d010e51ecd5505cab7901ef9..88905bb45378c7fad9532fce493adb14
 +                m_scrollingData->centerOrFitCol(NEXT, TDATA->column.lock());
                  m_scrollingData->recalculate();
                  if (pTargetData->target->window())
-                     g_pCompositor->warpCursorTo(pTargetData->target->window()->middle());
-@@ -1897,7 +1982,7 @@ void CScrollingAlgorithm::snapToGrid() {
+                     Pointer::pointerController()->warpTo(pTargetData->target->window()->middle());
+@@ -1719,7 +1798,7 @@ void CScrollingAlgorithm::snapToGrid() {
      snapToProjectedOffset(normalizedTapeOffset());
  }
 
@@ -502,7 +408,7 @@ index f200130a2c4f1ff3d010e51ecd5505cab7901ef9..88905bb45378c7fad9532fce493adb14
      static const auto PFSONONE   = CConfigValue<Config::INTEGER>("scrolling:fullscreen_on_one_column");
      static const auto PFITMETHOD = CConfigValue<Config::INTEGER>("scrolling:focus_fit_method");
 
-@@ -1916,6 +2001,8 @@ SP<SColumnData> CScrollingAlgorithm::snapToProjectedOffset(double projectedNorma
+@@ -1738,6 +1817,8 @@ SP<SColumnData> CScrollingAlgorithm::snapToProjectedOffset(double projectedNorma
          return nullptr;
 
      const double projectedOffset = projectedNormalizedOffset * usablePrimary;
@@ -511,7 +417,7 @@ index f200130a2c4f1ff3d010e51ecd5505cab7901ef9..88905bb45378c7fad9532fce493adb14
 
      double       bestOffset      = 0.0;
      double       bestDelta       = 0.0;
-@@ -1930,6 +2017,11 @@ SP<SColumnData> CScrollingAlgorithm::snapToProjectedOffset(double projectedNorma
+@@ -1752,6 +1833,11 @@ SP<SColumnData> CScrollingAlgorithm::snapToProjectedOffset(double projectedNorma
          return start - (usablePrimary - size) / 2.0;
      };
 
@@ -523,7 +429,7 @@ index f200130a2c4f1ff3d010e51ecd5505cab7901ef9..88905bb45378c7fad9532fce493adb14
      auto fitOffsetFor = [&](size_t index) {
          const double start = controller.calculateStripStart(index, USABLE, *PFSONONE);
          const double size  = controller.calculateStripSize(index, USABLE, *PFSONONE);
-@@ -1945,14 +2037,14 @@ SP<SColumnData> CScrollingAlgorithm::snapToProjectedOffset(double projectedNorma
+@@ -1767,14 +1853,14 @@ SP<SColumnData> CScrollingAlgorithm::snapToProjectedOffset(double projectedNorma
          return std::abs(projectedOffset - center) <= std::abs(projectedOffset - edge) ? center : edge;
      };
 
@@ -544,7 +450,7 @@ index f200130a2c4f1ff3d010e51ecd5505cab7901ef9..88905bb45378c7fad9532fce493adb14
 
          if (!foundSnap || betterFit || betterTieBreak) {
              bestOffset      = offset;
-@@ -1963,13 +2055,20 @@ SP<SColumnData> CScrollingAlgorithm::snapToProjectedOffset(double projectedNorma
+@@ -1785,13 +1871,20 @@ SP<SColumnData> CScrollingAlgorithm::snapToProjectedOffset(double projectedNorma
          }
      };
 
@@ -568,7 +474,7 @@ index f200130a2c4f1ff3d010e51ecd5505cab7901ef9..88905bb45378c7fad9532fce493adb14
      m_scrollingData->recalculate();
 
      if (bestIndex < m_scrollingData->columns.size())
-@@ -1978,9 +2077,15 @@ SP<SColumnData> CScrollingAlgorithm::snapToProjectedOffset(double projectedNorma
+@@ -1800,9 +1893,15 @@ SP<SColumnData> CScrollingAlgorithm::snapToProjectedOffset(double projectedNorma
      return nullptr;
  }
 
@@ -585,7 +491,7 @@ index f200130a2c4f1ff3d010e51ecd5505cab7901ef9..88905bb45378c7fad9532fce493adb14
          return;
      }
 
-@@ -1998,6 +2103,11 @@ void CScrollingAlgorithm::focusColumn(SP<SColumnData> column) {
+@@ -1820,6 +1919,11 @@ void CScrollingAlgorithm::focusColumn(SP<SColumnData> column) {
      }
 
      focusTargetUpdate(targetData ? targetData->target.lock() : nullptr);
@@ -598,10 +504,10 @@ index f200130a2c4f1ff3d010e51ecd5505cab7901ef9..88905bb45378c7fad9532fce493adb14
 
  SP<SColumnData> CScrollingAlgorithm::getColumnAtViewportCenter() {
 diff --git a/src/layout/algorithm/tiled/scrolling/ScrollingAlgorithm.hpp b/src/layout/algorithm/tiled/scrolling/ScrollingAlgorithm.hpp
-index 867b86e84613a42898166bf2322cb4cf351493bc..fb92ae95137c639155f7d60ac009221316c6212b 100644
+index 98a43be..a08e529 100644
 --- a/src/layout/algorithm/tiled/scrolling/ScrollingAlgorithm.hpp
 +++ b/src/layout/algorithm/tiled/scrolling/ScrollingAlgorithm.hpp
-@@ -81,7 +81,7 @@ namespace Layout::Tiled {
+@@ -80,7 +80,7 @@ namespace Layout::Tiled {
          bool                         visible(SP<SColumnData> c, bool full = false);
          void                         centerCol(SP<SColumnData> c);
          void                         fitCol(SP<SColumnData> c);
@@ -610,57 +516,50 @@ index 867b86e84613a42898166bf2322cb4cf351493bc..fb92ae95137c639155f7d60ac0092213
 
          void                         recalculate(bool forceInstant = false);
 
-@@ -117,8 +117,8 @@ namespace Layout::Tiled {
-         void                             moveTape(float delta);
-         void                             moveTapeNormalized(double delta);
-         void                             snapToGrid();
--        SP<SColumnData>                  snapToProjectedOffset(double projectedNormalizedOffset);
--        void                             focusColumn(SP<SColumnData> column);
-+        SP<SColumnData>                  snapToProjectedOffset(double projectedNormalizedOffset, SP<SColumnData> anchor = nullptr);
-+        void                             focusColumn(SP<SColumnData> column, bool preserveCamera = false);
-         SP<SColumnData>                  getColumnAtViewportCenter();
-         SP<SColumnData>                  currentColumn();
+@@ -114,8 +114,8 @@ namespace Layout::Tiled {
+         void                                       moveTape(float delta);
+         void                                       moveTapeNormalized(double delta);
+         void                                       snapToGrid();
+-        SP<SColumnData>                            snapToProjectedOffset(double projectedNormalizedOffset);
+-        void                                       focusColumn(SP<SColumnData> column);
++        SP<SColumnData>                            snapToProjectedOffset(double projectedNormalizedOffset, SP<SColumnData> anchor = nullptr);
++        void                                       focusColumn(SP<SColumnData> column, bool preserveCamera = false);
+         SP<SColumnData>                            getColumnAtViewportCenter();
+         SP<SColumnData>                            currentColumn();
 
-@@ -167,7 +167,7 @@ namespace Layout::Tiled {
+@@ -154,7 +154,8 @@ namespace Layout::Tiled {
 
-         void                                focusTargetUpdate(SP<ITarget> target);
-         void                                moveTargetTo(SP<ITarget> t, Math::eDirection dir, bool silent);
--        void                                focusOnInput(SP<ITarget> target, eInputMode input);
-+        void                                focusOnInput(SP<ITarget> target, eInputMode input, SP<SColumnData> previous = nullptr);
+         void                     focusTargetUpdate(SP<ITarget> target);
+         void                     moveTargetTo(SP<ITarget> t, Math::eDirection dir, bool silent);
+-        void                     focusOnInput(SP<ITarget> target, eInputMode input);
++        void                     focusOnInput(SP<ITarget> target, eInputMode input, SP<SColumnData> previous = nullptr);
++        WP<SColumnData>          m_lastFocusedColumn;
 
-         void                                expelTarget(SP<SScrollingTargetData> tdata, SP<SColumnData> srcCol, std::optional<int64_t> insertIdx);
+         void                     expelTarget(SP<SScrollingTargetData> tdata, SP<SColumnData> srcCol, std::optional<int64_t> insertIdx);
 
-@@ -175,6 +175,7 @@ namespace Layout::Tiled {
-
-         std::vector<SFullscreenScrollState> m_fullscreenTargets;
-         bool                                m_lastFullscreenCover = false;
-+        WP<SColumnData>                     m_lastFocusedColumn;
-
-         friend struct SScrollingData;
-     };
 diff --git a/src/managers/SessionLockManager.cpp b/src/managers/SessionLockManager.cpp
-index 6e45c92343a92baa3800089916f9b0f7f1f7e9a9..b142ede87e6151ac775a87bd883d057027fd7d83 100644
+index bb3e792..249a83a 100644
 --- a/src/managers/SessionLockManager.cpp
 +++ b/src/managers/SessionLockManager.cpp
-@@ -77,8 +77,12 @@ void CSessionLockManager::onNewSessionLock(SP<CSessionLock> pLock) {
-     });
-
+@@ -80,8 +80,12 @@ void CSessionLockManager::onNewSessionLock(SP<CSessionLock> pLock) {
      m_sessionLock->listeners.unlock = pLock->m_events.unlockAndDestroy.listen([this] {
-+        const auto FOCUSED = Desktop::focusState()->window();
+         m_events.unlock.emit();
+
++        const auto focused = Desktop::focusState()->window();
          m_sessionLock.reset();
 -        g_pInputManager->refocus();
-+        if (FOCUSED)
-+            Desktop::focusState()->fullWindowFocus(FOCUSED, Desktop::FOCUS_REASON_DESKTOP_STATE_CHANGE);
++        if (focused)
++            Desktop::focusState()->fullWindowFocus(focused, Desktop::FOCUS_REASON_DESKTOP_STATE_CHANGE);
 +        else
 +            g_pInputManager->refocus();
 
-         for (auto const& m : g_pCompositor->m_monitors)
+         for (auto const& m : State::monitorState()->monitors())
              g_pHyprRenderer->damageMonitor(m);
 diff --git a/src/managers/input/UnifiedWorkspaceSwipeGesture.cpp b/src/managers/input/UnifiedWorkspaceSwipeGesture.cpp
-index e2eac6938c8bdec67abd9cbb56808f3d635740fe..82fd04b4ad544b1cb760ad23fb4599568d911f2a 100644
+index f58c186..4164a95 100644
 --- a/src/managers/input/UnifiedWorkspaceSwipeGesture.cpp
 +++ b/src/managers/input/UnifiedWorkspaceSwipeGesture.cpp
-@@ -53,20 +53,16 @@ void CUnifiedWorkspaceSwipeGesture::update(double delta) {
+@@ -60,20 +60,16 @@ void CUnifiedWorkspaceSwipeGesture::update(double delta) {
      m_avgSpeed = (m_avgSpeed * m_speedPoints + abs(d)) / (m_speedPoints + 1);
      m_speedPoints++;
 
@@ -671,8 +570,8 @@ index e2eac6938c8bdec67abd9cbb56808f3d635740fe..82fd04b4ad544b1cb760ad23fb459956
 -        m_workspaceBegin = nullptr; // invalidate the swipe
 -        return;
 -    }
-+    const auto PWORKSPACEL      = *PSWIPEUSER ? g_pCompositor->getWorkspaceByID(getWorkspaceIDNameFromString("r-1").id) : g_pCompositor->getWorkspaceInOrder(m_workspaceBegin, -1);
-+    const auto PWORKSPACER      = *PSWIPEUSER ? g_pCompositor->getWorkspaceByID(getWorkspaceIDNameFromString("r+1").id) : g_pCompositor->getWorkspaceInOrder(m_workspaceBegin, 1);
++    const auto PWORKSPACEL      = *PSWIPEUSER ? State::workspaceState()->query().id(getWorkspaceIDNameFromString("r-1").id).run() : State::workspaceState()->workspaceInOrder(m_workspaceBegin, -1);
++    const auto PWORKSPACER      = *PSWIPEUSER ? State::workspaceState()->query().id(getWorkspaceIDNameFromString("r+1").id).run() : State::workspaceState()->workspaceInOrder(m_workspaceBegin, 1);
 +    const auto workspaceIDLeft  = PWORKSPACEL ? PWORKSPACEL->m_id : WORKSPACE_INVALID;
 +    const auto workspaceIDRight = PWORKSPACER ? PWORKSPACER->m_id : WORKSPACE_INVALID;
 
@@ -681,16 +580,16 @@ index e2eac6938c8bdec67abd9cbb56808f3d635740fe..82fd04b4ad544b1cb760ad23fb459956
      m_delta = std::clamp(m_delta, sc<double>(-SWIPEDISTANCE), sc<double>(SWIPEDISTANCE));
 
 -    if ((m_workspaceBegin->m_id == workspaceIDLeft && *PSWIPENEW && (m_delta < 0)) ||
--        (m_delta > 0 && m_workspaceBegin->getWindows() == 0 && workspaceIDRight <= m_workspaceBegin->m_id) || (m_delta < 0 && m_workspaceBegin->m_id <= workspaceIDLeft)) {
+-        (m_delta > 0 && m_workspaceBegin->getWindowCount() == 0 && workspaceIDRight <= m_workspaceBegin->m_id) || (m_delta < 0 && m_workspaceBegin->m_id <= workspaceIDLeft)) {
 +    if ((m_delta < 0 && !PWORKSPACEL) || (m_delta > 0 && !PWORKSPACER && !*PSWIPENEW)) {
 
          m_delta = 0;
          g_pHyprRenderer->damageMonitor(m_monitor.lock());
-@@ -82,9 +78,9 @@ void CUnifiedWorkspaceSwipeGesture::update(double delta) {
+@@ -89,9 +85,9 @@ void CUnifiedWorkspaceSwipeGesture::update(double delta) {
      }
 
      if (m_delta < 0) {
--        const auto PWORKSPACE = g_pCompositor->getWorkspaceByID(workspaceIDLeft);
+-        const auto PWORKSPACE = State::workspaceState()->query().id(workspaceIDLeft).run();
 +        const auto PWORKSPACE = PWORKSPACEL;
 
 -        if (workspaceIDLeft > m_workspaceBegin->m_id || !PWORKSPACE) {
@@ -698,20 +597,20 @@ index e2eac6938c8bdec67abd9cbb56808f3d635740fe..82fd04b4ad544b1cb760ad23fb459956
              if (*PSWIPENEW) {
                  g_pHyprRenderer->damageMonitor(m_monitor.lock());
 
-@@ -104,8 +100,6 @@ void CUnifiedWorkspaceSwipeGesture::update(double delta) {
+@@ -111,8 +107,6 @@ void CUnifiedWorkspaceSwipeGesture::update(double delta) {
          PWORKSPACE->m_alpha->setValueAndWarp(1.f);
 
          if (workspaceIDLeft != workspaceIDRight && workspaceIDRight != m_workspaceBegin->m_id) {
--            const auto PWORKSPACER = g_pCompositor->getWorkspaceByID(workspaceIDRight);
+-            const auto PWORKSPACER = State::workspaceState()->query().id(workspaceIDRight).run();
 -
              if (PWORKSPACER) {
                  PWORKSPACER->m_forceRendering = false;
                  PWORKSPACER->m_alpha->setValueAndWarp(0.f);
-@@ -122,9 +116,9 @@ void CUnifiedWorkspaceSwipeGesture::update(double delta) {
+@@ -129,9 +123,9 @@ void CUnifiedWorkspaceSwipeGesture::update(double delta) {
 
          PWORKSPACE->updateWindowDecos();
      } else {
--        const auto PWORKSPACE = g_pCompositor->getWorkspaceByID(workspaceIDRight);
+-        const auto PWORKSPACE = State::workspaceState()->query().id(workspaceIDRight).run();
 +        const auto PWORKSPACE = PWORKSPACER;
 
 -        if (workspaceIDRight < m_workspaceBegin->m_id || !PWORKSPACE) {
@@ -719,23 +618,23 @@ index e2eac6938c8bdec67abd9cbb56808f3d635740fe..82fd04b4ad544b1cb760ad23fb459956
              if (*PSWIPENEW) {
                  g_pHyprRenderer->damageMonitor(m_monitor.lock());
 
-@@ -144,8 +138,6 @@ void CUnifiedWorkspaceSwipeGesture::update(double delta) {
+@@ -151,8 +145,6 @@ void CUnifiedWorkspaceSwipeGesture::update(double delta) {
          PWORKSPACE->m_alpha->setValueAndWarp(1.f);
 
          if (workspaceIDLeft != workspaceIDRight && workspaceIDLeft != m_workspaceBegin->m_id) {
--            const auto PWORKSPACEL = g_pCompositor->getWorkspaceByID(workspaceIDLeft);
+-            const auto PWORKSPACEL = State::workspaceState()->query().id(workspaceIDLeft).run();
 -
              if (PWORKSPACEL) {
                  PWORKSPACEL->m_forceRendering = false;
                  PWORKSPACEL->m_alpha->setValueAndWarp(0.f);
-@@ -189,18 +181,17 @@ void CUnifiedWorkspaceSwipeGesture::end() {
+@@ -196,18 +188,17 @@ void CUnifiedWorkspaceSwipeGesture::end() {
      const bool  VERTANIMS     = ANIMSTYLE == "slidevert" || ANIMSTYLE.starts_with("slidefadevert");
 
      // commit
 -    auto       workspaceIDLeft  = getWorkspaceIDNameFromString((*PSWIPEUSER ? "r-1" : "m-1")).id;
 -    auto       workspaceIDRight = getWorkspaceIDNameFromString((*PSWIPEUSER ? "r+1" : "m+1")).id;
-+    auto       PWORKSPACEL      = *PSWIPEUSER ? g_pCompositor->getWorkspaceByID(getWorkspaceIDNameFromString("r-1").id) : g_pCompositor->getWorkspaceInOrder(m_workspaceBegin, -1);
-+    auto       PWORKSPACER      = *PSWIPEUSER ? g_pCompositor->getWorkspaceByID(getWorkspaceIDNameFromString("r+1").id) : g_pCompositor->getWorkspaceInOrder(m_workspaceBegin, 1);
++    auto       PWORKSPACEL      = *PSWIPEUSER ? State::workspaceState()->query().id(getWorkspaceIDNameFromString("r-1").id).run() : State::workspaceState()->workspaceInOrder(m_workspaceBegin, -1);
++    auto       PWORKSPACER      = *PSWIPEUSER ? State::workspaceState()->query().id(getWorkspaceIDNameFromString("r+1").id).run() : State::workspaceState()->workspaceInOrder(m_workspaceBegin, 1);
 +    auto       workspaceIDLeft  = PWORKSPACEL ? PWORKSPACEL->m_id : WORKSPACE_INVALID;
 +    auto       workspaceIDRight = PWORKSPACER ? PWORKSPACER->m_id : WORKSPACE_INVALID;
      const auto SWIPEDISTANCE    = std::clamp(*PSWIPEDIST, sc<int64_t>(1LL), sc<int64_t>(UINT32_MAX));
@@ -746,17 +645,17 @@ index e2eac6938c8bdec67abd9cbb56808f3d635740fe..82fd04b4ad544b1cb760ad23fb459956
 +    if (!PWORKSPACER && *PSWIPENEW)
          workspaceIDRight = getWorkspaceIDNameFromString("r+1").id;
 
--    auto         PWORKSPACER = g_pCompositor->getWorkspaceByID(workspaceIDRight); // not guaranteed if PSWIPENEW || PSWIPENUMBER
--    auto         PWORKSPACEL = g_pCompositor->getWorkspaceByID(workspaceIDLeft);  // not guaranteed if PSWIPENUMBER
+-    auto         PWORKSPACER = State::workspaceState()->query().id(workspaceIDRight).run(); // not guaranteed if PSWIPENEW || PSWIPENUMBER
+-    auto         PWORKSPACEL = State::workspaceState()->query().id(workspaceIDLeft).run();  // not guaranteed if PSWIPENUMBER
 -
      const auto   RENDEROFFSETMIDDLE = m_workspaceBegin->m_renderOffset->value();
      const auto   XDISTANCE          = m_monitor->m_size.x + *PWORKSPACEGAP;
      const auto   YDISTANCE          = m_monitor->m_size.y + *PWORKSPACEGAP;
 diff --git a/src/managers/input/trackpad/gestures/ScrollMoveGesture.cpp b/src/managers/input/trackpad/gestures/ScrollMoveGesture.cpp
-index 1fbbb104f634d9d514912c0a88c9dc483b49c90b..8cf0746b5ffa4b1a6a9dc8fff6585dcdf9bbf465 100644
+index af20c01..118ff2e 100644
 --- a/src/managers/input/trackpad/gestures/ScrollMoveGesture.cpp
 +++ b/src/managers/input/trackpad/gestures/ScrollMoveGesture.cpp
-@@ -57,6 +57,7 @@ void CScrollMoveTrackpadGesture::begin(const ITrackpadGesture::STrackpadGestureB
+@@ -58,6 +58,7 @@ void CScrollMoveTrackpadGesture::begin(const ITrackpadGesture::STrackpadGestureB
      m_hasLastUpdate      = false;
      m_lastUpdateTimeMs   = 0;
      m_velocity           = 0.0;
@@ -764,7 +663,7 @@ index 1fbbb104f634d9d514912c0a88c9dc483b49c90b..8cf0746b5ffa4b1a6a9dc8fff6585dcd
 
      m_startedOffset = LAYOUT ? LAYOUT->normalizedTapeOffset() : 0.0;
      m_startedColumn = LAYOUT ? LAYOUT->currentColumn() : nullptr;
-@@ -80,6 +81,7 @@ void CScrollMoveTrackpadGesture::update(const ITrackpadGesture::STrackpadGesture
+@@ -81,6 +82,7 @@ void CScrollMoveTrackpadGesture::update(const ITrackpadGesture::STrackpadGesture
      const double NORMALIZED_OFFSET_DELTA = -NORMALIZED_DELTA;
 
      SCROLLING->moveTapeNormalized(NORMALIZED_DELTA);
@@ -772,7 +671,7 @@ index 1fbbb104f634d9d514912c0a88c9dc483b49c90b..8cf0746b5ffa4b1a6a9dc8fff6585dcd
 
      if (!e.swipe)
          return;
-@@ -108,6 +110,7 @@ void CScrollMoveTrackpadGesture::end(const ITrackpadGesture::STrackpadGestureEnd
+@@ -109,6 +111,7 @@ void CScrollMoveTrackpadGesture::end(const ITrackpadGesture::STrackpadGestureEnd
          m_wasScrollingLayout = false;
          m_hasLastUpdate      = false;
          m_velocity           = 0.0;
@@ -780,7 +679,7 @@ index 1fbbb104f634d9d514912c0a88c9dc483b49c90b..8cf0746b5ffa4b1a6a9dc8fff6585dcd
          return;
      }
 
-@@ -115,16 +118,21 @@ void CScrollMoveTrackpadGesture::end(const ITrackpadGesture::STrackpadGestureEnd
+@@ -116,16 +119,21 @@ void CScrollMoveTrackpadGesture::end(const ITrackpadGesture::STrackpadGestureEnd
 
      const bool   CANCELLED = e.swipe && e.swipe->cancelled;
      const double Δ         = (CANCELLED ? 0.0 : std::clamp(m_velocity / SCROLL_GESTURE_VELOCITY_DECAY, -SCROLL_GESTURE_MAX_PROJECTION, SCROLL_GESTURE_MAX_PROJECTION));
@@ -810,14 +709,14 @@ index 1fbbb104f634d9d514912c0a88c9dc483b49c90b..8cf0746b5ffa4b1a6a9dc8fff6585dcd
      } else {
          SCROLLING->moveTape(Δ);
          const auto COL = SCROLLING->getColumnAtViewportCenter();
-@@ -142,4 +150,5 @@ void CScrollMoveTrackpadGesture::end(const ITrackpadGesture::STrackpadGestureEnd
+@@ -143,4 +151,5 @@ void CScrollMoveTrackpadGesture::end(const ITrackpadGesture::STrackpadGestureEnd
      m_wasScrollingLayout = false;
      m_hasLastUpdate      = false;
      m_velocity           = 0.0;
 +    m_accumulatedOffsetDelta = 0.0;
  }
 diff --git a/src/managers/input/trackpad/gestures/ScrollMoveGesture.hpp b/src/managers/input/trackpad/gestures/ScrollMoveGesture.hpp
-index 26e51e00903fccf57137b742e900cd1f51dcc2c1..aa0cb3ccf671ff9fd89c4233c7ff3d14c0d36dbd 100644
+index 26e51e0..aa0cb3c 100644
 --- a/src/managers/input/trackpad/gestures/ScrollMoveGesture.hpp
 +++ b/src/managers/input/trackpad/gestures/ScrollMoveGesture.hpp
 @@ -23,5 +23,6 @@ class CScrollMoveTrackpadGesture : public ITrackpadGesture {
@@ -827,11 +726,27 @@ index 26e51e00903fccf57137b742e900cd1f51dcc2c1..aa0cb3ccf671ff9fd89c4233c7ff3d14
 +    double                         m_accumulatedOffsetDelta = 0.0;
      WP<Layout::Tiled::SColumnData> m_startedColumn      = nullptr;
  };
+diff --git a/src/output/Monitor.cpp b/src/output/Monitor.cpp
+index e69d8dd..5e08760 100644
+--- a/src/output/Monitor.cpp
++++ b/src/output/Monitor.cpp
+@@ -1468,7 +1468,10 @@ void CMonitor::changeWorkspace(const PHLWORKSPACE& pWorkspace, bool internal, bo
+     pWorkspace->m_visible = true;
+
+     if (!internal) {
+-        const auto ANIMTOLEFT = POLDWORKSPACE && (shouldWraparound(pWorkspace->m_id, POLDWORKSPACE->m_id) ^ (pWorkspace->m_id > POLDWORKSPACE->m_id));
++        const auto OLDINDEX   = State::workspaceState()->workspaceOrderIndex(POLDWORKSPACE);
++        const auto NEWINDEX   = State::workspaceState()->workspaceOrderIndex(pWorkspace);
++        const auto ANIMTOLEFT = POLDWORKSPACE && OLDINDEX && NEWINDEX ? *NEWINDEX > *OLDINDEX :
++            POLDWORKSPACE && (shouldWraparound(pWorkspace->m_id, POLDWORKSPACE->m_id) ^ (pWorkspace->m_id > POLDWORKSPACE->m_id));
+         const auto ANIMSTYLE  = pWorkspace->m_animationStyle;
+         if (POLDWORKSPACE)
+             Animation::Workspace::startAnimation(POLDWORKSPACE, Animation::Workspace::ANIMATION_TYPE_OUT, ANIMTOLEFT, false, ANIMSTYLE);
 diff --git a/src/protocols/ExtWorkspace.cpp b/src/protocols/ExtWorkspace.cpp
-index ac7c7277962825919c49f2bf771638dac7f95232..8dd2c1e188e2b58bff21ae170a59639db9c11c82 100644
+index 507e13d..d7106b6 100644
 --- a/src/protocols/ExtWorkspace.cpp
 +++ b/src/protocols/ExtWorkspace.cpp
-@@ -78,6 +78,8 @@ CExtWorkspaceResource::CExtWorkspaceResource(WP<CExtWorkspaceManagerResource> ma
+@@ -85,6 +85,8 @@ CExtWorkspaceResource::CExtWorkspaceResource(WP<CExtWorkspaceManagerResource> ma
 
          if (m_manager)
              m_manager->scheduleDone();
@@ -840,7 +755,7 @@ index ac7c7277962825919c49f2bf771638dac7f95232..8dd2c1e188e2b58bff21ae170a59639d
      });
 
      m_listeners.activeChanged = m_workspace->m_events.activeChanged.listen([this] {
-@@ -85,7 +87,12 @@ CExtWorkspaceResource::CExtWorkspaceResource(WP<CExtWorkspaceManagerResource> ma
+@@ -92,7 +94,12 @@ CExtWorkspaceResource::CExtWorkspaceResource(WP<CExtWorkspaceManagerResource> ma
          sendCapabilities();
      });
 
@@ -854,7 +769,7 @@ index ac7c7277962825919c49f2bf771638dac7f95232..8dd2c1e188e2b58bff21ae170a59639d
 
      m_listeners.renamed = m_workspace->m_events.renamed.listen([this] {
          m_resource->sendName(m_workspace->m_name.c_str());
-@@ -109,18 +116,7 @@ CExtWorkspaceResource::CExtWorkspaceResource(WP<CExtWorkspaceManagerResource> ma
+@@ -123,18 +130,7 @@ CExtWorkspaceResource::CExtWorkspaceResource(WP<CExtWorkspaceManagerResource> ma
 
      m_resource->sendName(m_workspace->m_name.c_str());
 
@@ -874,29 +789,29 @@ index ac7c7277962825919c49f2bf771638dac7f95232..8dd2c1e188e2b58bff21ae170a59639d
 
      sendState();
      sendCapabilities();
-@@ -133,6 +129,21 @@ bool CExtWorkspaceResource::good() const {
-     return m_resource;
+@@ -147,6 +143,21 @@ bool CExtWorkspaceResource::good() const {
+     return !!m_resource;
  }
 
 +void CExtWorkspaceResource::sendCoordinates() {
++    if (!m_resource || !m_workspace)
++        return;
++
 +    wl_array coordinates;
 +    wl_array_init(&coordinates);
 +
-+    const auto index = g_pCompositor->getWorkspaceOrderIndex(m_workspace.lock());
++    const auto index = State::workspaceState()->workspaceOrderIndex(m_workspace.lock());
 +    if (index)
-+        *sc<uint32_t*>(wl_array_add(&coordinates, sizeof(uint32_t))) = *index + 1;
++        *sc<uint32_t*>(wl_array_add(&coordinates, sizeof(uint32_t))) = sc<uint32_t>(*index + 1);
 +
 +    m_resource->sendCoordinates(&coordinates);
 +    wl_array_release(&coordinates);
-+
-+    if (m_manager)
-+        m_manager->scheduleDone();
 +}
 +
  bool CExtWorkspaceResource::isActive() const {
      if (!m_workspace)
          return false;
-@@ -258,6 +269,20 @@ void CExtWorkspaceManagerResource::scheduleDone() {
+@@ -275,6 +286,20 @@ void CExtWorkspaceManagerResource::scheduleDone() {
          self->m_resource->sendDone();
      });
  }
@@ -918,7 +833,7 @@ index ac7c7277962825919c49f2bf771638dac7f95232..8dd2c1e188e2b58bff21ae170a59639d
  WP<CExtWorkspaceGroupResource> CExtWorkspaceManagerResource::findGroup(const PHLMONITORREF& monitor) const {
      auto iter = std::ranges::find_if(PROTO::extWorkspace->m_groups,
 diff --git a/src/protocols/ExtWorkspace.hpp b/src/protocols/ExtWorkspace.hpp
-index ba4aeeae6daa0c882a985b331b5aec8b3593428b..a173be9c5553498e0985cae5a48934da3769d27e 100644
+index bb2982f..4f71a23 100644
 --- a/src/protocols/ExtWorkspace.hpp
 +++ b/src/protocols/ExtWorkspace.hpp
 @@ -58,6 +58,7 @@ class CExtWorkspaceResource {
@@ -929,7 +844,7 @@ index ba4aeeae6daa0c882a985b331b5aec8b3593428b..a173be9c5553498e0985cae5a48934da
 
      struct {
          bool          activate   = false;
-@@ -87,6 +88,7 @@ class CExtWorkspaceManagerResource {
+@@ -88,6 +89,7 @@ class CExtWorkspaceManagerResource {
      void                                         onWorkspaceCreated(const PHLWORKSPACE& workspace);
 
      void                                         scheduleDone();
@@ -937,7 +852,7 @@ index ba4aeeae6daa0c882a985b331b5aec8b3593428b..a173be9c5553498e0985cae5a48934da
      [[nodiscard]] WP<CExtWorkspaceGroupResource> findGroup(const PHLMONITORREF& monitor) const;
      void                                         sendGroupToWorkspaces(const WP<CExtWorkspaceGroupResource>& group);
 
-@@ -94,6 +96,7 @@ class CExtWorkspaceManagerResource {
+@@ -95,6 +97,7 @@ class CExtWorkspaceManagerResource {
 
    private:
      bool m_doneScheduled = false;
@@ -945,3 +860,62 @@ index ba4aeeae6daa0c882a985b331b5aec8b3593428b..a173be9c5553498e0985cae5a48934da
  };
 
  class CExtWorkspaceProtocol : public IWaylandProtocol {
+diff --git a/src/state/WorkspaceState.cpp b/src/state/WorkspaceState.cpp
+index ad3d6ee..c6733ff 100644
+--- a/src/state/WorkspaceState.cpp
++++ b/src/state/WorkspaceState.cpp
+@@ -35,6 +35,40 @@ std::vector<SWorkspaceQueryable> CWorkspaceStateTracker::queryableWorkspaces() c
+     return queryable;
+ }
+
++std::vector<PHLWORKSPACE> CWorkspaceStateTracker::workspacesOnMonitor(PHLMONITOR monitor) const {
++    std::vector<PHLWORKSPACE> result;
++    for (const auto& workspace : m_workspaces) {
++        const auto ws = workspace.lock();
++        if (ws && !ws->m_isSpecialWorkspace && ws->m_monitor == monitor)
++            result.emplace_back(ws);
++    }
++    return result;
++}
++
++std::optional<size_t> CWorkspaceStateTracker::workspaceOrderIndex(PHLWORKSPACE workspace) const {
++    if (!workspace || workspace->m_isSpecialWorkspace)
++        return std::nullopt;
++    const auto monitor = workspace->m_monitor.lock();
++    if (!monitor)
++        return std::nullopt;
++    const auto ordered = workspacesOnMonitor(monitor);
++    const auto it = std::ranges::find(ordered, workspace);
++    if (it == ordered.end())
++        return std::nullopt;
++    return std::distance(ordered.begin(), it);
++}
++
++PHLWORKSPACE CWorkspaceStateTracker::workspaceInOrder(PHLWORKSPACE workspace, int64_t offset) const {
++    const auto index = workspaceOrderIndex(workspace);
++    if (!index)
++        return nullptr;
++    const auto ordered = workspacesOnMonitor(workspace->m_monitor.lock());
++    const auto target = sc<int64_t>(*index) + offset;
++    if (target < 0 || target >= sc<int64_t>(ordered.size()))
++        return nullptr;
++    return ordered[target];
++}
++
+ std::vector<PHLWORKSPACE> CWorkspaceStateTracker::workspacesCopy() const {
+     std::vector<PHLWORKSPACE> wsp;
+     auto                      range = workspaces();
+diff --git a/src/state/WorkspaceState.hpp b/src/state/WorkspaceState.hpp
+index 4a74c1a..2d9b241 100644
+--- a/src/state/WorkspaceState.hpp
++++ b/src/state/WorkspaceState.hpp
+@@ -21,6 +21,9 @@ namespace State {
+             return std::views::filter(m_workspaces, [](const auto& e) { return !!e; });
+         }
+         std::vector<PHLWORKSPACE>  workspacesCopy() const;
++        std::vector<PHLWORKSPACE>  workspacesOnMonitor(PHLMONITOR monitor) const;
++        std::optional<size_t>      workspaceOrderIndex(PHLWORKSPACE workspace) const;
++        PHLWORKSPACE               workspaceInOrder(PHLWORKSPACE workspace, int64_t offset) const;
+
+         void                       add(PHLWORKSPACE w);
+         void                       clear();

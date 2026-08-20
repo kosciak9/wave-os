@@ -37,23 +37,6 @@ hl.monitor({
 })
 
 hl.config({
-    plugin = {
-        scrolloverview = {
-            scale = 0.5,
-            workspace_gap = 24,
-            layout = "vertical",
-            input = {
-                touchpad_scroll_factor = 20.0,
-                scrolling_mode = 2,
-                scroll_event_delay = 0,
-            },
-            wallpaper = 0,
-            blur = false,
-            shadow = {
-                enabled = false,
-            },
-        },
-    },
     input = {
         kb_layout = "pl",
         repeat_delay = 300,
@@ -141,6 +124,28 @@ hl.config({
         on_focus_under_fullscreen = 2,
     },
 })
+
+if hl.plugin.scrolloverview ~= nil then
+    hl.config({
+        plugin = {
+            scrolloverview = {
+                scale = 0.5,
+                workspace_gap = 24,
+                layout = "vertical",
+                input = {
+                    touchpad_scroll_factor = 20.0,
+                    scrolling_mode = 2,
+                    scroll_event_delay = 0,
+                },
+                wallpaper = 0,
+                blur = false,
+                shadow = {
+                    enabled = false,
+                },
+            },
+        },
+    })
+end
 
 hl.curve("niriOpen", {
     type = "bezier",

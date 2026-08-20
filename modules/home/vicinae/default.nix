@@ -37,7 +37,7 @@ in
         dark = {
           name = "kanagawa";
         }
-        // lib.optionalAttrs pkgs.stdenv.isLinux {
+        // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
           icon_theme = "oomox-Kanagawa";
         };
         light = {
@@ -109,7 +109,7 @@ in
         wm.enabled = false;
       };
     };
-    systemd = lib.mkIf pkgs.stdenv.isLinux {
+    systemd = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
       enable = true;
       autoStart = true;
       environment.PATH = "${
@@ -120,7 +120,7 @@ in
         ]
       }:/run/current-system/sw/bin:/usr/bin:/bin:/usr/sbin:/sbin";
     };
-    launchd = lib.mkIf pkgs.stdenv.isDarwin {
+    launchd = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
       enable = true;
       autoStart = true;
       environment.PATH = "${

@@ -59,7 +59,7 @@
     };
 
     hyprland-scroll-overview = {
-      url = "github:yayuuu/hyprland-scroll-overview/cfc23b194ba9378d1606c7aa73060f6ffbe38445";
+      url = "github:yayuuu/hyprland-scroll-overview/f9248ab6bee770e9d68813b48cc6ca12b3271254";
       flake = false;
     };
   };
@@ -84,7 +84,7 @@
           opencode = final.callPackage ./packages/opencode-darwin.nix { };
           kanagawa-gtk-theme = final.callPackage ./packages/kanagawa-gtk-theme.nix { };
         }
-        // prev.lib.optionalAttrs prev.stdenv.isLinux {
+        // prev.lib.optionalAttrs prev.stdenv.hostPlatform.isLinux {
           wave-hyprland = prev.hyprland.overrideAttrs (old: {
             patches = (old.patches or [ ]) ++ [ ./hosts/jayce/desktop/hyprland-niri-parity.patch ];
           });

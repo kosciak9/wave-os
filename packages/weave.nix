@@ -54,10 +54,10 @@ stdenvNoCC.mkDerivation {
     gnutar
     gzip
   ]
-  ++ lib.optionals stdenvNoCC.isDarwin [ darwin.cctools ]
-  ++ lib.optionals stdenvNoCC.isLinux [ autoPatchelfHook ];
+  ++ lib.optionals stdenvNoCC.hostPlatform.isDarwin [ darwin.cctools ]
+  ++ lib.optionals stdenvNoCC.hostPlatform.isLinux [ autoPatchelfHook ];
 
-  buildInputs = lib.optionals stdenvNoCC.isLinux [
+  buildInputs = lib.optionals stdenvNoCC.hostPlatform.isLinux [
     glibc
     libgcc
   ];
@@ -74,7 +74,7 @@ stdenvNoCC.mkDerivation {
     runHook preInstall
     install -Dm755 cli/weave $out/bin/weave
     install -Dm755 driver/weave-driver $out/bin/weave-driver
-    ${lib.optionalString stdenvNoCC.isDarwin ''
+    ${lib.optionalString stdenvNoCC.hostPlatform.isDarwin ''
       for binary in $out/bin/weave $out/bin/weave-driver; do
         install_name_tool -change /opt/homebrew/opt/openssl@3/lib/libssl.3.dylib ${openssl.out}/lib/libssl.3.dylib "$binary"
         install_name_tool -change /opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib ${openssl.out}/lib/libcrypto.3.dylib "$binary"
