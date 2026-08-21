@@ -11,6 +11,7 @@ in
   imports = [
     ../../modules/caddy/linux.nix
     ./hardware.nix
+    ./user.nix
   ];
 
   nix.settings.experimental-features = [
@@ -81,7 +82,6 @@ in
       gdm.enable = true;
     };
     flatpak.enable = true;
-    fprintd.enable = true;
     geoclue2 = {
       enable = true;
       enableDemoAgent = true;
@@ -196,7 +196,6 @@ in
   };
 
   security = {
-    pam.services.hyprlock = { };
     polkit.enable = true;
     rtkit.enable = true;
   };
@@ -222,18 +221,6 @@ in
   zramSwap = {
     enable = true;
     memoryPercent = 25;
-  };
-
-  users.users.kosciak = {
-    isNormalUser = true;
-    description = "Franek Madej";
-    shell = pkgs.zsh;
-    extraGroups = [
-      "audio"
-      "networkmanager"
-      "video"
-      "wheel"
-    ];
   };
 
   environment = {
