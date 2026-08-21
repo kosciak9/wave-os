@@ -502,9 +502,7 @@ in
     portalPackage = null;
     systemd.enable = false;
     extraConfig = ''
-      if hl.plugin.scrolloverview == nil then
-        hl.plugin.load("${pkgs.hyprland-scroll-overview}/lib/scrolloverview.so")
-      end
+      hl.plugin.load("${pkgs.hyprland-scroll-overview}/lib/scrolloverview.so")
       ${builtins.readFile ./desktop/hyprland.lua}
     '';
   };
