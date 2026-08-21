@@ -20,7 +20,7 @@ in
   nixpkgs.config.allowUnfree = true;
 
   boot = {
-    kernelPackages = pkgs.linuxPackages_latest;
+    kernelPackages = pkgs.linuxPackages;
     kernelParams = [ "quiet" ];
     consoleLogLevel = 3;
     loader = {
