@@ -4,6 +4,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
+import Quickshell.Services.Pipewire
 import "Theme.js" as Theme
 
 PanelWindow {
@@ -14,15 +15,70 @@ PanelWindow {
     property real value: 0
     property bool muted: false
     property bool fadingOut: true
+    readonly property var trackedSink: Pipewire.defaultAudioSink
+    property var trackedAudio: trackedSink !== null && trackedSink.ready ? trackedSink.audio : null
+    property real lastAudioVolume: 0
+    property bool lastAudioMuted: false
+    property bool hasAudioState: false
 
-    function showVolume(data) {
-        const match = data.match(/Volume:\s+([0-9.]+)/)
-        if (match === null)
+    PwObjectTracker {
+        id: sinkTracker
+        objects: [Pipewire.defaultAudioSink]
+    }
+
+    Connections {
+        target: root.trackedSink
+        function onReadyChanged(): void {
+            if (root.trackedSink !== null && root.trackedSink.ready)
+                root.seedAudioState()
+        }
+    }
+
+    Connections {
+        target: root.trackedAudio
+        function onVolumeChanged(): void { root.scheduleAudioUpdate() }
+        function onMutedChanged(): void { root.scheduleAudioUpdate() }
+    }
+
+    onTrackedSinkChanged: resetAudioState()
+    onTrackedAudioChanged: resetAudioState()
+
+    function resetAudioState() {
+        hasAudioState = false
+        audioUpdateTimer.stop()
+        audioSeedTimer.restart()
+    }
+
+    function seedAudioState() {
+        if (trackedSink === null || !trackedSink.ready || trackedAudio === null)
             return
+        lastAudioVolume = trackedAudio.volume
+        lastAudioMuted = trackedAudio.muted
+        hasAudioState = true
+    }
 
-        label = data.includes("MUTED") ? "MUTED" : "VOLUME"
-        value = Math.max(0, Math.min(1, Number(match[1])))
-        muted = data.includes("MUTED")
+    function scheduleAudioUpdate() {
+        if (hasAudioState)
+            audioUpdateTimer.restart()
+    }
+
+    function showAudioUpdate() {
+        if (trackedSink === null || !trackedSink.ready || trackedAudio === null || !hasAudioState)
+            return
+        const volume = trackedAudio.volume
+        const mutedState = trackedAudio.muted
+        const volumeChanged = volume !== lastAudioVolume
+        const muteChanged = mutedState !== lastAudioMuted
+        lastAudioVolume = volume
+        lastAudioMuted = mutedState
+        if (volumeChanged || muteChanged)
+            showVolume(volume, mutedState)
+    }
+
+    function showVolume(volume, mutedState) {
+        label = mutedState ? "MUTED" : "VOLUME"
+        value = Math.max(0, Math.min(1, volume))
+        muted = mutedState
         fadingOut = false
         visible = true
         hideTimer.restart()
@@ -60,10 +116,6 @@ PanelWindow {
     IpcHandler {
         target: "osd"
 
-        function volume(data: string): void {
-            root.showVolume(data)
-        }
-
         function brightness(data: string): void {
             root.showBrightness(data)
         }
@@ -74,6 +126,9 @@ PanelWindow {
         interval: 1400
         onTriggered: root.fadingOut = true
     }
+
+    Timer { id: audioSeedTimer; interval: 0; onTriggered: root.seedAudioState() }
+    Timer { id: audioUpdateTimer; interval: 0; onTriggered: root.showAudioUpdate() }
 
     Rectangle {
         id: background
@@ -89,12 +144,14 @@ PanelWindow {
         }
 
         Behavior on opacity {
+            enabled: root.fadingOut
             NumberAnimation { duration: Theme.normalDuration; easing.type: Easing.OutCubic }
         }
         transform: Translate {
             id: slideTransform
             y: root.fadingOut ? 10 : 0
             Behavior on y {
+                enabled: root.fadingOut
                 NumberAnimation { duration: Theme.normalDuration; easing.type: Easing.OutCubic }
             }
         }
@@ -136,10 +193,6 @@ PanelWindow {
                         height: parent.height
                         radius: parent.radius
                         color: root.muted ? Theme.waveRed : Theme.crystalBlue
-
-                        Behavior on width {
-                            NumberAnimation { duration: Theme.fastDuration }
-                        }
                     }
                 }
             }
