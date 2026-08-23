@@ -22,7 +22,10 @@ in
   services.accounts-daemon.enable = true;
   services.fprintd.enable = true;
 
-  security.pam.services.hyprlock.fprintAuth = true;
+  security = {
+    soteria.enable = true;
+    pam.services.hyprlock.fprintAuth = true;
+  };
 
   users.users.kosciak = {
     isNormalUser = true;
