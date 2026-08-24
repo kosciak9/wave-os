@@ -67,7 +67,7 @@
       initContent = lib.mkMerge [
         (lib.mkOrder 850 ''
           if [[ -n $TTY && $options[zle] = on ]]; then
-            source "$ZSH/plugins/vi-mode/vi-mode.plugin.zsh"
+            source "${pkgs.zsh-vi-mode}/share/zsh-vi-mode/zsh-vi-mode.plugin.zsh"
           fi
         '')
         (lib.mkOrder 900 ''
