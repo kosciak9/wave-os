@@ -22,6 +22,14 @@ in
   services.accounts-daemon.enable = true;
   services.fprintd.enable = true;
 
+  # GDM fingerprints cannot decrypt the login keyring; require a typed password there.
+  programs.dconf.profiles.gdm.databases = [
+    {
+      settings."org/gnome/login-screen".enable-fingerprint-authentication = false;
+      locks = [ "/org/gnome/login-screen/enable-fingerprint-authentication" ];
+    }
+  ];
+
   security = {
     soteria.enable = true;
     pam.services.hyprlock.fprintAuth = true;
