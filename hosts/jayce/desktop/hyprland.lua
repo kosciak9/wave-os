@@ -680,6 +680,7 @@ end
 
 hl.bind(mod .. " + RETURN", hl.dsp.exec_cmd("ghostty"))
 hl.bind(mod .. " + SPACE", hl.dsp.exec_cmd("vicinae toggle"))
+hl.bind(mod .. " + N", hl.dsp.exec_cmd("qs -c wave ipc call notifications toggle"))
 hl.bind(mod .. " + ALT + L", hl.dsp.exec_cmd("loginctl lock-session"))
 hl.bind(mod .. " + W", hl.dsp.window.close())
 hl.bind(mod .. " + G", function()

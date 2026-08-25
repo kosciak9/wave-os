@@ -10,6 +10,10 @@ let
   wallpaper = "/home/kosciak/.config/secrets/wallpapers/kanagawa-black-centered.png";
   sessionTarget = "wayland-session@hyprland.desktop.target";
   geocluePackage = pkgs.geoclue2-with-demo-agent;
+  quickshellWithMultimedia = pkgs.quickshell.overrideAttrs (old: {
+    buildInputs = (old.buildInputs or [ ]) ++ [ pkgs.kdePackages.qtmultimedia ];
+  });
+  notificationSoundPath = "${pkgs.sound-theme-freedesktop}/share/sounds/freedesktop/stereo/message-new-instant.oga";
   backlightDim = pkgs.writeShellApplication {
     name = "wave-backlight-dim";
     runtimeInputs = with pkgs; [
@@ -171,6 +175,7 @@ in
     };
     quickshell = {
       enable = true;
+      package = quickshellWithMultimedia;
       activeConfig = "wave";
       configs.wave = ./desktop/quickshell;
       systemd = {
@@ -394,11 +399,17 @@ in
     style.name = "kvantum";
   };
   systemd.user.services = {
-    quickshell.Unit = {
-      After = lib.mkForce [ "wayland-session-waitenv.service" ];
-      PartOf = [ sessionTarget ];
-      ConditionEnvironment = "WAYLAND_DISPLAY";
-      "X-Restart-Triggers" = [ "${./desktop/quickshell}" ];
+    quickshell = {
+      Unit = {
+        After = lib.mkForce [ "wayland-session-waitenv.service" ];
+        PartOf = [ sessionTarget ];
+        ConditionEnvironment = "WAYLAND_DISPLAY";
+        "X-Restart-Triggers" = [ "${./desktop/quickshell}" ];
+      };
+      Service = {
+        Environment = "WAVE_NOTIFICATION_SOUND=${notificationSoundPath}";
+        UMask = "0077";
+      };
     };
 
     wave-blackout = {

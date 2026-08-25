@@ -6,6 +6,10 @@ import Quickshell
 ShellRoot {
     id: root
 
+    NotificationService {
+        id: notifications
+    }
+
     readonly property var primaryScreen: {
         const screens = Quickshell.screens
         let first = null
@@ -31,6 +35,7 @@ ShellRoot {
         delegate: Component {
             Bar {
                 primary: modelData === root.primaryScreen
+                notificationService: notifications
             }
         }
     }
@@ -44,6 +49,16 @@ ShellRoot {
     }
 
     Blackout {}
+
+    NotificationToasts {
+        targetScreen: root.primaryScreen
+        service: notifications
+    }
+
+    NotificationCenter {
+        targetScreen: root.primaryScreen
+        service: notifications
+    }
 
     OpenCodeToasts {
         targetScreen: root.primaryScreen

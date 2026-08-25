@@ -14,6 +14,7 @@ PanelWindow {
 
     required property var modelData
     required property bool primary
+    required property var notificationService
 
     screen: modelData
     color: "transparent"
@@ -336,6 +337,53 @@ PanelWindow {
         }
     }
 
+    component NotificationWidget: WidgetButton {
+        id: notificationWidget
+
+        property bool barVisible: true
+        readonly property string modeColor: root.notificationService.mode === root.notificationService.criticalMode
+            ? Theme.carpYellow
+            : root.notificationService.mode === root.notificationService.noneMode ? Theme.waveRed : Theme.oldWhite
+
+        visible: barVisible
+        height: 32
+        spacing: 4
+        active: root.notificationService.centerOpen
+        activeColor: Theme.sumiInk3
+        border.width: 1
+        border.color: notificationWidget.modeColor
+
+        function iconPath() {
+            if (root.notificationService.mode === root.notificationService.criticalMode)
+                return Quickshell.shellDir + "/assets/half-moon.svg"
+            if (root.notificationService.mode === root.notificationService.noneMode)
+                return Quickshell.shellDir + "/assets/xmark.svg"
+            return Quickshell.shellDir + "/assets/bell.svg"
+        }
+
+        onClicked: function(mouse) {
+            if (mouse.button === Qt.LeftButton)
+                root.notificationService.toggle()
+        }
+
+        Image {
+            width: 16
+            height: 16
+            source: notificationWidget.iconPath()
+            fillMode: Image.PreserveAspectFit
+            opacity: 0.8
+        }
+
+        Text {
+            visible: root.notificationService.unreadCount !== 0
+            text: root.notificationService.unreadCount
+            color: notificationWidget.modeColor
+            font.family: Theme.fontFamily
+            font.pixelSize: 10
+            font.weight: Font.Bold
+        }
+    }
+
     component ClockWidget: WidgetButton {
         id: clockWidget
 
@@ -421,6 +469,8 @@ PanelWindow {
                 }
 
                 BatteryWidget { barVisible: root.primary }
+
+                NotificationWidget { barVisible: root.primary }
 
                 ClockWidget {}
             }
