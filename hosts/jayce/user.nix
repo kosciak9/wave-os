@@ -33,6 +33,8 @@ in
   security = {
     soteria.enable = true;
     pam.services.hyprlock.fprintAuth = true;
+    # Keep terminal sudo authentication password-only despite global fingerprint support.
+    pam.services.sudo.fprintAuth = false;
   };
 
   users.users.kosciak = {
