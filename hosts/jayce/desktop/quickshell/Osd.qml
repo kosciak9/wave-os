@@ -255,23 +255,17 @@ PanelWindow {
             anchors.margins: 16
             spacing: 14
 
-            Text {
-                visible: root.label === "BRIGHTNESS"
-                Layout.preferredWidth: 128
-                text: root.label
-                color: Theme.oldWhite
-                font.family: Theme.fontFamily
-                font.pixelSize: 10
-                font.weight: Font.Bold
-            }
-
             RowLayout {
-                visible: root.label !== "BRIGHTNESS"
-                Layout.preferredWidth: 128
+                Layout.minimumWidth: 116
+                Layout.preferredWidth: 116
+                Layout.maximumWidth: 116
                 spacing: 7
 
                 Image {
-                    Layout.preferredWidth: 24
+                    visible: root.label !== "BRIGHTNESS"
+                    Layout.minimumWidth: visible ? 24 : 0
+                    Layout.preferredWidth: visible ? 24 : 0
+                    Layout.maximumWidth: visible ? 24 : 0
                     Layout.preferredHeight: 24
                     source: root.outputIcon
                     fillMode: Image.PreserveAspectFit
@@ -279,10 +273,11 @@ PanelWindow {
 
                 Text {
                     Layout.fillWidth: true
-                    text: root.outputName
+                    text: root.label === "BRIGHTNESS" ? root.label : root.outputName
                     color: Theme.oldWhite
                     font.family: Theme.fontFamily
                     font.pixelSize: 10
+                    font.weight: root.label === "BRIGHTNESS" ? Font.Bold : Font.Normal
                     elide: Text.ElideRight
                 }
             }
