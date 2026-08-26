@@ -225,6 +225,7 @@ Scope {
     function forgetLive(key: string, notification): void {
         if (liveByKey[key] !== notification) return
         cancelTransientExpiry(key)
+        delete pendingRefresh[key]
         delete liveByKey[key]
         if (idToKey[notification.id] === key) delete idToKey[notification.id]
         if (connected[key] === notification) delete connected[key]
@@ -311,22 +312,25 @@ Scope {
 
     function onClosed(key: string, notification): void {
         if (liveByKey[key] !== notification) return
-        delete liveByKey[key]; delete connected[key]
-        if (idToKey[notification.id] === key) delete idToKey[notification.id]
+        forgetLive(key, notification)
         removeToast(key)
         const index = rowIndex(key)
-        if (index >= 0) historyModel.setProperty(index, "live", false)
+        if (index >= 0) historyModel.remove(index)
+        recalculateUnread()
+        schedulePersist()
     }
 
     function trimHistory(): void {
         while (historyModel.count > maxHistoryEntries) {
-            const index = historyModel.count - 1, key = historyModel.get(index).entryKey
+            const key = historyModel.get(historyModel.count - 1).entryKey
             if (isLive(key)) {
                 const notification = liveByKey[key]
                 notification.expire()
                 if (notification.transient) forgetLive(key, notification)
             }
-            removeToast(key); historyModel.remove(index)
+            removeToast(key)
+            const index = rowIndex(key)
+            if (index >= 0) historyModel.remove(index)
         }
         recalculateUnread()
         schedulePersist()
@@ -370,9 +374,9 @@ Scope {
         schedulePersist()
     }
     function cycleMode(): void { setMode(mode === allMode ? criticalMode : mode === criticalMode ? noneMode : allMode) }
-    function invokeAction(key: string, identifier: string): bool { const n = liveByKey[key]; if (!n) return false; for (const action of n.actions) if (action.identifier === identifier) { action.invoke(); return true } return false }
-    function invokeDefault(key: string): bool { const n = liveByKey[key]; if (!n) return false; for (const action of n.actions) if (action.identifier === "default") { action.invoke(); return true } return false }
-    function sendInlineReply(key: string, reply: string): bool { const n = liveByKey[key]; if (!n || !n.hasInlineReply) return false; n.sendInlineReply(reply); return true }
+    function invokeAction(key: string, identifier: string): bool { const n = liveByKey[key]; if (!n) return false; for (const action of n.actions) if (action.identifier === identifier) { action.invoke(); if (liveByKey[key] === n) dismissEntry(key); return true } return false }
+    function invokeDefault(key: string): bool { const n = liveByKey[key]; if (!n) return false; for (const action of n.actions) if (action.identifier === "default") { action.invoke(); if (liveByKey[key] === n) dismissEntry(key); return true } return false }
+    function sendInlineReply(key: string, reply: string): bool { const n = liveByKey[key]; if (!n || !n.hasInlineReply) return false; n.sendInlineReply(reply); if (liveByKey[key] === n) dismissEntry(key); return true }
     function actionDescriptors(key: string): var { const n = liveByKey[key]; return n ? n.actions : [] }
 
     ListModel { id: historyModel }

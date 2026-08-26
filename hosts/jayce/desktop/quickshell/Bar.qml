@@ -348,9 +348,10 @@ PanelWindow {
         visible: barVisible
         height: 32
         spacing: 4
+        horizontalPadding: 6
         active: root.notificationService.centerOpen
         activeColor: Theme.sumiInk3
-        border.width: 1
+        border.width: active ? 1 : 0
         border.color: notificationWidget.modeColor
 
         function iconPath() {
@@ -367,20 +368,19 @@ PanelWindow {
         }
 
         Image {
-            width: 16
-            height: 16
+            width: 14
+            height: 14
             source: notificationWidget.iconPath()
             fillMode: Image.PreserveAspectFit
             opacity: 0.8
         }
 
-        Text {
-            visible: root.notificationService.unreadCount !== 0
-            text: root.notificationService.unreadCount
+        Rectangle {
+            visible: root.notificationService.history.count > 0
+            width: 5
+            height: 5
+            radius: 2.5
             color: notificationWidget.modeColor
-            font.family: Theme.fontFamily
-            font.pixelSize: 10
-            font.weight: Font.Bold
         }
     }
 

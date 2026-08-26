@@ -12,8 +12,16 @@ Scope {
     property var groups: []
     property var expanded: ({})
     property bool rebuilding: false
+    property bool windowVisible: false
+    property bool panelShown: false
 
-    Component.onCompleted: rebuild()
+    Component.onCompleted: {
+        rebuild()
+        if (service.centerOpen) {
+            windowVisible = true
+            panelShown = true
+        }
+    }
 
     function iconSource(value): string {
         const icon = String(value || "").trim()
@@ -23,6 +31,12 @@ Scope {
             if (resolved.indexOf("/") === 0 || /^(file|image|qrc):/i.test(resolved)) return resolved
         }
         return Quickshell.shellDir + "/assets/bell.svg"
+    }
+
+    function displayAppName(value): string {
+        const name = String(value || "Unknown")
+        const parts = name.split(".")
+        return parts.length > 1 && parts[parts.length - 1].length > 0 ? parts[parts.length - 1] : name
     }
 
     function rebuildLater(): void {
@@ -58,18 +72,38 @@ Scope {
         function onRowsRemoved() { root.rebuildLater() }
         function onModelReset() { root.rebuildLater() }
     }
-    Connections { target: root.service; function onCenterOpenChanged() { if (root.service.centerOpen) root.rebuildLater() } }
+    Connections {
+        target: root.service
+        function onCenterOpenChanged() {
+            if (root.service.centerOpen) {
+                root.windowVisible = true
+                root.rebuildLater()
+                root.panelShown = true
+                hideTimer.stop()
+            } else {
+                root.panelShown = false
+                hideTimer.restart()
+            }
+        }
+    }
+
+    Timer {
+        id: hideTimer
+        interval: Theme.slowDuration + 30
+        repeat: false
+        onTriggered: if (!root.service.centerOpen) root.windowVisible = false
+    }
 
     PanelWindow {
         id: window
         screen: root.targetScreen
-        visible: root.targetScreen !== null && root.service.centerOpen
+        visible: root.targetScreen !== null && root.windowVisible
         color: "transparent"
         exclusionMode: ExclusionMode.Ignore
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
         anchors { top: true; right: true; bottom: true; left: true }
-        mask: Region { item: root.service.centerOpen ? outside : null }
+        mask: Region { item: root.windowVisible ? outside : null }
         onVisibleChanged: if (visible) Qt.callLater(function() { panel.forceActiveFocus() })
 
         MouseArea { id: outside; anchors.fill: parent; onClicked: root.service.close() }
@@ -77,65 +111,142 @@ Scope {
         Rectangle {
             id: panel
             width: Math.max(280, Math.min(Theme.notificationPanelWidth, window.width - 24))
-            height: Math.min(680, Math.max(220, window.height - 80))
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.top: parent.top
-            anchors.topMargin: Theme.notificationBarHeight + 12
-            radius: 10; color: Theme.notificationSurface; border.width: 1; border.color: Theme.notificationBorder
+            property real panelOffset: -8
+            anchors.topMargin: Theme.notificationBarHeight + 12 + panelOffset
+            readonly property real minimumHeight: 120
+            readonly property real maximumHeight: Math.max(minimumHeight, window.height - anchors.topMargin - 24)
+            readonly property real naturalHeight: Theme.notificationPadding * 2 + header.height + selector.height + panelContent.spacing * 2 + Math.max(list.implicitHeight, root.groups.length === 0 ? 40 : 0)
+            height: Math.min(maximumHeight, Math.max(minimumHeight, naturalHeight))
+            opacity: 0
+            scale: 0.985
+            transformOrigin: Item.Top
+            radius: Theme.notificationRadius; color: Theme.notificationSurface; border.width: 1; border.color: Theme.notificationBorder
             focus: true
             Keys.onEscapePressed: root.service.close()
             MouseArea { anchors.fill: parent; onClicked: function(mouse) { mouse.accepted = true } }
+            Behavior on height { NumberAnimation { duration: Theme.normalDuration; easing.type: Easing.OutCubic } }
+            states: State {
+                name: "shown"
+                when: root.panelShown
+                PropertyChanges { panel.opacity: 1; panel.panelOffset: 0; panel.scale: 1 }
+            }
+            transitions: Transition {
+                reversible: true
+                ParallelAnimation {
+                    NumberAnimation { properties: "opacity,panelOffset,scale"; duration: Theme.slowDuration; easing.type: Easing.OutCubic }
+                }
+            }
 
             Column {
                 id: panelContent
-                anchors.fill: parent; anchors.margins: 12; spacing: 10
-                Row {
-                    width: parent.width; height: 28; spacing: 8
-                    Text { text: "Notifications"; color: Theme.fujiWhite; font.family: Theme.fontFamily; font.pixelSize: 14; font.weight: Font.Bold; verticalAlignment: Text.AlignVCenter }
-                    Text { text: "(" + root.service.history.count + ")"; color: Theme.fujiGray; font.family: Theme.fontFamily; font.pixelSize: 11; verticalAlignment: Text.AlignVCenter }
-                    Item { width: parent.width - 250; height: 1 }
-                    Text { text: "Clear"; color: Theme.crystalBlue; font.family: Theme.fontFamily; font.pixelSize: 10; MouseArea { anchors.fill: parent; onClicked: root.service.clear() } }
-                    Text { text: "×"; color: Theme.fujiGray; font.pixelSize: 17; MouseArea { anchors.fill: parent; onClicked: root.service.close() } }
+                anchors.fill: parent; anchors.margins: Theme.notificationPadding; spacing: 10
+                Item {
+                    id: header
+                    width: parent.width; height: 26
+                    Row {
+                        anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; spacing: 7
+                        Text { text: "Notifications"; color: Theme.fujiWhite; font.family: Theme.fontFamily; font.pixelSize: 11; font.weight: Font.DemiBold; verticalAlignment: Text.AlignVCenter }
+                        Rectangle { visible: root.service.history.count > 0; width: 5; height: 5; radius: 2.5; color: Theme.crystalBlue; anchors.verticalCenter: parent.verticalCenter }
+                    }
+                    Row { id: rightControls; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; spacing: 8
+                        Item { id: clearAll; visible: root.service.history.count > 0; width: 24; height: 24
+                            Image { anchors.centerIn: parent; width: 13; height: 13; source: Quickshell.shellDir + "/assets/trash.svg"; fillMode: Image.PreserveAspectFit; opacity: clearAllPointer.containsMouse ? 1 : 0.8 }
+                            MouseArea { id: clearAllPointer; anchors.fill: parent; hoverEnabled: true; onClicked: root.service.clear() }
+                        }
+                        Item { width: 24; height: 24
+                            Image { anchors.centerIn: parent; width: 13; height: 13; source: Quickshell.shellDir + "/assets/xmark.svg"; fillMode: Image.PreserveAspectFit; opacity: closePointer.containsMouse ? 1 : 0.8 }
+                            MouseArea { id: closePointer; anchors.fill: parent; hoverEnabled: true; onClicked: root.service.close() }
+                        }
+                    }
                 }
-                Row {
-                    width: parent.width; height: 25; spacing: 5
+                Item {
+                    id: selector
+                    width: Math.min(270, parent.width); height: 24; anchors.horizontalCenter: parent.horizontalCenter
+                    Rectangle { anchors.fill: parent; radius: Theme.notificationSmallRadius; color: Theme.sumiInk1 }
                     Repeater {
                         model: [root.service.allMode, root.service.criticalMode, root.service.noneMode]
                         delegate: Rectangle {
-                            required property string modelData
-                            width: modeText.implicitWidth + 14; height: 24; radius: 4
-                            color: root.service.mode === modelData ? Theme.waveBlue1 : Theme.sumiInk1
-                            border.width: 1; border.color: root.service.mode === modelData ? Theme.crystalBlue : Theme.notificationBorder
-                            Text { id: modeText; anchors.centerIn: parent; text: modelData === root.service.allMode ? "All" : modelData === root.service.criticalMode ? "Critical only" : "None"; color: Theme.oldWhite; font.family: Theme.fontFamily; font.pixelSize: 9 }
-                            MouseArea { anchors.fill: parent; onClicked: root.service.setMode(modelData) }
+                            id: selectorDelegate
+                             required property int index
+                             required property string modelData
+                             x: selectorDelegate.index * selector.width / 3 + 2; y: 2; width: selector.width / 3 - 4; height: selector.height - 4; radius: Theme.notificationSmallRadius; color: root.service.mode === selectorDelegate.modelData ? Theme.waveBlue1 : "transparent"
+                             Row { anchors.centerIn: parent; spacing: 5; opacity: root.service.mode === selectorDelegate.modelData ? 1 : 0.55
+                                 Image { width: 12; height: 12; anchors.verticalCenter: parent.verticalCenter; source: Quickshell.shellDir + "/assets/" + (selectorDelegate.modelData === root.service.allMode ? "bell.svg" : selectorDelegate.modelData === root.service.criticalMode ? "half-moon.svg" : "xmark.svg"); fillMode: Image.PreserveAspectFit }
+                                 Text { id: modeText; text: selectorDelegate.modelData === root.service.allMode ? "All" : selectorDelegate.modelData === root.service.criticalMode ? "Critical" : "None"; color: Theme.fujiWhite; font.family: Theme.fontFamily; font.pixelSize: 11 }
+                             }
+                             MouseArea { anchors.fill: parent; onClicked: root.service.setMode(selectorDelegate.modelData) }
                         }
                     }
                 }
                 Flickable {
                     id: flick
-                    width: parent.width; height: Math.max(80, parent.height - 88)
+                    width: parent.width; height: Math.max(1, panel.height - Theme.notificationPadding * 2 - header.height - selector.height - panelContent.spacing * 2)
                     clip: true; contentWidth: width; contentHeight: list.implicitHeight
-                    Column { id: list; width: parent.width; spacing: 10
+                    boundsBehavior: Flickable.StopAtBounds
+                    Column { id: list; width: flick.width; spacing: 8
+                        add: Transition { NumberAnimation { properties: "opacity,height"; duration: Theme.normalDuration; easing.type: Easing.OutCubic } }
+                        move: Transition { NumberAnimation { properties: "y"; duration: Theme.normalDuration; easing.type: Easing.OutCubic } }
                         visible: root.groups.length > 0
                         Repeater {
                             model: root.groups
-                            delegate: Column {
+                            delegate: Rectangle {
+                                id: groupDelegate
                                 required property var modelData
-                                width: list.width; spacing: 5
-                                Row {
-                                    width: parent.width; height: 30; spacing: 7
-                                    Image {
-                                        width: 22; height: 22; anchors.verticalCenter: parent.verticalCenter
-                                        source: root.iconSource(modelData.appIcon); fillMode: Image.PreserveAspectFit; smooth: true
-                                        onStatusChanged: if (status === Image.Error) source = Quickshell.shellDir + "/assets/bell.svg"
+                                property bool expandedState: !!modelData.expanded
+                                width: list.width; radius: Theme.notificationRadius; color: Theme.notificationSurfaceRaised
+                                height: groupContent.implicitHeight + Theme.notificationPadding * 2
+                                Behavior on height { NumberAnimation { duration: Theme.normalDuration; easing.type: Easing.OutCubic } }
+                                Column {
+                                    id: groupContent
+                                    anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top
+                                    anchors.margins: Theme.notificationPadding; spacing: 4
+                                    Item {
+                                        width: parent.width; height: 24
+                                        Image {
+                                            width: 16; height: 16; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
+                                            source: root.iconSource(modelData.appIcon); fillMode: Image.PreserveAspectFit; smooth: true
+                                            onStatusChanged: if (status === Image.Error) source = Quickshell.shellDir + "/assets/bell.svg"
+                                        }
+                                        Text {
+                                            anchors.left: parent.left; anchors.leftMargin: 23; anchors.right: groupControls.left; anchors.rightMargin: 9; anchors.verticalCenter: parent.verticalCenter
+                                             text: root.displayAppName(modelData.appName || modelData.appKey); color: Theme.fujiWhite; font.family: Theme.fontFamily; font.pixelSize: 11; font.weight: Font.DemiBold; elide: Text.ElideRight
+                                        }
+                                        Row {
+                                            id: groupControls
+                                            anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; spacing: 8; z: 2
+                                             Text { id: countLabel; text: String(modelData.entries.length); color: Theme.fujiGray; font.family: Theme.fontFamily; font.pixelSize: 11 }
+                                             Text { visible: modelData.entries.length > 1; text: groupDelegate.expandedState ? "⌄" : "›"; color: Theme.fujiGray; font.family: Theme.fontFamily; font.pixelSize: 11 }
+                                        }
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            z: 0
+                                             onClicked: if (modelData.entries.length > 1) {
+                                                 groupDelegate.expandedState = !groupDelegate.expandedState
+                                                 const persisted = Object.assign({}, root.expanded)
+                                                 persisted[modelData.appKey] = groupDelegate.expandedState
+                                                 root.expanded = persisted
+                                             }
+                                        }
                                     }
-                                    Text { text: "▸"; rotation: modelData.expanded ? 90 : 0; color: Theme.fujiGray; font.pixelSize: 12; MouseArea { anchors.fill: parent; onClicked: { root.expanded[modelData.appKey] = !modelData.expanded; root.rebuild() } } }
-                                    Text { text: modelData.appName || modelData.appKey; color: Theme.fujiWhite; font.family: Theme.fontFamily; font.pixelSize: 10; font.weight: Font.Bold; elide: Text.ElideRight; width: parent.width - 145 }
-                                    Text { text: modelData.entries.length + "  Clear"; color: Theme.fujiGray; font.family: Theme.fontFamily; font.pixelSize: 9; width: 105; horizontalAlignment: Text.AlignRight; MouseArea { anchors.fill: parent; onClicked: root.service.clearApp(modelData.appKey) } }
-                                }
-                                Repeater {
-                                    model: modelData.expanded ? modelData.entries : modelData.entries.slice(0, 1)
-                                    delegate: NotificationCard { required property var modelData; width: parent.width; service: root.service; entry: modelData }
+                                    Repeater {
+                                         model: modelData.entries
+                                         delegate: Column {
+                                             id: cardDelegate
+                                             required property int index
+                                             required property var modelData
+                                             width: groupContent.width; spacing: 0
+                                             readonly property bool collapsed: cardDelegate.index > 0 && !groupDelegate.expandedState
+                                             height: (cardDelegate.collapsed ? 0 : card.implicitHeight + (cardDelegate.index > 0 ? 5 : 0))
+                                             opacity: cardDelegate.collapsed ? 0 : 1
+                                             clip: true
+                                             Behavior on height { NumberAnimation { duration: Theme.normalDuration; easing.type: Easing.OutCubic } }
+                                             Behavior on opacity { NumberAnimation { duration: Theme.normalDuration; easing.type: Easing.OutCubic } }
+                                             Rectangle { visible: cardDelegate.index > 0; width: parent.width; height: 1; color: Theme.notificationBorder; opacity: 0.55 }
+                                             NotificationCard { id: card; width: parent.width; service: root.service; entry: cardDelegate.modelData; compact: groupDelegate.modelData.entries.length > 1 && !groupDelegate.expandedState }
+                                         }
+                                    }
                                 }
                             }
                         }
