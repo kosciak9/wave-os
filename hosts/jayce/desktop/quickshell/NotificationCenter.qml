@@ -183,7 +183,7 @@ Scope {
                 Flickable {
                     id: flick
                     width: parent.width; height: Math.max(1, panel.height - Theme.notificationPadding * 2 - header.height - selector.height - panelContent.spacing * 2)
-                    clip: true; contentWidth: width; contentHeight: list.implicitHeight
+                    clip: true; contentWidth: width; contentHeight: Math.max(height, list.implicitHeight)
                     boundsBehavior: Flickable.StopAtBounds
                     Column { id: list; width: flick.width; spacing: 8
                         add: Transition { NumberAnimation { properties: "opacity,height"; duration: Theme.normalDuration; easing.type: Easing.OutCubic } }
@@ -251,7 +251,7 @@ Scope {
                             }
                         }
                     }
-                    Text { anchors.centerIn: parent; visible: root.groups.length === 0; text: "No notifications"; color: Theme.fujiGray; font.family: Theme.fontFamily; font.pixelSize: 11 }
+                     Text { anchors.centerIn: parent; anchors.verticalCenterOffset: -6; visible: root.groups.length === 0; text: "No notifications"; color: Theme.fujiGray; font.family: Theme.fontFamily; font.pixelSize: 11 }
                 }
             }
         }
