@@ -60,9 +60,7 @@ ShellRoot {
         service: notifications
     }
 
-    OpenCodeToasts {
-        targetScreen: root.primaryScreen
-    }
+    OpenCodeToasts {}
 
     Osd {
         targetScreen: root.primaryScreen

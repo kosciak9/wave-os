@@ -8,15 +8,15 @@ import "Theme.js" as Theme
 Scope {
     id: root
 
-    required property var targetScreen
     property int nextToastId: 0
+    property alias sharedToastModel: toastModel
 
     function showToast(project: string, stage: string, message: string): void {
         if (message.length === 0)
             return
 
-        toastModel.append({
-            "toastId": ++nextToastId,
+        root.sharedToastModel.append({
+            "toastId": ++root.nextToastId,
             "projectName": project,
             "stageName": stage,
             "messageText": message
@@ -24,9 +24,9 @@ Scope {
     }
 
     function dismissToast(toastId: int): void {
-        for (let index = 0; index < toastModel.count; index++) {
-            if (toastModel.get(index).toastId === toastId) {
-                toastModel.remove(index)
+        for (let index = 0; index < root.sharedToastModel.count; index++) {
+            if (root.sharedToastModel.get(index).toastId === toastId) {
+                root.sharedToastModel.remove(index)
                 return
             }
         }
@@ -44,176 +44,184 @@ Scope {
         }
     }
 
-    PanelWindow {
-        id: toastWindow
+    Variants {
+        model: Quickshell.screens
 
-        screen: root.targetScreen
-        visible: root.targetScreen !== null && toastModel.count > 0
-        color: "transparent"
-        implicitWidth: 336
-        implicitHeight: toastColumn.height + 16
-        exclusionMode: ExclusionMode.Ignore
+        delegate: Component {
+            PanelWindow {
+                id: toastWindow
 
-        anchors {
-            bottom: true
-        }
+                required property var modelData
 
-        margins {
-            bottom: 205
-        }
+                screen: modelData
+                visible: root.sharedToastModel.count > 0
+                color: "transparent"
+                implicitWidth: 336
+                implicitHeight: toastColumn.height + 16
+                exclusionMode: ExclusionMode.Ignore
 
-        mask: Region { item: toastColumn }
-
-        Column {
-            id: toastColumn
-
-            anchors {
-                horizontalCenter: parent.horizontalCenter
-                bottom: parent.bottom
-                margins: 8
-            }
-            width: 320
-            height: implicitHeight
-            spacing: 8
-
-            Behavior on height {
-                NumberAnimation {
-                    duration: Theme.normalDuration
-                    easing.type: Easing.OutCubic
+                anchors {
+                    bottom: true
                 }
-            }
 
-            move: Transition {
-                NumberAnimation {
-                    properties: "y"
-                    duration: Theme.normalDuration
-                    easing.type: Easing.OutCubic
+                margins {
+                    bottom: 205
                 }
-            }
 
-            Repeater {
-                model: toastModel
+                mask: Region { item: toastColumn }
 
-                delegate: Rectangle {
-                    id: toast
+                Column {
+                    id: toastColumn
 
-                    required property int toastId
-                    required property string projectName
-                    required property string stageName
-                    required property string messageText
-                    property bool shown: false
-                    property bool entered: false
-
-                    function dismiss(): void {
-                        if (!shown)
-                            return
-
-                        entered = false
-                        shown = false
-                        removeTimer.start()
+                    anchors {
+                        horizontalCenter: parent.horizontalCenter
+                        bottom: parent.bottom
+                        margins: 8
                     }
+                    width: 320
+                    height: implicitHeight
+                    spacing: 8
 
-                    width: toastColumn.width
-                    implicitHeight: toastContent.implicitHeight + 24
-                    radius: 8
-                    color: toastPointer.containsMouse ? "#352A1F" : "#1F1A14"
-                    border.width: 1
-                    border.color: Theme.surimiOrange
-                    opacity: shown ? 1 : 0
-                    transform: Translate {
-                        y: toast.entered ? 0 : 8
-                        Behavior on y {
-                            NumberAnimation { duration: Theme.slowDuration; easing.type: Easing.OutCubic }
+                    Behavior on height {
+                        NumberAnimation {
+                            duration: Theme.normalDuration
+                            easing.type: Easing.OutCubic
                         }
                     }
 
-                    Component.onCompleted: {
-                        entered = true
-                        shown = true
-                    }
-
-                    Behavior on color {
-                        ColorAnimation { duration: Theme.normalDuration }
-                    }
-
-                    Behavior on opacity {
-                        NumberAnimation { duration: Theme.normalDuration }
-                    }
-
-                    Row {
-                        id: toastContent
-
-                        anchors {
-                            top: parent.top
-                            left: parent.left
-                            right: parent.right
-                            margins: 0
+                    move: Transition {
+                        NumberAnimation {
+                            properties: "y"
+                            duration: Theme.normalDuration
+                            easing.type: Easing.OutCubic
                         }
-                        anchors.leftMargin: 16
-                        anchors.rightMargin: 16
-                        anchors.topMargin: 12
-                        spacing: 16
+                    }
 
-                        Image {
-                            width: 24
-                            height: 24
-                            anchors.verticalCenter: parent.verticalCenter
-                            source: Quickshell.shellDir + "/assets/opencode.svg"
-                            fillMode: Image.PreserveAspectFit
-                            smooth: true
-                        }
+                    Repeater {
+                        model: root.sharedToastModel
 
-                        Column {
-                            width: parent.width - 28 - parent.spacing
-                            spacing: 2
+                        delegate: Rectangle {
+                            id: toast
 
-                            Text {
-                                width: parent.width
-                                text: toast.projectName.length > 0
-                                    ? toast.stageName.toUpperCase() + " — " + toast.projectName.toUpperCase()
-                                    : toast.stageName.toUpperCase()
-                                color: Theme.surimiOrange
-                                elide: Text.ElideRight
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 8
-                                font.weight: Font.Bold
-                                font.letterSpacing: 1
+                            required property int toastId
+                            required property string projectName
+                            required property string stageName
+                            required property string messageText
+                            property bool shown: false
+                            property bool entered: false
+
+                            function dismiss(): void {
+                                if (!shown)
+                                    return
+
+                                entered = false
+                                shown = false
+                                removeTimer.start()
                             }
 
-                            Text {
-                                width: parent.width
-                                text: toast.messageText
-                                color: Theme.fujiWhite
-                                textFormat: Text.PlainText
-                                wrapMode: Text.Wrap
-                                maximumLineCount: 4
-                                elide: Text.ElideRight
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 11
-                                font.weight: Font.Bold
+                            width: toastColumn.width
+                            implicitHeight: toastContent.implicitHeight + 24
+                            radius: 8
+                            color: toastPointer.containsMouse ? "#352A1F" : "#1F1A14"
+                            border.width: 1
+                            border.color: Theme.surimiOrange
+                            opacity: shown ? 1 : 0
+                            transform: Translate {
+                                y: toast.entered ? 0 : 8
+                                Behavior on y {
+                                    NumberAnimation { duration: Theme.slowDuration; easing.type: Easing.OutCubic }
+                                }
+                            }
+
+                            Component.onCompleted: {
+                                entered = true
+                                shown = true
+                            }
+
+                            Behavior on color {
+                                ColorAnimation { duration: Theme.normalDuration }
+                            }
+
+                            Behavior on opacity {
+                                NumberAnimation { duration: Theme.normalDuration }
+                            }
+
+                            Row {
+                                id: toastContent
+
+                                anchors {
+                                    top: parent.top
+                                    left: parent.left
+                                    right: parent.right
+                                    margins: 0
+                                }
+                                anchors.leftMargin: 16
+                                anchors.rightMargin: 16
+                                anchors.topMargin: 12
+                                spacing: 16
+
+                                Image {
+                                    width: 24
+                                    height: 24
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    source: Quickshell.shellDir + "/assets/opencode.svg"
+                                    fillMode: Image.PreserveAspectFit
+                                    smooth: true
+                                }
+
+                                Column {
+                                    width: parent.width - 28 - parent.spacing
+                                    spacing: 2
+
+                                    Text {
+                                        width: parent.width
+                                        text: toast.projectName.length > 0
+                                            ? toast.stageName.toUpperCase() + " — " + toast.projectName.toUpperCase()
+                                            : toast.stageName.toUpperCase()
+                                        color: Theme.surimiOrange
+                                        elide: Text.ElideRight
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: 8
+                                        font.weight: Font.Bold
+                                        font.letterSpacing: 1
+                                    }
+
+                                    Text {
+                                        width: parent.width
+                                        text: toast.messageText
+                                        color: Theme.fujiWhite
+                                        textFormat: Text.PlainText
+                                        wrapMode: Text.Wrap
+                                        maximumLineCount: 4
+                                        elide: Text.ElideRight
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: 11
+                                        font.weight: Font.Bold
+                                    }
+                                }
+                            }
+
+                            MouseArea {
+                                id: toastPointer
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                onClicked: toast.dismiss()
+                            }
+
+                            Timer {
+                                interval: 30000
+                                running: true
+                                repeat: false
+                                onTriggered: toast.dismiss()
+                            }
+
+                            Timer {
+                                id: removeTimer
+                                interval: Theme.slowDuration
+                                repeat: false
+                                onTriggered: root.dismissToast(toast.toastId)
                             }
                         }
-                    }
-
-                    MouseArea {
-                        id: toastPointer
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        onClicked: toast.dismiss()
-                    }
-
-                    Timer {
-                        interval: 30000
-                        running: true
-                        repeat: false
-                        onTriggered: toast.dismiss()
-                    }
-
-                    Timer {
-                        id: removeTimer
-                        interval: Theme.slowDuration
-                        repeat: false
-                        onTriggered: root.dismissToast(toast.toastId)
                     }
                 }
             }
