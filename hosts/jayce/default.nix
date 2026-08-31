@@ -73,6 +73,11 @@ in
   };
 
   services = {
+    avahi = {
+      enable = true;
+      nssmdns4 = true;
+      openFirewall = true;
+    };
     udev.extraRules = ''
       SUBSYSTEM=="hidraw", ATTRS{idVendor}=="32ac", TAG+="uaccess"
     '';
@@ -107,6 +112,7 @@ in
       HandleLidSwitchExternalPower = "suspend";
     };
     power-profiles-daemon.enable = true;
+    printing.enable = true;
     upower.enable = true;
     tailscale.enable = true;
     syncthing = {
