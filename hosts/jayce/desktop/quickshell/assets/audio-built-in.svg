@@ -1,4 +1,6 @@
 <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
   <style>path, rect, circle { fill: none; stroke: white; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }</style>
-  <path d="M3 7h18v11H3zM6 18v2h12v-2M8 11h8M8 14h5"/>
+  <rect x="4" y="2" width="16" height="20" rx="2"/>
+  <circle cx="12" cy="6" r="1"/>
+  <circle cx="12" cy="14" r="4"/>
 </svg>

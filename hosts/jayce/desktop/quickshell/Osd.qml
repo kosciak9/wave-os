@@ -21,6 +21,19 @@ PanelWindow {
     property var sinkProperties: trackedSink !== null && trackedSink.ready ? trackedSink.properties : null
     property string outputKind: classifyOutput()
     property string outputName: summarizeOutput()
+    readonly property var compactOutputNames: ({
+        "bluetooth-headphones": "BT Headphones",
+        "bluetooth-speakers": "BT Speaker",
+        "display": "Display",
+        "earbuds": "Earbuds",
+        "headphones": "Headphones",
+        "network": "Network",
+        "usb": "USB Audio",
+        "dock": "Dock",
+        "built-in": "Speakers",
+        "speakers": "Speakers",
+        "generic": "Audio"
+    })
     property string outputIcon: Quickshell.shellDir + "/assets/audio-" + outputKind + ".svg"
     property real lastAudioVolume: 0
     property bool lastAudioMuted: false
@@ -168,20 +181,12 @@ PanelWindow {
 
     function summarizeOutput() {
         if (trackedSink === null || !trackedSink.ready)
-            return "Audio output"
+            return compactOutputNames.generic
         const bt = bluetoothDevice()
-        if (bt !== null && usefulOutputName(String(bt.name || "")))
-            return String(bt.name)
-        const nickname = String(trackedSink.nickname || "")
-        const description = String(trackedSink.description || "")
-        if (outputKind === "built-in")
-            return "Built-in Speakers"
-        if (usefulOutputName(nickname))
-            return nickname
-        if (usefulOutputName(description))
-            return description
-        const nodeName = String(trackedSink.name || "")
-        return nickname !== "" ? nickname : (nodeName !== "" ? nodeName : "Audio output")
+        const bluetoothName = bt === null ? "" : String(bt.name || "")
+        if (usefulOutputName(bluetoothName) && bluetoothName.length <= 14)
+            return bluetoothName
+        return compactOutputNames[outputKind] || compactOutputNames.generic
     }
 
     function usefulOutputName(value) {
@@ -305,6 +310,10 @@ PanelWindow {
                         height: parent.height
                         radius: parent.radius
                         color: root.muted ? Theme.waveRed : Theme.crystalBlue
+
+                        Behavior on width {
+                            NumberAnimation { duration: Theme.normalDuration; easing.type: Easing.OutCubic }
+                        }
                     }
                 }
             }
