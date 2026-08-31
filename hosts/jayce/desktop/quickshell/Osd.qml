@@ -115,6 +115,26 @@ PanelWindow {
         hideTimer.restart()
     }
 
+    readonly property int brightnessSafeMaximum: 64267
+    property int brightnessInitialLoadMask: 0
+
+    function brightnessFilesLoaded(fileMask) {
+        if ((brightnessInitialLoadMask & fileMask) === 0) {
+            brightnessInitialLoadMask |= fileMask
+            return
+        }
+
+        const raw = Number(brightnessFile.text().trim())
+        const maximum = Number(brightnessMaximumFile.text().trim())
+        const safeMaximum = Math.min(maximum, root.brightnessSafeMaximum)
+        if (!Number.isFinite(raw) || !Number.isFinite(maximum) || safeMaximum <= 0)
+            return
+
+        const clampedRaw = Math.max(0, Math.min(raw, safeMaximum))
+        const percent = Math.round(clampedRaw / safeMaximum * 100)
+        showBrightness(percent + "%")
+    }
+
     // Keep this deliberately metadata-first: descriptions are often localized, while
     // the device api/bus and ALSA path are stable across Pipewire node renames.
     function metadataValue(key) {
@@ -217,6 +237,33 @@ PanelWindow {
 
         function brightness(data: string): void {
             root.showBrightness(data)
+        }
+    }
+
+    FileView {
+        id: brightnessFile
+        path: "/sys/class/backlight/amdgpu_bl1/brightness"
+        preload: true
+        blockLoading: true
+        onLoaded: root.brightnessFilesLoaded(1)
+    }
+
+    FileView {
+        id: brightnessMaximumFile
+        path: "/sys/class/backlight/amdgpu_bl1/max_brightness"
+        preload: true
+        blockLoading: true
+        onLoaded: root.brightnessFilesLoaded(2)
+    }
+
+    Process {
+        command: ["stdbuf", "-oL", "udevadm", "monitor", "--kernel", "--subsystem-match=backlight"]
+        running: true
+        stdout: SplitParser {
+            onRead: function(data) {
+                if (data.indexOf("/amdgpu_bl1 ") >= 0)
+                    brightnessFile.reload()
+            }
         }
     }
 

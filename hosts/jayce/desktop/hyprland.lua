@@ -853,10 +853,12 @@ hl.bind(mod .. " + SHIFT + P", hl.dsp.dpms({ action = "disable" }))
 hl.bind("switch:on:Lid Switch", hl.dsp.exec_cmd("wave-display-reconciler notify lid-close"))
 hl.bind("switch:off:Lid Switch", hl.dsp.exec_cmd("wave-display-reconciler notify lid-open"))
 
+-- The panel already exposes a non-linear scale; use linear 2% steps with a safe raw cap of 64267.
+-- 62956 is the raw value reached by 2%- from that cap; clamp the next up step until a stable kernel fix.
 local brightnessUpCommand =
-    [[sh -c 'status="$(brightnessctl -e4 -n2 -m set 5%+ | { IFS=, read -r device class current percent maximum; printf "%s" "$percent"; })"; qs -c wave ipc call osd brightness "$status"']]
+    [[sh -c 'exec 9>"$XDG_RUNTIME_DIR/wave-brightness.lock"; flock 9; read -r current < /sys/class/backlight/amdgpu_bl1/brightness; if [ "$current" -ge 62956 ]; then brightnessctl -n2 -q set 64267; else brightnessctl -n2 -q set 2%+; fi']]
 local brightnessDownCommand =
-    [[sh -c 'status="$(brightnessctl -e4 -n2 -m set 5%- | { IFS=, read -r device class current percent maximum; printf "%s" "$percent"; })"; qs -c wave ipc call osd brightness "$status"']]
+    [[sh -c 'exec 9>"$XDG_RUNTIME_DIR/wave-brightness.lock"; flock 9; brightnessctl -n2 -q set 2%-']]
 
 hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+"), { locked = true, repeating = true })
 hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"), { locked = true, repeating = true })
