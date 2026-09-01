@@ -16,9 +16,11 @@ in
 {
   home.packages = with pkgs; [
     bat
+    btop
     gh
     httpie
     infisical
+    plannotator
     sqlit
     weave
     worktrunk

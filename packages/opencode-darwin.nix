@@ -7,6 +7,7 @@
   unzip,
   ripgrep,
   sysctl,
+  plannotator,
   lib,
 }:
 
@@ -56,6 +57,7 @@ stdenv.mkDerivation {
           sysctl
         ]
       } \
+      --set PLANNOTATOR_BIN ${lib.getExe plannotator} \
       --set OPENCODE_DISABLE_AUTOUPDATE true
 
     runHook postInstall

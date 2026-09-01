@@ -81,6 +81,7 @@
       packageOverlay =
         final: prev:
         {
+          plannotator = final.callPackage ./packages/plannotator.nix { };
           opencode = final.callPackage ./packages/opencode-darwin.nix { };
           kanagawa-gtk-theme = final.callPackage ./packages/kanagawa-gtk-theme.nix { };
         }

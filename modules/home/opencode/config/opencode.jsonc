@@ -4,10 +4,11 @@
   "plugin": [
     "./plugin/notify/index.js",
     [
-      "@plannotator/opencode@0.27.4",
+      "@plannotator/opencode@0.27.10",
       {
         "workflow": "plan-agent",
         "planningAgents": ["brainstorm-planner"],
+        "runtime": "cli",
       },
     ],
     "opencode-worktrunk-workspaces@0.1.0",
