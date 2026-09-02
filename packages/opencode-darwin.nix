@@ -12,17 +12,17 @@
 }:
 
 let
-  version = "1.18.18";
+  version = "1.18.26";
   release =
     if stdenv.hostPlatform.isDarwin then
       {
         asset = "opencode-darwin-arm64.zip";
-        hash = "sha256-fWaL8mSW/shobU5R67GsK9Ljk/DBYgqmlsTCQqnlgGo=";
+        hash = "sha256-sF04MUmlpBcUDo7evYMGQUL6NudP381feRkZ3LEv0zo=";
       }
     else
       {
         asset = "opencode-linux-x64.tar.gz";
-        hash = "sha256-DN3CIkGLhVNmmQWomAwM2nCI8A2iTYPWrHawHJ/bKq8=";
+        hash = "sha256-fCDB/6kbzKCskDdSJgvMNjB9/2VoM7rq0vXvOyJLFsY=";
       };
 in
 stdenv.mkDerivation {
