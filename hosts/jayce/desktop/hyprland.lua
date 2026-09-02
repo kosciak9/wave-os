@@ -193,6 +193,12 @@ hl.window_rule({
 })
 
 hl.window_rule({
+    name = "waytator-floating",
+    match = { class = [[^dev\.faetalize\.waytator$]] },
+    float = true,
+})
+
+hl.window_rule({
     name = "browser-workspace",
     match = { title = ".*(Firefox|Zen).*" },
     workspace = "name:web",
@@ -844,10 +850,10 @@ end)
 hl.bind(mod .. " + V", hl.dsp.window.float({ action = "toggle" }))
 hl.bind(mod .. " + SHIFT + V", switchFloatingFocus)
 
-local screenshotOutput = '-o "$HOME/media/screenshots" -f "$(date +%Y-%m-%d_%H-%M-%S).png"'
-hl.bind("Print", hl.dsp.exec_cmd("hyprshot -m region " .. screenshotOutput))
-hl.bind("CTRL + Print", hl.dsp.exec_cmd("hyprshot -m output -m active " .. screenshotOutput))
-hl.bind("ALT + Print", hl.dsp.exec_cmd("hyprshot -m window -m active " .. screenshotOutput))
+local screenshotName = '--name "$(date +%Y-%m-%d_%H-%M-%S).png"'
+hl.bind("Print", hl.dsp.exec_cmd("hyprshot -m region --raw | waytator --stdin " .. screenshotName))
+hl.bind("CTRL + Print", hl.dsp.exec_cmd("hyprshot -m output -m active --raw | waytator --stdin " .. screenshotName))
+hl.bind("ALT + Print", hl.dsp.exec_cmd("hyprshot -m window -m active --raw | waytator --stdin " .. screenshotName))
 
 hl.bind(mod .. " + SHIFT + P", hl.dsp.dpms({ action = "disable" }))
 hl.bind("switch:on:Lid Switch", hl.dsp.exec_cmd("wave-display-reconciler notify lid-close"))
