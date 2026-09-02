@@ -96,8 +96,8 @@ Rectangle {
             const visibleLength = Math.max(0, Math.min(1, root.lifeProgress)) * halfLength
 
             ctx.clearRect(0, 0, width, height)
-            ctx.strokeStyle = Theme.fujiWhite
-            ctx.fillStyle = Theme.fujiWhite
+            ctx.strokeStyle = Theme.waveAqua1
+            ctx.fillStyle = Theme.waveAqua1
             ctx.lineWidth = 1
             ctx.lineCap = "round"
             ctx.lineJoin = "round"
