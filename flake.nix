@@ -3,10 +3,10 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    devenv-nixpkgs.url = "github:NixOS/nixpkgs/0ae2bc1419c3f345984c2629e72e7a631820fa4d";
+    devenv-nixpkgs.url = "github:NixOS/nixpkgs/34ab99075ac4f7e40cf037eef32cb1c360bb85e9";
     # Vicinae intentionally keeps its release-tested Nixpkgs pin; following repository Nixpkgs triggers the known qtkeychain Darwin ld64 crash.
     vicinae = {
-      url = "github:vicinaehq/vicinae/v0.25.0";
+      url = "github:vicinaehq/vicinae/v0.27.5";
     };
     vicinae-extensions = {
       url = "github:vicinaehq/extensions";

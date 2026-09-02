@@ -1,47 +1,23 @@
 Subject: Place the launcher halfway through available vertical space
 
-Use halfway placement in the generic Linux and macOS paths, matching the
-existing centered placement provided by the Wayland layer-shell path.
+Use halfway placement in the generic QML and shared available-geometry C++
+positioning paths, matching the centered placement provided by the Wayland
+layer-shell path. The shared C++ path also covers macOS during show setup.
 
 diff --git a/src/server/src/qml/qml/LauncherWindow.qml b/src/server/src/qml/qml/LauncherWindow.qml
 --- a/src/server/src/qml/qml/LauncherWindow.qml
 +++ b/src/server/src/qml/qml/LauncherWindow.qml
-@@ -336,14 +336,14 @@ Window {
-     }
-     onHeightChanged: {
-         if (launcher.canPositionWindow && root.autoPlaceOnShow)
+@@ -471,1 +471,1 @@ Window {
 -            root.y = Screen.virtualY + (Screen.height - root.height) / 3;
 +            root.y = Screen.virtualY + (Screen.height - root.height) / 2;
-     }
- 
-     Component.onCompleted: {
-         if (launcher.canPositionWindow && root.autoPlaceOnShow) {
-             root.x = Screen.virtualX + (Screen.width - root.width) / 2;
+@@ -477,1 +477,1 @@ Window {
 -            root.y = Screen.virtualY + (Screen.height - root.height) / 3;
 +            root.y = Screen.virtualY + (Screen.height - root.height) / 2;
-             launcher.positionOnCursorScreen();
-         }
-     }
- }
 diff --git a/src/server/src/qml/launcher-window.cpp b/src/server/src/qml/launcher-window.cpp
 --- a/src/server/src/qml/launcher-window.cpp
 +++ b/src/server/src/qml/launcher-window.cpp
-@@ -555,7 +555,7 @@ void LauncherWindow::positionOnCursorScreen() {
-   if (!m_window || !canPositionWindow()) return;
-   const QRect g = cursorScreenGeometry();
-   m_window->setX(g.x() + (g.width() - m_window->width()) / 2);
--  m_window->setY(g.y() + (g.height() - m_window->height()) / 3);
-+  m_window->setY(g.y() + (g.height() - m_window->height()) / 2);
- }
- 
- void LauncherWindow::openFooterMenu() { m_footerPanel->toggle(true); }
-diff --git a/src/server/src/qml/qml/LauncherWindowMacOS.qml b/src/server/src/qml/qml/LauncherWindowMacOS.qml
---- a/src/server/src/qml/qml/LauncherWindowMacOS.qml
-+++ b/src/server/src/qml/qml/LauncherWindowMacOS.qml
-@@ -1,5 +1,5 @@
- LauncherWindow {
--    readonly property real placementFraction: 1 / 3
-+    readonly property real placementFraction: 1 / 2
- 
-     nativeChrome: true
-     color: "transparent"
+@@ -665,2 +665,2 @@ void LauncherWindow::positionOnCursorScreen() {
+-  m_window->setPosition(avail.left() + (avail.width() - m_window->width()) / 2,
+-                        avail.top() + (avail.height() - refHeight) / 3);
++  m_window->setPosition(avail.left() + (avail.width() - m_window->width()) / 2,
++                        avail.top() + (avail.height() - refHeight) / 2);
