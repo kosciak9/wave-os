@@ -42,7 +42,7 @@ hl.config({
         repeat_delay = 300,
         repeat_rate = 50,
         follow_mouse = 2,
-        focus_on_close = 1,
+        focus_on_close = 0,
         mouse_refocus = true,
         off_window_axis_events = 1,
         float_switch_override_focus = 0,

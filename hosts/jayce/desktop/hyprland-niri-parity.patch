@@ -253,7 +253,39 @@ index 4aa1185..645e61c 100644
              } else {
                  // we are within the edge drop, make a new column
 
-@@ -1148,14 +1187,6 @@ Config::ErrorResult CScrollingAlgorithm::layoutMsg(const std::string_view& sv) {
+@@ -785,4 +824,17 @@ void CScrollingAlgorithm::removeTarget(SP<ITarget> target) {
+     if (!DATA)
+         return;
+-
++
++    m_lastRemovedTarget.reset();
++    m_lastCloseCandidate.reset();
++    const auto COLUMN = DATA->column.lock();
++    if (COLUMN && COLUMN->targetDatas.size() == 1) {
++        const auto NEIGHBOR = m_scrollingData->prev(COLUMN);
++        const auto FALLBACK = NEIGHBOR ? NEIGHBOR : m_scrollingData->next(COLUMN);
++        const auto CANDIDATE = FALLBACK ? findBestNeighbor(DATA, FALLBACK) : nullptr;
++        if (CANDIDATE) {
++            m_lastRemovedTarget = target;
++            m_lastCloseCandidate = CANDIDATE->target;
++        }
++    }
++
+     // remove the FS state of a tiled window when it is being removed/floated -- This exception needs to exist for the float case as it's default handled
+@@ -988,4 +1040,11 @@ SP<ITarget> CScrollingAlgorithm::getNextCandidate(SP<ITarget> old) {
+ SP<ITarget> CScrollingAlgorithm::getNextCandidate(SP<ITarget> old) {
+     const auto CENTER = old->position().middle();
+-
++    const auto REMOVED   = m_lastRemovedTarget.lock();
++    const auto CANDIDATE = m_lastCloseCandidate.lock();
++    m_lastRemovedTarget.reset();
++    m_lastCloseCandidate.reset();
++
++    if (REMOVED && old == REMOVED && CANDIDATE)
++        return CANDIDATE;
++
+     const auto NODE = closestNode(CENTER);
+@@ -1148,14 +1207,6 @@ Config::ErrorResult CScrollingAlgorithm::layoutMsg(const std::string_view& sv) {
      const auto notFound   = [](std::string msg) { return Config::configError(std::move(msg), Config::eConfigErrorLevel::WARNING, Config::eConfigErrorCode::NOT_FOUND); };
      const auto stateErr   = [](std::string msg) { return Config::configError(std::move(msg), Config::eConfigErrorLevel::WARNING, Config::eConfigErrorCode::INVALID_STATE); };
 
@@ -527,13 +559,15 @@ index 98a43be..a08e529 100644
          SP<SColumnData>                            getColumnAtViewportCenter();
          SP<SColumnData>                            currentColumn();
 
-@@ -154,7 +154,8 @@ namespace Layout::Tiled {
+@@ -154,7 +154,10 @@ namespace Layout::Tiled {
 
          void                     focusTargetUpdate(SP<ITarget> target);
          void                     moveTargetTo(SP<ITarget> t, Math::eDirection dir, bool silent);
 -        void                     focusOnInput(SP<ITarget> target, eInputMode input);
 +        void                     focusOnInput(SP<ITarget> target, eInputMode input, SP<SColumnData> previous = nullptr);
 +        WP<SColumnData>          m_lastFocusedColumn;
++        WP<ITarget>              m_lastRemovedTarget;
++        WP<ITarget>              m_lastCloseCandidate;
 
          void                     expelTarget(SP<SScrollingTargetData> tdata, SP<SColumnData> srcCol, std::optional<int64_t> insertIdx);
 
