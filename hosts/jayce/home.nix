@@ -353,6 +353,7 @@ in
         ];
       };
     };
+    mpris-proxy.enable = true;
   };
 
   xdg = {
