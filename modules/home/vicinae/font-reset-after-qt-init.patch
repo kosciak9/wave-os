@@ -1,0 +1,15 @@
+Subject: Reset application font after Qt initialization
+
+Apply the configured application font after the launcher QML window has been
+constructed, when Qt initialization may otherwise have overwritten it.
+
+diff --git a/src/server/src/server.cpp b/src/server/src/server.cpp
+--- a/src/server/src/server.cpp
++++ b/src/server/src/server.cpp
+@@ -103,2 +103,3 @@
+ #include <QGuiApplication>
++#include <QTimer>
+ #include <QPointer>
+@@ -606,1 +607,2 @@
+   LauncherWindow const qmlWindow(ctx);
++  QTimer::singleShot(0, [cfgService]() { QGuiApplication::setFont(resolveAppFont(cfgService->value().font)); });

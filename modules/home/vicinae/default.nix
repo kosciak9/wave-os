@@ -10,7 +10,10 @@ let
   vicinae =
     inputs.vicinae.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs
       (oldAttrs: {
-        patches = (oldAttrs.patches or [ ]) ++ [ ./launcher-window-position.patch ];
+        patches = (oldAttrs.patches or [ ]) ++ [
+          ./launcher-window-position.patch
+          ./font-reset-after-qt-init.patch
+        ];
       });
   passExtension =
     inputs.vicinae-extensions.packages.${pkgs.stdenv.hostPlatform.system}.pass.overrideAttrs
@@ -107,6 +110,19 @@ in
           entrypoints.set.enabled = false;
         };
         wm.enabled = false;
+      }
+      // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
+        files = {
+          preferences = {
+            autoIndexing = true;
+            indexingPaths = [
+              "${config.home.homeDirectory}/documents"
+              "${config.home.homeDirectory}/downloads"
+              "${config.home.homeDirectory}/media"
+            ];
+            excludedIndexingPaths = [ ];
+          };
+        };
       };
     };
     systemd = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
