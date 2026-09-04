@@ -4,7 +4,7 @@
   "plugin": [
     "./plugin/notify/index.js",
     [
-      "@plannotator/opencode@0.27.10",
+      "@plannotator/opencode@0.27.12",
       {
         "workflow": "plan-agent",
         "planningAgents": ["brainstorm-planner"],
@@ -15,7 +15,7 @@
     "@alergeek-ventures/opencode@1.2.0",
     "@slkiser/opencode-quota@4.8.2",
     "@gotgenes/opencode-agent-identity@3.1.1",
-    "cc-safety-net@2.0.6",
+    "cc-safety-net@2.3.2",
   ],
   "tools": {
     "quota_status": false,
