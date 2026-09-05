@@ -2,6 +2,7 @@
   "sidebar.visibility" = "hide-sidebar";
   "zen.tabs.vertical.right-side" = true;
   "zen.theme.gradient.show-custom-colors" = true;
+  "zen.urlbar.replace-newtab" = false;
   "zen.view.compact.enable-at-startup" = true;
   "zen.view.window.scheme" = 0;
   "zen.view.use-single-toolbar" = true;

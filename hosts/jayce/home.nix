@@ -10,6 +10,12 @@ let
   wallpaper = "/home/kosciak/.config/secrets/wallpapers/kanagawa-black-centered.png";
   sessionTarget = "wayland-session@hyprland.desktop.target";
   geocluePackage = pkgs.geoclue2-with-demo-agent;
+  zenBrowser =
+    pkgs.wrapFirefox inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default.unwrapped
+      {
+        pname = "zen-browser";
+        extraPolicies.Certificates.Install = [ "${../../modules/caddy/development-root-ca.crt}" ];
+      };
   quickshellWithMultimedia = pkgs.quickshell.overrideAttrs (old: {
     buildInputs = (old.buildInputs or [ ]) ++ [ pkgs.kdePackages.qtmultimedia ];
   });
@@ -93,6 +99,7 @@ in
   imports = [
     ../../modules/home/cli
     ../../modules/home/devenv
+    ../../modules/home/development-caddy/linux.nix
     ../../modules/home/ghostty
     ../../modules/home/git.nix
     ../../modules/home/neovim
@@ -152,7 +159,7 @@ in
         tesseract
         waytator
         wl-clipboard
-        inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
+        zenBrowser
         worktrunk
       ])
       ++ displayReconcilerRuntime;
@@ -173,8 +180,12 @@ in
     home-manager.enable = true;
     zen-browser = {
       enable = true;
-      package = inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default;
+      package = zenBrowser;
       profileName = "wave";
+      settings = (import ../../modules/home/zen-browser/config/settings.nix) // {
+        "browser.startup.homepage" = "https://development-caddy.localhost";
+        "browser.startup.page" = 1;
+      };
     };
     quickshell = {
       enable = true;

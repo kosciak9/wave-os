@@ -1,0 +1,375 @@
+/* ============================
+   Custom Kanagawa Theme Styles
+   ============================ */
+
+/* Minimal Tailwind preflight geometry reset. */
+html, body { margin: 0; }
+h1, h2, h3, h4, h5, h6, p { margin: 0; }
+button, input, textarea, select { margin: 0; }
+
+/* CSS Custom Properties for Kanagawa colors */
+:root {
+  --kn-bg: #1F1F28;
+  --kn-bg-secondary: #16161D;
+  --kn-text: #DCD7BA;
+  --kn-text-muted: #727169;
+  --kn-accent: #7E9CD8;
+  --kn-link: #7FB4CA;
+  --kn-link-hover: #A3D4D5;
+  --kn-border: #2D4F67;
+  --kn-green: #76946A;
+  --kn-dragon-blue: #658594;
+  --kn-autumn-green: #76946A;
+  --kn-error: #E82424;
+  --kn-warning: #FFA066;
+}
+
+/* Kanagawa Lotus (light) custom properties */
+[data-theme="kanagawa-lotus"] {
+  --kn-bg: #f2ecbc;
+  --kn-bg-secondary: #e5ddb0;
+  --kn-text: #545464;
+  --kn-text-muted: #8a8980;
+  --kn-accent: #4d699b;
+  --kn-link: #6693bf;
+  --kn-link-hover: #4d699b;
+  --kn-border: #dcd5ac;
+  --kn-green: #6f894e;
+  --kn-dragon-blue: #5a7785;
+  --kn-autumn-green: #6f894e;
+  --kn-error: #e82424;
+  --kn-warning: #e98a00;
+}
+
+/* Base styles */
+body {
+  font-family: 'Overpass', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: var(--kn-bg);
+  color: var(--kn-text);
+  min-height: 100vh;
+  padding: 2rem;
+  line-height: 1.6;
+}
+
+/* Container */
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+/* Header */
+header {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 2rem;
+}
+
+.logo {
+  width: 128px;
+  height: 128px;
+}
+
+[data-theme="kanagawa-lotus"] .logo {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+/* Projects */
+.project {
+  background: var(--kn-bg-secondary);
+  border: 1px solid var(--kn-border);
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+
+.project-header {
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  font-size: 1.1rem;
+  border-bottom: 1px solid var(--kn-border);
+  color: var(--kn-accent);
+}
+
+.branch-list {
+  list-style: none;
+  padding: 0.5rem 0;
+  margin: 0;
+}
+
+.branch-item {
+  padding: 0.5rem 1rem;
+}
+
+.branch-item a {
+  color: var(--kn-link);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: 'Overpass Mono', monospace;
+}
+
+.branch-item a:hover {
+  color: var(--kn-link-hover);
+}
+
+.branch-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--kn-text-muted);
+  flex-shrink: 0;
+}
+
+/* Empty state */
+.empty {
+  text-align: center;
+  padding: 3rem;
+  color: var(--kn-text-muted);
+}
+
+.empty-note {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+}
+
+/* Error state */
+.error {
+  background: var(--kn-bg-secondary);
+  border: 1px solid #C34043;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  color: var(--kn-error);
+}
+
+/* Deadline tracker */
+.deadline {
+  background: var(--kn-bg-secondary);
+  border: 1px solid var(--kn-border);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.deadline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.deadline-label {
+  font-weight: 600;
+  color: var(--kn-accent);
+  cursor: pointer;
+}
+
+.deadline-label:hover {
+  color: var(--kn-link-hover);
+}
+
+.deadline-stats {
+  font-size: 0.875rem;
+  color: var(--kn-text-muted);
+}
+
+/* Countdown */
+.countdown {
+  font-family: 'Overpass Mono', monospace;
+  font-size: 2rem;
+  font-weight: 900;
+  color: var(--kn-text);
+  text-align: center;
+  margin-bottom: 2rem;
+  width: 100%;
+  display: block;
+}
+
+.countdown.expired {
+  font-size: 4rem;
+  animation: pulse-orange 2s ease-in-out infinite;
+}
+
+@keyframes pulse-orange {
+  0%, 100% { color: var(--kn-text); }
+  50% { color: var(--kn-warning); }
+}
+
+.countdown-label {
+  font-size: 1rem;
+  color: var(--kn-text-muted);
+  text-align: center;
+  margin-top: 0.5rem;
+}
+
+.countdown-reset {
+  text-align: center;
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+}
+
+.countdown-reset button {
+  background: none;
+  border: none;
+  color: var(--kn-link);
+  font-family: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.countdown-reset button:hover {
+  color: var(--kn-link-hover);
+}
+
+/* Search form */
+.search-form {
+  margin-bottom: 2rem;
+}
+
+.search-input {
+  width: 100%;
+  background: var(--kn-bg-secondary);
+  border: 1px solid var(--kn-border);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  color: var(--kn-text);
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--kn-accent);
+}
+
+.search-input::placeholder {
+  color: var(--kn-text-muted);
+}
+
+/* Deadline grid */
+.deadline-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 0.5rem;
+}
+
+.deadline-week {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 3px;
+}
+
+.deadline-week-gap {
+  width: 8px;
+}
+
+.deadline-day {
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--kn-bg);
+  box-shadow: inset 0 0 0 1px rgba(114, 113, 105, 0.5);
+}
+
+.deadline-day.elapsed {
+  background: var(--kn-dragon-blue);
+  box-shadow: inset 0 0 0 1px rgba(101, 133, 148, 0.5);
+}
+
+.deadline-day.today {
+  background: var(--kn-autumn-green);
+  box-shadow: inset 0 0 0 1px rgba(118, 148, 106, 0.5);
+}
+
+.deadline-day.future {
+  background: var(--kn-bg);
+  box-shadow: inset 0 0 0 1px rgba(118, 148, 106, 0.5);
+}
+
+/* Deadline form */
+.deadline-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.deadline-form input {
+  background: var(--kn-bg);
+  border: 1px solid var(--kn-border);
+  border-radius: 0.25rem;
+  padding: 0.5rem;
+  color: var(--kn-text);
+  font-family: inherit;
+}
+
+.deadline-form input:focus {
+  outline: none;
+  border-color: var(--kn-accent);
+}
+
+.deadline-form button {
+  background: var(--kn-accent);
+  border: none;
+  border-radius: 0.25rem;
+  padding: 0.5rem 1rem;
+  color: var(--kn-bg);
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.deadline-form button:hover {
+  opacity: 0.9;
+}
+
+/* Theme toggle */
+.theme-toggle-footer {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+}
+
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  opacity: 0.5;
+}
+
+.theme-toggle:hover {
+  opacity: 0.7;
+}
+
+.theme-icon {
+  width: 24px;
+  height: 24px;
+  color: var(--kn-text-muted);
+  stroke: currentColor;
+}
+
+@font-face { font-family: 'Overpass'; src: url('/fonts/overpass-regular.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Overpass'; src: url('/fonts/overpass-600.woff2') format('woff2'); font-weight: 600; font-display: swap; }
+@font-face { font-family: 'Overpass'; src: url('/fonts/overpass-700.woff2') format('woff2'); font-weight: 700 900; font-display: swap; }
+@font-face { font-family: 'Overpass Mono'; src: url('/fonts/overpass-mono-regular.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Overpass Mono'; src: url('/fonts/overpass-mono-700.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+
+*, *::before, *::after { box-sizing: border-box; }
+button, input { font: inherit; }
+.button-reset { border: 0; padding: 0; background: transparent; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.form-error { color: var(--kn-error); }
+
+@media (max-width: 600px) {
+  body { padding: 1rem; }
+  .countdown { font-size: 1.5rem; }
+  .countdown.expired { font-size: 2.5rem; }
+  .deadline-header { align-items: flex-start; gap: 0.5rem; }
+  .deadline-stats { text-align: right; }
+}

@@ -1,6 +1,9 @@
 {
 	admin 127.0.0.1:2019
 	skip_install_trust
+	servers :443 {
+		name https
+	}
 	pki {
 		ca local {
 			name "Wave OS Development CA"
@@ -16,4 +19,13 @@
 https://opencode.localhost {
 	tls internal
 	reverse_proxy 127.0.0.1:51199
+}
+
+https://development-caddy.localhost, https://localhost {
+	tls internal
+	route {
+		@routes_api path /api/routes /api/routes/*
+		respond @routes_api 404
+		reverse_proxy 127.0.0.1:11190
+	}
 }
