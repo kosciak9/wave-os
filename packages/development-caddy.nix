@@ -38,6 +38,6 @@ stdenv.mkDerivation {
   meta = {
     description = "Small local Development Caddy dashboard";
     mainProgram = "development-caddy";
-    platforms = lib.platforms.linux;
+    platforms = lib.platforms.linux ++ lib.platforms.darwin;
   };
 }
