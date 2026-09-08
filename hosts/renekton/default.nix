@@ -54,6 +54,7 @@
     neovide
     neovim
     nodejs
+    obsidian
     gnupg
     pass
     pinentry_mac
