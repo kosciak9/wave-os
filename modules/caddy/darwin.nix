@@ -84,23 +84,23 @@ in
     fi
   '';
 
-  launchd.daemons.caddy.serviceConfig = {
-    EnvironmentVariables = {
-      HOME = "/var/lib/caddy";
-      WAVE_DEVELOPMENT_CA_CERT = "${developmentRootCa}";
-      WAVE_DEVELOPMENT_CA_KEY = "/Users/kosciak/.config/secrets/development-ca/root.key";
-      XDG_CONFIG_HOME = "/var/lib/caddy/config";
-      XDG_DATA_HOME = "/var/lib/caddy";
+  launchd.daemons.caddy = {
+    command = lib.getExe caddyRunner;
+    serviceConfig = {
+      EnvironmentVariables = {
+        HOME = "/var/lib/caddy";
+        WAVE_DEVELOPMENT_CA_CERT = "${developmentRootCa}";
+        WAVE_DEVELOPMENT_CA_KEY = "/Users/kosciak/.config/secrets/development-ca/root.key";
+        XDG_CONFIG_HOME = "/var/lib/caddy/config";
+        XDG_DATA_HOME = "/var/lib/caddy";
+      };
+      RunAtLoad = true;
+      KeepAlive = true;
+      ProcessType = "Background";
+      StandardErrorPath = "/var/log/caddy-error.log";
+      StandardOutPath = "/var/log/caddy.log";
+      ThrottleInterval = 5;
+      WorkingDirectory = "/var/lib/caddy";
     };
-    ProgramArguments = [
-      (lib.getExe caddyRunner)
-    ];
-    RunAtLoad = true;
-    KeepAlive = true;
-    ProcessType = "Background";
-    StandardErrorPath = "/var/log/caddy-error.log";
-    StandardOutPath = "/var/log/caddy.log";
-    ThrottleInterval = 5;
-    WorkingDirectory = "/var/lib/caddy";
   };
 }
