@@ -3,6 +3,7 @@
 {
   imports = [
     ../../modules/caddy/darwin.nix
+    ./firewall.nix
     ./spotlight.nix
   ];
 
