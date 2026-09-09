@@ -1,5 +1,9 @@
 { pkgs, ... }:
 
+let
+  macAppsMcpServer = pkgs.callPackage ../../packages/mac-apps-mcp-server.nix { };
+in
+
 {
   imports = [
     ../../modules/caddy/darwin.nix
@@ -65,6 +69,7 @@
     tailscale
     tree-sitter
     zsh
+    macAppsMcpServer
   ];
 
   fonts.packages = [
