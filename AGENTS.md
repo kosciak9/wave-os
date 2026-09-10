@@ -8,4 +8,5 @@
 - Useful interactive tools include `devenv info`, `devenv eval`, `devenv repl`, `nixd`, `nil`, `nix-output-monitor`, `nix-tree`, `nix-diff`, `nix-eval-jobs`, `nix-fast-build`, `nix-inspect`, `nix-melt`, and `nvd`.
 - Never run `nixos-rebuild switch`, `darwin-rebuild switch`, or `home-manager switch` unless the user explicitly requests activation.
 - The flake targets are `nixosConfigurations.jayce`, `darwinConfigurations.renekton`, `homeConfigurations."kosciak@jayce"`, and `homeConfigurations."kosciak@renekton"`.
+- This repository is always public. Take extra care not to add, expose, or commit sensitive information, including credentials, tokens, private keys, personal data, or private infrastructure details.
 - Do not commit changes unless asked.
