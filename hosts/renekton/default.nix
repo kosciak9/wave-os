@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ lib, pkgs, ... }:
 
 let
   macAppsMcpServer = pkgs.callPackage ../../packages/mac-apps-mcp-server.nix { };
@@ -81,6 +81,9 @@ in
   ];
 
   services.tailscale.enable = true;
+  # Tailscale 1.98+ manages /etc/resolver/ts.net itself and rejects nix-darwin's
+  # symlink because it escapes os.Root("/etc/resolver").
+  environment.etc."resolver/ts.net".enable = lib.mkForce false;
 
   determinateNix.enable = true;
 }
