@@ -8,6 +8,7 @@ in
   imports = [
     ../../modules/caddy/darwin.nix
     ./firewall.nix
+    ./power.nix
     ./spotlight.nix
   ];
 
