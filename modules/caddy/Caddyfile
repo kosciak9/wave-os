@@ -21,6 +21,13 @@ https://opencode.localhost {
 	reverse_proxy 127.0.0.1:51199
 }
 
+https://renekton.dusky-diatonic.ts.net {
+	tls {
+		get_certificate tailscale
+	}
+	reverse_proxy 127.0.0.1:51199
+}
+
 https://development-caddy.localhost, https://localhost {
 	tls internal
 	route {
