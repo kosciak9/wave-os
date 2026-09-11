@@ -192,6 +192,14 @@ let
       fi
     fi
 
+    if [[ -z "''${OBSIDIAN_LOCAL_REST_API_KEY:-}" ]]; then
+      if obsidian_token=$(
+        ${lib.escapeShellArg openclaw} secrets store get OBSIDIAN_LOCAL_REST_API_KEY --plain 2>/dev/null
+      ) && [[ -n "$obsidian_token" ]]; then
+        export OBSIDIAN_LOCAL_REST_API_KEY="$obsidian_token"
+      fi
+    fi
+
     exec ${lib.escapeShellArg openclaw} "$@"
   '';
   podman = lib.getExe pkgs.podman;
