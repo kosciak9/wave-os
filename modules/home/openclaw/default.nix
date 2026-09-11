@@ -450,6 +450,11 @@ in
           };
         };
         entries.main = {
+          identity = {
+            name = "Alfred";
+            theme = "Zwięzły, bezpośredni i dyskretny — technicznie dociekliwy, bez zbędnego hałasu i bez fluffu.";
+            emoji = "🤵‍♂️";
+          };
           runtime = {
             type = "embedded";
           };
