@@ -919,6 +919,7 @@ in
   launchd.agents."ai.openclaw.gateway".config = {
     ProgramArguments = lib.mkForce [ "${gatewayWrapper}" ];
     EnvironmentVariables.CONTAINER_CONNECTION = "openclaw-sandbox";
+    EnvironmentVariables.PATH = "${pkgs.podman}/bin:/usr/bin:/bin:/usr/sbin:/sbin";
     # Deliberately changes the plist when generated OpenClaw config changes, so Home Manager restarts the Gateway.
     EnvironmentVariables.OPENCLAW_CONFIG_GENERATION =
       toString
