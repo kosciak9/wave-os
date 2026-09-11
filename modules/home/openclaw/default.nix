@@ -247,6 +247,7 @@ in
     installApp = false;
     stateDir = state;
     workspaceDir = workspace;
+    workspace.files."avatars/alfred.png" = ./assets/alfred.png;
     runtimePlugins = [ "llama-cpp" ];
     runtimePackages = [
       pkgs.podman
@@ -454,6 +455,7 @@ in
             name = "Alfred";
             theme = "Zwięzły, bezpośredni i dyskretny — technicznie dociekliwy, bez zbędnego hałasu i bez fluffu.";
             emoji = "🤵‍♂️";
+            avatar = "avatars/alfred.png";
           };
           runtime = {
             type = "embedded";
