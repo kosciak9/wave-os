@@ -241,6 +241,7 @@ let
           fi
           "$openclaw" secrets store set OPENCLAW_GATEWAY_TOKEN --kind env
           metadata=$("$openclaw" secrets store list --json)
+          # shellcheck disable=SC2016
           if ! "$jq" -e --arg name OPENCLAW_GATEWAY_TOKEN '
             [ .[]? | select(.name == $name) ] as $entries |
             ($entries | length) == 1 and
