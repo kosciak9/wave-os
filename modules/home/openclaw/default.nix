@@ -71,7 +71,17 @@ let
     "calendar_get_event"
   ];
   macAppsMcpPolicyIds = map (tool: "mac-apps__${tool}") macAppsMcpTools;
-  isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
+  obsidianMcpTools = [
+    "vault_list"
+    "vault_read"
+    "vault_get_document_map"
+    "active_file_get_path"
+    "search_query"
+    "search_simple"
+    "tag_list"
+    "command_list"
+  ];
+  obsidianMcpPolicyIds = map (tool: "obsidian__${tool}") obsidianMcpTools;
   macAppsMcpHostApp = "${home}/Applications/Home Manager Apps/Mac Apps MCP Host.app";
   deniedTools = [
     "message"
@@ -322,6 +332,73 @@ let
           ;;
       esac
 
+      obsidian_settings="${home}/Documents/zk/.obsidian/plugins/obsidian-local-rest-api/data.json"
+      if [ -e "$obsidian_settings" ] || [ -L "$obsidian_settings" ]; then
+        if [ ! -f "$obsidian_settings" ] || [ -L "$obsidian_settings" ]; then
+          printf '%s\n' \
+            "refusing bootstrap: Obsidian plugin settings path exists but is not a regular file: $obsidian_settings" >&2
+          exit 1
+        fi
+        if ! chmod 600 -- "$obsidian_settings" >/dev/null 2>&1; then
+          printf '%s\n' \
+            "refusing bootstrap: could not restrict Obsidian plugin settings permissions to 0600: $obsidian_settings" >&2
+          exit 1
+        fi
+      fi
+
+      metadata=$("$openclaw" secrets store list --json)
+      # shellcheck disable=SC2016
+      obsidian_status=$("$jq" -r --arg name OBSIDIAN_LOCAL_REST_API_KEY '
+        [ .[]? | select(.name == $name) ] as $entries |
+        if ($entries | length) == 0 then "absent"
+        elif ($entries | length) == 1
+          and $entries[0].kind == "env"
+          and (($entries[0].allowedHosts // []) == []) then "valid"
+        else "invalid"
+        end
+      ' <<<"$metadata")
+      case "$obsidian_status" in
+        valid)
+          printf '%s\n' "OBSIDIAN_LOCAL_REST_API_KEY already exists with approved metadata; preserving it."
+          ;;
+        invalid)
+          printf '%s\n' \
+            "refusing bootstrap: OBSIDIAN_LOCAL_REST_API_KEY has unexpected metadata." \
+            "The operator must intentionally correct it; no implicit rotation/update was performed." >&2
+          exit 1
+          ;;
+        absent)
+          if [ -r "$obsidian_settings" ] && \
+            "$jq" -e '.apiKey | type == "string" and length > 0' "$obsidian_settings" >/dev/null 2>&1; then
+            "$jq" -er '.apiKey | select(type == "string" and length > 0)' "$obsidian_settings" | \
+              "$openclaw" secrets store set OBSIDIAN_LOCAL_REST_API_KEY \
+                --kind env --value-file -
+          else
+            if [[ ! -t 0 || ! -t 1 ]]; then
+              printf '%s\n' \
+                "refusing bootstrap: OBSIDIAN_LOCAL_REST_API_KEY is unavailable from plugin settings and requires an interactive masked prompt." >&2
+              exit 1
+            fi
+            "$openclaw" secrets store set OBSIDIAN_LOCAL_REST_API_KEY --kind env
+          fi
+          metadata=$("$openclaw" secrets store list --json)
+          # shellcheck disable=SC2016
+          if ! "$jq" -e --arg name OBSIDIAN_LOCAL_REST_API_KEY '
+            [ .[]? | select(.name == $name) ] as $entries |
+            ($entries | length) == 1 and
+            $entries[0].kind == "env" and
+            (($entries[0].allowedHosts // []) == [])
+          ' <<<"$metadata" >/dev/null; then
+            printf '%s\n' "refusing bootstrap: OBSIDIAN_LOCAL_REST_API_KEY metadata was not created exactly as required." >&2
+            exit 1
+          fi
+          ;;
+        *)
+          printf '%s\n' "refusing bootstrap: unexpected metadata status: $obsidian_status" >&2
+          exit 1
+          ;;
+      esac
+
       metadata=$("$openclaw" secrets store list --json)
       printf '%s\n' "$metadata"
       "$openclaw" secrets audit --json
@@ -350,6 +427,18 @@ let
     fi
 
     export OPENCLAW_GATEWAY_TOKEN="$token"
+
+    if ! obsidian_token=$(
+      "$openclaw" secrets store get OBSIDIAN_LOCAL_REST_API_KEY --plain 2>/dev/null
+    ); then
+      printf '%s\n' "refusing to start OpenClaw Gateway: could not retrieve OBSIDIAN_LOCAL_REST_API_KEY from the store" >&2
+      exit 1
+    fi
+    if [ -z "$obsidian_token" ]; then
+      printf '%s\n' "refusing to start OpenClaw Gateway: OBSIDIAN_LOCAL_REST_API_KEY is empty" >&2
+      exit 1
+    fi
+    export OBSIDIAN_LOCAL_REST_API_KEY="$obsidian_token"
 
     deadline=$(( $(/bin/date +%s) + 180 ))
     while ! info=$(
@@ -657,7 +746,7 @@ in
 
       tools = {
         profile = "minimal";
-        alsoAllow = approvedTools ++ macAppsMcpPolicyIds;
+        alsoAllow = approvedTools ++ macAppsMcpPolicyIds ++ obsidianMcpPolicyIds;
         deny = deniedTools;
         fs.workspaceOnly = true;
         exec = {
@@ -680,7 +769,7 @@ in
         sessions = {
           visibility = "tree";
         };
-        sandbox.tools.allow = sandboxTools ++ macAppsMcpPolicyIds;
+        sandbox.tools.allow = sandboxTools ++ macAppsMcpPolicyIds ++ obsidianMcpPolicyIds;
         subagents.tools.allow = [
           "session_status"
           "read"
@@ -869,7 +958,7 @@ in
       };
       discovery.mdns.mode = "minimal";
       mcp = {
-        servers."mac-apps" = lib.mkIf isDarwin {
+        servers."mac-apps" = {
           enabled = true;
           transport = "stdio";
           command = "${macAppsMcpHostApp}/Contents/MacOS/Mac Apps MCP Host";
@@ -887,6 +976,30 @@ in
             exclude = [
               "mail_move"
               "mail_set_flags"
+            ];
+          };
+        };
+        servers.obsidian = {
+          enabled = true;
+          url = "https://127.0.0.1:27124/mcp/";
+          transport = "streamable-http";
+          headers.Authorization = "Bearer $" + "{OBSIDIAN_LOCAL_REST_API_KEY}";
+          # Scoped only to the plugin's fixed self-signed loopback endpoint.
+          sslVerify = false;
+          connectionTimeoutMs = 10000;
+          requestTimeoutMs = 300000;
+          supportsParallelToolCalls = false;
+          toolFilter = {
+            include = obsidianMcpTools;
+            exclude = [
+              "vault_write"
+              "vault_append"
+              "vault_patch"
+              "vault_delete"
+              "vault_move"
+              "vault_copy"
+              "command_execute"
+              "open_file"
             ];
           };
         };
@@ -952,12 +1065,12 @@ in
 
   launchd.agents."ai.openclaw.gateway".config = {
     ProgramArguments = lib.mkForce [ "${gatewayWrapper}" ];
-    EnvironmentVariables.CONTAINER_CONNECTION = "openclaw-sandbox";
-    EnvironmentVariables.PATH = "${pkgs.podman}/bin:/usr/bin:/bin:/usr/sbin:/sbin";
-    # Deliberately changes the plist when generated OpenClaw config changes, so Home Manager restarts the Gateway.
-    EnvironmentVariables.OPENCLAW_CONFIG_GENERATION =
-      toString
-        config.home.file.".openclaw/openclaw.json".source;
+    EnvironmentVariables = {
+      CONTAINER_CONNECTION = "openclaw-sandbox";
+      PATH = "${pkgs.podman}/bin:/usr/bin:/bin:/usr/sbin:/sbin";
+      # Deliberately changes the plist when generated OpenClaw config changes, so Home Manager restarts the Gateway.
+      OPENCLAW_CONFIG_GENERATION = toString config.home.file.".openclaw/openclaw.json".source;
+    };
     StandardOutPath = lib.mkForce "${state}/logs/gateway.log";
     StandardErrorPath = lib.mkForce "${state}/logs/gateway.error.log";
     Umask = 63;
