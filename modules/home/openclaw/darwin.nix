@@ -131,25 +131,57 @@ let
 
       podman=${podman}
       ${sandboxMachineValidation}
-      validate_machine
       machine_state=""
-      if ! machine_state=$("$podman" machine inspect \
-        --format '{{.State}}' openclaw-sandbox 2>/dev/null); then
-        printf '%s\n' "openclaw-sandbox machine is not initialized" >&2
-        exit 1
-      fi
-      if [[ "$machine_state" != "running" ]]; then
-        "$podman" machine start openclaw-sandbox
-      fi
-
-      deadline=$((SECONDS + 120))
-      until "$podman" --connection openclaw-sandbox info >/dev/null 2>&1; do
-        if (( SECONDS >= deadline )); then
-          printf '%s\n' "timed out waiting for openclaw-sandbox" >&2
+      inspect_deadline=$((SECONDS + 120))
+      until machine_state=$("$podman" machine inspect \
+        --format '{{.State}}' openclaw-sandbox 2>/dev/null); do
+        if (( SECONDS >= inspect_deadline )); then
+          printf '%s\n' \
+            "timed out waiting for openclaw-sandbox machine inspection" >&2
           exit 1
         fi
         sleep 2
       done
+
+      validate_machine
+
+      attempt=1
+      while (( attempt <= 3 )); do
+        attempt_failed=false
+        if ! machine_state=$("$podman" machine inspect \
+          --format '{{.State}}' openclaw-sandbox 2>/dev/null); then
+          attempt_failed=true
+        elif [[ "$machine_state" != "running" ]] && \
+          ! "$podman" machine start openclaw-sandbox; then
+          attempt_failed=true
+        fi
+
+        if [[ "$attempt_failed" == false ]]; then
+          deadline=$((SECONDS + 120))
+          until "$podman" --connection openclaw-sandbox info >/dev/null 2>&1; do
+            if (( SECONDS >= deadline )); then
+              attempt_failed=true
+              break
+            fi
+            sleep 2
+          done
+        fi
+
+        if [[ "$attempt_failed" == false ]]; then
+          exit 0
+        fi
+
+        printf 'openclaw-sandbox startup attempt %d of 3 failed\n' "$attempt" >&2
+        "$podman" machine stop openclaw-sandbox >/dev/null 2>&1 || true
+        if (( attempt < 3 )); then
+          sleep 5
+        fi
+        attempt=$((attempt + 1))
+      done
+
+      printf '%s\n' \
+        "openclaw-sandbox failed to become reachable after 3 startup attempts" >&2
+      exit 1
     '';
   };
 

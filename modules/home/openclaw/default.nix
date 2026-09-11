@@ -169,6 +169,7 @@ let
   };
   install = lib.getExe' pkgs.coreutils "install";
   openclaw = lib.getExe openclawPackage;
+  podman = lib.getExe pkgs.podman;
   openssl = lib.getExe pkgs.openssl;
   jq = lib.getExe pkgs.jq;
   seed = pkgs.writeShellScript "openclaw-seed-workspace" ''
@@ -320,6 +321,8 @@ let
     done
 
     openclaw=${lib.escapeShellArg openclaw}
+    podman=${lib.escapeShellArg podman}
+    jq=${lib.escapeShellArg jq}
     if ! token=$(
       "$openclaw" secrets store get OPENCLAW_GATEWAY_TOKEN --plain 2>/dev/null
     ); then
@@ -332,6 +335,19 @@ let
     fi
 
     export OPENCLAW_GATEWAY_TOKEN="$token"
+
+    deadline=$(( $(/bin/date +%s) + 180 ))
+    while ! info=$(
+      "$podman" --connection openclaw-sandbox info --format json 2>/dev/null
+    ) || ! printf '%s\n' "$info" | "$jq" -e '.host.security.rootless == true' >/dev/null 2>&1; do
+      if [ "$(/bin/date +%s)" -ge "$deadline" ]; then
+        printf '%s\n' \
+          "refusing to start OpenClaw Gateway: openclaw-sandbox was not reachable as a rootless Podman machine within 180 seconds" >&2
+        exit 1
+      fi
+      /bin/sleep 2
+    done
+
     exec "$openclaw" gateway --port 18789
   '';
 in
