@@ -39,6 +39,19 @@ in
         "com.apple.dock" = {
           show-recents-count = 1;
         };
+
+        "ai.openclaw.mac" = {
+          "openclaw.nixMode" = true;
+          "openclaw.connectionMode" = "local";
+          "openclaw.canvasEnabled" = false;
+          "openclaw.computerControlEnabled" = false;
+          "openclaw.quickChatEnabled" = false;
+          "openclaw.showDockIcon" = true;
+          "openclaw.heartbeatsEnabled" = false;
+          "openclaw.iconAnimationsEnabled" = true;
+          "openclaw.iconOverride" = "system";
+          autoUpdateEnabled = false;
+        };
       };
     };
   };

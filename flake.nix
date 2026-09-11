@@ -31,6 +31,12 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    nix-openclaw = {
+      url = "github:kosciak9/nix-openclaw/2d5a1169afe5b495e66f32fed5896f186a537913";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.home-manager.follows = "home-manager";
+    };
+
     nix-flatpak.url = "github:gmodena/nix-flatpak?ref=v0.7.0";
 
     sops-nix = {
@@ -84,6 +90,9 @@
           plannotator = final.callPackage ./packages/plannotator.nix { };
           opencode = final.callPackage ./packages/opencode-darwin.nix { };
           kanagawa-gtk-theme = final.callPackage ./packages/kanagawa-gtk-theme.nix { };
+          openclaw-sandbox-context = final.callPackage ./packages/openclaw-sandbox-context.nix { };
+          openclaw-embeddinggemma = final.callPackage ./packages/openclaw-embeddinggemma.nix { };
+          openclaw-llama-server = final.callPackage ./packages/openclaw-llama-server.nix { };
         }
         // prev.lib.optionalAttrs prev.stdenv.hostPlatform.isLinux {
           wave-hyprland = prev.hyprland.overrideAttrs (old: {
@@ -94,6 +103,13 @@
             hyprland = final.wave-hyprland;
             version = inputs.hyprland-scroll-overview.shortRev or "unstable";
           };
+        }
+        // prev.lib.optionalAttrs prev.stdenv.hostPlatform.isDarwin {
+          openclawPackages = prev.openclawPackages // {
+            openclaw-app = prev.openclawPackages.openclaw-app.overrideAttrs (_: {
+              dontFixup = true;
+            });
+          };
         };
       pkgs = import nixpkgs {
         inherit system;
@@ -103,7 +119,10 @@
       darwinPkgs = import nixpkgs {
         system = darwinSystem;
         config.allowUnfree = true;
-        overlays = [ packageOverlay ];
+        overlays = [
+          inputs.nix-openclaw.overlays.default
+          packageOverlay
+        ];
       };
       kanagawa-kvantum = pkgs.callPackage ./packages/kanagawa-kvantum.nix {
         src = inputs.kanagawa-kvantum;
@@ -150,8 +169,14 @@
         modules = [
           determinate.darwinModules.default
           home-manager.darwinModules.home-manager
+          inputs.nix-openclaw.darwinModules.openclaw
           ./hosts/renekton/default.nix
-          (_: { nixpkgs.overlays = [ packageOverlay ]; })
+          (_: {
+            nixpkgs.overlays = [
+              inputs.nix-openclaw.overlays.default
+              packageOverlay
+            ];
+          })
           (_: {
             home-manager = {
               useGlobalPkgs = true;
@@ -186,10 +211,18 @@
           ghosttyCursorShaders = inputs.ghostty-cursor-shaders;
         };
         modules = [
+          inputs.nix-openclaw.homeManagerModules.openclaw
           ./hosts/renekton/home.nix
         ];
       };
 
       packages.${system}.kanagawa-kvantum = kanagawa-kvantum;
+      packages.${darwinSystem} = {
+        inherit (darwinPkgs)
+          openclaw-sandbox-context
+          openclaw-embeddinggemma
+          openclaw-llama-server
+          ;
+      };
     };
 }

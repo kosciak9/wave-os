@@ -1,5 +1,7 @@
+{ ... }:
 {
   imports = [
+    ../../modules/home/openclaw
     ../../modules/home/cli
     ../../modules/home/devenv
     ../../modules/home/development-caddy/darwin.nix
