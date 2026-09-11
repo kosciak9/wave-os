@@ -9,8 +9,8 @@ let
   homeDirectory = config.home.homeDirectory;
   podman = lib.getExe pkgs.podman;
   curl = lib.getExe pkgs.curl;
+  openclaw = lib.getExe config.programs.openclaw.package;
   install = lib.getExe' pkgs.coreutils "install";
-  open = "/usr/bin/open";
   sandboxMachineValidation = ''
     validate_machine() {
       local machine_config machine_list machine_metadata
@@ -155,11 +155,16 @@ let
 
   appAgent = pkgs.writeShellApplication {
     name = "openclaw-app-agent";
-    runtimeInputs = [ pkgs.curl ];
+    runtimeInputs = [
+      pkgs.curl
+      config.programs.openclaw.package
+    ];
     text = ''
       set -euo pipefail
 
       curl=${curl}
+      openclaw=${lib.escapeShellArg openclaw}
+      app_binary=${lib.escapeShellArg "${homeDirectory}/Applications/Home Manager Apps/OpenClaw.app/Contents/MacOS/OpenClaw"}
       deadline=$((SECONDS + 120))
       until "$curl" --fail --silent --show-error --max-time 5 \
         http://127.0.0.1:18789/healthz >/dev/null 2>&1 && \
@@ -172,7 +177,16 @@ let
         sleep 2
       done
 
-      exec ${open} "${homeDirectory}/Applications/Home Manager Apps/OpenClaw.app"
+      if ! token=$("$openclaw" secrets store get OPENCLAW_GATEWAY_TOKEN --plain); then
+        printf '%s\n' "refusing to start OpenClaw.app: could not retrieve OPENCLAW_GATEWAY_TOKEN from the store" >&2
+        exit 1
+      fi
+      if [[ -z "$token" ]]; then
+        printf '%s\n' "refusing to start OpenClaw.app: OPENCLAW_GATEWAY_TOKEN is empty" >&2
+        exit 1
+      fi
+      export OPENCLAW_GATEWAY_TOKEN="$token"
+      exec "$app_binary"
     '';
   };
 in

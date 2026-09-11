@@ -218,14 +218,38 @@ let
         [ .[]? | select(.name == $name) ] as $entries |
         if ($entries | length) == 0 then "absent"
         elif ($entries | length) == 1
+          and $entries[0].kind == "env"
+          and (($entries[0].allowedHosts // []) == []) then "valid"
+        elif ($entries | length) == 1
           and $entries[0].kind == "secret"
-          and $entries[0].allowedHosts == [] then "valid"
+          and (($entries[0].allowedHosts // []) == []) then "wrong-kind"
         else "invalid"
         end
       ' <<<"$metadata")
       case "$gateway_status" in
         valid)
           printf '%s\n' "OPENCLAW_GATEWAY_TOKEN already exists with approved metadata; preserving it."
+          ;;
+        wrong-kind)
+          printf '%s\n' \
+            "OPENCLAW_GATEWAY_TOKEN exists as a SecretRef (kind=secret), but the desktop app requires kind=env." \
+            "Re-enter it intentionally with the masked CLI prompt: openclaw secrets store set OPENCLAW_GATEWAY_TOKEN --kind env" >&2
+          if [[ ! -t 0 || ! -t 1 ]]; then
+            printf '%s\n' \
+              "refusing bootstrap: correcting OPENCLAW_GATEWAY_TOKEN requires an interactive terminal; no rotation/update was performed." >&2
+            exit 1
+          fi
+          "$openclaw" secrets store set OPENCLAW_GATEWAY_TOKEN --kind env
+          metadata=$("$openclaw" secrets store list --json)
+          if ! "$jq" -e --arg name OPENCLAW_GATEWAY_TOKEN '
+            [ .[]? | select(.name == $name) ] as $entries |
+            ($entries | length) == 1 and
+            $entries[0].kind == "env" and
+            (($entries[0].allowedHosts // []) == [])
+          ' <<<"$metadata" >/dev/null; then
+            printf '%s\n' "refusing bootstrap: OPENCLAW_GATEWAY_TOKEN metadata was not corrected to kind=env." >&2
+            exit 1
+          fi
           ;;
         invalid)
           printf '%s\n' \
@@ -237,7 +261,7 @@ let
           printf '%s\n' "OPENCLAW_GATEWAY_TOKEN is absent; generating it."
           "$openssl" rand -hex 32 | \
             "$openclaw" secrets store set OPENCLAW_GATEWAY_TOKEN \
-              --kind secret --value-file -
+              --kind env --value-file -
           ;;
         *)
           printf '%s\n' "refusing bootstrap: unexpected metadata status: $gateway_status" >&2
@@ -286,6 +310,29 @@ let
       "$openclaw" secrets audit --json
     '';
   };
+  gatewayWrapper = pkgs.writeShellScript "openclaw-gateway-wrapper" ''
+    #!/bin/sh
+    set -eu
+
+    while [ ! -d /nix/store ]; do
+      /bin/sleep 1
+    done
+
+    openclaw=${lib.escapeShellArg openclaw}
+    if ! token=$(
+      "$openclaw" secrets store get OPENCLAW_GATEWAY_TOKEN --plain 2>/dev/null
+    ); then
+      printf '%s\n' "refusing to start OpenClaw Gateway: could not retrieve OPENCLAW_GATEWAY_TOKEN from the store" >&2
+      exit 1
+    fi
+    if [ -z "$token" ]; then
+      printf '%s\n' "refusing to start OpenClaw Gateway: OPENCLAW_GATEWAY_TOKEN is empty" >&2
+      exit 1
+    fi
+
+    export OPENCLAW_GATEWAY_TOKEN="$token"
+    exec "$openclaw" gateway --port 18789
+  '';
 in
 {
   assertions = [
@@ -331,7 +378,9 @@ in
         bind = "loopback";
         auth = {
           mode = "token";
-          token = secret "OPENCLAW_GATEWAY_TOKEN";
+          # The native app's Swift resolver supports environment interpolation,
+          # but cannot resolve OpenClaw SecretRefs.
+          token = "$" + "{OPENCLAW_GATEWAY_TOKEN}";
           allowTailscale = false;
         };
         tailscale = {
@@ -867,6 +916,7 @@ in
   };
 
   launchd.agents."ai.openclaw.gateway".config = {
+    ProgramArguments = lib.mkForce [ "${gatewayWrapper}" ];
     EnvironmentVariables.CONTAINER_CONNECTION = "openclaw-sandbox";
     # Deliberately changes the plist when generated OpenClaw config changes, so Home Manager restarts the Gateway.
     EnvironmentVariables.OPENCLAW_CONFIG_GENERATION =
