@@ -97,7 +97,7 @@ let
     "cua-computer"
     "xai"
   ];
-  pluginIds = [
+  enabledPluginIds = [
     "openai"
     "telegram"
     "memory-core"
@@ -106,6 +106,62 @@ let
     "document-extract"
     "web-readability"
     "device-pair"
+  ];
+  # Exhaustive complement for pinned OpenClaw 2026.9.3: default-on bundled plugins stay disabled visibly and at runtime.
+  disabledPluginIds = [
+    "a2a"
+    "acpx"
+    "admin-http-rpc"
+    "alibaba"
+    "anthropic"
+    "azure-speech"
+    "beam"
+    "bonjour"
+    "browser"
+    "canvas"
+    "clawrouter"
+    "copilot-proxy"
+    "crabbox"
+    "cua-computer"
+    "deepgram"
+    "elevenlabs"
+    "fal"
+    "file-transfer"
+    "geolocation"
+    "github-copilot"
+    "google"
+    "huggingface"
+    "imap"
+    "linux-node"
+    "litellm"
+    "llm-task"
+    "lmstudio"
+    "logbook"
+    "memory-wiki"
+    "microsoft"
+    "microsoft-foundry"
+    "migrate-claude"
+    "migrate-hermes"
+    "minimax"
+    "nvidia"
+    "oc-path"
+    "ollama"
+    "onepassword"
+    "opencode-go"
+    "openrouter"
+    "policy"
+    "reef"
+    "runway"
+    "senseaudio"
+    "sglang"
+    "talk-voice"
+    "together"
+    "tts-local-cli"
+    "vault"
+    "vllm"
+    "webhooks"
+    "workboard"
+    "xai"
   ];
   openclawPackageSet = pkgs.openclawPackages.withTools { excludeToolNames = [ "git" ]; };
   openclawApp = pkgs.openclawPackages.openclaw-app;
@@ -622,18 +678,16 @@ in
         };
       };
       plugins = {
-        allow = pluginIds;
-        deny = [
-          "canvas"
-          "file-transfer"
-          "browser"
-          "cua-computer"
-          "xai"
-        ];
+        enabled = true;
+        allow = enabledPluginIds;
+        deny = disabledPluginIds;
         slots.memory = "memory-core";
         entries =
-          lib.genAttrs pluginIds (_: {
+          lib.genAttrs enabledPluginIds (_: {
             enabled = true;
+          })
+          // lib.genAttrs disabledPluginIds (_: {
+            enabled = false;
           })
           // {
             "active-memory" = {
@@ -814,6 +868,10 @@ in
 
   launchd.agents."com.steipete.openclaw.gateway".config = {
     EnvironmentVariables.CONTAINER_CONNECTION = "openclaw-sandbox";
+    # Deliberately changes the plist when generated OpenClaw config changes, so Home Manager restarts the Gateway.
+    EnvironmentVariables.OPENCLAW_CONFIG_GENERATION =
+      toString
+        config.home.file.".openclaw/openclaw.json".source;
     StandardOutPath = lib.mkForce "${state}/logs/gateway.log";
     StandardErrorPath = lib.mkForce "${state}/logs/gateway.error.log";
     Umask = 63;
