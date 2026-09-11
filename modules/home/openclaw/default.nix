@@ -71,6 +71,8 @@ let
     "calendar_get_event"
   ];
   macAppsMcpPolicyIds = map (tool: "mac-apps__${tool}") macAppsMcpTools;
+  isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
+  macAppsMcpHostApp = "${home}/Applications/Home Manager Apps/Mac Apps MCP Host.app";
   deniedTools = [
     "message"
     "sessions_send"
@@ -169,6 +171,19 @@ let
   };
   install = lib.getExe' pkgs.coreutils "install";
   openclaw = lib.getExe openclawPackage;
+  openclawCliWrapper = pkgs.writeShellScriptBin "openclaw" ''
+    set -euo pipefail
+
+    if [[ -z "''${OPENCLAW_GATEWAY_TOKEN:-}" ]]; then
+      if token=$(
+        ${lib.escapeShellArg openclaw} secrets store get OPENCLAW_GATEWAY_TOKEN --plain 2>/dev/null
+      ) && [[ -n "$token" ]]; then
+        export OPENCLAW_GATEWAY_TOKEN="$token"
+      fi
+    fi
+
+    exec ${lib.escapeShellArg openclaw} "$@"
+  '';
   podman = lib.getExe pkgs.podman;
   openssl = lib.getExe pkgs.openssl;
   jq = lib.getExe pkgs.jq;
@@ -371,7 +386,10 @@ in
         ${seed}
       '';
 
-  home.packages = [ bootstrap ];
+  home.packages = [
+    bootstrap
+    (lib.hiPrio openclawCliWrapper)
+  ];
 
   programs.openclaw = {
     enable = true;
@@ -851,11 +869,11 @@ in
       };
       discovery.mdns.mode = "minimal";
       mcp = {
-        servers."mac-apps" = {
+        servers."mac-apps" = lib.mkIf isDarwin {
           enabled = true;
           transport = "stdio";
-          command = lib.getExe pkgs.mac-apps-mcp-server;
-          args = [ ];
+          command = "${macAppsMcpHostApp}/Contents/MacOS/Mac Apps MCP Host";
+          args = [ (lib.getExe pkgs.mac-apps-mcp-server) ];
           env = {
             MACOS_MCP_READONLY = "true";
             MACOS_MCP_CONFIRM_DESTRUCTIVE = "true";
