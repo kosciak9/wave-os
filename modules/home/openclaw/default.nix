@@ -637,6 +637,10 @@ in
                 logging = true;
               };
             };
+            "device-pair" = {
+              enabled = true;
+              config.publicUrl = "wss://renekton.dusky-diatonic.ts.net:18790";
+            };
           };
       };
       skills = {

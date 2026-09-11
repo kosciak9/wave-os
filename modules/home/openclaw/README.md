@@ -67,6 +67,10 @@ through Tailscale, so this ingress depends on the system Caddy/Tailscale
 certificate integration. The shared Gateway token is mandatory; Caddy ingress
 does not provide Tailscale identity authentication.
 
+Mobile setup codes advertise the Caddy/Tailscale WSS URL
+`wss://renekton.dusky-diatonic.ts.net:18790`. Treat setup codes like passwords;
+they expire after 10 minutes and are single-use.
+
 OpenCode remains on `https://renekton.dusky-diatonic.ts.net` (port 443). OpenClaw
 is intentionally separate on port 18790 and does not use managed Tailscale
 Serve. A future Tailscale Service is an option only after deliberate tagged
