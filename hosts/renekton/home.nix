@@ -15,6 +15,7 @@
     ../../modules/home/zoxide
     ../../modules/home/zen-browser
     ../../modules/home/zsh
+    ../../modules/home/anytype
     ./aerospace.nix
   ];
 

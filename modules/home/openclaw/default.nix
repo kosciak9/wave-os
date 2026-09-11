@@ -82,6 +82,27 @@ let
     "command_list"
   ];
   obsidianMcpPolicyIds = map (tool: "obsidian__${tool}") obsidianMcpTools;
+  anytypeMcpTools = [
+    "API-search-global"
+    "API-list-spaces"
+    "API-get-space"
+    "API-get-list-views"
+    "API-get-list-objects"
+    "API-list-members"
+    "API-get-member"
+    "API-list-objects"
+    "API-get-object"
+    "API-list-properties"
+    "API-get-property"
+    "API-list-tags"
+    "API-get-tag"
+    "API-search-space"
+    "API-list-types"
+    "API-get-type"
+    "API-list-templates"
+    "API-get-template"
+  ];
+  anytypeMcpPolicyIds = map (tool: "anytype__${tool}") anytypeMcpTools;
   macAppsMcpHostApp = "${home}/Applications/Home Manager Apps/Mac Apps MCP Host.app";
   deniedTools = [
     "message"
@@ -205,6 +226,143 @@ let
   podman = lib.getExe pkgs.podman;
   openssl = lib.getExe pkgs.openssl;
   jq = lib.getExe pkgs.jq;
+  anytypeMcp = pkgs.writeShellApplication {
+    name = "openclaw-anytype-mcp";
+    runtimeInputs = [
+      pkgs.jq
+      openclawPackage
+      pkgs.anytype-mcp
+    ];
+    text = ''
+      set -euo pipefail
+
+      openclaw=${lib.escapeShellArg openclaw}
+      jq=${lib.escapeShellArg jq}
+
+      if ! key=$(
+        "$openclaw" secrets store get ANYTYPE_API_KEY --plain 2>/dev/null
+      ); then
+        printf '%s\n' "refusing to start Anytype MCP: could not retrieve ANYTYPE_API_KEY from the OpenClaw store" >&2
+        exit 1
+      fi
+      if [ -z "$key" ]; then
+        printf '%s\n' "refusing to start Anytype MCP: ANYTYPE_API_KEY is empty" >&2
+        exit 1
+      fi
+
+      # shellcheck disable=SC2016
+      OPENAPI_MCP_HEADERS=$("$jq" -cn --arg key "$key" \
+        '{Authorization: ("Bearer " + $key), "Anytype-Version": "2025-11-08"}')
+      export OPENAPI_MCP_HEADERS
+      export ANYTYPE_API_BASE_URL=http://127.0.0.1:31012
+      exec ${lib.getExe pkgs.anytype-mcp} "$@"
+    '';
+  };
+  anytypeBootstrap = pkgs.writeShellApplication {
+    name = "anytype-openclaw-bootstrap";
+    runtimeInputs = [
+      pkgs.gawk
+      pkgs.jq
+      openclawPackage
+      pkgs.anytype-cli
+    ];
+    text = ''
+      set -euo pipefail
+
+      openclaw=${lib.escapeShellArg openclaw}
+      anytype_cli=${lib.escapeShellArg (lib.getExe pkgs.anytype-cli)}
+      jq=${lib.escapeShellArg jq}
+
+      metadata=$("$openclaw" secrets store list --json)
+      # shellcheck disable=SC2016
+      anytype_status=$("$jq" -r --arg name ANYTYPE_API_KEY '
+        [ .[]? | select(.name == $name) ] as $entries |
+        if ($entries | length) == 0 then "absent"
+        elif ($entries | length) == 1
+          and $entries[0].kind == "env"
+          and (($entries[0].allowedHosts // []) == []) then "valid"
+        else "invalid"
+        end
+      ' <<<"$metadata")
+
+      case "$anytype_status" in
+        valid)
+          printf '%s\n' "ANYTYPE_API_KEY already exists with approved metadata; preserving it."
+          ;;
+        invalid)
+          printf '%s\n' \
+            "refusing bootstrap: ANYTYPE_API_KEY has unexpected or duplicate metadata." \
+            "Complete account setup first via anytype-cli auth create <name>; no implicit rotation/update was performed." >&2
+          exit 1
+          ;;
+        absent)
+          if ! "$openclaw" secrets store set --help >/dev/null 2>&1 || \
+            ! "$openclaw" secrets store list --help >/dev/null 2>&1; then
+            printf '%s\n' \
+              "refusing bootstrap: this OpenClaw CLI does not support the Secret Store." \
+              "Complete account setup first via anytype-cli auth create <name>." >&2
+            exit 1
+          fi
+          if ! api_key=$(
+            "$anytype_cli" --no-update-check auth apikey create openclaw | \
+              gawk '
+                BEGIN { found = 0; valid = 1 }
+                /^Key: [^[:space:]]+$/ {
+                  if (found++) valid = 0
+                  key = substr($0, 6)
+                }
+                END {
+                  if (!valid || found != 1) exit 1
+                  print key
+                }
+              '
+          ); then
+            printf '%s\n' \
+              "refusing bootstrap: could not create the Anytype API key or parse its response." \
+              "Complete account setup first via anytype-cli auth create <name>." >&2
+            exit 1
+          fi
+          if [ -z "$api_key" ]; then
+            unset api_key
+            printf '%s\n' \
+              "refusing bootstrap: Anytype API key creation returned an empty key." \
+              "Complete account setup first via anytype-cli auth create <name>." >&2
+            exit 1
+          fi
+          if ! printf '%s' "$api_key" | \
+            "$openclaw" secrets store set ANYTYPE_API_KEY --kind env --value-file -; then
+            unset api_key
+            printf '%s\n' \
+              "refusing bootstrap: could not store the Anytype API key." \
+              "Complete account setup first via anytype-cli auth create <name>." >&2
+            exit 1
+          fi
+          unset api_key
+          metadata=$(
+            "$openclaw" secrets store list --json
+          )
+          # shellcheck disable=SC2016
+          if ! "$jq" -e --arg name ANYTYPE_API_KEY '
+            [ .[]? | select(.name == $name) ] as $entries |
+            ($entries | length) == 1 and
+            $entries[0].kind == "env" and
+            (($entries[0].allowedHosts // []) == [])
+          ' <<<"$metadata" >/dev/null; then
+            printf '%s\n' \
+              "refusing bootstrap: ANYTYPE_API_KEY metadata was not created exactly as required." \
+              "Complete account setup first via anytype-cli auth create <name>." >&2
+            exit 1
+          fi
+          ;;
+        *)
+          printf '%s\n' \
+            "refusing bootstrap: unexpected ANYTYPE_API_KEY metadata status." \
+            "Complete account setup first via anytype-cli auth create <name>." >&2
+          exit 1
+          ;;
+      esac
+    '';
+  };
   seed = pkgs.writeShellScript "openclaw-seed-workspace" ''
     set -eu
     ${install} -d -m 700 ${lib.escapeShellArg state}
@@ -485,6 +643,7 @@ in
 
   home.packages = [
     bootstrap
+    anytypeBootstrap
     (lib.hiPrio openclawCliWrapper)
   ];
 
@@ -754,7 +913,7 @@ in
 
       tools = {
         profile = "minimal";
-        alsoAllow = approvedTools ++ macAppsMcpPolicyIds ++ obsidianMcpPolicyIds;
+        alsoAllow = approvedTools ++ macAppsMcpPolicyIds ++ obsidianMcpPolicyIds ++ anytypeMcpPolicyIds;
         deny = deniedTools;
         fs.workspaceOnly = true;
         exec = {
@@ -777,7 +936,7 @@ in
         sessions = {
           visibility = "tree";
         };
-        sandbox.tools.allow = sandboxTools ++ macAppsMcpPolicyIds ++ obsidianMcpPolicyIds;
+        sandbox.tools.allow = sandboxTools ++ macAppsMcpPolicyIds ++ obsidianMcpPolicyIds ++ anytypeMcpPolicyIds;
         subagents.tools.allow = [
           "session_status"
           "read"
@@ -1008,6 +1167,36 @@ in
               "vault_copy"
               "command_execute"
               "open_file"
+            ];
+          };
+        };
+        servers.anytype = {
+          enabled = true;
+          transport = "stdio";
+          command = lib.getExe anytypeMcp;
+          args = [ ];
+          connectionTimeoutMs = 10000;
+          requestTimeoutMs = 300000;
+          supportsParallelToolCalls = false;
+          toolFilter = {
+            include = anytypeMcpTools;
+            exclude = [
+              "API-create-space"
+              "API-update-space"
+              "API-add-list-objects"
+              "API-remove-list-object"
+              "API-create-object"
+              "API-delete-object"
+              "API-update-object"
+              "API-create-property"
+              "API-delete-property"
+              "API-update-property"
+              "API-create-tag"
+              "API-delete-tag"
+              "API-update-tag"
+              "API-create-type"
+              "API-delete-type"
+              "API-update-type"
             ];
           };
         };
