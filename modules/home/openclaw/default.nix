@@ -20,12 +20,12 @@ let
     provider = "default";
     inherit id;
   };
+  # BOOTSTRAP.md is runtime-owned; its absence marks bootstrap complete.
   docs = [
     "AGENTS.md"
     "SOUL.md"
     "IDENTITY.md"
     "USER.md"
-    "BOOTSTRAP.md"
   ];
   approvedTools = [
     "read"
@@ -84,7 +84,6 @@ let
     "computer"
     "gateway"
     "skill_workshop"
-    "group:plugins"
     "publishing"
     "tts"
     "music"
@@ -312,6 +311,7 @@ in
 
   programs.openclaw = {
     enable = true;
+    launchd.label = "ai.openclaw.gateway";
     package = openclawPackage;
     appPackage = openclawApp;
     installApp = false;
@@ -866,7 +866,7 @@ in
     };
   };
 
-  launchd.agents."com.steipete.openclaw.gateway".config = {
+  launchd.agents."ai.openclaw.gateway".config = {
     EnvironmentVariables.CONTAINER_CONNECTION = "openclaw-sandbox";
     # Deliberately changes the plist when generated OpenClaw config changes, so Home Manager restarts the Gateway.
     EnvironmentVariables.OPENCLAW_CONFIG_GENERATION =
