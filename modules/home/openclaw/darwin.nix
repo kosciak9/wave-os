@@ -226,12 +226,8 @@ in
   home.packages = [
     sandboxBootstrap
     sandboxImageBuild
+    pkgs.mac-apps-mcp-host
   ];
-
-  home.file = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
-    "Applications/Home Manager Apps/Mac Apps MCP Host.app".source =
-      "${pkgs.mac-apps-mcp-host}/Mac Apps MCP Host.app";
-  };
 
   home.activation.openclawLogDirectory = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     ${install} -d -m 0700 -- "${homeDirectory}/Library/Logs/OpenClaw"

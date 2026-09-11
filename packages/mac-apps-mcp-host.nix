@@ -77,7 +77,7 @@ stdenv.mkDerivation {
 
   installPhase = ''
     runHook preInstall
-    app="$out/Mac Apps MCP Host.app"
+    app="$out/Applications/Mac Apps MCP Host.app"
     mkdir -p "$app/Contents/MacOS"
     cp mac-apps-mcp-host "$app/Contents/MacOS/Mac Apps MCP Host"
     chmod 0555 "$app/Contents/MacOS/Mac Apps MCP Host"
