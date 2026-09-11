@@ -94,8 +94,9 @@ let
     "device-pair"
   ];
   openclawPackageSet = pkgs.openclawPackages.withTools { excludeToolNames = [ "git" ]; };
+  openclawApp = pkgs.openclawPackages.openclaw-app;
   openclawPackage = openclawPackageSet.openclaw.override {
-    openclaw-app = pkgs.openclawPackages.openclaw-app;
+    openclaw-app = openclawApp;
   };
   install = lib.getExe' pkgs.coreutils "install";
   openclaw = lib.getExe openclawPackage;
@@ -224,26 +225,35 @@ in
       message = "OpenClaw Gateway must be exactly 2026.9.3";
     }
     {
-      assertion = lib.getVersion pkgs.openclawPackages.openclaw-app == "2026.9.3";
+      assertion = lib.getVersion openclawApp == "2026.9.3";
       message = "OpenClaw.app must be exactly 2026.9.3";
     }
   ];
 
   imports = [ ./darwin.nix ];
 
-  home.activation.openclawSeedWorkspace =
-    lib.hm.dag.entryBetween [ "openclawLaunchdRelink" ] [ "writeBoundary" ]
-      ''
-        ${seed}
-      '';
+  home = {
+    activation.openclawSeedWorkspace =
+      lib.hm.dag.entryBetween [ "openclawLaunchdRelink" ] [ "writeBoundary" ]
+        ''
+          ${seed}
+        '';
 
-  home.packages = [ bootstrap ];
+    packages = [ bootstrap ];
+
+    # Keep the app bundle as one symlink. Recursive materialization adds links
+    # inside the signed bundle and causes macOS deep signature verification to fail.
+    file."Applications/OpenClaw.app" = {
+      source = "${openclawApp}/Applications/OpenClaw.app";
+      force = true;
+    };
+  };
 
   programs.openclaw = {
     enable = true;
     package = openclawPackage;
-    appPackage = pkgs.openclawPackages.openclaw-app;
-    installApp = true;
+    appPackage = openclawApp;
+    installApp = false;
     stateDir = state;
     workspaceDir = workspace;
     runtimePlugins = [ "llama-cpp" ];
