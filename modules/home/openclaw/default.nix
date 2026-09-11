@@ -232,22 +232,13 @@ in
 
   imports = [ ./darwin.nix ];
 
-  home = {
-    activation.openclawSeedWorkspace =
-      lib.hm.dag.entryBetween [ "openclawLaunchdRelink" ] [ "writeBoundary" ]
-        ''
-          ${seed}
-        '';
+  home.activation.openclawSeedWorkspace =
+    lib.hm.dag.entryBetween [ "openclawLaunchdRelink" ] [ "writeBoundary" ]
+      ''
+        ${seed}
+      '';
 
-    packages = [ bootstrap ];
-
-    # Keep the app bundle as one symlink. Recursive materialization adds links
-    # inside the signed bundle and causes macOS deep signature verification to fail.
-    file."Applications/OpenClaw.app" = {
-      source = "${openclawApp}/Applications/OpenClaw.app";
-      force = true;
-    };
-  };
+  home.packages = [ bootstrap ];
 
   programs.openclaw = {
     enable = true;

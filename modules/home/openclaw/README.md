@@ -83,7 +83,7 @@ Perform this sequence, stopping if any step reports an error:
 
 The one-shot app LaunchAgent may have timed out while explicit secret, Podman,
 and image provisioning was underway. After Gateway readiness, the operator may
-manually open `~/Applications/OpenClaw.app` for pairing and visual checks.
+manually open `~/Applications/Home Manager Apps/OpenClaw.app` for pairing and visual checks.
 
 1. Verify the service locally and confirm the expected image/tag.
 2. Complete provider OAuth in the Control UI; approve only the requested
@@ -99,10 +99,9 @@ manually open `~/Applications/OpenClaw.app` for pairing and visual checks.
 6. Inspect the Control UI visually; accessibility/CLI checks do not replace
    this manual check.
 
-The app agent opens `~/Applications/OpenClaw.app`. That path is deliberately a
-single, non-recursive symlink to the fixed Nix-store app bundle: Home Manager
-must not materialize links inside the signed bundle, because that leaves
-unsealed contents in its root and breaks macOS signature verification.
+The app agent opens `~/Applications/Home Manager Apps/OpenClaw.app`. Home
+Manager's standard macOS app collector owns this location and installs the
+corrected app bundle there.
 
 ## Sandbox boundary
 
@@ -126,7 +125,7 @@ curl --fail --silent --show-error "${OPENCLAW_HEALTH_URL:-http://127.0.0.1:18789
 curl --fail --silent --show-error "${OPENCLAW_STARTUP_URL:-http://127.0.0.1:18789/startupz}" >/dev/null
 curl --fail --silent --show-error "${OPENCLAW_READY_URL:-http://127.0.0.1:18789/readyz}" >/dev/null
 openclaw --version
-/usr/bin/codesign --verify --deep --strict "$HOME/Applications/OpenClaw.app"
+/usr/bin/codesign --verify --deep --strict "$HOME/Applications/Home Manager Apps/OpenClaw.app"
 ```
 
 Then confirm in the UI that OAuth is present, pairing is intentional, the

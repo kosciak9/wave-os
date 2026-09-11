@@ -172,7 +172,7 @@ let
         sleep 2
       done
 
-      exec ${open} "${homeDirectory}/Applications/OpenClaw.app"
+      exec ${open} "${homeDirectory}/Applications/Home Manager Apps/OpenClaw.app"
     '';
   };
 in
