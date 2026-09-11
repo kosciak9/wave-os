@@ -93,6 +93,7 @@
           openclaw-sandbox-context = final.callPackage ./packages/openclaw-sandbox-context.nix { };
           openclaw-embeddinggemma = final.callPackage ./packages/openclaw-embeddinggemma.nix { };
           openclaw-llama-server = final.callPackage ./packages/openclaw-llama-server.nix { };
+          mac-apps-mcp-server = final.callPackage ./packages/mac-apps-mcp-server.nix { };
         }
         // prev.lib.optionalAttrs prev.stdenv.hostPlatform.isLinux {
           wave-hyprland = prev.hyprland.overrideAttrs (old: {

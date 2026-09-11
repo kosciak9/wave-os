@@ -55,6 +55,22 @@ let
     "image_generate"
   ];
   sandboxTools = [ "session_status" ] ++ approvedTools;
+  macAppsMcpTools = [
+    "mail_list_accounts"
+    "mail_list_mailboxes"
+    "mail_get_emails"
+    "mail_get_email"
+    "mail_search"
+    "mail_search_body"
+    "mail_fts_index"
+    "mail_fts_stats"
+    "calendar_list"
+    "calendar_today"
+    "calendar_this_week"
+    "calendar_get_events"
+    "calendar_get_event"
+  ];
+  macAppsMcpPolicyIds = map (tool: "mac-apps__${tool}") macAppsMcpTools;
   deniedTools = [
     "message"
     "sessions_send"
@@ -69,8 +85,6 @@ let
     "gateway"
     "skill_workshop"
     "group:plugins"
-    "bundle-mcp"
-    "mcp"
     "publishing"
     "tts"
     "music"
@@ -503,7 +517,7 @@ in
 
       tools = {
         profile = "minimal";
-        alsoAllow = approvedTools;
+        alsoAllow = approvedTools ++ macAppsMcpPolicyIds;
         deny = deniedTools;
         fs.workspaceOnly = true;
         exec = {
@@ -526,7 +540,7 @@ in
         sessions = {
           visibility = "tree";
         };
-        sandbox.tools.allow = sandboxTools;
+        sandbox.tools.allow = sandboxTools ++ macAppsMcpPolicyIds;
         subagents.tools.allow = [
           "session_status"
           "read"
@@ -717,7 +731,27 @@ in
       };
       discovery.mdns.mode = "minimal";
       mcp = {
-        servers = { };
+        servers."mac-apps" = {
+          enabled = true;
+          transport = "stdio";
+          command = lib.getExe pkgs.mac-apps-mcp-server;
+          args = [ ];
+          env = {
+            MACOS_MCP_READONLY = "true";
+            MACOS_MCP_CONFIRM_DESTRUCTIVE = "true";
+            MACOS_MCP_WRITE_RATE_LIMIT = "1";
+          };
+          connectionTimeoutMs = 10000;
+          requestTimeoutMs = 300000;
+          supportsParallelToolCalls = false;
+          toolFilter = {
+            include = macAppsMcpTools;
+            exclude = [
+              "mail_move"
+              "mail_set_flags"
+            ];
+          };
+        };
         apps.enabled = false;
       };
       hooks = {

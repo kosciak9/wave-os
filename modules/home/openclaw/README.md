@@ -7,10 +7,11 @@ not own credentials, provider accounts, or durable backup infrastructure.
 ## Ownership boundaries
 
 - **This deployment owns:** the OpenClaw configuration, local runtime wiring,
-  Podman machine/image helpers, and the one-time seed helper.
+  the host-native read-only `mac-apps` MCP server, Podman machine/image helpers,
+  and the one-time seed helper.
 - **The operator owns:** Secret Store entries, OAuth consent and refresh-token
-  lifecycle, Telegram pairing, Tailscale access policy, theme selection, and
-  checking the Control UI visually.
+  lifecycle, Telegram pairing, Tailscale access policy, theme selection, Full
+  Disk Access consent, and checking the Control UI visually.
 - **Upstream owns:** OpenClaw behavior and the pinned 2026.9.3 CLI/image
   inputs. A temporary fork is used until the upstream change is available.
 
@@ -117,6 +118,25 @@ Any future MCP addition requires exact `server__tool` IDs to be listed in both
 the global policy and the sandbox policy; adding an MCP server alone is not
  sufficient.
 
+The `mac-apps` server is the one intentional host-native exception to the
+sandbox boundary. It runs from the pinned Nix executable and is restricted to
+a read-only Mail and Calendar data surface with exactly 13 tools exposed to
+OpenClaw. Notes, Reminders, Contacts, daily briefing, and generic resource
+utility tools are unavailable. `mail_fts_index` may write the local derived FTS
+cache and logs under `~/.macos-mcp`; it cannot write Mail or Calendar data.
+Grant Full Disk Access to that pinned Nix Node executable and the OpenClaw
+Gateway process (not merely to a terminal), then restart the Gateway after
+changing consent. `MACOS_MCP_READONLY` prevents write registration against
+those Apple data stores, so that configured data surface is guaranteed
+read-only. Destructive confirmation and a one-operation-per-minute write limit
+are defense-in-depth. `mail_move` and `mail_set_flags` are also excluded by the
+OpenClaw tool filter, and all application-data writes are unavailable.
+
+The server may create `~/.macos-mcp/mail-fts.db` and
+`~/.macos-mcp/macos-mcp.log` (plus rotated log backups). This expected runtime
+state can contain local mail-derived index/log data; do not copy it into Nix
+configuration or backups without reviewing its sensitivity.
+
 ## Acceptance checks
 
 Use read-only checks first. Every Podman acceptance command names the exact
@@ -131,6 +151,25 @@ curl --fail --silent --show-error "${OPENCLAW_READY_URL:-http://127.0.0.1:18789/
 openclaw --version
 /usr/bin/codesign --verify --deep --strict "$HOME/Applications/Home Manager Apps/OpenClaw.app"
 ```
+
+Probe the OpenClaw-filtered MCP tool surface without invoking a write:
+
+```sh
+openclaw mcp probe mac-apps --json
+```
+
+The OpenClaw-filtered result must contain exactly these 13 names from the Nix
+`macAppsMcpTools` list: `mail_list_accounts`, `mail_list_mailboxes`,
+`mail_get_emails`, `mail_get_email`, `mail_search`, `mail_search_body`,
+`mail_fts_index`, `mail_fts_stats`, `calendar_list`, `calendar_today`,
+`calendar_this_week`, `calendar_get_events`, and `calendar_get_event`.
+`mail_move` and `mail_set_flags` must be absent. Raw upstream READONLY mode
+advertises 26 tools, including those two filtered mail mutation exceptions and
+four Notes tools; do not use that raw `tools/list` response for this
+acceptance check. The FTS database and log under `~/.macos-mcp` are expected
+after startup/indexing. Adding another server still requires synchronizing its
+exact `server__tool` IDs in both `tools.alsoAllow` and
+`tools.sandbox.tools.allow`; configuring the server alone is insufficient.
 
 Then confirm in the UI that OAuth is present, pairing is intentional, the
 chosen theme persisted, and no disabled capability is advertised as enabled.
