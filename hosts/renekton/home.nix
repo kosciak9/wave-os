@@ -2,6 +2,7 @@
 {
   imports = [
     ../../modules/home/openclaw
+    ../../modules/home/camofox
     ../../modules/home/cli
     ../../modules/home/devenv
     ../../modules/home/development-caddy/darwin.nix

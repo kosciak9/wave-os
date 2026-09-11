@@ -94,6 +94,11 @@
           openclaw-embeddinggemma = final.callPackage ./packages/openclaw-embeddinggemma.nix { };
           openclaw-llama-server = final.callPackage ./packages/openclaw-llama-server.nix { };
           anytype-mcp = final.callPackage ./packages/anytype-mcp.nix { };
+          camofox-browser-source = final.callPackage ./packages/camofox-browser-source.nix { };
+          camofox-openclaw-plugin = final.callPackage ./packages/camofox-openclaw-plugin.nix { };
+          openclawRuntimePlugins = (prev.openclawRuntimePlugins or { }) // {
+            "camofox-browser" = final.camofox-openclaw-plugin;
+          };
         }
         // prev.lib.optionalAttrs prev.stdenv.hostPlatform.isLinux {
           wave-hyprland = prev.hyprland.overrideAttrs (old: {
@@ -226,6 +231,8 @@
           openclaw-embeddinggemma
           openclaw-llama-server
           anytype-mcp
+          camofox-browser-source
+          camofox-openclaw-plugin
           ;
       };
     };

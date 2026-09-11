@@ -132,56 +132,72 @@ let
       podman=${podman}
       ${sandboxMachineValidation}
       machine_state=""
-      inspect_deadline=$((SECONDS + 120))
+      wait_deadline=$((SECONDS + 120))
       until machine_state=$("$podman" machine inspect \
         --format '{{.State}}' openclaw-sandbox 2>/dev/null); do
-        if (( SECONDS >= inspect_deadline )); then
+        if (( SECONDS >= wait_deadline )); then
           printf '%s\n' \
             "timed out waiting for openclaw-sandbox machine inspection" >&2
           exit 1
         fi
-        sleep 2
+        sleep 5
       done
+
+      recover_machine() {
+        local attempt attempt_failed deadline
+
+        for attempt in 1 2 3; do
+          attempt_failed=false
+          validate_machine
+          if ! machine_state=$("$podman" machine inspect \
+            --format '{{.State}}' openclaw-sandbox 2>/dev/null); then
+            attempt_failed=true
+          elif [[ "$machine_state" != "running" ]]; then
+            if ! "$podman" machine start openclaw-sandbox >/dev/null 2>&1; then
+              attempt_failed=true
+            fi
+          fi
+
+          if [[ "$attempt_failed" == false ]]; then
+            deadline=$((SECONDS + 120))
+            until "$podman" --connection openclaw-sandbox info >/dev/null 2>&1; do
+              if (( SECONDS >= deadline )); then
+                attempt_failed=true
+                break
+              fi
+              sleep 5
+            done
+          fi
+
+          if [[ "$attempt_failed" == false ]]; then
+            return 0
+          fi
+
+          printf 'openclaw-sandbox recovery attempt %d of 3 failed\n' "$attempt" >&2
+          "$podman" machine stop openclaw-sandbox >/dev/null 2>&1 || true
+          if (( attempt < 3 )); then
+            sleep 10
+          fi
+        done
+
+        printf '%s\n' \
+          "openclaw-sandbox failed to become reachable after 3 recovery attempts" >&2
+        return 1
+      }
 
       validate_machine
-
-      attempt=1
-      while (( attempt <= 3 )); do
-        attempt_failed=false
-        if ! machine_state=$("$podman" machine inspect \
-          --format '{{.State}}' openclaw-sandbox 2>/dev/null); then
-          attempt_failed=true
-        elif [[ "$machine_state" != "running" ]] && \
-          ! "$podman" machine start openclaw-sandbox; then
-          attempt_failed=true
+      recover_machine
+      while :; do
+        sleep 30
+        validate_machine
+        if machine_state=$("$podman" machine inspect \
+          --format '{{.State}}' openclaw-sandbox 2>/dev/null) && \
+          [[ "$machine_state" == "running" ]] && \
+          "$podman" --connection openclaw-sandbox info >/dev/null 2>&1; then
+          continue
         fi
-
-        if [[ "$attempt_failed" == false ]]; then
-          deadline=$((SECONDS + 120))
-          until "$podman" --connection openclaw-sandbox info >/dev/null 2>&1; do
-            if (( SECONDS >= deadline )); then
-              attempt_failed=true
-              break
-            fi
-            sleep 2
-          done
-        fi
-
-        if [[ "$attempt_failed" == false ]]; then
-          exit 0
-        fi
-
-        printf 'openclaw-sandbox startup attempt %d of 3 failed\n' "$attempt" >&2
-        "$podman" machine stop openclaw-sandbox >/dev/null 2>&1 || true
-        if (( attempt < 3 )); then
-          sleep 5
-        fi
-        attempt=$((attempt + 1))
+        recover_machine
       done
-
-      printf '%s\n' \
-        "openclaw-sandbox failed to become reachable after 3 startup attempts" >&2
-      exit 1
     '';
   };
 
@@ -239,7 +255,9 @@ in
     config = {
       ProgramArguments = [ (lib.getExe sandboxMachineAgent) ];
       RunAtLoad = true;
-      KeepAlive = false;
+      KeepAlive = {
+        SuccessfulExit = false;
+      };
       Umask = 63;
       ProcessType = "Background";
       StandardOutPath = "${homeDirectory}/Library/Logs/OpenClaw/sandbox-machine.log";

@@ -55,6 +55,17 @@ let
     "image_generate"
   ];
   sandboxTools = [ "session_status" ] ++ approvedTools;
+  camofoxTools = [
+    "camofox_create_tab"
+    "camofox_snapshot"
+    "camofox_click"
+    "camofox_type"
+    "camofox_navigate"
+    "camofox_scroll"
+    "camofox_screenshot"
+    "camofox_close_tab"
+    "camofox_list_tabs"
+  ];
   macAppsMcpTools = [
     "mail_list_accounts"
     "mail_list_mailboxes"
@@ -127,6 +138,8 @@ let
     "file_transfer"
     "codex"
     "cua-computer"
+    "camofox_evaluate"
+    "camofox_import_cookies"
     "xai"
   ];
   enabledPluginIds = [
@@ -135,6 +148,7 @@ let
     "memory-core"
     "active-memory"
     "llama-cpp"
+    "camofox-browser"
     "document-extract"
     "web-readability"
     "device-pair"
@@ -363,6 +377,63 @@ let
       esac
     '';
   };
+  camofoxBootstrap = pkgs.writeShellApplication {
+    name = "camofox-openclaw-bootstrap";
+    runtimeInputs = [
+      pkgs.jq
+      pkgs.openssl
+      openclawPackage
+    ];
+    text = ''
+      set -euo pipefail
+
+      openclaw=${lib.escapeShellArg openclaw}
+      jq=${lib.escapeShellArg jq}
+      openssl=${lib.escapeShellArg openssl}
+
+      metadata=$("$openclaw" secrets store list --json)
+      # shellcheck disable=SC2016
+      status=$("$jq" -r --arg name CAMOFOX_ACCESS_KEY '
+        [ .[]? | select(.name == $name) ] as $entries |
+        if ($entries | length) == 0 then "absent"
+        elif ($entries | length) == 1
+          and $entries[0].kind == "env"
+          and (($entries[0].allowedHosts // []) == []) then "valid"
+        else "invalid"
+        end
+      ' <<<"$metadata")
+
+      case "$status" in
+        valid)
+          printf '%s\n' "CAMOFOX_ACCESS_KEY already exists with approved metadata; preserving it."
+          ;;
+        invalid)
+          printf '%s\n' "refusing bootstrap: CAMOFOX_ACCESS_KEY has unexpected or duplicate metadata." >&2
+          exit 1
+          ;;
+        absent)
+          "$openssl" rand -hex 32 | \
+            "$openclaw" secrets store set CAMOFOX_ACCESS_KEY \
+              --kind env --value-file -
+          metadata=$("$openclaw" secrets store list --json)
+          # shellcheck disable=SC2016
+          if ! "$jq" -e --arg name CAMOFOX_ACCESS_KEY '
+            [ .[]? | select(.name == $name) ] as $entries |
+            ($entries | length) == 1 and
+            $entries[0].kind == "env" and
+            (($entries[0].allowedHosts // []) == [])
+          ' <<<"$metadata" >/dev/null; then
+            printf '%s\n' "refusing bootstrap: CAMOFOX_ACCESS_KEY metadata was not created exactly as required." >&2
+            exit 1
+          fi
+          ;;
+        *)
+          printf '%s\n' "refusing bootstrap: unexpected CAMOFOX_ACCESS_KEY metadata status." >&2
+          exit 1
+          ;;
+      esac
+    '';
+  };
   seed = pkgs.writeShellScript "openclaw-seed-workspace" ''
     set -eu
     ${install} -d -m 700 ${lib.escapeShellArg state}
@@ -381,6 +452,7 @@ let
       pkgs.jq
       openclawPackage
       pkgs.openssl
+      camofoxBootstrap
     ];
     text = ''
       set -euo pipefail
@@ -403,6 +475,7 @@ let
       "$openclaw" secrets store set --help >/dev/null
       "$openclaw" secrets store list --help >/dev/null
       "$openclaw" secrets audit --help >/dev/null
+      camofox-openclaw-bootstrap
 
       metadata=$("$openclaw" secrets store list --json)
       # shellcheck disable=SC2016
@@ -594,6 +667,18 @@ let
 
     export OPENCLAW_GATEWAY_TOKEN="$token"
 
+    if ! camofox_key=$(
+      "$openclaw" secrets store get CAMOFOX_ACCESS_KEY --plain 2>/dev/null
+    ); then
+      printf '%s\n' "refusing to start OpenClaw Gateway: could not retrieve CAMOFOX_ACCESS_KEY from the store" >&2
+      exit 1
+    fi
+    if [ -z "$camofox_key" ]; then
+      printf '%s\n' "refusing to start OpenClaw Gateway: CAMOFOX_ACCESS_KEY is empty" >&2
+      exit 1
+    fi
+    export CAMOFOX_ACCESS_KEY="$camofox_key"
+
     if ! obsidian_token=$(
       "$openclaw" secrets store get OBSIDIAN_LOCAL_REST_API_KEY --plain 2>/dev/null
     ); then
@@ -644,6 +729,7 @@ in
   home.packages = [
     bootstrap
     anytypeBootstrap
+    camofoxBootstrap
     (lib.hiPrio openclawCliWrapper)
   ];
 
@@ -656,7 +742,10 @@ in
     stateDir = state;
     workspaceDir = workspace;
     workspace.files."avatars/alfred.png" = ./assets/alfred.png;
-    runtimePlugins = [ "llama-cpp" ];
+    runtimePlugins = [
+      "llama-cpp"
+      "camofox-browser"
+    ];
     runtimePackages = [
       pkgs.podman
       pkgs.openclaw-llama-server
@@ -913,7 +1002,8 @@ in
 
       tools = {
         profile = "minimal";
-        alsoAllow = approvedTools ++ macAppsMcpPolicyIds ++ obsidianMcpPolicyIds ++ anytypeMcpPolicyIds;
+        alsoAllow =
+          approvedTools ++ camofoxTools ++ macAppsMcpPolicyIds ++ obsidianMcpPolicyIds ++ anytypeMcpPolicyIds;
         deny = deniedTools;
         fs.workspaceOnly = true;
         exec = {
@@ -936,7 +1026,8 @@ in
         sessions = {
           visibility = "tree";
         };
-        sandbox.tools.allow = sandboxTools ++ macAppsMcpPolicyIds ++ obsidianMcpPolicyIds ++ anytypeMcpPolicyIds;
+        sandbox.tools.allow =
+          sandboxTools ++ camofoxTools ++ macAppsMcpPolicyIds ++ obsidianMcpPolicyIds ++ anytypeMcpPolicyIds;
         subagents.tools.allow = [
           "session_status"
           "read"
@@ -1056,6 +1147,13 @@ in
               enabled = true;
               config.publicUrl = "wss://renekton.dusky-diatonic.ts.net:18790";
             };
+            "camofox-browser" = {
+              enabled = true;
+              config = {
+                url = "http://127.0.0.1:9377";
+                autoStart = false;
+              };
+            };
           };
       };
       skills = {
@@ -1125,79 +1223,81 @@ in
       };
       discovery.mdns.mode = "minimal";
       mcp = {
-        servers."mac-apps" = {
-          enabled = true;
-          transport = "stdio";
-          command = "${macAppsMcpHostApp}/Contents/MacOS/Mac Apps MCP Host";
-          args = [ (lib.getExe pkgs.mac-apps-mcp-server) ];
-          env = {
-            MACOS_MCP_READONLY = "true";
-            MACOS_MCP_CONFIRM_DESTRUCTIVE = "true";
-            MACOS_MCP_WRITE_RATE_LIMIT = "1";
+        servers = {
+          "mac-apps" = {
+            enabled = true;
+            transport = "stdio";
+            command = "${macAppsMcpHostApp}/Contents/MacOS/Mac Apps MCP Host";
+            args = [ (lib.getExe pkgs.mac-apps-mcp-server) ];
+            env = {
+              MACOS_MCP_READONLY = "true";
+              MACOS_MCP_CONFIRM_DESTRUCTIVE = "true";
+              MACOS_MCP_WRITE_RATE_LIMIT = "1";
+            };
+            connectionTimeoutMs = 10000;
+            requestTimeoutMs = 300000;
+            supportsParallelToolCalls = false;
+            toolFilter = {
+              include = macAppsMcpTools;
+              exclude = [
+                "mail_move"
+                "mail_set_flags"
+              ];
+            };
           };
-          connectionTimeoutMs = 10000;
-          requestTimeoutMs = 300000;
-          supportsParallelToolCalls = false;
-          toolFilter = {
-            include = macAppsMcpTools;
-            exclude = [
-              "mail_move"
-              "mail_set_flags"
-            ];
+          obsidian = {
+            enabled = true;
+            url = "https://127.0.0.1:27124/mcp/";
+            transport = "streamable-http";
+            headers.Authorization = "Bearer $" + "{OBSIDIAN_LOCAL_REST_API_KEY}";
+            # Scoped only to the plugin's fixed self-signed loopback endpoint.
+            sslVerify = false;
+            connectionTimeoutMs = 10000;
+            requestTimeoutMs = 300000;
+            supportsParallelToolCalls = false;
+            toolFilter = {
+              include = obsidianMcpTools;
+              exclude = [
+                "vault_write"
+                "vault_append"
+                "vault_patch"
+                "vault_delete"
+                "vault_move"
+                "vault_copy"
+                "command_execute"
+                "open_file"
+              ];
+            };
           };
-        };
-        servers.obsidian = {
-          enabled = true;
-          url = "https://127.0.0.1:27124/mcp/";
-          transport = "streamable-http";
-          headers.Authorization = "Bearer $" + "{OBSIDIAN_LOCAL_REST_API_KEY}";
-          # Scoped only to the plugin's fixed self-signed loopback endpoint.
-          sslVerify = false;
-          connectionTimeoutMs = 10000;
-          requestTimeoutMs = 300000;
-          supportsParallelToolCalls = false;
-          toolFilter = {
-            include = obsidianMcpTools;
-            exclude = [
-              "vault_write"
-              "vault_append"
-              "vault_patch"
-              "vault_delete"
-              "vault_move"
-              "vault_copy"
-              "command_execute"
-              "open_file"
-            ];
-          };
-        };
-        servers.anytype = {
-          enabled = true;
-          transport = "stdio";
-          command = lib.getExe anytypeMcp;
-          args = [ ];
-          connectionTimeoutMs = 10000;
-          requestTimeoutMs = 300000;
-          supportsParallelToolCalls = false;
-          toolFilter = {
-            include = anytypeMcpTools;
-            exclude = [
-              "API-create-space"
-              "API-update-space"
-              "API-add-list-objects"
-              "API-remove-list-object"
-              "API-create-object"
-              "API-delete-object"
-              "API-update-object"
-              "API-create-property"
-              "API-delete-property"
-              "API-update-property"
-              "API-create-tag"
-              "API-delete-tag"
-              "API-update-tag"
-              "API-create-type"
-              "API-delete-type"
-              "API-update-type"
-            ];
+          anytype = {
+            enabled = true;
+            transport = "stdio";
+            command = lib.getExe anytypeMcp;
+            args = [ ];
+            connectionTimeoutMs = 10000;
+            requestTimeoutMs = 300000;
+            supportsParallelToolCalls = false;
+            toolFilter = {
+              include = anytypeMcpTools;
+              exclude = [
+                "API-create-space"
+                "API-update-space"
+                "API-add-list-objects"
+                "API-remove-list-object"
+                "API-create-object"
+                "API-delete-object"
+                "API-update-object"
+                "API-create-property"
+                "API-delete-property"
+                "API-update-property"
+                "API-create-tag"
+                "API-delete-tag"
+                "API-update-tag"
+                "API-create-type"
+                "API-delete-type"
+                "API-update-type"
+              ];
+            };
           };
         };
         apps.enabled = false;
