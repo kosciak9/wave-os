@@ -33,11 +33,13 @@ stdenvNoCC.mkDerivation {
         jq --argjson allowed '${allowedToolsJson}' \
           ' .version = "1.15.0"
           | .main = "plugin.js"
-      | .files = [ "plugin.js", "openclaw.plugin.json" ]
-      | .openclaw.extensions = [ "plugin.js" ]
-      | .openclaw.runtimeExtensions = [ "plugin.js" ]
-      | .openclaw.tools = [ .openclaw.tools[] | select(.name as $name | ($allowed | index($name)) != null) ]' \
-          '${camofox-browser-source}/package.json' > "$out/package.json"
+           | .files = [ "plugin.js", "openclaw.plugin.json" ]
+           | .openclaw.extensions = [ "plugin.js" ]
+           | .openclaw.runtimeExtensions = [ "plugin.js" ]
+           | .openclaw.tools = [ .openclaw.tools[] | select(.name as $name | ($allowed | index($name)) != null) ]
+           | del(.scripts, .dependencies, .optionalDependencies, .devDependencies,
+               .peerDependencies, .peerDependenciesMeta, .overrides)' \
+           '${camofox-browser-source}/package.json' > "$out/package.json"
         jq --argjson allowed '${allowedToolsJson}' \
           '.version = "1.15.0" | .tools = $allowed | .contracts.tools = $allowed' \
           '${camofox-browser-source}/openclaw.plugin.json' > "$out/openclaw.plugin.json"
