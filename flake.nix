@@ -94,6 +94,7 @@
           openclaw-embeddinggemma = final.callPackage ./packages/openclaw-embeddinggemma.nix { };
           openclaw-llama-server = final.callPackage ./packages/openclaw-llama-server.nix { };
           anytype-mcp = final.callPackage ./packages/anytype-mcp.nix { };
+          substack-mcp = final.callPackage ./packages/substack-mcp.nix { };
           camofox-browser-source = final.callPackage ./packages/camofox-browser-source.nix { };
           camofox-openclaw-plugin = final.callPackage ./packages/camofox-openclaw-plugin.nix { };
           openclawRuntimePlugins = (prev.openclawRuntimePlugins or { }) // {
@@ -231,6 +232,7 @@
           openclaw-embeddinggemma
           openclaw-llama-server
           anytype-mcp
+          substack-mcp
           camofox-browser-source
           camofox-openclaw-plugin
           ;

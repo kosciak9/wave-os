@@ -114,6 +114,76 @@ let
     "API-get-template"
   ];
   anytypeMcpPolicyIds = map (tool: "anytype__${tool}") anytypeMcpTools;
+  substackMcpTools = [
+    "get_analytics"
+    "get_dashboard_summary"
+    "get_email_stats"
+    "get_growth_sources"
+    "get_revenue_summary"
+    "get_post_comments"
+    "get_draft"
+    "list_drafts"
+    "list_scheduled_posts"
+    "preview_draft_body"
+    "get_sections"
+    "list_scheduled_notes"
+    "list_notes"
+    "list_posts"
+    "get_post_by_id"
+    "search_posts"
+    "get_post_stats"
+    "rank_posts"
+    "get_publication_settings"
+    "get_user_profile"
+    "list_contributors"
+    "get_import_status"
+    "search_publications"
+    "list_subscriptions"
+    "list_reader_posts"
+    "get_reader_post"
+    "get_reader_feed"
+    "get_profile_feed"
+    "get_comment_thread"
+    "list_subscribers"
+    "export_subscribers"
+    "get_subscriber_count"
+    "list_publication_tags"
+    "get_post_tags"
+    "list_templates"
+  ];
+  substackMcpPolicyIds = map (tool: "substack__${tool}") substackMcpTools;
+  substackMcpExcludedTools = [
+    "create_draft"
+    "update_draft"
+    "delete_draft"
+    "publish_draft"
+    "schedule_draft"
+    "unschedule_draft"
+    "set_draft_body"
+    "publish_note"
+    "publish_note_with_link"
+    "schedule_note"
+    "cancel_scheduled_note"
+    "delete_note"
+    "add_subscriber"
+    "create_tag"
+    "add_tag_to_post"
+    "remove_tag_from_post"
+    "comment_on_post"
+    "delete_comment"
+    "restack_note"
+    "update_publication_settings"
+    "create_template"
+    "delete_template"
+    "create_draft_from_template"
+    "upload_image"
+    "get_post"
+    "get_publication_info"
+    "research_creator_posts"
+    "research_creator_notes"
+    "compare_publications"
+    "scrape_post"
+  ];
   macAppsMcpHostApp = "${home}/Applications/Home Manager Apps/Mac Apps MCP Host.app";
   deniedTools = [
     "message"
@@ -270,6 +340,157 @@ let
       export OPENAPI_MCP_HEADERS
       export ANYTYPE_API_BASE_URL=http://127.0.0.1:31012
       exec ${lib.getExe pkgs.anytype-mcp} "$@"
+    '';
+  };
+  substackMcp = pkgs.writeShellApplication {
+    name = "openclaw-substack-mcp";
+    runtimeInputs = [
+      openclawPackage
+      pkgs.substack-mcp
+      pkgs.coreutils
+    ];
+    text = ''
+      set -euo pipefail
+
+      openclaw=${lib.escapeShellArg openclaw}
+      if ! publication_url=$(
+        "$openclaw" secrets store get SUBSTACK_PUBLICATION_URL --plain 2>/dev/null
+      ); then
+        printf '%s\n' "refusing to start Substack MCP: could not retrieve SUBSTACK_PUBLICATION_URL from the OpenClaw store" >&2
+        exit 1
+      fi
+      if ! session_token=$(
+        "$openclaw" secrets store get SUBSTACK_SESSION_TOKEN --plain 2>/dev/null
+      ); then
+        printf '%s\n' "refusing to start Substack MCP: could not retrieve SUBSTACK_SESSION_TOKEN from the OpenClaw store" >&2
+        exit 1
+      fi
+      if [ -z "$publication_url" ] || [ -z "$session_token" ]; then
+        printf '%s\n' "refusing to start Substack MCP: required OpenClaw store value is empty" >&2
+        exit 1
+      fi
+
+      publication_url=$(${pkgs.coreutils}/bin/tr '[:upper:]' '[:lower:]' <<<"$publication_url")
+      if [[ ! "$publication_url" =~ ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.substack\.com$ ]]; then
+        printf '%s\n' "refusing to start Substack MCP: stored publication URL is not a bare canonical *.substack.com hostname" >&2
+        exit 1
+      fi
+      unset OPENCLAW_GATEWAY_TOKEN CAMOFOX_ACCESS_KEY OBSIDIAN_LOCAL_REST_API_KEY ANYTYPE_API_KEY OPENAPI_MCP_HEADERS
+      export SUBSTACK_PUBLICATION_URL="$publication_url"
+      export SUBSTACK_SESSION_TOKEN="$session_token"
+      export SUBSTACK_READ_ONLY=1
+      export SUBSTACK_ALLOW_DESTRUCTIVE=0
+      export SUBSTACK_MCP_HOME=/dev/null
+      unset publication_url session_token
+      exec ${lib.getExe pkgs.substack-mcp} "$@"
+    '';
+  };
+  substackBootstrap = pkgs.writeShellApplication {
+    name = "substack-openclaw-bootstrap";
+    runtimeInputs = [
+      pkgs.jq
+      openclawPackage
+    ];
+    text = ''
+      set -euo pipefail
+
+      openclaw=${lib.escapeShellArg openclaw}
+      jq=${lib.escapeShellArg jq}
+      validate_metadata() {
+        # shellcheck disable=SC2016
+        "$jq" -e '
+          [ .[]? | select(.name == "SUBSTACK_PUBLICATION_URL") ] as $url |
+          [ .[]? | select(.name == "SUBSTACK_SESSION_TOKEN") ] as $token |
+          ($url | length) == 1 and ($token | length) == 1 and
+          $url[0].kind == "env" and $token[0].kind == "env" and
+          (($url[0].allowedHosts // []) == []) and
+          (($token[0].allowedHosts // []) == [])
+        ' <<<"$metadata" >/dev/null
+      }
+      validate_values() {
+        if ! stored_url=$("$openclaw" secrets store get SUBSTACK_PUBLICATION_URL --plain 2>/dev/null); then
+          return 1
+        fi
+        if ! stored_token=$("$openclaw" secrets store get SUBSTACK_SESSION_TOKEN --plain 2>/dev/null); then
+          return 1
+        fi
+        if [ -z "$stored_url" ] || [ -z "$stored_token" ]; then
+          return 1
+        fi
+        normalized_url=$(${pkgs.coreutils}/bin/tr '[:upper:]' '[:lower:]' <<<"$stored_url")
+        if [[ "$stored_url" != "$normalized_url" ]] || \
+          [[ ! "$normalized_url" =~ ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.substack\.com$ ]]; then
+          return 1
+        fi
+      }
+      metadata=$("$openclaw" secrets store list --json)
+      # shellcheck disable=SC2016
+      url_status=$("$jq" -r '
+        [ .[]? | select(.name == "SUBSTACK_PUBLICATION_URL") ] as $e |
+        if ($e | length) == 0 then "absent"
+        elif ($e | length) == 1 and $e[0].kind == "env" and (($e[0].allowedHosts // []) == []) then "valid"
+        else "invalid"
+        end
+      ' <<<"$metadata")
+      # shellcheck disable=SC2016
+      token_status=$("$jq" -r '
+        [ .[]? | select(.name == "SUBSTACK_SESSION_TOKEN") ] as $e |
+        if ($e | length) == 0 then "absent"
+        elif ($e | length) == 1 and $e[0].kind == "env" and (($e[0].allowedHosts // []) == []) then "valid"
+        else "invalid"
+        end
+      ' <<<"$metadata")
+      if [ "$url_status" = invalid ] || [ "$token_status" = invalid ]; then
+        printf '%s\n' "refusing bootstrap: Substack Secret Store metadata is unexpected; no update was performed." >&2
+        exit 1
+      fi
+      if [ "$url_status" = valid ] && [ "$token_status" = valid ]; then
+        if validate_values; then
+          printf '%s\n' "Substack Secret Store entries already have approved metadata and valid values; preserving them."
+          unset stored_url stored_token normalized_url
+          exit 0
+        fi
+        unset stored_url stored_token normalized_url
+        printf '%s\n' \
+          "refusing bootstrap: Substack Secret Store values are empty or invalid." \
+          "Correct them intentionally with the OpenClaw Secret Store prompts; no overwrite was performed." >&2
+        exit 1
+      fi
+      if [[ ! -t 0 || ! -t 1 ]]; then
+        printf '%s\n' "refusing bootstrap: Substack credentials are absent and require an interactive terminal." >&2
+        exit 1
+      fi
+      if [ "$url_status" = absent ]; then
+        printf '%s' "Substack publication hostname (*.substack.com): " >&2
+        IFS= read -r publication_url
+        publication_url=$(${pkgs.coreutils}/bin/tr '[:upper:]' '[:lower:]' <<<"$publication_url")
+        if [[ ! "$publication_url" =~ ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.substack\.com$ ]]; then
+          printf '%s\n' "refusing bootstrap: publication must be a bare canonical *.substack.com hostname." >&2
+          exit 1
+        fi
+        if ! printf '%s' "$publication_url" | "$openclaw" secrets store set SUBSTACK_PUBLICATION_URL --kind env --value-file -; then
+          printf '%s\n' "refusing bootstrap: could not store the Substack publication hostname." >&2
+          exit 1
+        fi
+        unset publication_url
+      fi
+      if [ "$token_status" = absent ]; then
+        printf '%s\n' "Enter the Substack session token (masked): " >&2
+        if ! "$openclaw" secrets store set SUBSTACK_SESSION_TOKEN --kind env; then
+          printf '%s\n' "refusing bootstrap: could not store the Substack session token." >&2
+          exit 1
+        fi
+      fi
+      unset metadata
+      metadata=$("$openclaw" secrets store list --json)
+      if ! validate_metadata || ! validate_values; then
+        unset stored_url stored_token normalized_url
+        printf '%s\n' \
+          "refusing bootstrap: Substack metadata or values were not created exactly as required." \
+          "Correct them intentionally with the OpenClaw Secret Store prompts; no automatic overwrite was performed." >&2
+        exit 1
+      fi
+      unset stored_url stored_token normalized_url
     '';
   };
   anytypeBootstrap = pkgs.writeShellApplication {
@@ -453,6 +674,7 @@ let
       openclawPackage
       pkgs.openssl
       camofoxBootstrap
+      substackBootstrap
     ];
     text = ''
       set -euo pipefail
@@ -476,6 +698,7 @@ let
       "$openclaw" secrets store list --help >/dev/null
       "$openclaw" secrets audit --help >/dev/null
       camofox-openclaw-bootstrap
+      substack-openclaw-bootstrap
 
       metadata=$("$openclaw" secrets store list --json)
       # shellcheck disable=SC2016
@@ -730,6 +953,7 @@ in
     bootstrap
     anytypeBootstrap
     camofoxBootstrap
+    substackBootstrap
     (lib.hiPrio openclawCliWrapper)
   ];
 
@@ -1003,7 +1227,12 @@ in
       tools = {
         profile = "minimal";
         alsoAllow =
-          approvedTools ++ camofoxTools ++ macAppsMcpPolicyIds ++ obsidianMcpPolicyIds ++ anytypeMcpPolicyIds;
+          approvedTools
+          ++ camofoxTools
+          ++ macAppsMcpPolicyIds
+          ++ obsidianMcpPolicyIds
+          ++ anytypeMcpPolicyIds
+          ++ substackMcpPolicyIds;
         deny = deniedTools;
         fs.workspaceOnly = true;
         exec = {
@@ -1019,6 +1248,11 @@ in
           enabled = false;
         };
         codeMode = false;
+        toolSearch = {
+          mode = "directory";
+          searchDefaultLimit = 5;
+          maxSearchLimit = 10;
+        };
         agentToAgent = {
           enabled = false;
           allow = [ ];
@@ -1027,7 +1261,12 @@ in
           visibility = "tree";
         };
         sandbox.tools.allow =
-          sandboxTools ++ camofoxTools ++ macAppsMcpPolicyIds ++ obsidianMcpPolicyIds ++ anytypeMcpPolicyIds;
+          sandboxTools
+          ++ camofoxTools
+          ++ macAppsMcpPolicyIds
+          ++ obsidianMcpPolicyIds
+          ++ anytypeMcpPolicyIds
+          ++ substackMcpPolicyIds;
         subagents.tools.allow = [
           "session_status"
           "read"
@@ -1297,6 +1536,19 @@ in
                 "API-delete-type"
                 "API-update-type"
               ];
+            };
+          };
+          substack = {
+            enabled = true;
+            transport = "stdio";
+            command = lib.getExe substackMcp;
+            args = [ ];
+            connectionTimeoutMs = 10000;
+            requestTimeoutMs = 300000;
+            supportsParallelToolCalls = false;
+            toolFilter = {
+              include = substackMcpTools;
+              exclude = substackMcpExcludedTools;
             };
           };
         };
