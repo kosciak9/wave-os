@@ -34,7 +34,7 @@ stdenvNoCC.mkDerivation {
           ' .version = "1.15.0"
           | .main = "plugin.js"
       | .files = [ "plugin.js", "openclaw.plugin.json" ]
-      | .openclaw.extensions = []
+      | .openclaw.extensions = [ "plugin.js" ]
       | .openclaw.runtimeExtensions = [ "plugin.js" ]
       | .openclaw.tools = [ .openclaw.tools[] | select(.name as $name | ($allowed | index($name)) != null) ]' \
           '${camofox-browser-source}/package.json' > "$out/package.json"
