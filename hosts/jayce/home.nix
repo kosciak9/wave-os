@@ -154,6 +154,7 @@ in
         playerctl
         pulseaudio
         pwvucontrol
+        remmina
         ripgrep
         trash-cli
         tesseract
