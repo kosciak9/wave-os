@@ -12,6 +12,7 @@
       },
     ],
     "opencode-worktrunk-workspaces@0.1.0",
+    "opencode-websearch@0.6.0",
     "@alergeek-ventures/opencode@1.2.0",
     "@slkiser/opencode-quota@4.8.2",
     "@gotgenes/opencode-agent-identity@3.1.1",
