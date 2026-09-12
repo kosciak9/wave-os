@@ -115,6 +115,6 @@ stdenvNoCC.mkDerivation {
     description = "OpenClaw Camofox browser plugin with a restricted tool surface";
     homepage = "https://github.com/jo-inc/camofox-browser";
     license = lib.licenses.mit;
-    platforms = lib.platforms.all;
+    platforms = camofox-browser-source.meta.platforms;
   };
 }

@@ -22,15 +22,6 @@
     "quota_status": false,
   },
   "mcp": {
-    "playwright": {
-      "type": "local",
-      "command": [
-        "sh",
-        "-c",
-        "exec npx -y @playwright/mcp@0.0.79 --executable-path=\"$(command -v chromium)\"",
-      ],
-      "enabled": true,
-    },
     "context7": {
       "type": "local",
       "command": [
@@ -49,7 +40,6 @@
   "permission": {
     "bash": {
       "*": "ask",
-
       "git status *": "allow",
       "git diff *": "allow",
       "git show *": "allow",

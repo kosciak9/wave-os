@@ -1,7 +1,10 @@
 { pkgs, ... }:
 
 {
-  home.packages = [ pkgs.opencode ];
+  home.packages = [
+    pkgs.opencode
+    pkgs.camofox-browser-cli
+  ];
 
   xdg.configFile = {
     "opencode/agent" = {
@@ -16,6 +19,11 @@
     };
     "opencode/opencode-quota" = {
       source = ./config/opencode-quota;
+      force = true;
+      recursive = true;
+    };
+    "opencode/skills" = {
+      source = ./config/skills;
       force = true;
       recursive = true;
     };

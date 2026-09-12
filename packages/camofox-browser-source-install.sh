@@ -6,20 +6,13 @@ substituteInPlace Dockerfile \
 substituteInPlace Dockerfile \
   --replace-fail \
     'ARG ARCH=x86_64' \
-    'ARG ARCH=arm64
-ARG CAMOUFOX_SHA256=3a105a2fc929e80a79b4b7fce2c93ed62c4fb2c877f3c1ed2a5d66a1c4fe968f'
+    'ARG ARCH=@CAMOUFOX_ARCH@
+ARG CAMOUFOX_SHA256=@CAMOUFOX_SHA256@'
 substituteInPlace server.js \
   --replace-fail \
     '        humanize: true,' \
     '        humanize: true,
         block_webrtc: true,'
-substituteInPlace server.js \
-  --replace-fail \
-    'app.use(accessKeyMiddleware(CONFIG));' \
-    'app.use(accessKeyMiddleware(CONFIG));
-
-// Wave OS does not permit arbitrary page-context evaluation.
-app.all("/tabs/:tabId/evaluate", (_req, res) => res.status(404).json({ error: "Not found" }));'
 substituteInPlace Dockerfile \
   --replace-fail \
     '# Install dependencies for Camoufox (Firefox-based)

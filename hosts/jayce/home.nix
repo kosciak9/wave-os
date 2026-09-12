@@ -98,6 +98,7 @@ in
 {
   imports = [
     ../../modules/home/cli
+    ../../modules/home/camofox/linux.nix
     ../../modules/home/devenv
     ../../modules/home/development-caddy/linux.nix
     ../../modules/home/ghostty

@@ -97,6 +97,7 @@
           substack-mcp = final.callPackage ./packages/substack-mcp.nix { };
           camofox-browser-source = final.callPackage ./packages/camofox-browser-source.nix { };
           camofox-openclaw-plugin = final.callPackage ./packages/camofox-openclaw-plugin.nix { };
+          camofox-browser-cli = final.callPackage ./packages/camofox-browser-cli.nix { };
           openclawRuntimePlugins = (prev.openclawRuntimePlugins or { }) // {
             "camofox-browser" = final.camofox-openclaw-plugin;
           };
@@ -225,7 +226,10 @@
         ];
       };
 
-      packages.${system}.kanagawa-kvantum = kanagawa-kvantum;
+      packages.${system} = {
+        inherit kanagawa-kvantum;
+        inherit (pkgs) camofox-browser-cli;
+      };
       packages.${darwinSystem} = {
         inherit (darwinPkgs)
           openclaw-sandbox-context
@@ -235,6 +239,7 @@
           substack-mcp
           camofox-browser-source
           camofox-openclaw-plugin
+          camofox-browser-cli
           ;
       };
     };
