@@ -256,6 +256,8 @@ let
     ++ substackMcpPublicReadTools
     ++ substackMcpAutonomousWriteTools;
   substackMcpPolicyIds = map (tool: "substack__${tool}") substackMcpAllowedTools;
+  languagetoolMcpTools = [ "lt_check_text" ];
+  languagetoolMcpPolicyIds = map (tool: "languagetool__${tool}") languagetoolMcpTools;
   macAppsMcpHostApp = "${home}/Applications/Home Manager Apps/Mac Apps MCP Host.app";
   deniedTools = [
     "message"
@@ -455,6 +457,35 @@ let
       export SUBSTACK_MCP_HOME=/dev/null
       unset publication_url session_token
       exec ${lib.getExe pkgs.substack-mcp} "$@"
+    '';
+  };
+  languagetoolMcp = pkgs.writeShellApplication {
+    name = "openclaw-languagetool-mcp";
+    runtimeInputs = [
+      pkgs.openclaw-languagetool-mcp-image
+      pkgs.podman
+    ];
+    text = ''
+      set -euo pipefail
+
+      ${lib.getExe pkgs.openclaw-languagetool-mcp-image}
+      exec ${podman} --connection openclaw-sandbox run --rm --replace --name openclaw-languagetool-mcp -i \
+        --network none \
+        --pull never \
+        --read-only \
+        --cap-drop ALL \
+        --security-opt no-new-privileges \
+        --user 65532:65532 \
+        --tmpfs /tmp:rw,noexec,nosuid,nodev,size=128m \
+        --workdir /tmp \
+        --pids-limit 128 \
+        --memory 768m \
+        --memory-swap 768m \
+        --cpus 1 \
+        --http-proxy=false \
+        --log-driver none \
+        --label io.wave-os.openclaw-mcp=languagetool \
+        ${lib.escapeShellArg pkgs.openclaw-languagetool-mcp-image.imageName}
     '';
   };
   substackBootstrap = pkgs.writeShellApplication {
@@ -949,6 +980,7 @@ let
     openclaw=${lib.escapeShellArg openclaw}
     podman=${lib.escapeShellArg podman}
     jq=${lib.escapeShellArg jq}
+    machine_checker=${lib.escapeShellArg (lib.getExe pkgs.openclaw-sandbox-machine-check)}
     if ! token=$(
       "$openclaw" secrets store get OPENCLAW_GATEWAY_TOKEN --plain 2>/dev/null
     ); then
@@ -997,6 +1029,13 @@ let
       fi
       /bin/sleep 2
     done
+
+    if ! "$machine_checker"; then
+      printf '%s\n' "refusing to start OpenClaw Gateway: openclaw-sandbox machine configuration check failed" >&2
+      exit 1
+    fi
+
+    ${lib.getExe pkgs.openclaw-languagetool-mcp-image}
 
     exec "$openclaw" gateway --port 18789
   '';
@@ -1199,7 +1238,7 @@ in
           modelSelectionScope = "session";
           thinkingDefault = "medium";
           fastModeDefault = "auto";
-          maxConcurrent = 4;
+          maxConcurrent = 2;
           compaction = {
             enabled = true;
             mode = "safeguard";
@@ -1324,8 +1363,15 @@ in
               "--model"
               "${pkgs.openclaw-embeddinggemma}/share/openclaw/models/embeddinggemma-300m-qat-Q8_0.gguf"
               "--embedding"
+              "--cache-ram"
+              "0"
+              "--no-cache-prompt"
               "--ubatch-size"
-              "2048"
+              "256"
+              "--batch-size"
+              "1024"
+              "--parallel"
+              "1"
               "--metrics"
               "--no-ui"
             ];
@@ -1342,7 +1388,8 @@ in
           ++ macAppsMcpPolicyIds
           ++ obsidianMcpPolicyIds
           ++ anytypeMcpPolicyIds
-          ++ substackMcpPolicyIds;
+          ++ substackMcpPolicyIds
+          ++ languagetoolMcpPolicyIds;
         deny = deniedTools;
         fs.workspaceOnly = true;
         exec = {
@@ -1376,7 +1423,8 @@ in
           ++ macAppsMcpPolicyIds
           ++ obsidianMcpPolicyIds
           ++ anytypeMcpPolicyIds
-          ++ substackMcpPolicyIds;
+          ++ substackMcpPolicyIds
+          ++ languagetoolMcpPolicyIds;
         subagents.tools.allow = [
           "session_status"
           "read"
@@ -1631,6 +1679,16 @@ in
               include = substackMcpAllowedTools;
               exclude = substackMcpDeniedTools;
             };
+          };
+          languagetool = {
+            enabled = true;
+            transport = "stdio";
+            command = lib.getExe languagetoolMcp;
+            args = [ ];
+            connectionTimeoutMs = 10000;
+            requestTimeoutMs = 180000;
+            supportsParallelToolCalls = false;
+            toolFilter.include = languagetoolMcpTools;
           };
         };
         apps.enabled = false;

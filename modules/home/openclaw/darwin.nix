@@ -8,69 +8,27 @@
 let
   homeDirectory = config.home.homeDirectory;
   podman = lib.getExe pkgs.podman;
+  sandboxMachineChecker = pkgs.openclaw-sandbox-machine-check;
+  sandboxMachine = sandboxMachineChecker.passthru;
+  sandboxMachineName = lib.escapeShellArg sandboxMachine.machineName;
+  sandboxMachineProvider = lib.escapeShellArg sandboxMachine.init.vmType;
   curl = lib.getExe pkgs.curl;
   openclaw = lib.getExe config.programs.openclaw.package;
   install = lib.getExe' pkgs.coreutils "install";
-  sandboxMachineValidation = ''
-    validate_machine() {
-      local machine_config machine_list machine_metadata
-
-      if ! machine_config=$("$podman" machine inspect \
-        --format '{{.Rootful}}\t{{.Resources.CPUs}}\t{{.Resources.Memory}}\t{{.Resources.DiskSize}}' \
-        openclaw-sandbox 2>/dev/null); then
-        printf '%s\n' "openclaw-sandbox machine inspection failed" >&2
-        exit 1
-      fi
-      if [[ "$machine_config" != $'false\t4\t6144\t40' ]]; then
-        printf '%s\n' \
-          "openclaw-sandbox machine configuration drift detected: expected Rootful=false, CPUs=4, Memory=6144, DiskSize=40; found $machine_config" >&2
-        exit 1
-      fi
-
-      if ! machine_list=$("$podman" machine list --format json 2>/dev/null); then
-        printf '%s\n' "openclaw-sandbox machine metadata inspection failed" >&2
-        exit 1
-      fi
-      if ! jq -e \
-        '[.[] | select(.Name == "openclaw-sandbox")] | length == 1' \
-        <<<"$machine_list" >/dev/null; then
-        printf '%s\n' \
-          "openclaw-sandbox machine metadata is absent or ambiguous" >&2
-        exit 1
-      fi
-      if ! machine_metadata=$(jq -er \
-        '[.[] | select(.Name == "openclaw-sandbox")] | .[0] |
-          (.Swap? // null) as $swap |
-          ($swap |
-            if type == "number" then .
-            elif type == "string" and test("^[0-9]+$") then tonumber
-            else null
-            end) as $normalized_swap |
-          if ((.VMType? | type) != "string" or .VMType != "applehv" or
-              $normalized_swap != 0) then
-            error("invalid VMType or Swap")
-          else
-            [ .VMType, "0" ] | @tsv
-          end' \
-        <<<"$machine_list" 2>/dev/null) || [[ "$machine_metadata" != $'applehv\t0' ]]; then
-        printf '%s\n' \
-          "openclaw-sandbox machine metadata drift detected: expected VMType=applehv, Swap=0" >&2
-        exit 1
-      fi
-    }
-  '';
 
   sandboxBootstrap = pkgs.writeShellApplication {
     name = "openclaw-sandbox-bootstrap";
     runtimeInputs = [
       pkgs.podman
-      pkgs.jq
+      sandboxMachineChecker
     ];
     text = ''
       set -euo pipefail
 
       podman=${podman}
-      ${sandboxMachineValidation}
+      machine_checker=${lib.getExe sandboxMachineChecker}
+      machine_name=${sandboxMachineName}
+      machine_provider=${sandboxMachineProvider}
       default_connection=""
       while IFS=$'\t' read -r connection is_default; do
         if [[ "$is_default" == "true" ]]; then
@@ -86,17 +44,17 @@ let
       }
       trap restore_default EXIT
 
-      if ! "$podman" machine inspect openclaw-sandbox >/dev/null 2>&1; then
-        CONTAINERS_MACHINE_PROVIDER=applehv \
+      if ! "$podman" machine inspect "$machine_name" >/dev/null 2>&1; then
+        CONTAINERS_MACHINE_PROVIDER="$machine_provider" \
           "$podman" machine init \
-            --rootful=false \
-            --cpus 4 \
-            --memory 6144 \
-            --disk-size 40 \
-            --swap 0 \
-            openclaw-sandbox
+            --rootful=${if sandboxMachine.init.rootful then "true" else "false"} \
+            --cpus ${toString sandboxMachine.init.cpus} \
+            --memory ${toString sandboxMachine.init.memoryMiB} \
+            --disk-size ${toString sandboxMachine.init.diskSizeGiB} \
+            --swap ${toString sandboxMachine.init.swapMiB} \
+            "$machine_name"
       fi
-      validate_machine
+      "$machine_checker"
     '';
   };
 
@@ -124,17 +82,18 @@ let
     name = "openclaw-sandbox-machine-agent";
     runtimeInputs = [
       pkgs.podman
-      pkgs.jq
+      sandboxMachineChecker
     ];
     text = ''
       set -euo pipefail
 
       podman=${podman}
-      ${sandboxMachineValidation}
+      machine_checker=${lib.getExe sandboxMachineChecker}
+      machine_name=${sandboxMachineName}
       machine_state=""
       wait_deadline=$((SECONDS + 120))
       until machine_state=$("$podman" machine inspect \
-        --format '{{.State}}' openclaw-sandbox 2>/dev/null); do
+        --format '{{.State}}' "$machine_name" 2>/dev/null); do
         if (( SECONDS >= wait_deadline )); then
           printf '%s\n' \
             "timed out waiting for openclaw-sandbox machine inspection" >&2
@@ -148,12 +107,12 @@ let
 
         for attempt in 1 2 3; do
           attempt_failed=false
-          validate_machine
+          "$machine_checker"
           if ! machine_state=$("$podman" machine inspect \
-            --format '{{.State}}' openclaw-sandbox 2>/dev/null); then
+            --format '{{.State}}' "$machine_name" 2>/dev/null); then
             attempt_failed=true
           elif [[ "$machine_state" != "running" ]]; then
-            if ! "$podman" machine start openclaw-sandbox >/dev/null 2>&1; then
+            if ! "$podman" machine start "$machine_name" >/dev/null 2>&1; then
               attempt_failed=true
             fi
           fi
@@ -174,7 +133,7 @@ let
           fi
 
           printf 'openclaw-sandbox recovery attempt %d of 3 failed\n' "$attempt" >&2
-          "$podman" machine stop openclaw-sandbox >/dev/null 2>&1 || true
+          "$podman" machine stop "$machine_name" >/dev/null 2>&1 || true
           if (( attempt < 3 )); then
             sleep 10
           fi
@@ -185,13 +144,13 @@ let
         return 1
       }
 
-      validate_machine
+      "$machine_checker"
       recover_machine
       while :; do
         sleep 30
-        validate_machine
+        "$machine_checker"
         if machine_state=$("$podman" machine inspect \
-          --format '{{.State}}' openclaw-sandbox 2>/dev/null) && \
+          --format '{{.State}}' "$machine_name" 2>/dev/null) && \
           [[ "$machine_state" == "running" ]] && \
           "$podman" --connection openclaw-sandbox info >/dev/null 2>&1; then
           continue
@@ -242,6 +201,7 @@ in
   home.packages = [
     sandboxBootstrap
     sandboxImageBuild
+    pkgs.openclaw-languagetool-mcp-image
     pkgs.mac-apps-mcp-host
   ];
 

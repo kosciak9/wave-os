@@ -1,0 +1,1062 @@
+diff --git a/README.md b/README.md
+index 9eb631b..fc13aba 100644
+--- a/README.md
++++ b/README.md
+@@ -1,20 +1,13 @@
+ # languagetool-mcp-server
+
+-MCP server for the **LanguageTool Pro API** — brings spell-checking, grammar, and style suggestions directly into Claude Code and other MCP-compatible clients.
+-
+-> **⚠️ LanguageTool Pro required** — This server uses the LanguageTool Pro API. A paid [LanguageTool Pro subscription](https://languagetool.org/pro) with API access is required. The free tier does not provide API access.
+-
+-📖 [Deutsche Dokumentation](README.de.md)
++MCP server for local LanguageTool or a configured LanguageTool-compatible API — brings spelling, grammar, and style suggestions to MCP-compatible clients.
+
+ ---
+
+ ## Prerequisites
+
+ - Node.js ≥ 18
+-- **LanguageTool Pro account** with API access ([subscription required](https://languagetool.org/pro))
+-- API credentials: username (email address) + API key
+-
+-Find your API key at: https://languagetool.org/editor/settings/access-tokens
++- A LanguageTool-compatible API, or a LanguageTool command-line JAR
+
+ ---
+
+@@ -37,13 +30,18 @@ npm run build
+
+ ## Credentials
+
+-The server reads credentials from environment variables:
++For the default Pro API endpoint, set both credentials:
+
+ | Variable       | Description                                  |
+ |---------------|----------------------------------------------|
+ | `LT_USERNAME` | LanguageTool username (email address)        |
+ | `LT_API_KEY`  | API key from your account settings           |
+
++`LT_API_URL` selects a compatible endpoint at call time. Custom endpoints may
++omit credentials, but credentials must be supplied as a pair for the default
++endpoint. For local checks, set `LT_CLI_JAR` to a LanguageTool command-line
++JAR and optionally `LT_JAVA_BIN` to the Java executable.
++
+ ---
+
+ ## Setup in Claude Code (stdio — recommended for local use)
+@@ -86,47 +84,18 @@ Add to `~/.claude/claude_desktop_config.json` (Windows: `%APPDATA%\Claude\claude
+
+ ---
+
+-## Setup as HTTP server (for multiple clients)
+-
+-```bash
+-LT_USERNAME=your@email.com LT_API_KEY=your-key TRANSPORT=http PORT=3456 node dist/index.js
+-```
+-
+-Then in your MCP configuration:
+-
+-```json
+-{
+-  "mcpServers": {
+-    "languagetool": {
+-      "type": "http",
+-      "url": "http://localhost:3456/mcp"
+-    }
+-  }
+-}
+-```
+-
+-Health check: `GET http://localhost:3456/health`
+-
+----
+-
+ ## Available Tools
+
+ ### `lt_check_text`
+ Full text check with categorized suggestions and corrections.
+
+ **Parameters:**
+-- `text` — text to check (max. 40,000 characters)
+-- `language` — language code (`de-DE`, `en-US`, …) or `auto` (default)
++- `text` — plain text to check (max. 20,000 characters)
++- `language` — one of `pl-PL`, `en-GB`, or `en-US` (required)
+ - `picky` — stricter checking with more style hints (default: `false`)
+ - `disabled_rules` — rule IDs to ignore
+ - `enabled_rules` — additional rule IDs to enable
+
+-### `lt_check_text_summary`
+-Compact one-line summary without individual details — useful for quick checks.
+-
+-### `lt_list_languages`
+-All supported languages with language codes. Optionally filterable via `filter` parameter.
+-
+ ---
+
+ ## Categories
+diff --git a/package-lock.json b/package-lock.json
+index 3801b0f..5e1121e 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -1,12 +1,12 @@
+ {
+-  "name": "languagetool-mcp-server",
+-  "version": "1.0.0",
++  "name": "@dpesch/languagetool-mcp-server",
++  "version": "1.1.0",
+   "lockfileVersion": 3,
+   "requires": true,
+   "packages": {
+     "": {
+-      "name": "languagetool-mcp-server",
+-      "version": "1.0.0",
++      "name": "@dpesch/languagetool-mcp-server",
++      "version": "1.1.0",
+       "license": "MIT",
+       "dependencies": {
+         "@modelcontextprotocol/sdk": "^1.0.0",
+@@ -15,6 +15,9 @@
+         "unified": "^11.0.5",
+         "zod": "^3.22.4"
+       },
++      "bin": {
++        "languagetool-mcp-server": "dist/index.js"
++      },
+       "devDependencies": {
+         "@types/node": "^20.0.0",
+         "typescript": "^5.3.0"
+@@ -24,9 +27,9 @@
+       }
+     },
+     "node_modules/@hono/node-server": {
+-      "version": "1.19.11",
+-      "resolved": "https://registry.npmjs.org/@hono/node-server/-/node-server-1.19.11.tgz",
+-      "integrity": "sha512-dr8/3zEaB+p0D2n/IUrlPF1HZm586qgJNXK1a9fhg/PzdtkK7Ksd5l312tJX2yBuALqDYBlG20QEbayqPyxn+g==",
++      "version": "1.19.17",
++      "resolved": "https://registry.npmjs.org/@hono/node-server/-/node-server-1.19.17.tgz",
++      "integrity": "sha512-dSneS5qhiauZWGDCeK4o695Xd9nUNjviSZCMQrj10eetr8Uln1ucn6bbphOM6UynAMMtNIzZNSpL9vnASJwrPQ==",
+       "license": "MIT",
+       "engines": {
+         "node": ">=18.14.1"
+@@ -172,20 +175,20 @@
+       }
+     },
+     "node_modules/body-parser": {
+-      "version": "2.2.2",
+-      "resolved": "https://registry.npmjs.org/body-parser/-/body-parser-2.2.2.tgz",
+-      "integrity": "sha512-oP5VkATKlNwcgvxi0vM0p/D3n2C3EReYVX+DNYs5TjZFn/oQt2j+4sVJtSMr18pdRr8wjTcBl6LoV+FUwzPmNA==",
++      "version": "2.3.0",
++      "resolved": "https://registry.npmjs.org/body-parser/-/body-parser-2.3.0.tgz",
++      "integrity": "sha512-2cGmJupaNgg+QUwVLAucDuWuoMZ6EX9iHDRswZ5lsNYEmwPaRknMPCLZz07yTzVq/83p4o/wzbDZbBrTvGGTIw==",
+       "license": "MIT",
+       "dependencies": {
+         "bytes": "^3.1.2",
+-        "content-type": "^1.0.5",
++        "content-type": "^2.0.0",
+         "debug": "^4.4.3",
+-        "http-errors": "^2.0.0",
+-        "iconv-lite": "^0.7.0",
++        "http-errors": "^2.0.1",
++        "iconv-lite": "^0.7.2",
+         "on-finished": "^2.4.1",
+-        "qs": "^6.14.1",
+-        "raw-body": "^3.0.1",
+-        "type-is": "^2.0.1"
++        "qs": "^6.15.2",
++        "raw-body": "^3.0.2",
++        "type-is": "^2.1.0"
+       },
+       "engines": {
+         "node": ">=18"
+@@ -195,6 +198,19 @@
+         "url": "https://opencollective.com/express"
+       }
+     },
++    "node_modules/body-parser/node_modules/content-type": {
++      "version": "2.1.0",
++      "resolved": "https://registry.npmjs.org/content-type/-/content-type-2.1.0.tgz",
++      "integrity": "sha512-mj7UPXE0jaqaOsukNZRUEfEi2AcL7C/vwmwcHV0O97eO1E1pxBZuyjlZrx5seTaNBg1U6+o35wpa35Qfcc+7ag==",
++      "license": "MIT",
++      "engines": {
++        "node": ">=18"
++      },
++      "funding": {
++        "type": "opencollective",
++        "url": "https://opencollective.com/express"
++      }
++    },
+     "node_modules/bytes": {
+       "version": "3.1.2",
+       "resolved": "https://registry.npmjs.org/bytes/-/bytes-3.1.2.tgz",
+@@ -433,9 +449,9 @@
+       }
+     },
+     "node_modules/es-object-atoms": {
+-      "version": "1.1.1",
+-      "resolved": "https://registry.npmjs.org/es-object-atoms/-/es-object-atoms-1.1.1.tgz",
+-      "integrity": "sha512-FGgH2h8zKNim9ljj7dankFPcICIK9Cp5bm+c2gQSYePhpaG5+esrLODihIorn+Pe6FGJzWhXQotPv73jTaldXA==",
++      "version": "1.1.2",
++      "resolved": "https://registry.npmjs.org/es-object-atoms/-/es-object-atoms-1.1.2.tgz",
++      "integrity": "sha512-HWcBoN6NileqtSydK2FqHbS/LoDd2pqrnQHLyJzBj4kOp/ky2MWMN694xOfkK8/SnUsW2DH7EfyVlydKCsm1Zw==",
+       "license": "MIT",
+       "dependencies": {
+         "es-errors": "^1.3.0"
+@@ -536,12 +552,13 @@
+       }
+     },
+     "node_modules/express-rate-limit": {
+-      "version": "8.3.1",
+-      "resolved": "https://registry.npmjs.org/express-rate-limit/-/express-rate-limit-8.3.1.tgz",
+-      "integrity": "sha512-D1dKN+cmyPWuvB+G2SREQDzPY1agpBIcTa9sJxOPMCNeH3gwzhqJRDWCXW3gg0y//+LQ/8j52JbMROWyrKdMdw==",
++      "version": "8.7.0",
++      "resolved": "https://registry.npmjs.org/express-rate-limit/-/express-rate-limit-8.7.0.tgz",
++      "integrity": "sha512-hOwV7WOxXfjRpAM1DSJWZDXx3GhplwD8IfwuwvogD8i1Qnkgosw/H45s4ZnFAUHDAhPjlY9hLBvJhKmGMyY26g==",
+       "license": "MIT",
+       "dependencies": {
+-        "ip-address": "10.1.0"
++        "debug": "^4.4.3",
++        "ip-address": "^10.2.0"
+       },
+       "engines": {
+         "node": ">= 16"
+@@ -566,9 +583,9 @@
+       "license": "MIT"
+     },
+     "node_modules/fast-uri": {
+-      "version": "3.1.0",
+-      "resolved": "https://registry.npmjs.org/fast-uri/-/fast-uri-3.1.0.tgz",
+-      "integrity": "sha512-iPeeDKJSWf4IEOasVVrknXpaBV0IApz/gp7S2bb7Z4Lljbl2MGJRqInZiUrQwV16cpzw/D3S5j5Julj/gT52AA==",
++      "version": "3.1.7",
++      "resolved": "https://registry.npmjs.org/fast-uri/-/fast-uri-3.1.7.tgz",
++      "integrity": "sha512-dOvZVzjdZdz7phd9v6jCbwxrBW3fK6n8Rc0CtdmM4bumzMnxywBYhuph6J819RRw/ku+rLbelwfMunktuzVVHg==",
+       "funding": [
+         {
+           "type": "github",
+@@ -691,9 +708,9 @@
+       }
+     },
+     "node_modules/hasown": {
+-      "version": "2.0.2",
+-      "resolved": "https://registry.npmjs.org/hasown/-/hasown-2.0.2.tgz",
+-      "integrity": "sha512-0hJU9SCPvmMzIBdZFqNPXWa6dqh7WdH0cII9y+CyS8rG3nL48Bclra9HmKhVVUHyPWNH5Y7xDwAB7bfgSjkUMQ==",
++      "version": "2.0.4",
++      "resolved": "https://registry.npmjs.org/hasown/-/hasown-2.0.4.tgz",
++      "integrity": "sha512-T2UbfbBEF32wiepXIsMlTW9+dDYC6wMh/t/vYA4tuOMKqWz/n3vr1NFSxQiyP+zk2mXsoMA/i/7qV6LKut1t1A==",
+       "license": "MIT",
+       "dependencies": {
+         "function-bind": "^1.1.2"
+@@ -703,9 +720,9 @@
+       }
+     },
+     "node_modules/hono": {
+-      "version": "4.12.7",
+-      "resolved": "https://registry.npmjs.org/hono/-/hono-4.12.7.tgz",
+-      "integrity": "sha512-jq9l1DM0zVIvsm3lv9Nw9nlJnMNPOcAtsbsgiUhWcFzPE99Gvo6yRTlszSLLYacMeQ6quHD6hMfId8crVHvexw==",
++      "version": "4.13.7",
++      "resolved": "https://registry.npmjs.org/hono/-/hono-4.13.7.tgz",
++      "integrity": "sha512-c8/gF9ac8Y78/agExVocyLevgR+JlpNB444Py0FSX8pJoPdYUfUzRcXtYEYGwt6l19qIlVZPN5Mfsw9jFShmQQ==",
+       "license": "MIT",
+       "engines": {
+         "node": ">=16.9.0"
+@@ -754,9 +771,9 @@
+       "license": "ISC"
+     },
+     "node_modules/ip-address": {
+-      "version": "10.1.0",
+-      "resolved": "https://registry.npmjs.org/ip-address/-/ip-address-10.1.0.tgz",
+-      "integrity": "sha512-XXADHxXmvT9+CRxhXg56LJovE+bmWnEWB78LB83VZTprKTmaC5QfruXocxzTZ2Kl0DNwKuBdlIhjL8LeY8Sf8Q==",
++      "version": "10.7.0",
++      "resolved": "https://registry.npmjs.org/ip-address/-/ip-address-10.7.0.tgz",
++      "integrity": "sha512-BGFsyJd5mpXp3rK6jIdADLNgpJUK1jnjzvYF8lK+VyDab9JAmqN0YOKDdP17HlgKb2+ehPgDc8EtnRLbGCAMhA==",
+       "license": "MIT",
+       "engines": {
+         "node": ">= 12"
+@@ -1719,9 +1736,9 @@
+       }
+     },
+     "node_modules/path-to-regexp": {
+-      "version": "8.3.0",
+-      "resolved": "https://registry.npmjs.org/path-to-regexp/-/path-to-regexp-8.3.0.tgz",
+-      "integrity": "sha512-7jdwVIRtsP8MYpdXSwOS0YdD0Du+qOoF/AEPIt88PcCFrZCzx41oxku1jD88hZBwbNUIEfpqvuhjFaMAqMTWnA==",
++      "version": "8.4.2",
++      "resolved": "https://registry.npmjs.org/path-to-regexp/-/path-to-regexp-8.4.2.tgz",
++      "integrity": "sha512-qRcuIdP69NPm4qbACK+aDogI5CBDMi1jKe0ry5rSQJz8JVLsC7jV8XpiJjGRLLol3N+R5ihGYcrPLTno6pAdBA==",
+       "license": "MIT",
+       "funding": {
+         "type": "opencollective",
+@@ -1751,12 +1768,13 @@
+       }
+     },
+     "node_modules/qs": {
+-      "version": "6.15.0",
+-      "resolved": "https://registry.npmjs.org/qs/-/qs-6.15.0.tgz",
+-      "integrity": "sha512-mAZTtNCeetKMH+pSjrb76NAM8V9a05I9aBZOHztWy/UqcJdQYNsf59vrRKWnojAT9Y+GbIvoTBC++CPHqpDBhQ==",
++      "version": "6.16.0",
++      "resolved": "https://registry.npmjs.org/qs/-/qs-6.16.0.tgz",
++      "integrity": "sha512-h6fhOIaRrID2CbEY2fqs+7t+UXZo+MLAnU5gRIq85uFtdiUPCdsApMlHhXogKVM4HM2DVbIjGNTTYH2OcmP1vA==",
+       "license": "BSD-3-Clause",
+       "dependencies": {
+-        "side-channel": "^1.1.0"
++        "es-define-property": "^1.0.1",
++        "side-channel": "^1.1.1"
+       },
+       "engines": {
+         "node": ">=0.6"
+@@ -1942,14 +1960,14 @@
+       }
+     },
+     "node_modules/side-channel": {
+-      "version": "1.1.0",
+-      "resolved": "https://registry.npmjs.org/side-channel/-/side-channel-1.1.0.tgz",
+-      "integrity": "sha512-ZX99e6tRweoUXqR+VBrslhda51Nh5MTQwou5tnUDgbtyM0dBgmhEDtWGP/xbKn6hqfPRHujUNwz5fy/wbbhnpw==",
++      "version": "1.1.1",
++      "resolved": "https://registry.npmjs.org/side-channel/-/side-channel-1.1.1.tgz",
++      "integrity": "sha512-6x6dK6zJdpTzF4sQeNYxwtvBzf6Eg4GtlesS94HOvTudUeyK2WXAaIfmDgsyslYrRBeFIlsi54AYsFGUuhmvrQ==",
+       "license": "MIT",
+       "dependencies": {
+         "es-errors": "^1.3.0",
+-        "object-inspect": "^1.13.3",
+-        "side-channel-list": "^1.0.0",
++        "object-inspect": "^1.13.4",
++        "side-channel-list": "^1.0.1",
+         "side-channel-map": "^1.0.1",
+         "side-channel-weakmap": "^1.0.2"
+       },
+@@ -1961,13 +1979,13 @@
+       }
+     },
+     "node_modules/side-channel-list": {
+-      "version": "1.0.0",
+-      "resolved": "https://registry.npmjs.org/side-channel-list/-/side-channel-list-1.0.0.tgz",
+-      "integrity": "sha512-FCLHtRD/gnpCiCHEiJLOwdmFP+wzCmDEkc9y7NsYxeF4u7Btsn1ZuwgwJGxImImHicJArLP4R0yX4c2KCrMrTA==",
++      "version": "1.0.1",
++      "resolved": "https://registry.npmjs.org/side-channel-list/-/side-channel-list-1.0.1.tgz",
++      "integrity": "sha512-mjn/0bi/oUURjc5Xl7IaWi/OJJJumuoJFQJfDDyO46+hBWsfaVM65TBHq2eoZBhzl9EchxOijpkbRC8SVBQU0w==",
+       "license": "MIT",
+       "dependencies": {
+         "es-errors": "^1.3.0",
+-        "object-inspect": "^1.13.3"
++        "object-inspect": "^1.13.4"
+       },
+       "engines": {
+         "node": ">= 0.4"
+@@ -2042,17 +2060,34 @@
+       }
+     },
+     "node_modules/type-is": {
+-      "version": "2.0.1",
+-      "resolved": "https://registry.npmjs.org/type-is/-/type-is-2.0.1.tgz",
+-      "integrity": "sha512-OZs6gsjF4vMp32qrCbiVSkrFmXtG/AZhY3t0iAMrMBiAZyV9oALtXO8hsrHbMXF9x6L3grlFuwW2oAz7cav+Gw==",
++      "version": "2.1.0",
++      "resolved": "https://registry.npmjs.org/type-is/-/type-is-2.1.0.tgz",
++      "integrity": "sha512-faYHw0anBbc/kWF3zFTEnxSFOAGUX9GFbOBthvDdLsIlEoWOFOtS0zgCiQYwIskL9iGXZL3kAXD8OoZ4GmMATA==",
+       "license": "MIT",
+       "dependencies": {
+-        "content-type": "^1.0.5",
++        "content-type": "^2.0.0",
+         "media-typer": "^1.1.0",
+         "mime-types": "^3.0.0"
+       },
+       "engines": {
+-        "node": ">= 0.6"
++        "node": ">= 18"
++      },
++      "funding": {
++        "type": "opencollective",
++        "url": "https://opencollective.com/express"
++      }
++    },
++    "node_modules/type-is/node_modules/content-type": {
++      "version": "2.1.0",
++      "resolved": "https://registry.npmjs.org/content-type/-/content-type-2.1.0.tgz",
++      "integrity": "sha512-mj7UPXE0jaqaOsukNZRUEfEi2AcL7C/vwmwcHV0O97eO1E1pxBZuyjlZrx5seTaNBg1U6+o35wpa35Qfcc+7ag==",
++      "license": "MIT",
++      "engines": {
++        "node": ">=18"
++      },
++      "funding": {
++        "type": "opencollective",
++        "url": "https://opencollective.com/express"
+       }
+     },
+     "node_modules/typescript": {
+diff --git a/package.json b/package.json
+index e529654..01f5804 100644
+--- a/package.json
++++ b/package.json
+@@ -1,7 +1,7 @@
+ {
+   "name": "@dpesch/languagetool-mcp-server",
+   "version": "1.1.0",
+-  "description": "MCP server for LanguageTool Pro API – spelling, grammar, style",
++  "description": "MCP server for local LanguageTool or LanguageTool API checks",
+   "author": "Dominik Pesch",
+   "license": "MIT",
+   "repository": {
+diff --git a/src/constants.ts b/src/constants.ts
+index 8d8587c..71b5323 100644
+--- a/src/constants.ts
++++ b/src/constants.ts
+@@ -1,5 +1,6 @@
+ export const LT_API_URL = 'https://api.languagetoolplus.com/v2';
+-export const CHARACTER_LIMIT = 40_000; // LanguageTool Pro limit per request
++export const CHARACTER_LIMIT = 20_000;
++export const SUPPORTED_LANGUAGES = ['pl-PL', 'en-GB', 'en-US'] as const;
+
+ export const ISSUE_TYPE_MAP: Record<string, string> = {
+   misspelling:   'SPELLING',
+@@ -18,4 +19,4 @@ export const CATEGORY_LABELS: Record<string, string> = {
+   PUNCTUATION: '🟡 Zeichensetzung',
+   TYPOGRAPHY:  '⚪ Typografie',
+   OTHER:       '⚫ Sonstiges',
+-};
+\ No newline at end of file
++};
+diff --git a/src/index.ts b/src/index.ts
+index 9d90f3b..3aee4e4 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -1,10 +1,7 @@
+ #!/usr/bin/env node
+ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+-import { createServer } from 'http';
+ import { registerCheckTools } from './tools/check.js';
+-import { registerLanguageTools } from './tools/languages.js';
+
+ // ---------------------------------------------------------------------------
+ // Server Setup
+@@ -16,68 +13,21 @@ const server = new McpServer({
+ });
+
+ registerCheckTools(server);
+-registerLanguageTools(server);
+
+ // ---------------------------------------------------------------------------
+-// Transport: stdio (Standard) oder HTTP
++// Transport: stdio only. The server deliberately does not expose a network listener.
+ // ---------------------------------------------------------------------------
+
+ async function runStdio(): Promise<void> {
+   const transport = new StdioServerTransport();
+   await server.connect(transport);
+-  console.error('LanguageTool MCP Server läuft (stdio)');
+-}
+-
+-async function runHttp(): Promise<void> {
+-  const port = parseInt(process.env.PORT ?? '3456');
+-
+-  const httpServer = createServer(async (req, res) => {
+-    if (req.method === 'POST' && req.url === '/mcp') {
+-      const chunks: Buffer[] = [];
+-      req.on('data', (chunk: Buffer) => chunks.push(chunk));
+-      req.on('end', async () => {
+-        try {
+-          const body = JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown;
+-          const transport = new StreamableHTTPServerTransport({
+-            sessionIdGenerator: undefined,
+-            enableJsonResponse: true,
+-          });
+-          res.on('close', () => transport.close());
+-          await server.connect(transport);
+-          await transport.handleRequest(req, res, body);
+-        } catch (err) {
+-          res.writeHead(400, { 'Content-Type': 'application/json' });
+-          res.end(JSON.stringify({ error: 'Bad Request' }));
+-        }
+-      });
+-    } else if (req.method === 'GET' && req.url === '/health') {
+-      res.writeHead(200, { 'Content-Type': 'application/json' });
+-      res.end(JSON.stringify({ status: 'ok', server: 'languagetool-mcp-server' }));
+-    } else {
+-      res.writeHead(404);
+-      res.end();
+-    }
+-  });
+-
+-  httpServer.listen(port, () => {
+-    console.error(`LanguageTool MCP Server läuft auf http://localhost:${port}/mcp`);
+-  });
+ }
+
+ // ---------------------------------------------------------------------------
+ // Start
+ // ---------------------------------------------------------------------------
+
+-const transport = process.env.TRANSPORT ?? 'stdio';
+-
+-if (transport === 'http') {
+-  runHttp().catch((err: unknown) => {
+-    console.error('Server-Fehler:', err);
+-    process.exit(1);
+-  });
+-} else {
+-  runStdio().catch((err: unknown) => {
+-    console.error('Server-Fehler:', err);
+-    process.exit(1);
+-  });
+-}
+\ No newline at end of file
++runStdio().catch((err: unknown) => {
++  console.error('Server error:', err instanceof Error ? err.message : 'startup failure');
++  process.exit(1);
++});
+diff --git a/src/services/languagetool.ts b/src/services/languagetool.ts
+index b2f0f4a..fee7914 100644
+--- a/src/services/languagetool.ts
++++ b/src/services/languagetool.ts
+@@ -1,29 +1,29 @@
+ import { LT_API_URL, CHARACTER_LIMIT, ISSUE_TYPE_MAP } from '../constants.js';
++import { spawn } from 'node:child_process';
+ import type {
+   LtCheckResponse,
+-  LtLanguageEntry,
+   CheckResult,
+   FormattedMatch,
+   IssueCategory,
+ } from '../types.js';
+-import type { AnnotationPart } from './markdown.js';
+
+ // ---------------------------------------------------------------------------
+ // Auth helper
+ // ---------------------------------------------------------------------------
+
+-function getCredentials(): { username: string; apiKey: string } {
++function getCredentials(endpoint: string): { username?: string; apiKey?: string } {
+   const username = process.env.LT_USERNAME;
+   const apiKey   = process.env.LT_API_KEY;
+
+-  if (!username || !apiKey) {
++  const isDefault = endpoint === LT_API_URL;
++  if ((username && !apiKey) || (!username && apiKey) || (isDefault && (!username || !apiKey))) {
+     throw new Error(
+       'LanguageTool-Zugangsdaten fehlen. ' +
+       'Bitte LT_USERNAME und LT_API_KEY als Umgebungsvariablen setzen.'
+     );
+   }
+
+-  return { username, apiKey };
++  return username && apiKey ? { username, apiKey } : {};
+ }
+
+ // ---------------------------------------------------------------------------
+@@ -34,38 +34,27 @@ async function ltPost(
+   endpoint: string,
+   params: Record<string, string>
+ ): Promise<unknown> {
+-  const { username, apiKey } = getCredentials();
++  const baseUrl = (process.env.LT_API_URL || LT_API_URL).replace(/\/$/, '');
++  const { username, apiKey } = getCredentials(baseUrl);
+
+-  const body = new URLSearchParams({
+-    username,
+-    apiKey,
+-    ...params,
+-  });
++  const body = new URLSearchParams(params);
++  if (username && apiKey) { body.set('username', username); body.set('apiKey', apiKey); }
+
+-  const response = await fetch(`${LT_API_URL}/${endpoint}`, {
++  const response = await fetch(`${baseUrl}/${endpoint}`, {
+     method: 'POST',
+     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+     body: body.toString(),
+   });
+
+   if (!response.ok) {
+-    const text = await response.text().catch(() => '');
+     throw new Error(
+-      `LanguageTool API Fehler ${response.status}: ${text || response.statusText}`
++      `LanguageTool API Fehler ${response.status}: ${response.statusText}`
+     );
+   }
+
+   return response.json();
+ }
+
+-async function ltGet(endpoint: string): Promise<unknown> {
+-  const response = await fetch(`${LT_API_URL}/${endpoint}`);
+-  if (!response.ok) {
+-    throw new Error(`LanguageTool API Fehler ${response.status}: ${response.statusText}`);
+-  }
+-  return response.json();
+-}
+-
+ // ---------------------------------------------------------------------------
+ // Issue-type mapping
+ // ---------------------------------------------------------------------------
+@@ -99,7 +88,6 @@ export async function checkText(
+   picky: boolean = false,
+   disabledRules: string[] = [],
+   enabledRules: string[] = [],
+-  annotatedText?: AnnotationPart[],
+ ): Promise<CheckResult> {
+   if (text.length > CHARACTER_LIMIT) {
+     throw new Error(
+@@ -107,20 +95,27 @@ export async function checkText(
+     );
+   }
+
++  if (!text.length) throw new Error('Text must not be empty.');
++  if (!['pl-PL', 'en-GB', 'en-US'].includes(language)) throw new Error('Unsupported language.');
+   const params: Record<string, string> = { language };
++  const validateRuleIds = (rules: string[]): void => {
++    if (rules.length > 64 || rules.some((rule) => rule.length < 1 || rule.length > 128 || !/^[A-Za-z0-9_.:-]+$/.test(rule))) {
++      throw new Error('Invalid LanguageTool rule IDs.');
++    }
++  };
++  validateRuleIds(disabledRules);
++  validateRuleIds(enabledRules);
+
+-  if (annotatedText) {
+-    params['data'] = JSON.stringify({ annotation: annotatedText });
+-  } else {
+-    params['text'] = text;
+-  }
++  params['text'] = text;
+
+   if (picky)                        params['level']         = 'picky';
+   if (enabledOnly)                  params['enabledOnly']   = 'true';
+   if (disabledRules.length > 0)     params['disabledRules'] = disabledRules.join(',');
+   if (enabledRules.length > 0)      params['enabledRules']  = enabledRules.join(',');
+
+-  const raw = await ltPost('check', params) as LtCheckResponse;
++  const raw = process.env.LT_CLI_JAR
++    ? await checkWithCli(text, language, picky, disabledRules, enabledRules)
++    : await ltPost('check', params) as LtCheckResponse;
+
+   // Build formatted matches
+   const matches: FormattedMatch[] = raw.matches.map((m) => ({
+@@ -157,7 +152,60 @@ export async function checkText(
+   };
+ }
+
+-export async function listLanguages(): Promise<LtLanguageEntry[]> {
+-  const raw = await ltGet('languages') as LtLanguageEntry[];
+-  return raw.sort((a, b) => a.name.localeCompare(b.name));
+-}
+\ No newline at end of file
++const CLI_TIMEOUT_MS = 120_000;
++const CLI_MAX_OUTPUT = 16 * 1024 * 1024;
++let cliBusy = false;
++
++function runExclusive<T>(operation: () => Promise<T>): Promise<T> {
++  if (cliBusy) return Promise.reject(new Error('LanguageTool CLI is busy.'));
++  cliBusy = true;
++  return Promise.resolve().then(operation).finally(() => { cliBusy = false; });
++}
++
++function checkWithCli(text: string, language: string, picky: boolean, disabledRules: string[], enabledRules: string[]): Promise<LtCheckResponse> {
++  return runExclusive(() => new Promise((resolve, reject) => {
++    const args = ['-Xms64m', '-Xmx512m', '-XX:+UseSerialGC', '-Djava.io.tmpdir=/tmp', '-jar', process.env.LT_CLI_JAR!, '--json', '--language', language];
++    if (picky) args.push('--level', 'PICKY');
++    if (disabledRules.length) args.push('--disable', disabledRules.join(','));
++    if (enabledRules.length) args.push('--enable', enabledRules.join(','));
++    args.push('-');
++    let child;
++    try {
++      child = spawn(process.env.LT_JAVA_BIN || 'java', args, { stdio: ['pipe', 'pipe', 'pipe'] });
++    } catch {
++      // spawn() can throw before a ChildProcess exists, so there is no close event.
++      reject(new Error('LanguageTool CLI could not be started.'));
++      return;
++    }
++    let stdout: Buffer[] = []; let stdoutBytes = 0; let pendingError: Error | undefined;
++    let timer: ReturnType<typeof setTimeout> | undefined;
++    const abort = (error: Error) => {
++      if (!pendingError) pendingError = error;
++      child.kill('SIGKILL');
++    };
++    const collect = (chunk: Buffer) => {
++      if (pendingError) return;
++      if (stdoutBytes + chunk.byteLength > CLI_MAX_OUTPUT) {
++        abort(new Error('LanguageTool CLI output exceeded the limit.'));
++        return;
++      }
++      stdout.push(chunk);
++      stdoutBytes += chunk.byteLength;
++    };
++    child.stdout.on('data', collect);
++    child.stderr.on('data', () => undefined);
++    child.on('error', () => abort(new Error('LanguageTool CLI could not be started.')));
++    child.stdin.on('error', () => abort(new Error('LanguageTool CLI input failed.')));
++    child.on('close', (code) => {
++      if (timer) clearTimeout(timer);
++      if (pendingError) { reject(pendingError); return; }
++      if (code !== 0) { reject(new Error('LanguageTool CLI check failed.')); return; }
++      try {
++        const output = Buffer.concat(stdout).toString('utf8');
++        resolve(JSON.parse(output) as LtCheckResponse);
++      } catch { reject(new Error('LanguageTool CLI returned invalid JSON.')); }
++    });
++    timer = setTimeout(() => abort(new Error('LanguageTool CLI check timed out.')), CLI_TIMEOUT_MS);
++    child.stdin.end(text);
++  }));
++}
+diff --git a/src/tools/check.ts b/src/tools/check.ts
+index 10bc52b..c447d7e 100644
+--- a/src/tools/check.ts
++++ b/src/tools/check.ts
+@@ -1,243 +1,60 @@
+ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+ import { z } from 'zod';
+ import { checkText } from '../services/languagetool.js';
+-import { markdownToAnnotatedText } from '../services/markdown.js';
+-import { CATEGORY_LABELS } from '../constants.js';
++import { CATEGORY_LABELS, SUPPORTED_LANGUAGES } from '../constants.js';
+ import type { CheckResult, FormattedMatch, IssueCategory, StructuredCheckResult } from '../types.js';
+
+ const SCHEMA_VERSION = '1.0';
+-
+-// ---------------------------------------------------------------------------
+-// Markdown formatter
+-// ---------------------------------------------------------------------------
++const RULE_IDS_SCHEMA = z.array(z.string().min(1).max(128).regex(/^[A-Za-z0-9_.:-]+$/))
++  .max(64).default([]);
+
+ function formatResultMarkdown(result: CheckResult, inputText: string): string {
+-  const lines: string[] = [];
+-
+-  const statusIcon = result.hasCriticalIssues ? '⚠️' : '✅';
+-  lines.push(`## ${statusIcon} Prüfergebnis`);
+-  lines.push('');
+-  lines.push(`**Erkannte Sprache:** ${result.detectedLanguage} (\`${result.detectedLanguageCode}\`)` +
+-    (result.languageConfidence < 0.9
+-      ? ` — Konfidenz: ${Math.round(result.languageConfidence * 100)} %`
+-      : ''));
+-  lines.push(`**Geprüfte Zeichen:** ${inputText.length}`);
+-  lines.push(`**Gefundene Hinweise:** ${result.totalMatches}`);
+-  lines.push('');
+-
+-  if (result.totalMatches === 0) {
+-    lines.push('Keine Probleme gefunden – der Text sieht gut aus! 🎉');
+-    return lines.join('\n');
+-  }
+-
+-  // Summary table
+-  lines.push('### Übersicht nach Kategorie');
+-  lines.push('');
+-  const categories = Object.entries(result.matchesByCategory) as [IssueCategory, number][];
+-  for (const [cat, count] of categories) {
+-    if (count > 0) {
+-      lines.push(`- ${CATEGORY_LABELS[cat] ?? cat}: **${count}**`);
+-    }
++  const lines = [`## ${result.hasCriticalIssues ? '⚠️' : '✅'} LanguageTool result`, '',
++    `**Language:** ${result.detectedLanguage} (\`${result.detectedLanguageCode}\`)`,
++    `**Characters checked:** ${inputText.length}`, `**Suggestions:** ${result.totalMatches}`, ''];
++  if (result.totalMatches === 0) return lines.concat('No problems found.').join('\n');
++  lines.push('### By category', '');
++  for (const [category, count] of Object.entries(result.matchesByCategory)) {
++    if (count > 0) lines.push(`- ${CATEGORY_LABELS[category] ?? category}: **${count}**`);
+   }
+   lines.push('');
+-
+-  // Group matches by category
+   const grouped = new Map<IssueCategory, FormattedMatch[]>();
+-  for (const m of result.matches) {
+-    if (!grouped.has(m.category)) grouped.set(m.category, []);
+-    grouped.get(m.category)!.push(m);
++  for (const match of result.matches) {
++    if (!grouped.has(match.category)) grouped.set(match.category, []);
++    grouped.get(match.category)!.push(match);
+   }
+-
+-  // Category order
+-  const order: IssueCategory[] = ['SPELLING', 'GRAMMAR', 'PUNCTUATION', 'STYLE', 'TYPOGRAPHY', 'OTHER'];
+-
+-  for (const cat of order) {
+-    const items = grouped.get(cat);
+-    if (!items || items.length === 0) continue;
+-
+-    lines.push(`### ${CATEGORY_LABELS[cat] ?? cat}`);
+-    lines.push('');
+-
+-    for (const m of items) {
+-      lines.push(`**${m.shortMessage}**`);
+-      lines.push(`> \`${m.contextHighlight}\``);
+-      lines.push(`*${m.message}*`);
+-      if (m.suggestions.length > 0) {
+-        lines.push(`Vorschläge: ${m.suggestions.map((s) => `\`${s}\``).join(', ')}`);
+-      }
+-      lines.push(`Regel: \`${m.ruleId}\` · Position: ${m.offset}–${m.offset + m.length}`);
+-      lines.push('');
++  for (const category of ['SPELLING', 'GRAMMAR', 'PUNCTUATION', 'STYLE', 'TYPOGRAPHY', 'OTHER'] as IssueCategory[]) {
++    const matches = grouped.get(category);
++    if (!matches?.length) continue;
++    lines.push(`### ${CATEGORY_LABELS[category] ?? category}`, '');
++    for (const match of matches) {
++      lines.push(`**${match.shortMessage}**`, `> \`${match.contextHighlight}\``, `*${match.message}*`);
++      if (match.suggestions.length) lines.push(`Suggestions: ${match.suggestions.map((s) => `\`${s}\``).join(', ')}`);
++      lines.push(`Rule: \`${match.ruleId}\` · Position: ${match.offset}–${match.offset + match.length}`, '');
+     }
+   }
+-
+   return lines.join('\n');
+ }
+
+-// ---------------------------------------------------------------------------
+-// Tool registration
+-// ---------------------------------------------------------------------------
+-
+ export function registerCheckTools(server: McpServer): void {
+-
+-  // --- lt_check_text --------------------------------------------------------
+-
+-  server.registerTool(
+-    'lt_check_text',
+-    {
+-      title: 'Text auf Fehler prüfen',
+-      description: `Prüft einen Text über die LanguageTool Pro API auf Rechtschreibfehler, Grammatikfehler, Stilprobleme und typografische Fehler.
+-
+-Erkennt die Sprache automatisch (z. B. Deutsch, Englisch, Französisch) und gibt kategorisierte Hinweise mit Korrekturvorschlägen zurück.
+-
+-Args:
+-  - text (string): Der zu prüfende Text (max. 40.000 Zeichen)
+-  - language (string): Sprachcode, z. B. "de-DE", "en-GB" oder "auto" für automatische Erkennung (Standard: "auto")
+-  - picky (boolean): Aktiviert strengere Prüfung mit mehr Stil-Hinweisen (Standard: false)
+-  - disabled_rules (string[]): Liste von Regel-IDs, die ignoriert werden sollen (z. B. ["WHITESPACE_RULE"])
+-  - enabled_rules (string[]): Liste zusätzlicher Regel-IDs, die aktiviert werden sollen
+-
+-Returns:
+-  Markdown-formatierter Bericht mit:
+-  - Erkannter Sprache und Konfidenz
+-  - Anzahl Hinweise pro Kategorie (Rechtschreibung, Grammatik, Stil, Zeichensetzung, Typografie)
+-  - Detaillierte Hinweise mit Kontext, Erklärung und Korrekturvorschlägen
+-
+-Beispiele:
+-  - Einfache Prüfung: { text: "Das ist ein Tset." }
+-  - Englisch explizit: { text: "This is a test.", language: "en-US" }
+-  - Strenger Modus: { text: "Das Ergebnis ist sehr gut.", picky: true }
+-  - Mit deaktivierten Regeln: { text: "...", disabled_rules: ["COMMA_PARENTHESIS_WHITESPACE"] }`,
+-      inputSchema: z.object({
+-        text: z.string()
+-          .min(1, 'Text darf nicht leer sein')
+-          .max(40_000, 'Text zu lang – maximum 40.000 Zeichen')
+-          .describe('Der zu prüfende Text'),
+-        language: z.string()
+-          .default('auto')
+-          .describe('Sprachcode (z. B. "de-DE", "en-US") oder "auto" für automatische Erkennung'),
+-        picky: z.boolean()
+-          .default(false)
+-          .describe('Strengere Prüfung mit mehr Stil-Hinweisen aktivieren'),
+-        disabled_rules: z.array(z.string())
+-          .default([])
+-          .describe('Regel-IDs, die ignoriert werden sollen'),
+-        enabled_rules: z.array(z.string())
+-          .default([])
+-          .describe('Zusätzliche Regel-IDs, die aktiviert werden sollen'),
+-        format: z.enum(['plain', 'markdown'])
+-          .default('plain')
+-          .describe('Textformat: "plain" für reinen Text, "markdown" für Markdown (Markup-Elemente wie Code-Blöcke, Links und Formatierungen werden bei der Prüfung übersprungen)'),
+-      }).strict(),
+-      annotations: {
+-        readOnlyHint: true,
+-        destructiveHint: false,
+-        idempotentHint: true,
+-        openWorldHint: true,
+-      },
+-    },
+-    async ({ text, language, picky, disabled_rules, enabled_rules, format }) => {
+-      try {
+-        const annotatedText = format === 'markdown'
+-          ? markdownToAnnotatedText(text)
+-          : undefined;
+-        const effectiveDisabledRules = format === 'markdown'
+-          ? [...new Set(['WHITESPACE_RULE', ...disabled_rules])]
+-          : disabled_rules;
+-        const result = await checkText(text, language, false, picky, effectiveDisabledRules, enabled_rules, annotatedText);
+-        const markdown = formatResultMarkdown(result, text);
+-        const structured: StructuredCheckResult = { ...result, schemaVersion: SCHEMA_VERSION };
+-        return {
+-          content: [{ type: 'text', text: markdown }],
+-          structuredContent: structured,
+-        };
+-      } catch (error) {
+-        const msg = error instanceof Error ? error.message : String(error);
+-        return {
+-          content: [{ type: 'text', text: `❌ Fehler bei der Textprüfung: ${msg}` }],
+-          isError: true,
+-        };
+-      }
++  server.registerTool('lt_check_text', {
++    title: 'Check text with LanguageTool',
++    description: 'Check plain English or Polish text with a local LanguageTool installation or configured LanguageTool API. Returns suggestions only; input is never modified.',
++    inputSchema: z.object({
++      language: z.enum(SUPPORTED_LANGUAGES).describe('Language to check (pl-PL, en-GB, or en-US)'),
++      text: z.string().min(1).max(20_000).describe('Plain text to check (1–20,000 characters)'),
++      picky: z.boolean().default(false).describe('Enable stricter style checking'),
++      disabled_rules: RULE_IDS_SCHEMA.describe('Rule IDs to disable'),
++      enabled_rules: RULE_IDS_SCHEMA.describe('Rule IDs to enable'),
++    }).strict(),
++    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
++  }, async ({ text, language, picky, disabled_rules, enabled_rules }) => {
++    try {
++      const result = await checkText(text, language, false, picky, disabled_rules, enabled_rules);
++      const structured: StructuredCheckResult = { ...result, schemaVersion: SCHEMA_VERSION };
++      return { content: [{ type: 'text' as const, text: formatResultMarkdown(result, text) }], structuredContent: structured };
++    } catch (error) {
++      return { content: [{ type: 'text' as const, text: `❌ LanguageTool check failed: ${error instanceof Error ? error.message : 'unknown error'}` }], isError: true };
+     }
+-  );
+-
+-  // --- lt_check_text_summary (kurze Zusammenfassung ohne Details) -----------
+-
+-  server.registerTool(
+-    'lt_check_text_summary',
+-    {
+-      title: 'Textprüfung – Kurzübersicht',
+-      description: `Prüft einen Text und gibt nur eine kompakte Zusammenfassung der Fehleranzahl zurück – ohne detaillierte Einzelhinweise.
+-
+-Nützlich, wenn schnell überprüft werden soll, ob ein Text Probleme hat, ohne eine vollständige Analyse zu lesen.
+-
+-Args:
+-  - text (string): Der zu prüfende Text (max. 40.000 Zeichen)
+-  - language (string): Sprachcode oder "auto" (Standard)
+-  - picky (boolean): Strengere Prüfung (Standard: false)
+-
+-Returns:
+-  Einzeilige Zusammenfassung mit Anzahl der Probleme pro Kategorie.`,
+-      inputSchema: z.object({
+-        text: z.string()
+-          .min(1)
+-          .max(40_000)
+-          .describe('Der zu prüfende Text'),
+-        language: z.string()
+-          .default('auto')
+-          .describe('Sprachcode oder "auto"'),
+-        picky: z.boolean()
+-          .default(false)
+-          .describe('Strengere Prüfung aktivieren'),
+-        format: z.enum(['plain', 'markdown'])
+-          .default('plain')
+-          .describe('Textformat: "plain" für reinen Text, "markdown" für Markdown'),
+-      }).strict(),
+-      annotations: {
+-        readOnlyHint: true,
+-        destructiveHint: false,
+-        idempotentHint: true,
+-        openWorldHint: true,
+-      },
+-    },
+-    async ({ text, language, picky, format }) => {
+-      try {
+-        const annotatedText = format === 'markdown'
+-          ? markdownToAnnotatedText(text)
+-          : undefined;
+-        const effectiveDisabledRules = format === 'markdown' ? ['WHITESPACE_RULE'] : [];
+-        const result = await checkText(text, language, false, picky, effectiveDisabledRules, [], annotatedText);
+-
+-        const structured: StructuredCheckResult = { ...result, schemaVersion: SCHEMA_VERSION };
+-
+-        if (result.totalMatches === 0) {
+-          return {
+-            content: [{ type: 'text', text: `✅ Keine Probleme gefunden. (Sprache: ${result.detectedLanguage})` }],
+-            structuredContent: structured,
+-          };
+-        }
+-
+-        const parts: string[] = [];
+-        const { matchesByCategory: c } = result;
+-        if (c.SPELLING    > 0) parts.push(`${c.SPELLING} Rechtschreibfehler`);
+-        if (c.GRAMMAR     > 0) parts.push(`${c.GRAMMAR} Grammatikfehler`);
+-        if (c.PUNCTUATION > 0) parts.push(`${c.PUNCTUATION} Zeichensetzungsfehler`);
+-        if (c.STYLE       > 0) parts.push(`${c.STYLE} Stilhinweise`);
+-        if (c.TYPOGRAPHY  > 0) parts.push(`${c.TYPOGRAPHY} Typografiefehler`);
+-        if (c.OTHER       > 0) parts.push(`${c.OTHER} sonstige Hinweise`);
+-
+-        const summary = `⚠️ ${result.totalMatches} Hinweise in »${result.detectedLanguage}«: ${parts.join(', ')}.`;
+-
+-        return {
+-          content: [{ type: 'text', text: summary }],
+-          structuredContent: structured,
+-        };
+-      } catch (error) {
+-        const msg = error instanceof Error ? error.message : String(error);
+-        return {
+-          content: [{ type: 'text', text: `❌ Fehler: ${msg}` }],
+-          isError: true,
+-        };
+-      }
+-    }
+-  );
+-}
+\ No newline at end of file
++  });
++}
+diff --git a/src/tools/languages.ts b/src/tools/languages.ts
+index 9b27771..e69de29 100644
+--- a/src/tools/languages.ts
++++ b/src/tools/languages.ts
+@@ -1,69 +0,0 @@
+-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+-import { z } from 'zod';
+-import { listLanguages } from '../services/languagetool.js';
+-
+-export function registerLanguageTools(server: McpServer): void {
+-
+-  server.registerTool(
+-    'lt_list_languages',
+-    {
+-      title: 'Unterstützte Sprachen auflisten',
+-      description: `Gibt alle Sprachen zurück, die LanguageTool unterstützt.
+-
+-Nützlich, um den korrekten Sprachcode für lt_check_text herauszufinden.
+-
+-Returns:
+-  Liste aller unterstützten Sprachen mit Name, Kurzcode und Langcode.
+-  Beispiel: { name: "German (Germany)", code: "de", longCode: "de-DE" }`,
+-      inputSchema: z.object({
+-        filter: z.string()
+-          .optional()
+-          .describe('Optionaler Suchbegriff, um Ergebnisse zu filtern (z. B. "German", "de")'),
+-      }).strict(),
+-      annotations: {
+-        readOnlyHint: true,
+-        destructiveHint: false,
+-        idempotentHint: true,
+-        openWorldHint: false,
+-      },
+-    },
+-    async ({ filter }) => {
+-      try {
+-        let languages = await listLanguages();
+-
+-        if (filter) {
+-          const f = filter.toLowerCase();
+-          languages = languages.filter(
+-            (l) =>
+-              l.name.toLowerCase().includes(f) ||
+-              l.code.toLowerCase().includes(f) ||
+-              l.longCode.toLowerCase().includes(f)
+-          );
+-        }
+-
+-        if (languages.length === 0) {
+-          return {
+-            content: [{ type: 'text', text: `Keine Sprachen gefunden für Filter: "${filter}"` }],
+-          };
+-        }
+-
+-        const lines = languages.map(
+-          (l) => `- **${l.name}** — Code: \`${l.longCode}\``
+-        );
+-
+-        const text = `## Unterstützte Sprachen (${languages.length})\n\n${lines.join('\n')}`;
+-
+-        return {
+-          content: [{ type: 'text', text }],
+-          structuredContent: { languages },
+-        };
+-      } catch (error) {
+-        const msg = error instanceof Error ? error.message : String(error);
+-        return {
+-          content: [{ type: 'text', text: `❌ Fehler: ${msg}` }],
+-          isError: true,
+-        };
+-      }
+-    }
+-  );
+-}
+\ No newline at end of file

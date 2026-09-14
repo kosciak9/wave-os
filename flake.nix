@@ -91,6 +91,15 @@
           opencode = final.callPackage ./packages/opencode-darwin.nix { };
           kanagawa-gtk-theme = final.callPackage ./packages/kanagawa-gtk-theme.nix { };
           openclaw-sandbox-context = final.callPackage ./packages/openclaw-sandbox-context.nix { };
+          openclaw-sandbox-machine-check =
+            final.callPackage ./packages/openclaw-sandbox-machine-check.nix
+              { };
+          openclaw-languagetool-mcp-context =
+            final.callPackage ./packages/openclaw-languagetool-mcp-context.nix
+              { };
+          openclaw-languagetool-mcp-image = final.callPackage ./packages/openclaw-languagetool-mcp-image.nix {
+            context = final.openclaw-languagetool-mcp-context;
+          };
           openclaw-embeddinggemma = final.callPackage ./packages/openclaw-embeddinggemma.nix { };
           openclaw-llama-server = final.callPackage ./packages/openclaw-llama-server.nix { };
           anytype-mcp = final.callPackage ./packages/anytype-mcp.nix { };
@@ -233,6 +242,9 @@
       packages.${darwinSystem} = {
         inherit (darwinPkgs)
           openclaw-sandbox-context
+          openclaw-sandbox-machine-check
+          openclaw-languagetool-mcp-context
+          openclaw-languagetool-mcp-image
           openclaw-embeddinggemma
           openclaw-llama-server
           anytype-mcp
