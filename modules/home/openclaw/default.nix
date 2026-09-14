@@ -1367,7 +1367,7 @@ in
               "0"
               "--no-cache-prompt"
               "--ubatch-size"
-              "256"
+              "1024"
               "--batch-size"
               "1024"
               "--parallel"
