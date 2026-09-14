@@ -1122,6 +1122,7 @@ in
     runtimePackages = [
       pkgs.podman
       pkgs.openclaw-llama-server
+      pkgs.openclaw-whisper
     ];
 
     config = {
@@ -1457,12 +1458,15 @@ in
           };
         };
         media = {
+          concurrency = 1;
           models = [
             {
-              type = "provider";
-              provider = "openai";
-              model = "gpt-4o-transcribe";
+              type = "cli";
+              command = lib.getExe pkgs.openclaw-whisper;
+              args = [ "{{AttachmentPath}}" ];
               capabilities = [ "audio" ];
+              maxBytes = 20971520;
+              timeoutSeconds = 360;
             }
           ];
           audio = {
@@ -1479,6 +1483,20 @@ in
                   action = "allow";
                   match = {
                     channel = "telegram";
+                    chatType = "direct";
+                  };
+                }
+                {
+                  action = "allow";
+                  match = {
+                    channel = "telegram";
+                    chatType = "group";
+                  };
+                }
+                {
+                  action = "allow";
+                  match = {
+                    channel = "webchat";
                     chatType = "direct";
                   };
                 }
