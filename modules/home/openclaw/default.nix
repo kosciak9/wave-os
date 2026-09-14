@@ -10,6 +10,7 @@ let
   state = "${home}/.openclaw";
   workspace = "${state}/workspace";
   telegramGroupIdFile = "${home}/.config/secrets/openclaw/telegram-group-id";
+  telegramGroupAllowFromFile = "${home}/.config/secrets/openclaw/telegram-group-allow-from.json";
   runtimeConfigDirectory = "${state}/runtime-config";
   runtimeConfig = "${runtimeConfigDirectory}/openclaw.json";
   # MCP deny patterns are either exact tool names or prefix patterns ending in '*'.
@@ -67,6 +68,7 @@ let
     "view_image"
     "pdf"
     "image_generate"
+    "message"
   ];
   sandboxTools = [ "session_status" ] ++ approvedTools;
   camofoxTools = [
@@ -263,7 +265,6 @@ let
   languagetoolMcpPolicyIds = map (tool: "languagetool__${tool}") languagetoolMcpTools;
   macAppsMcpHostApp = "${home}/Applications/Home Manager Apps/Mac Apps MCP Host.app";
   deniedTools = [
-    "message"
     "sessions_send"
     "conversations_send"
     "code_execution"
@@ -1010,6 +1011,7 @@ let
     runtime_config_directory=${lib.escapeShellArg runtimeConfigDirectory}
     runtime_config=${lib.escapeShellArg runtimeConfig}
     telegram_group_id_file=${lib.escapeShellArg telegramGroupIdFile}
+    telegram_group_allow_from_file=${lib.escapeShellArg telegramGroupAllowFromFile}
     tmp_config=
     cleanup() {
       if [ -n "$tmp_config" ]; then
@@ -1039,6 +1041,26 @@ let
       printf '%s\n' "refusing to start OpenClaw Gateway: private Telegram group configuration is invalid" >&2
       exit 1
     fi
+    if [ -L "$telegram_group_allow_from_file" ] || [ ! -f "$telegram_group_allow_from_file" ] || \
+      [ ! -r "$telegram_group_allow_from_file" ] || \
+      [ "$(/usr/bin/stat -f %Lp "$telegram_group_allow_from_file" 2>/dev/null)" != 600 ]; then
+      printf '%s\n' "refusing to start OpenClaw Gateway: private Telegram group configuration is invalid" >&2
+      exit 1
+    fi
+    if ! telegram_group_allow_from=$(
+      "$jq" -c -e -s '
+        if length != 1 then empty else .[0] end |
+        select(
+          type == "array" and
+          length == 2 and
+          all(.[]; type == "string" and test("^[1-9][0-9]+$")) and
+          length == (unique | length)
+        )
+      ' "$telegram_group_allow_from_file" 2>/dev/null
+    ); then
+      printf '%s\n' "refusing to start OpenClaw Gateway: private Telegram group configuration is invalid" >&2
+      exit 1
+    fi
     if [ -L "$runtime_config_directory" ] || \
       { [ -e "$runtime_config_directory" ] && [ ! -d "$runtime_config_directory" ]; }; then
       printf '%s\n' "refusing to start OpenClaw Gateway: runtime config directory is invalid" >&2
@@ -1054,11 +1076,12 @@ let
       printf '%s\n' "refusing to start OpenClaw Gateway: could not create runtime config" >&2
       exit 1
     fi
-    if ! "$jq" -e -s --arg group_id "$telegram_group_id" '
+    if ! "$jq" -e -s --arg group_id "$telegram_group_id" \
+      --argjson group_allow_from "$telegram_group_allow_from" '
       if (length != 1 or (.[0] | type != "object")) then error("invalid config") else .[0] end |
       .channels.telegram.groups = {($group_id): {requireMention: false}} |
       .channels.telegram.groupPolicy = "allowlist" |
-      .channels.telegram.groupAllowFrom = ["*"]
+      .channels.telegram.groupAllowFrom = $group_allow_from
     ' "$OPENCLAW_CONFIG_GENERATION" >"$tmp_config" 2>/dev/null || \
       ! "$jq" -e 'type == "object"' "$tmp_config" >/dev/null 2>&1 || \
       ! "$chmod" 600 -- "$tmp_config" 2>/dev/null || \
@@ -1067,6 +1090,7 @@ let
       exit 1
     fi
     tmp_config=
+    unset telegram_group_id telegram_group_allow_from
     export OPENCLAW_CONFIG_PATH="$runtime_config"
     if ! token=$(
       "$openclaw" secrets store get OPENCLAW_GATEWAY_TOKEN --plain 2>/dev/null
@@ -1675,7 +1699,7 @@ in
           dmPolicy = "pairing";
           allowFrom = [ ];
           groupPolicy = "allowlist";
-          groupAllowFrom = [ "*" ];
+          groupAllowFrom = [ ];
           groups = { };
           configWrites = false;
           mediaMaxMb = 20;
@@ -1691,7 +1715,7 @@ in
           };
           actions = {
             reactions = true;
-            sendMessage = false;
+            sendMessage = true;
             poll = false;
             deleteMessage = false;
             editMessage = false;
