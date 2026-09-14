@@ -469,7 +469,7 @@ let
       set -euo pipefail
 
       ${lib.getExe pkgs.openclaw-languagetool-mcp-image}
-      exec ${podman} --connection openclaw-sandbox run --rm --replace --name openclaw-languagetool-mcp -i \
+      exec ${podman} --connection openclaw-sandbox run --rm -i \
         --network none \
         --pull never \
         --read-only \
