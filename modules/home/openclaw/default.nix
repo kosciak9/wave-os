@@ -9,6 +9,17 @@ let
   home = config.home.homeDirectory;
   state = "${home}/.openclaw";
   workspace = "${state}/workspace";
+  # MCP deny patterns are either exact tool names or prefix patterns ending in '*'.
+  toolMatches =
+    pattern: tool:
+    if lib.hasSuffix "*" pattern then
+      lib.hasPrefix (lib.removeSuffix "*" pattern) tool
+    else
+      pattern == tool;
+  listsAreDisjoint =
+    allowed: denied:
+    builtins.all (tool: builtins.all (pattern: !(toolMatches pattern tool)) denied) allowed;
+  listIsDuplicateFree = list: builtins.length list == builtins.length (lib.unique list);
   source = pkgs.fetchFromGitHub {
     owner = "openclaw";
     repo = "openclaw";
@@ -66,7 +77,7 @@ let
     "camofox_close_tab"
     "camofox_list_tabs"
   ];
-  macAppsMcpTools = [
+  macAppsMcpReadTools = [
     "mail_list_accounts"
     "mail_list_mailboxes"
     "mail_get_emails"
@@ -81,8 +92,24 @@ let
     "calendar_get_events"
     "calendar_get_event"
   ];
+  macAppsMcpAutonomousWriteTools = [
+    "mail_set_flags"
+    "mail_move"
+    "mail_create_draft"
+    "calendar_create_event"
+    "calendar_modify_event"
+  ];
+  macAppsMcpDeniedTools = [
+    "mail_send"
+    "mail_reply"
+    "mail_forward"
+    "calendar_delete_event"
+    "reminders_*"
+    "notes_*"
+  ];
+  macAppsMcpTools = macAppsMcpReadTools ++ macAppsMcpAutonomousWriteTools;
   macAppsMcpPolicyIds = map (tool: "mac-apps__${tool}") macAppsMcpTools;
-  obsidianMcpTools = [
+  obsidianMcpReadTools = [
     "vault_list"
     "vault_read"
     "vault_get_document_map"
@@ -92,8 +119,21 @@ let
     "tag_list"
     "command_list"
   ];
+  obsidianMcpAutonomousWriteTools = [
+    "vault_write"
+    "vault_append"
+    "vault_patch"
+    "vault_move"
+    "vault_copy"
+  ];
+  obsidianMcpDeniedTools = [
+    "vault_delete"
+    "command_execute"
+    "open_file"
+  ];
+  obsidianMcpTools = obsidianMcpReadTools ++ obsidianMcpAutonomousWriteTools;
   obsidianMcpPolicyIds = map (tool: "obsidian__${tool}") obsidianMcpTools;
-  anytypeMcpTools = [
+  anytypeMcpReadTools = [
     "API-search-global"
     "API-list-spaces"
     "API-get-space"
@@ -113,48 +153,64 @@ let
     "API-list-templates"
     "API-get-template"
   ];
+  anytypeMcpAutonomousWriteTools = [
+    "API-create-object"
+    "API-update-object"
+  ];
+  anytypeMcpDeniedTools = [
+    "API-delete-object"
+    "API-create-space"
+    "API-update-space"
+    "API-add-list-objects"
+    "API-remove-list-object"
+    "API-create-property"
+    "API-delete-property"
+    "API-update-property"
+    "API-create-tag"
+    "API-delete-tag"
+    "API-update-tag"
+    "API-create-type"
+    "API-delete-type"
+    "API-update-type"
+  ];
+  anytypeMcpTools = anytypeMcpReadTools ++ anytypeMcpAutonomousWriteTools;
   anytypeMcpPolicyIds = map (tool: "anytype__${tool}") anytypeMcpTools;
-  substackMcpTools = [
-    "get_analytics"
-    "get_dashboard_summary"
-    "get_email_stats"
-    "get_growth_sources"
-    "get_revenue_summary"
-    "get_post_comments"
+  substackMcpEditorialReadTools = [
     "get_draft"
     "list_drafts"
     "list_scheduled_posts"
     "preview_draft_body"
     "get_sections"
-    "list_scheduled_notes"
-    "list_notes"
-    "list_posts"
-    "get_post_by_id"
-    "search_posts"
-    "get_post_stats"
-    "rank_posts"
     "get_publication_settings"
-    "get_user_profile"
     "list_contributors"
     "get_import_status"
-    "search_publications"
-    "list_subscriptions"
-    "list_reader_posts"
-    "get_reader_post"
-    "get_reader_feed"
-    "get_profile_feed"
-    "get_comment_thread"
-    "list_subscribers"
-    "export_subscribers"
-    "get_subscriber_count"
     "list_publication_tags"
     "get_post_tags"
     "list_templates"
   ];
-  substackMcpPolicyIds = map (tool: "substack__${tool}") substackMcpTools;
-  substackMcpExcludedTools = [
-    "create_draft"
+  substackMcpAnalyticsReadTools = [
+    "get_analytics"
+    "get_dashboard_summary"
+    "get_email_stats"
+    "get_growth_sources"
+    "get_revenue_summary"
+    "get_post_stats"
+    "rank_posts"
+    "get_subscriber_count"
+  ];
+  substackMcpPublicReadTools = [
+    "list_posts"
+    "search_posts"
+    "search_publications"
+    "get_publication_info"
+    "research_creator_posts"
+    "compare_publications"
+  ];
+  substackMcpAutonomousWriteTools = [
     "update_draft"
+  ];
+  substackMcpDeniedTools = [
+    "create_draft"
     "delete_draft"
     "publish_draft"
     "schedule_draft"
@@ -177,13 +233,29 @@ let
     "delete_template"
     "create_draft_from_template"
     "upload_image"
+    "list_subscribers"
+    "export_subscribers"
+    "list_subscriptions"
+    "list_reader_posts"
+    "get_reader_post"
+    "get_reader_feed"
+    "get_profile_feed"
+    "get_user_profile"
+    "get_post_comments"
+    "get_comment_thread"
     "get_post"
-    "get_publication_info"
-    "research_creator_posts"
+    "get_post_by_id"
     "research_creator_notes"
-    "compare_publications"
     "scrape_post"
+    "list_notes"
+    "list_scheduled_notes"
   ];
+  substackMcpAllowedTools =
+    substackMcpEditorialReadTools
+    ++ substackMcpAnalyticsReadTools
+    ++ substackMcpPublicReadTools
+    ++ substackMcpAutonomousWriteTools;
+  substackMcpPolicyIds = map (tool: "substack__${tool}") substackMcpAllowedTools;
   macAppsMcpHostApp = "${home}/Applications/Home Manager Apps/Mac Apps MCP Host.app";
   deniedTools = [
     "message"
@@ -378,7 +450,7 @@ let
       unset OPENCLAW_GATEWAY_TOKEN CAMOFOX_ACCESS_KEY OBSIDIAN_LOCAL_REST_API_KEY ANYTYPE_API_KEY OPENAPI_MCP_HEADERS
       export SUBSTACK_PUBLICATION_URL="$publication_url"
       export SUBSTACK_SESSION_TOKEN="$session_token"
-      export SUBSTACK_READ_ONLY=1
+      export SUBSTACK_READ_ONLY=0
       export SUBSTACK_ALLOW_DESTRUCTIVE=0
       export SUBSTACK_MCP_HOME=/dev/null
       unset publication_url session_token
@@ -939,6 +1011,44 @@ in
       assertion = lib.getVersion openclawApp == "2026.9.3";
       message = "OpenClaw.app must be exactly 2026.9.3";
     }
+    {
+      assertion = listIsDuplicateFree macAppsMcpTools;
+      message = "Mac Apps MCP allowed tools must not contain duplicates";
+    }
+    {
+      assertion = listsAreDisjoint macAppsMcpTools macAppsMcpDeniedTools;
+      message = "Mac Apps MCP allowed and denied tools must be disjoint";
+    }
+    {
+      assertion = builtins.all (
+        tool: !(lib.hasPrefix "reminders_" tool || lib.hasPrefix "notes_" tool)
+      ) macAppsMcpTools;
+      message = "Mac Apps MCP tools must not include reminders_ or notes_ tools";
+    }
+    {
+      assertion = listIsDuplicateFree obsidianMcpTools;
+      message = "Obsidian MCP allowed tools must not contain duplicates";
+    }
+    {
+      assertion = listsAreDisjoint obsidianMcpTools obsidianMcpDeniedTools;
+      message = "Obsidian MCP allowed and denied tools must be disjoint";
+    }
+    {
+      assertion = listIsDuplicateFree anytypeMcpTools;
+      message = "Anytype MCP allowed tools must not contain duplicates";
+    }
+    {
+      assertion = listsAreDisjoint anytypeMcpTools anytypeMcpDeniedTools;
+      message = "Anytype MCP allowed and denied tools must be disjoint";
+    }
+    {
+      assertion = listIsDuplicateFree substackMcpAllowedTools;
+      message = "Substack MCP allowed tools must not contain duplicates";
+    }
+    {
+      assertion = listsAreDisjoint substackMcpAllowedTools substackMcpDeniedTools;
+      message = "Substack MCP allowed and denied tools must be disjoint";
+    }
   ];
 
   imports = [ ./darwin.nix ];
@@ -1469,7 +1579,7 @@ in
             command = "${macAppsMcpHostApp}/Contents/MacOS/Mac Apps MCP Host";
             args = [ (lib.getExe pkgs.mac-apps-mcp-server) ];
             env = {
-              MACOS_MCP_READONLY = "true";
+              MACOS_MCP_READONLY = "false";
               MACOS_MCP_CONFIRM_DESTRUCTIVE = "true";
               MACOS_MCP_WRITE_RATE_LIMIT = "1";
             };
@@ -1478,10 +1588,7 @@ in
             supportsParallelToolCalls = false;
             toolFilter = {
               include = macAppsMcpTools;
-              exclude = [
-                "mail_move"
-                "mail_set_flags"
-              ];
+              exclude = macAppsMcpDeniedTools;
             };
           };
           obsidian = {
@@ -1496,16 +1603,7 @@ in
             supportsParallelToolCalls = false;
             toolFilter = {
               include = obsidianMcpTools;
-              exclude = [
-                "vault_write"
-                "vault_append"
-                "vault_patch"
-                "vault_delete"
-                "vault_move"
-                "vault_copy"
-                "command_execute"
-                "open_file"
-              ];
+              exclude = obsidianMcpDeniedTools;
             };
           };
           anytype = {
@@ -1518,24 +1616,7 @@ in
             supportsParallelToolCalls = false;
             toolFilter = {
               include = anytypeMcpTools;
-              exclude = [
-                "API-create-space"
-                "API-update-space"
-                "API-add-list-objects"
-                "API-remove-list-object"
-                "API-create-object"
-                "API-delete-object"
-                "API-update-object"
-                "API-create-property"
-                "API-delete-property"
-                "API-update-property"
-                "API-create-tag"
-                "API-delete-tag"
-                "API-update-tag"
-                "API-create-type"
-                "API-delete-type"
-                "API-update-type"
-              ];
+              exclude = anytypeMcpDeniedTools;
             };
           };
           substack = {
@@ -1547,8 +1628,8 @@ in
             requestTimeoutMs = 300000;
             supportsParallelToolCalls = false;
             toolFilter = {
-              include = substackMcpTools;
-              exclude = substackMcpExcludedTools;
+              include = substackMcpAllowedTools;
+              exclude = substackMcpDeniedTools;
             };
           };
         };
