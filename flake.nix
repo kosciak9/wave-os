@@ -101,6 +101,8 @@
             context = final.openclaw-languagetool-mcp-context;
           };
           openclaw-embeddinggemma = final.callPackage ./packages/openclaw-embeddinggemma.nix { };
+          openclaw-whisper-model = final.callPackage ./packages/openclaw-whisper-model.nix { };
+          openclaw-whisper = final.callPackage ./packages/openclaw-whisper.nix { };
           openclaw-llama-server = final.callPackage ./packages/openclaw-llama-server.nix { };
           anytype-mcp = final.callPackage ./packages/anytype-mcp.nix { };
           substack-mcp = final.callPackage ./packages/substack-mcp.nix { };
@@ -246,6 +248,8 @@
           openclaw-languagetool-mcp-context
           openclaw-languagetool-mcp-image
           openclaw-embeddinggemma
+          openclaw-whisper-model
+          openclaw-whisper
           openclaw-llama-server
           anytype-mcp
           substack-mcp
