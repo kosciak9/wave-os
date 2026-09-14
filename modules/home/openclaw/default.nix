@@ -356,7 +356,25 @@ let
     "workboard"
     "xai"
   ];
-  openclawPackageSet = pkgs.openclawPackages.withTools { excludeToolNames = [ "git" ]; };
+  openclawPackageSetBase = pkgs.openclawPackages.withTools { excludeToolNames = [ "git" ]; };
+  # Pinned OpenClaw 2026.9.3 registers both the built-in session dashboard and Telegram Mini App as /dashboard; preserve the built-in command and rename the Mini App command to /openclaw_ui until upstream resolves it.
+  patchedOpenclawGateway = openclawPackageSetBase.openclaw-gateway.overrideAttrs (oldAttrs: {
+    installPhase = ''
+      ${oldAttrs.installPhase}
+      miniappChunk="$out/lib/openclaw/dist/miniapp-api-Cf_7TwyD.mjs"
+      if [ ! -f "$miniappChunk" ]; then
+        printf '%s\n' "refusing to build OpenClaw Gateway: expected Telegram Mini App bundle is missing: $miniappChunk" >&2
+        exit 1
+      fi
+      substituteInPlace "$miniappChunk" \
+        --replace-fail 'name: "dashboard",' 'name: "openclaw_ui",'
+    '';
+  });
+  openclawPackageSet = openclawPackageSetBase // {
+    openclaw = openclawPackageSetBase.openclaw.override {
+      openclaw-gateway = patchedOpenclawGateway;
+    };
+  };
   openclawApp = pkgs.openclawPackages.openclaw-app;
   openclawPackage = openclawPackageSet.openclaw.override {
     openclaw-app = openclawApp;
