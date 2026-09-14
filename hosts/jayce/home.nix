@@ -137,6 +137,7 @@ in
         brightnessctl
         chromium
         fd
+        gimp
         hyprsunset
         hyprshot
         (iosevka-bin.override { variant = "SGr-IosevkaTerm"; })
