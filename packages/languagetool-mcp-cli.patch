@@ -406,10 +406,19 @@ index 8d8587c..71b5323 100644
 
  export const ISSUE_TYPE_MAP: Record<string, string> = {
    misspelling:   'SPELLING',
-@@ -18,4 +19,4 @@ export const CATEGORY_LABELS: Record<string, string> = {
-   PUNCTUATION: '🟡 Zeichensetzung',
-   TYPOGRAPHY:  '⚪ Typografie',
-   OTHER:       '⚫ Sonstiges',
+@@ -15,7 +16,7 @@ export const CATEGORY_LABELS: Record<string, string> = {
+-  SPELLING:    '🔴 Rechtschreibung',
+-  GRAMMAR:     '🟠 Grammatik',
+-  STYLE:       '🔵 Stil',
+-  PUNCTUATION: '🟡 Zeichensetzung',
+-  TYPOGRAPHY:  '⚪ Typografie',
+-  OTHER:       '⚫ Sonstiges',
++  SPELLING:    '🔴 Spelling',
++  GRAMMAR:     '🟠 Grammar',
++  STYLE:       '🔵 Style',
++  PUNCTUATION: '🟡 Punctuation',
++  TYPOGRAPHY:  '⚪ Typography',
++  OTHER:       '⚫ Other',
 -};
 \ No newline at end of file
 +};
@@ -650,7 +659,7 @@ index b2f0f4a..fee7914 100644
 +
 +function checkWithCli(text: string, language: string, picky: boolean, disabledRules: string[], enabledRules: string[]): Promise<LtCheckResponse> {
 +  return runExclusive(() => new Promise((resolve, reject) => {
-+    const args = ['-Xms64m', '-Xmx512m', '-XX:+UseSerialGC', '-Djava.io.tmpdir=/tmp', '-jar', process.env.LT_CLI_JAR!, '--json', '--language', language];
++    const args = ['-Xms64m', '-Xmx512m', '-XX:+UseSerialGC', '-Djava.io.tmpdir=/tmp', '-Dfile.encoding=UTF-8', '-jar', process.env.LT_CLI_JAR!, '--json', '--language', language];
 +    if (picky) args.push('--level', 'PICKY');
 +    if (disabledRules.length) args.push('--disable', disabledRules.join(','));
 +    if (enabledRules.length) args.push('--enable', enabledRules.join(','));
@@ -692,7 +701,7 @@ index b2f0f4a..fee7914 100644
 +      } catch { reject(new Error('LanguageTool CLI returned invalid JSON.')); }
 +    });
 +    timer = setTimeout(() => abort(new Error('LanguageTool CLI check timed out.')), CLI_TIMEOUT_MS);
-+    child.stdin.end(text);
++    child.stdin.end(text, 'utf8');
 +  }));
 +}
 diff --git a/src/tools/check.ts b/src/tools/check.ts

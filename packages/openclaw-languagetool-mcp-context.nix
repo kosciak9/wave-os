@@ -66,6 +66,8 @@ stdenvNoCC.mkDerivation {
     FROM debian:bookworm-slim@sha256:abd67ffcfa541b485a3dff59865ab629aa048a6c613e639d36e7456b0b229241
 
     ENV DEBIAN_FRONTEND=noninteractive \
+        LANG=C.UTF-8 \
+        LC_ALL=C.UTF-8 \
         LT_CLI_JAR=/opt/languagetool/LanguageTool-${languageToolVersion}/languagetool-commandline.jar \
         LT_JAVA_BIN=/usr/bin/java \
         NODE_ENV=production \
