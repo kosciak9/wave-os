@@ -9,6 +9,9 @@ let
   home = config.home.homeDirectory;
   state = "${home}/.openclaw";
   workspace = "${state}/workspace";
+  telegramGroupIdFile = "${home}/.config/secrets/openclaw/telegram-group-id";
+  runtimeConfigDirectory = "${state}/runtime-config";
+  runtimeConfig = "${runtimeConfigDirectory}/openclaw.json";
   # MCP deny patterns are either exact tool names or prefix patterns ending in '*'.
   toolMatches =
     pattern: tool:
@@ -980,7 +983,73 @@ let
     openclaw=${lib.escapeShellArg openclaw}
     podman=${lib.escapeShellArg podman}
     jq=${lib.escapeShellArg jq}
+    install=${lib.escapeShellArg install}
+    mktemp=${lib.escapeShellArg (lib.getExe' pkgs.coreutils "mktemp")}
+    chmod=${lib.escapeShellArg (lib.getExe' pkgs.coreutils "chmod")}
+    mv=${lib.escapeShellArg (lib.getExe' pkgs.coreutils "mv")}
+    rm=${lib.escapeShellArg (lib.getExe' pkgs.coreutils "rm")}
     machine_checker=${lib.escapeShellArg (lib.getExe pkgs.openclaw-sandbox-machine-check)}
+    runtime_config_directory=${lib.escapeShellArg runtimeConfigDirectory}
+    runtime_config=${lib.escapeShellArg runtimeConfig}
+    telegram_group_id_file=${lib.escapeShellArg telegramGroupIdFile}
+    tmp_config=
+    cleanup() {
+      if [ -n "$tmp_config" ]; then
+        "$rm" -f -- "$tmp_config" 2>/dev/null || true
+      fi
+    }
+    trap cleanup 0
+    trap 'cleanup; exit 1' HUP INT TERM
+
+    if [ -z "''${OPENCLAW_CONFIG_GENERATION:-}" ] || \
+      [ ! -f "$OPENCLAW_CONFIG_GENERATION" ] || [ ! -r "$OPENCLAW_CONFIG_GENERATION" ]; then
+      printf '%s\n' "refusing to start OpenClaw Gateway: generated config prerequisite is invalid" >&2
+      exit 1
+    fi
+    if [ -L "$telegram_group_id_file" ] || [ ! -f "$telegram_group_id_file" ] || \
+      [ ! -r "$telegram_group_id_file" ] || \
+      [ "$(/usr/bin/stat -f %Lp "$telegram_group_id_file" 2>/dev/null)" != 600 ]; then
+      printf '%s\n' "refusing to start OpenClaw Gateway: private Telegram group configuration is invalid" >&2
+      exit 1
+    fi
+    if ! telegram_group_id=$(
+      "$jq" -R -s -e -r '
+        (if endswith("\n") then .[:-1] else . end) |
+        select(test("^-[1-9][0-9]+$") and (test("[\r\n]") | not))
+      ' "$telegram_group_id_file" 2>/dev/null
+    ); then
+      printf '%s\n' "refusing to start OpenClaw Gateway: private Telegram group configuration is invalid" >&2
+      exit 1
+    fi
+    if [ -L "$runtime_config_directory" ] || \
+      { [ -e "$runtime_config_directory" ] && [ ! -d "$runtime_config_directory" ]; }; then
+      printf '%s\n' "refusing to start OpenClaw Gateway: runtime config directory is invalid" >&2
+      exit 1
+    fi
+    if ! "$install" -d -m 700 -- "$runtime_config_directory" 2>/dev/null || \
+      [ "$(/usr/bin/stat -f %Lp "$runtime_config_directory" 2>/dev/null)" != 700 ]; then
+      printf '%s\n' "refusing to start OpenClaw Gateway: runtime config directory is invalid" >&2
+      exit 1
+    fi
+    umask 077
+    if ! tmp_config=$("$mktemp" "$runtime_config_directory/.openclaw.json.XXXXXX" 2>/dev/null); then
+      printf '%s\n' "refusing to start OpenClaw Gateway: could not create runtime config" >&2
+      exit 1
+    fi
+    if ! "$jq" -e -s --arg group_id "$telegram_group_id" '
+      if (length != 1 or (.[0] | type != "object")) then error("invalid config") else .[0] end |
+      .channels.telegram.groups = {($group_id): {requireMention: false}} |
+      .channels.telegram.groupPolicy = "allowlist" |
+      .channels.telegram.groupAllowFrom = ["*"]
+    ' "$OPENCLAW_CONFIG_GENERATION" >"$tmp_config" 2>/dev/null || \
+      ! "$jq" -e 'type == "object"' "$tmp_config" >/dev/null 2>&1 || \
+      ! "$chmod" 600 -- "$tmp_config" 2>/dev/null || \
+      ! "$mv" -f -- "$tmp_config" "$runtime_config" 2>/dev/null; then
+      printf '%s\n' "refusing to start OpenClaw Gateway: could not materialize runtime config" >&2
+      exit 1
+    fi
+    tmp_config=
+    export OPENCLAW_CONFIG_PATH="$runtime_config"
     if ! token=$(
       "$openclaw" secrets store get OPENCLAW_GATEWAY_TOKEN --plain 2>/dev/null
     ); then
@@ -1587,9 +1656,10 @@ in
           botToken = secret "TELEGRAM_ALFRED_BOT_TOKEN";
           dmPolicy = "pairing";
           allowFrom = [ ];
-          groupPolicy = "disabled";
-          groupAllowFrom = [ ];
+          groupPolicy = "allowlist";
+          groupAllowFrom = [ "*" ];
           groups = { };
+          configWrites = false;
           mediaMaxMb = 20;
           richMessages = true;
           network.dangerouslyAllowPrivateNetwork = false;
