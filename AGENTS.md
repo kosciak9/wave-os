@@ -1,12 +1,12 @@
 # Agent guidance
 
-- Home Manager installs `devenv` and its native Zsh hook for trusted-repository auto-activation. Keep aliases and plugins in `modules/home/zsh`; do not duplicate or override them in devenv. You should have access to all devenv tools, if not - ask user to allow the directory.
-- `devenv.lock` must be generated or updated by devenv, never manually authored.
-- Validate in this order, from cheapest to most expensive: `nix-format`, `nix-format-check`, `nix-lint`, `nix-eval-config`, `nix-flake-check`, then `nix-validate`. Run `devenv test` for full validation.
-- Prefer evaluation before builds. Preserve `flake.lock` during validation by using the provided scripts' `--no-write-lock-file` flags.
-- Provided evaluation scripts use `path:.` so newly created, unstaged Nix files are included; do not stage files solely for Nix evaluation.
+- Home Manager installs `devenv` and `direnv` for the human's trusted-repo interactive auto-activation. Keep Zsh aliases and plugins in `modules/home/zsh`.
+- Agents do not rely on direnv. Run project tools as `devenv shell -- <command>`; plain file and Git operations need no devenv. Ask the user only if direct devenv access itself fails.
+- Generate or update `devenv.lock` only via devenv. Preserve `flake.lock` during validation with `--no-write-lock-file`; `path:.` includes unstaged new Nix files.
+- Workflow: format with `devenv shell -- nix-format [files...]`, run cheap checks once with `devenv shell -- nix-check`, then evaluate affected configurations once with `devenv shell -- nix-eval jayce|renekton|all`. Do not run `devenv test`. `nix flake check --no-build --all-systems --no-write-lock-file path:.` is optional diagnostics, not a replacement for Darwin evaluation.
+- Builds are separate and targeted, preceded by evaluation and preferably a dry-run; do not routinely build the full fleet.
+- Do not add tests to the repository unless the user explicitly reverses this policy. Do not disable package or upstream build checks.
+- Do not add persistent scripts for one-time bootstrap, setup, or migrations; give the user sequential terminal commands and remove completed migration paths. Distinguish runtime, recovery, and upgrade behavior.
+- The user's activation workflow requires intended configuration changes to be committed before any switch; agents commit only when explicitly requested and never run switch commands without an explicit activation request. The system targets are `nixosConfigurations.jayce` and `darwinConfigurations.renekton`.
+- This repository is public: never add or expose secrets, credentials, tokens, private keys, personal data, or private infrastructure details. Do not commit changes unless asked.
 - Useful interactive tools include `devenv info`, `devenv eval`, `devenv repl`, `nixd`, `nil`, `nix-output-monitor`, `nix-tree`, `nix-diff`, `nix-eval-jobs`, `nix-fast-build`, `nix-inspect`, `nix-melt`, and `nvd`.
-- Never run `nixos-rebuild switch`, `darwin-rebuild switch`, or `home-manager switch` unless the user explicitly requests activation.
-- The flake targets are `nixosConfigurations.jayce`, `darwinConfigurations.renekton`, `homeConfigurations."kosciak@jayce"`, and `homeConfigurations."kosciak@renekton"`.
-- This repository is always public. Take extra care not to add, expose, or commit sensitive information, including credentials, tokens, private keys, personal data, or private infrastructure details.
-- Do not commit changes unless asked.

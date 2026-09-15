@@ -84,7 +84,6 @@
           plannotator = final.callPackage ./packages/plannotator.nix { };
           opencode = final.callPackage ./packages/opencode-darwin.nix { };
           kanagawa-gtk-theme = final.callPackage ./packages/kanagawa-gtk-theme.nix { };
-          openclaw-sandbox-context = final.callPackage ./packages/openclaw-sandbox-context.nix { };
           openclaw-sandbox-machine-check =
             final.callPackage ./packages/openclaw-sandbox-machine-check.nix
               { };
@@ -205,37 +204,12 @@
         ];
       };
 
-      homeConfigurations."kosciak@jayce" = home-manager.lib.homeManagerConfiguration {
-        inherit pkgs;
-        extraSpecialArgs = {
-          inherit inputs kanagawa-kvantum;
-          ghosttyCursorShaders = inputs.ghostty-cursor-shaders;
-        };
-        modules = [
-          nix-flatpak.homeManagerModules.nix-flatpak
-          ./hosts/jayce/home.nix
-        ];
-      };
-
-      homeConfigurations."kosciak@renekton" = home-manager.lib.homeManagerConfiguration {
-        pkgs = darwinPkgs;
-        extraSpecialArgs = {
-          inherit inputs;
-          ghosttyCursorShaders = inputs.ghostty-cursor-shaders;
-        };
-        modules = [
-          inputs.nix-openclaw.homeManagerModules.openclaw
-          ./hosts/renekton/home.nix
-        ];
-      };
-
       packages.${system} = {
         inherit kanagawa-kvantum;
         inherit (pkgs) camofox-browser-cli;
       };
       packages.${darwinSystem} = {
         inherit (darwinPkgs)
-          openclaw-sandbox-context
           openclaw-sandbox-machine-check
           openclaw-languagetool-mcp-context
           openclaw-languagetool-mcp-image

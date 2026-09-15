@@ -9,74 +9,10 @@ let
   homeDirectory = config.home.homeDirectory;
   podman = lib.getExe pkgs.podman;
   sandboxMachineChecker = pkgs.openclaw-sandbox-machine-check;
-  sandboxMachine = sandboxMachineChecker.passthru;
-  sandboxMachineName = lib.escapeShellArg sandboxMachine.machineName;
-  sandboxMachineProvider = lib.escapeShellArg sandboxMachine.init.vmType;
+  sandboxMachineName = lib.escapeShellArg sandboxMachineChecker.passthru.machineName;
   curl = lib.getExe pkgs.curl;
   openclaw = lib.getExe config.programs.openclaw.package;
   install = lib.getExe' pkgs.coreutils "install";
-
-  sandboxBootstrap = pkgs.writeShellApplication {
-    name = "openclaw-sandbox-bootstrap";
-    runtimeInputs = [
-      pkgs.podman
-      sandboxMachineChecker
-    ];
-    text = ''
-      set -euo pipefail
-
-      podman=${podman}
-      machine_checker=${lib.getExe sandboxMachineChecker}
-      machine_name=${sandboxMachineName}
-      machine_provider=${sandboxMachineProvider}
-      default_connection=""
-      while IFS=$'\t' read -r connection is_default; do
-        if [[ "$is_default" == "true" ]]; then
-          default_connection="$connection"
-          break
-        fi
-      done < <("$podman" system connection list --format '{{.Name}}\t{{.Default}}')
-
-      restore_default() {
-        if [[ -n "$default_connection" ]]; then
-          "$podman" system connection default "$default_connection" >/dev/null
-        fi
-      }
-      trap restore_default EXIT
-
-      if ! "$podman" machine inspect "$machine_name" >/dev/null 2>&1; then
-        CONTAINERS_MACHINE_PROVIDER="$machine_provider" \
-          "$podman" machine init \
-            --rootful=${if sandboxMachine.init.rootful then "true" else "false"} \
-            --cpus ${toString sandboxMachine.init.cpus} \
-            --memory ${toString sandboxMachine.init.memoryMiB} \
-            --disk-size ${toString sandboxMachine.init.diskSizeGiB} \
-            --swap ${toString sandboxMachine.init.swapMiB} \
-            "$machine_name"
-      fi
-      "$machine_checker"
-    '';
-  };
-
-  sandboxImageBuild = pkgs.writeShellApplication {
-    name = "openclaw-sandbox-image-build";
-    runtimeInputs = [ pkgs.podman ];
-    text = ''
-      set -euo pipefail
-
-      podman=${podman}
-      if ! "$podman" --connection openclaw-sandbox info >/dev/null 2>&1; then
-        printf '%s\n' \
-          "openclaw-sandbox must exist and be running before building the image" >&2
-        exit 1
-      fi
-
-      exec "$podman" --connection openclaw-sandbox build \
-        --file ${pkgs.openclaw-sandbox-context}/scripts/docker/sandbox/Dockerfile \
-        --tag openclaw-sandbox:bookworm-slim \
-        ${pkgs.openclaw-sandbox-context}
-    '';
-  };
 
   sandboxMachineAgent = pkgs.writeShellApplication {
     name = "openclaw-sandbox-machine-agent";
@@ -199,8 +135,6 @@ let
 in
 {
   home.packages = [
-    sandboxBootstrap
-    sandboxImageBuild
     pkgs.openclaw-languagetool-mcp-image
     pkgs.mac-apps-mcp-host
   ];

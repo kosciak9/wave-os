@@ -20,55 +20,66 @@
   scripts = {
     nix-format.exec = ''
       set -euo pipefail
-      git ls-files --cached --others --exclude-standard -z -- '*.nix' | while IFS= read -r -d $'\0' file; do
-        nixfmt "$file"
-      done
+      if (($# > 0)); then
+        nixfmt -- "$@"
+      else
+        files=()
+        while IFS= read -r -d $'\0' file; do
+          if [[ -f "$file" ]]; then
+            files+=("$file")
+          fi
+        done < <(git ls-files --cached --others --exclude-standard -z -- '*.nix')
+        if ((''${#files[@]} > 0)); then
+          nixfmt -- "''${files[@]}"
+        fi
+      fi
     '';
 
-    nix-format-check.exec = ''
+    nix-check.exec = ''
       set -euo pipefail
-      git ls-files --cached --others --exclude-standard -z -- '*.nix' | while IFS= read -r -d $'\0' file; do
-        nixfmt --check "$file"
-      done
-    '';
-
-    nix-lint.exec = ''
-      set -euo pipefail
+      files=()
+      while IFS= read -r -d $'\0' file; do
+        if [[ -f "$file" ]]; then
+          files+=("$file")
+        fi
+      done < <(git ls-files --cached --others --exclude-standard -z -- '*.nix')
+      if ((''${#files[@]} > 0)); then
+        nixfmt --check -- "''${files[@]}"
+      fi
       statix check .
       deadnix --fail .
     '';
 
-    nix-eval-config.exec = ''
+    nix-eval.exec = ''
       set -euo pipefail
-      targets=(
-        'path:.#nixosConfigurations.jayce.config.system.build.toplevel.drvPath'
-        'path:.#darwinConfigurations.renekton.system.drvPath'
-        'path:.#homeConfigurations."kosciak@jayce".activationPackage.drvPath'
-        'path:.#homeConfigurations."kosciak@renekton".activationPackage.drvPath'
-      )
-      for target in "''${targets[@]}"; do
+      if (($# != 1)); then
+        printf 'Usage: nix-eval jayce|renekton|all\n' >&2
+        exit 2
+      fi
+
+      eval_target() {
+        target="$1"
         printf 'Evaluating target: %s\n' "$target"
         nix eval --no-write-lock-file --show-trace --raw "$target"
         printf '\n'
-      done
-    '';
+      }
 
-    nix-flake-check.exec = ''
-      set -euo pipefail
-      nix flake check --no-build --all-systems --no-write-lock-file --show-trace path:.
-    '';
-
-    nix-validate.exec = ''
-      set -euo pipefail
-      nix-format-check
-      nix-lint
-      nix-eval-config
-      nix-flake-check
+      case "$1" in
+        jayce)
+          eval_target 'path:.#nixosConfigurations.jayce.config.system.build.toplevel.drvPath'
+          ;;
+        renekton)
+          eval_target 'path:.#darwinConfigurations.renekton.system.drvPath'
+          ;;
+        all)
+          eval_target 'path:.#nixosConfigurations.jayce.config.system.build.toplevel.drvPath'
+          eval_target 'path:.#darwinConfigurations.renekton.system.drvPath'
+          ;;
+        *)
+          printf 'Usage: nix-eval jayce|renekton|all\n' >&2
+          exit 2
+          ;;
+      esac
     '';
   };
-
-  enterTest = ''
-    set -euo pipefail
-    nix-validate
-  '';
 }

@@ -77,16 +77,6 @@ writeShellApplication {
   '';
 
   passthru = {
-    inherit machineName expected;
-    init = {
-      inherit (expected)
-        rootful
-        cpus
-        memoryMiB
-        diskSizeGiB
-        swapMiB
-        ;
-      inherit (expected) vmType;
-    };
+    inherit machineName;
   };
 }
