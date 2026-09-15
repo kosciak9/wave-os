@@ -1228,22 +1228,6 @@ let
       printf '%s\n' "refusing to start OpenClaw Gateway: could not create runtime config" >&2
       exit 1
     fi
-    if ! "$jq" -e -s --arg group_id "$telegram_group_id" \
-      --argjson group_allow_from "$telegram_group_allow_from" '
-      if (length != 1 or (.[0] | type != "object")) then error("invalid config") else .[0] end |
-      .channels.telegram.groups = {($group_id): {requireMention: false}} |
-      .channels.telegram.groupPolicy = "allowlist" |
-      .channels.telegram.groupAllowFrom = $group_allow_from
-    ' "$OPENCLAW_CONFIG_GENERATION" >"$tmp_config" 2>/dev/null || \
-      ! "$jq" -e 'type == "object"' "$tmp_config" >/dev/null 2>&1 || \
-      ! "$chmod" 600 -- "$tmp_config" 2>/dev/null || \
-      ! "$mv" -f -- "$tmp_config" "$runtime_config" 2>/dev/null; then
-      printf '%s\n' "refusing to start OpenClaw Gateway: could not materialize runtime config" >&2
-      exit 1
-    fi
-    tmp_config=
-    unset telegram_group_id telegram_group_allow_from
-    export OPENCLAW_CONFIG_PATH="$runtime_config"
     if ! token=$(
       "$openclaw" secrets store get OPENCLAW_GATEWAY_TOKEN --plain 2>/dev/null
     ); then
@@ -1287,8 +1271,26 @@ let
       printf '%s\n' "refusing to start OpenClaw Gateway: HOME_ASSISTANT_MCP_URL is absent or invalid" >&2
       exit 1
     fi
-    export HOME_ASSISTANT_MCP_URL="$home_assistant_url"
-    unset home_assistant_url
+
+    if ! printf '%s' "$home_assistant_url" |
+      "$jq" -e -s --arg group_id "$telegram_group_id" \
+        --argjson group_allow_from "$telegram_group_allow_from" \
+        --rawfile home_assistant_url /dev/stdin '
+      if (length != 1 or (.[0] | type != "object")) then error("invalid config") else .[0] end |
+      .channels.telegram.groups = {($group_id): {requireMention: false}} |
+      .channels.telegram.groupPolicy = "allowlist" |
+      .channels.telegram.groupAllowFrom = $group_allow_from |
+      .mcp.servers["home-assistant"].url = $home_assistant_url
+    ' "$OPENCLAW_CONFIG_GENERATION" >"$tmp_config" 2>/dev/null || \
+      ! "$jq" -e 'type == "object"' "$tmp_config" >/dev/null 2>&1 || \
+      ! "$chmod" 600 -- "$tmp_config" 2>/dev/null || \
+      ! "$mv" -f -- "$tmp_config" "$runtime_config" 2>/dev/null; then
+      printf '%s\n' "refusing to start OpenClaw Gateway: could not materialize runtime config" >&2
+      exit 1
+    fi
+    tmp_config=
+    unset telegram_group_id telegram_group_allow_from home_assistant_url
+    export OPENCLAW_CONFIG_PATH="$runtime_config"
 
     if ! camofox_key=$(
       "$openclaw" secrets store get CAMOFOX_ACCESS_KEY --plain 2>/dev/null
@@ -1428,7 +1430,6 @@ in
     runtimePlugins = [
       "llama-cpp"
       "camofox-browser"
-      "home-assistant-mcp-resolver"
     ];
     runtimePackages = [
       pkgs.podman
@@ -2024,7 +2025,7 @@ in
           };
           "home-assistant" = {
             enabled = true;
-            # Keep a non-routable static identity; the runtime resolver supplies the secret URL per trusted requester.
+            # Keep a non-secret placeholder; the gateway wrapper replaces it with the Secret Store URL in the private runtime config.
             url = "https://home-assistant-mcp.invalid/";
             transport = "streamable-http";
             connectionTimeoutMs = 10000;
