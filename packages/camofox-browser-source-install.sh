@@ -172,7 +172,7 @@ jq '.packages."node_modules/adm-zip".version = "0.6.1"
   | .packages."node_modules/adm-zip".integrity = "sha512-Xwrja8nx9e5o2N1my4DsKCeKpdrnACyr1wtbPxBDgGzKzKyE9kRtBFA8mWldI+RVlD7CBZNWY/wQ2+ydwOR6kQ=="' \
   package-lock.json > package-lock.json.tmp
 mv package-lock.json.tmp package-lock.json
-jq '.version = "1.15.0" | del(.plugins.vnc)' camofox.config.json > camofox.config.json.tmp
+jq '.version = "@CAMOFOX_VERSION@" | del(.plugins.vnc)' camofox.config.json > camofox.config.json.tmp
 mv camofox.config.json.tmp camofox.config.json
 mkdir -p "$out"
 cp -R --no-preserve=ownership ./. "$out/"

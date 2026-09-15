@@ -6,6 +6,8 @@
 }:
 
 let
+  version = "1.15.0";
+  upstreamRev = "v${version}";
   camoufox =
     {
       "aarch64-darwin" = {
@@ -18,16 +20,16 @@ let
       };
     }
     .${stdenvNoCC.hostPlatform.system}
-      or (throw "camofox-browser 1.15.0 is unsupported on ${stdenvNoCC.hostPlatform.system}; supported systems are x86_64-linux and aarch64-darwin");
+      or (throw "camofox-browser ${version} is unsupported on ${stdenvNoCC.hostPlatform.system}; supported systems are x86_64-linux and aarch64-darwin");
 in
 stdenvNoCC.mkDerivation {
   pname = "camofox-browser-source";
-  version = "1.15.0";
+  inherit version;
 
   src = fetchFromGitHub {
     owner = "jo-inc";
     repo = "camofox-browser";
-    rev = "v1.15.0";
+    rev = upstreamRev;
     hash = "sha256-YouQZa+xAWl0PL24A4eUJDb7JAMoefZBEnB+tfF3IBU=";
   };
 
@@ -36,11 +38,17 @@ stdenvNoCC.mkDerivation {
   nativeBuildInputs = [ jq ];
 
   installPhase =
-    builtins.replaceStrings [ "@CAMOUFOX_ARCH@" "@CAMOUFOX_SHA256@" ] [ camoufox.arch camoufox.sha256 ]
+    builtins.replaceStrings
+      [ "@CAMOUFOX_ARCH@" "@CAMOUFOX_SHA256@" "@CAMOFOX_VERSION@" ]
+      [
+        camoufox.arch
+        camoufox.sha256
+        version
+      ]
       (builtins.readFile ./camofox-browser-source-install.sh);
 
   passthru = {
-    upstreamRev = "v1.15.0";
+    inherit upstreamRev;
     gitHead = "771b610a7b5994759c138b912741de58b0edd588";
   };
 

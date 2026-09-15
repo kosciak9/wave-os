@@ -6,6 +6,7 @@
 }:
 
 let
+  inherit (camofox-browser-source) version;
   allowedTools = [
     "camofox_create_tab"
     "camofox_snapshot"
@@ -21,7 +22,7 @@ let
 in
 stdenvNoCC.mkDerivation {
   pname = "camofox-openclaw-plugin";
-  version = "1.15.0";
+  inherit version;
 
   dontUnpack = true;
 
@@ -30,34 +31,24 @@ stdenvNoCC.mkDerivation {
   installPhase = ''
         runHook preInstall
         mkdir -p "$out"
-        jq --argjson allowed '${allowedToolsJson}' \
-          ' .version = "1.15.0"
+        jq --argjson allowed '${allowedToolsJson}' --arg version ${lib.escapeShellArg version} \
+          ' .version = $version
           | .main = "plugin.js"
            | .files = [ "plugin.js", "openclaw.plugin.json" ]
            | .openclaw.extensions = [ "plugin.js" ]
            | .openclaw.runtimeExtensions = [ "plugin.js" ]
            | .openclaw.tools = [ .openclaw.tools[] | select(.name as $name | ($allowed | index($name)) != null) ]
-           | del(.scripts, .dependencies, .optionalDependencies, .devDependencies,
+           | del(.bin, .scripts, .dependencies, .optionalDependencies, .devDependencies,
                .peerDependencies, .peerDependenciesMeta, .overrides)' \
            '${camofox-browser-source}/package.json' > "$out/package.json"
-        jq --argjson allowed '${allowedToolsJson}' \
-          '.version = "1.15.0" | .tools = $allowed | .contracts.tools = $allowed' \
+        jq --argjson allowed '${allowedToolsJson}' --arg version ${lib.escapeShellArg version} \
+          '.version = $version | .tools = $allowed | .contracts.tools = $allowed' \
           '${camofox-browser-source}/openclaw.plugin.json' > "$out/openclaw.plugin.json"
         cat > "$out/plugin.js" <<'EOF'
     import { createHmac } from "node:crypto";
     import registerUpstream from "${camofox-browser-source}/plugin.js";
 
-    const allowedTools = new Set([
-      "camofox_create_tab",
-      "camofox_snapshot",
-      "camofox_click",
-      "camofox_type",
-      "camofox_navigate",
-      "camofox_scroll",
-      "camofox_screenshot",
-      "camofox_close_tab",
-      "camofox_list_tabs",
-    ]);
+     const allowedTools = new Set(${allowedToolsJson});
 
     function scopedContext(args) {
       const context = args[0];
