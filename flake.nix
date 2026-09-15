@@ -39,11 +39,6 @@
 
     nix-flatpak.url = "github:gmodena/nix-flatpak?ref=v0.7.0";
 
-    sops-nix = {
-      url = "github:Mic92/sops-nix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     sqlit = {
       url = "github:Maxteabag/sqlit";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -76,7 +71,6 @@
       nixos-hardware,
       home-manager,
       nix-flatpak,
-      sops-nix,
       nix-darwin,
       determinate,
       ...
@@ -170,7 +164,6 @@
                 ghosttyCursorShaders = inputs.ghostty-cursor-shaders;
               };
               sharedModules = [
-                sops-nix.homeManagerModules.sops
                 nix-flatpak.homeManagerModules.nix-flatpak
               ];
               users.kosciak = ./hosts/jayce/home.nix;
@@ -219,7 +212,6 @@
           ghosttyCursorShaders = inputs.ghostty-cursor-shaders;
         };
         modules = [
-          sops-nix.homeManagerModules.sops
           nix-flatpak.homeManagerModules.nix-flatpak
           ./hosts/jayce/home.nix
         ];
