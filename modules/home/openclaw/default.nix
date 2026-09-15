@@ -263,6 +263,95 @@ let
   substackMcpPolicyIds = map (tool: "substack__${tool}") substackMcpAllowedTools;
   languagetoolMcpTools = [ "lt_check_text" ];
   languagetoolMcpPolicyIds = map (tool: "languagetool__${tool}") languagetoolMcpTools;
+  homeAssistantMcpReadTools = [
+    "ha_get_app"
+    "ha_list_floors_areas"
+    "ha_get_blueprint"
+    "ha_get_camera_image"
+    "ha_config_get_category"
+    "ha_config_get_automation"
+    "ha_config_get_dashboard"
+    "ha_config_list_helpers"
+    "ha_config_get_scene"
+    "ha_config_get_script"
+    "ha_get_entity"
+    "ha_config_list_groups"
+    "ha_get_hacs_info"
+    "ha_get_history"
+    "ha_get_integration"
+    "ha_config_get_label"
+    "ha_get_logs"
+    "ha_get_device"
+    "ha_config_list_dashboard_resources"
+    "ha_get_overview"
+    "ha_get_state"
+    "ha_search"
+    "ha_get_operation_status"
+    "ha_list_services"
+    "ha_get_system_health"
+    "ha_get_automation_traces"
+    "ha_eval_template"
+    "ha_get_entity_exposure"
+    "ha_get_zone"
+    "ha_get_skill_guide"
+  ];
+  homeAssistantMcpControlTools = [
+    "ha_bulk_control"
+    "ha_call_service"
+  ];
+  homeAssistantMcpAdminTools = [
+    "ha_manage_hacs"
+    "ha_restart"
+    "ha_manage_updates"
+    "ha_manage_backup"
+  ];
+  homeAssistantMcpTools =
+    homeAssistantMcpReadTools ++ homeAssistantMcpControlTools ++ homeAssistantMcpAdminTools;
+  homeAssistantMcpDeniedTools = [
+    "ha_manage_app"
+    "ha_remove_area_or_floor"
+    "ha_set_area_or_floor"
+    "ha_manage_pipeline"
+    "ha_import_blueprint"
+    "ha_report_issue"
+    "ha_config_get_calendar_events"
+    "ha_config_remove_calendar_event"
+    "ha_config_set_calendar_event"
+    "ha_config_remove_category"
+    "ha_config_set_category"
+    "ha_config_remove_automation"
+    "ha_config_set_automation"
+    "ha_config_delete_dashboard"
+    "ha_config_set_dashboard"
+    "ha_config_set_helper"
+    "ha_config_remove_scene"
+    "ha_config_set_scene"
+    "ha_config_remove_script"
+    "ha_config_set_script"
+    "ha_manage_energy_prefs"
+    "ha_remove_entity"
+    "ha_set_entity"
+    "ha_config_remove_group"
+    "ha_config_set_group"
+    "ha_remove_helpers_integrations"
+    "ha_set_integration"
+    "ha_config_remove_label"
+    "ha_config_set_label"
+    "ha_manage_radio"
+    "ha_remove_device"
+    "ha_set_device"
+    "ha_config_delete_dashboard_resource"
+    "ha_config_set_dashboard_resource"
+    "ha_call_event"
+    "ha_reload_core"
+    "ha_manage_theme"
+    "ha_get_todo"
+    "ha_remove_todo_item"
+    "ha_set_todo_item"
+    "ha_remove_zone"
+    "ha_set_zone"
+  ];
+  homeAssistantMcpPolicyIds = map (tool: "home-assistant__${tool}") homeAssistantMcpTools;
   macAppsMcpHostApp = "${home}/Applications/Home Manager Apps/Mac Apps MCP Host.app";
   deniedTools = [
     "sessions_send"
@@ -825,6 +914,68 @@ let
       camofox-openclaw-bootstrap
       substack-openclaw-bootstrap
 
+      validate_home_assistant_value() {
+        if ! home_assistant_url=$(
+          "$openclaw" secrets store get HOME_ASSISTANT_MCP_URL --plain 2>/dev/null
+        ); then
+          return 1
+        fi
+        if [[ ! "$home_assistant_url" =~ ^http://pikachu:9584/private_[A-Za-z0-9]+$ ]]; then
+          unset home_assistant_url
+          return 1
+        fi
+        unset home_assistant_url
+      }
+      metadata=$("$openclaw" secrets store list --json)
+      # shellcheck disable=SC2016
+      home_assistant_status=$("$jq" -r --arg name HOME_ASSISTANT_MCP_URL '
+        [ .[]? | select(.name == $name) ] as $entries |
+        if ($entries | length) == 0 then "absent"
+        elif ($entries | length) == 1
+          and $entries[0].kind == "env"
+          and (($entries[0].allowedHosts // []) == []) then "valid"
+        else "invalid"
+        end
+      ' <<<"$metadata")
+      case "$home_assistant_status" in
+        valid)
+          if ! validate_home_assistant_value; then
+            printf '%s\n' "refusing bootstrap: HOME_ASSISTANT_MCP_URL is empty or has an invalid value." >&2
+            exit 1
+          fi
+          printf '%s\n' "HOME_ASSISTANT_MCP_URL already exists with approved metadata and valid value; preserving it."
+          ;;
+        invalid)
+          printf '%s\n' "refusing bootstrap: HOME_ASSISTANT_MCP_URL has unexpected or duplicate metadata; no update was performed." >&2
+          exit 1
+          ;;
+        absent)
+          if [[ ! -t 0 || ! -t 1 ]]; then
+            printf '%s\n' "refusing bootstrap: HOME_ASSISTANT_MCP_URL is absent and requires an interactive terminal for the masked prompt." >&2
+            exit 1
+          fi
+          if ! "$openclaw" secrets store set HOME_ASSISTANT_MCP_URL --kind env; then
+            printf '%s\n' "refusing bootstrap: could not store HOME_ASSISTANT_MCP_URL." >&2
+            exit 1
+          fi
+          metadata=$("$openclaw" secrets store list --json)
+          # shellcheck disable=SC2016
+          if ! "$jq" -e --arg name HOME_ASSISTANT_MCP_URL '
+            [ .[]? | select(.name == $name) ] as $entries |
+            ($entries | length) == 1 and
+            $entries[0].kind == "env" and
+            (($entries[0].allowedHosts // []) == [])
+          ' <<<"$metadata" >/dev/null || ! validate_home_assistant_value; then
+            printf '%s\n' "refusing bootstrap: HOME_ASSISTANT_MCP_URL metadata or value was not created exactly as required." >&2
+            exit 1
+          fi
+          ;;
+        *)
+          printf '%s\n' "refusing bootstrap: unexpected HOME_ASSISTANT_MCP_URL metadata status." >&2
+          exit 1
+          ;;
+      esac
+
       metadata=$("$openclaw" secrets store list --json)
       # shellcheck disable=SC2016
       gateway_status=$("$jq" -r --arg name OPENCLAW_GATEWAY_TOKEN '
@@ -987,7 +1138,8 @@ let
       esac
 
       metadata=$("$openclaw" secrets store list --json)
-      printf '%s\n' "$metadata"
+      # Secret Store env entries include their complete value in valuePreview; never print it.
+      printf '%s\n' "$metadata" | "$jq" 'map(del(.valuePreview))'
       "$openclaw" secrets audit --json
     '';
   };
@@ -1105,6 +1257,39 @@ let
 
     export OPENCLAW_GATEWAY_TOKEN="$token"
 
+    metadata=$("$openclaw" secrets store list --json)
+    if ! home_assistant_metadata_status=$(printf '%s' "$metadata" | "$jq" -r '
+      [ .[]? | select(.name == "HOME_ASSISTANT_MCP_URL") ] as $entries |
+      if ($entries | length) == 1
+        and $entries[0].kind == "env"
+        and (($entries[0].allowedHosts // []) == []) then "valid"
+      else "invalid"
+      end
+    '); then
+      unset metadata home_assistant_metadata_status
+      printf '%s\n' "refusing to start OpenClaw Gateway: could not validate HOME_ASSISTANT_MCP_URL metadata" >&2
+      exit 1
+    fi
+    unset metadata
+    if [ "$home_assistant_metadata_status" != valid ]; then
+      unset home_assistant_metadata_status
+      printf '%s\n' "refusing to start OpenClaw Gateway: HOME_ASSISTANT_MCP_URL metadata is absent or invalid" >&2
+      exit 1
+    fi
+    unset home_assistant_metadata_status
+    if ! home_assistant_url=$(
+      "$openclaw" secrets store get HOME_ASSISTANT_MCP_URL --plain 2>/dev/null
+    ); then
+      printf '%s\n' "refusing to start OpenClaw Gateway: could not retrieve HOME_ASSISTANT_MCP_URL from the store" >&2
+      exit 1
+    fi
+    if ! printf '%s' "$home_assistant_url" | "$jq" -eRs 'test("^http://pikachu:9584/private_[A-Za-z0-9]+$")' >/dev/null 2>&1; then
+      printf '%s\n' "refusing to start OpenClaw Gateway: HOME_ASSISTANT_MCP_URL is absent or invalid" >&2
+      exit 1
+    fi
+    export HOME_ASSISTANT_MCP_URL="$home_assistant_url"
+    unset home_assistant_url
+
     if ! camofox_key=$(
       "$openclaw" secrets store get CAMOFOX_ACCESS_KEY --plain 2>/dev/null
     ); then
@@ -1199,6 +1384,20 @@ in
       assertion = listsAreDisjoint substackMcpAllowedTools substackMcpDeniedTools;
       message = "Substack MCP allowed and denied tools must be disjoint";
     }
+    {
+      assertion = listIsDuplicateFree homeAssistantMcpTools;
+      message = "Home Assistant MCP allowed tools must not contain duplicates";
+    }
+    {
+      assertion = listsAreDisjoint homeAssistantMcpTools homeAssistantMcpDeniedTools;
+      message = "Home Assistant MCP allowed and denied tools must be disjoint";
+    }
+    {
+      assertion = builtins.all (
+        tool: !(lib.hasInfix "calendar" tool || lib.hasInfix "todo" tool)
+      ) homeAssistantMcpTools;
+      message = "Home Assistant MCP allowed tools must not include calendar or todo tools";
+    }
   ];
 
   imports = [ ./darwin.nix ];
@@ -1229,6 +1428,7 @@ in
     runtimePlugins = [
       "llama-cpp"
       "camofox-browser"
+      "home-assistant-mcp-resolver"
     ];
     runtimePackages = [
       pkgs.podman
@@ -1501,7 +1701,8 @@ in
           ++ obsidianMcpPolicyIds
           ++ anytypeMcpPolicyIds
           ++ substackMcpPolicyIds
-          ++ languagetoolMcpPolicyIds;
+          ++ languagetoolMcpPolicyIds
+          ++ homeAssistantMcpPolicyIds;
         deny = deniedTools;
         fs.workspaceOnly = true;
         exec = {
@@ -1536,7 +1737,8 @@ in
           ++ obsidianMcpPolicyIds
           ++ anytypeMcpPolicyIds
           ++ substackMcpPolicyIds
-          ++ languagetoolMcpPolicyIds;
+          ++ languagetoolMcpPolicyIds
+          ++ homeAssistantMcpPolicyIds;
         subagents.tools.allow = [
           "session_status"
           "read"
@@ -1819,6 +2021,19 @@ in
             requestTimeoutMs = 180000;
             supportsParallelToolCalls = false;
             toolFilter.include = languagetoolMcpTools;
+          };
+          "home-assistant" = {
+            enabled = true;
+            # Keep a non-routable static identity; the runtime resolver supplies the secret URL per trusted requester.
+            url = "https://home-assistant-mcp.invalid/";
+            transport = "streamable-http";
+            connectionTimeoutMs = 10000;
+            requestTimeoutMs = 300000;
+            supportsParallelToolCalls = false;
+            toolFilter = {
+              include = homeAssistantMcpTools;
+              exclude = homeAssistantMcpDeniedTools;
+            };
           };
         };
         apps.enabled = false;

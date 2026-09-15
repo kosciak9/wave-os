@@ -108,9 +108,13 @@
           substack-mcp = final.callPackage ./packages/substack-mcp.nix { };
           camofox-browser-source = final.callPackage ./packages/camofox-browser-source.nix { };
           camofox-openclaw-plugin = final.callPackage ./packages/camofox-openclaw-plugin.nix { };
+          openclaw-home-assistant-mcp-resolver =
+            final.callPackage ./packages/openclaw-home-assistant-mcp-resolver.nix
+              { };
           camofox-browser-cli = final.callPackage ./packages/camofox-browser-cli.nix { };
           openclawRuntimePlugins = (prev.openclawRuntimePlugins or { }) // {
             "camofox-browser" = final.camofox-openclaw-plugin;
+            "home-assistant-mcp-resolver" = final.openclaw-home-assistant-mcp-resolver;
           };
         }
         // prev.lib.optionalAttrs prev.stdenv.hostPlatform.isLinux {
@@ -255,6 +259,7 @@
           substack-mcp
           camofox-browser-source
           camofox-openclaw-plugin
+          openclaw-home-assistant-mcp-resolver
           camofox-browser-cli
           ;
       };
