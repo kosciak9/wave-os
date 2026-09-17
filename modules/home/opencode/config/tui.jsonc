@@ -1,4 +1,4 @@
 {
   "$schema": "https://opencode.ai/tui.json",
-  "plugin": ["@slkiser/opencode-quota@4.9.0"],
+  "plugin": ["./plugin/notify/tui.js", "@slkiser/opencode-quota@4.9.0"],
 }

@@ -215,6 +215,21 @@ function permissionDetails(value) {
   return patterns.length > 0 ? `${permission} - ${patterns.join(", ")}` : permission;
 }
 
+export async function sendPermissionNotification({ directory, request }) {
+  const record = asRecord(request);
+  const sessionID = getString(record.sessionID);
+  if (shouldSuppressPermission(sessionID)) return;
+
+  const projectName = directory ? basename(directory) : "";
+  const message = formatMessage("permission", {
+    projectName,
+    timestamp: formatTimestamp(),
+    details: permissionDetails(request),
+  });
+
+  await sendNotification("permission", projectName, message);
+}
+
 function errorDetails(event) {
   const error = asRecord(asRecord(event.properties).error);
   return getString(error.message) ?? getString(error.name) ?? "session error";
@@ -319,17 +334,6 @@ export const NotifyPlugin = async ({ client, directory }) => {
         return;
       }
 
-      if (event.type === "permission.asked") {
-        const sessionID = getEventSessionID(event);
-        if (shouldSuppressPermission(sessionID)) return;
-
-        await handleEvent(client, "permission", projectName, {
-          sessionID,
-          details: permissionDetails(event),
-        });
-        return;
-      }
-
       if (event.type === "session.idle") {
         scheduleIdle(client, projectName, event, getEventSessionID(event));
         return;
@@ -367,17 +371,6 @@ export const NotifyPlugin = async ({ client, directory }) => {
           sessionID: getEventSessionID(event),
         });
       }
-    },
-
-    "permission.ask": async (input) => {
-      const record = asRecord(input);
-      const sessionID = getString(record.sessionID);
-      if (shouldSuppressPermission(sessionID)) return;
-
-      await handleEvent(client, "permission", projectName, {
-        sessionID,
-        details: permissionDetails(input),
-      });
     },
 
     "tool.execute.before": async (input) => {
