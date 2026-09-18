@@ -6,7 +6,7 @@
 
 stdenvNoCC.mkDerivation {
   pname = "openclaw-embeddinggemma";
-  version = "2026.9.3";
+  version = "2026.9.4";
 
   src = fetchurl {
     url = "https://huggingface.co/ggml-org/embeddinggemma-300m-qat-q8_0-GGUF/resolve/66f974f8cd48cc3b9c41c516b95508e75b4bee64/embeddinggemma-300m-qat-Q8_0.gguf";

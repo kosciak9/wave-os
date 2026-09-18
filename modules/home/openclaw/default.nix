@@ -6,6 +6,7 @@
 }:
 
 let
+  openclawVersion = "2026.9.4";
   home = config.home.homeDirectory;
   state = "${home}/.openclaw";
   workspace = "${state}/workspace";
@@ -377,7 +378,7 @@ let
     "web-readability"
     "device-pair"
   ];
-  # Exhaustive complement for pinned OpenClaw 2026.9.3: default-on bundled plugins stay disabled visibly and at runtime.
+  # Exhaustive complement for pinned OpenClaw 2026.9.4: default-on bundled plugins stay disabled visibly and at runtime.
   disabledPluginIds = [
     "a2a"
     "acpx"
@@ -434,13 +435,29 @@ let
     "xai"
   ];
   openclawPackageSetBase = pkgs.openclawPackages.withTools { excludeToolNames = [ "git" ]; };
-  # Pinned OpenClaw 2026.9.3 registers both the built-in session dashboard and Telegram Mini App as /dashboard; preserve the built-in command and rename the Mini App command to /openclaw_ui until upstream resolves it.
+  # Pinned OpenClaw 2026.9.4 registers both the built-in session dashboard and Telegram Mini App as /dashboard; preserve the built-in command and rename the Mini App command to /openclaw_ui until upstream resolves it.
   patchedOpenclawGateway = openclawPackageSetBase.openclaw-gateway.overrideAttrs (oldAttrs: {
     installPhase = ''
       ${oldAttrs.installPhase}
-      miniappChunk="$out/lib/openclaw/dist/miniapp-api-Cf_7TwyD.mjs"
-      if [ ! -f "$miniappChunk" ]; then
-        printf '%s\n' "refusing to build OpenClaw Gateway: expected Telegram Mini App bundle is missing: $miniappChunk" >&2
+      miniappChunkDir="$out/lib/openclaw/dist"
+      miniappChunkCount=$(find "$miniappChunkDir" -type f -name 'miniapp-api-*.mjs' -print | wc -l | tr -d '[:space:]')
+      if [ "$miniappChunkCount" -ne 1 ]; then
+        printf '%s\n' "refusing to build OpenClaw Gateway: expected exactly one Telegram Mini App bundle in $miniappChunkDir, found $miniappChunkCount" >&2
+        exit 1
+      fi
+      miniappChunk=$(find "$miniappChunkDir" -type f -name 'miniapp-api-*.mjs' -print)
+      miniappDashboardOccurrenceCount=$(awk -v needle='name: "dashboard",' '
+        {
+          remaining = $0
+          while ((position = index(remaining, needle)) != 0) {
+            count++
+            remaining = substr(remaining, position + length(needle))
+          }
+        }
+        END { print count + 0 }
+      ' "$miniappChunk")
+      if [ "$miniappDashboardOccurrenceCount" -ne 1 ]; then
+        printf '%s\n' "refusing to build OpenClaw Gateway: expected exactly one literal name: \"dashboard\", in $miniappChunk, found $miniappDashboardOccurrenceCount" >&2
         exit 1
       fi
       substituteInPlace "$miniappChunk" \
@@ -783,12 +800,16 @@ in
 {
   assertions = [
     {
-      assertion = lib.getVersion openclawPackage == "2026.9.3";
-      message = "OpenClaw Gateway must be exactly 2026.9.3";
+      assertion = lib.getVersion openclawPackage == openclawVersion;
+      message = "OpenClaw Gateway must be exactly ${openclawVersion}";
     }
     {
-      assertion = lib.getVersion openclawApp == "2026.9.3";
-      message = "OpenClaw.app must be exactly 2026.9.3";
+      assertion = lib.getVersion openclawApp == openclawVersion;
+      message = "OpenClaw.app must be exactly ${openclawVersion}";
+    }
+    {
+      assertion = lib.getVersion pkgs.openclawRuntimePlugins."llama-cpp" == openclawVersion;
+      message = "The official OpenClaw llama-cpp runtime plugin must be exactly ${openclawVersion}";
     }
     {
       assertion = listIsDuplicateFree macAppsMcpTools;

@@ -6,7 +6,7 @@
 
 stdenvNoCC.mkDerivation {
   pname = "openclaw-whisper-model";
-  version = "2026.9.3";
+  version = "2026.9.4";
 
   src = fetchurl {
     url = "https://huggingface.co/ggerganov/whisper.cpp/resolve/98aa99a0a9db05ae2342309f5096248665f7cba3/ggml-large-v3-turbo-q5_0.bin";

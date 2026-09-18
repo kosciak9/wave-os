@@ -35,7 +35,7 @@ stdenvNoCC.mkDerivation {
     test -n "$llama_server"
     runtime_dir=$(dirname "$llama_server")
 
-    # These are the exact aliases consumed by the v2026.9.3 macOS manifest.
+    # These are the exact aliases consumed by the v2026.9.4 macOS manifest.
     # Official archives use the fully versioned names as their sources.
     for mapping in \
       libggml-rpc.0.23.0.dylib:libggml-rpc.0.dylib \

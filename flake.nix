@@ -32,7 +32,7 @@
     };
 
     nix-openclaw = {
-      url = "github:kosciak9/nix-openclaw/2d5a1169afe5b495e66f32fed5896f186a537913";
+      url = "github:openclaw/nix-openclaw/24a88a9c2ae57c01b9edf0fdfe79fca261c06908";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.home-manager.follows = "home-manager";
     };
