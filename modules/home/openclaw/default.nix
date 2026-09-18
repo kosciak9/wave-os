@@ -998,8 +998,10 @@ in
       };
 
       agents = {
+        ownership = "explicit";
         defaults = {
           inherit workspace;
+          systemAgent.agentId = "main";
           bootstrapMaxChars = 20000;
           bootstrapTotalMaxChars = 60000;
           skipBootstrap = true;
@@ -1064,6 +1066,11 @@ in
               codeMode = false;
             };
           };
+          modelPolicy.allow = [
+            "openai/gpt-5.6-sol"
+            "openai/gpt-5.6-luna"
+            "opencode-go/deepseek-v4-flash"
+          ];
           heartbeat = {
             every = "0m";
           };
@@ -1456,7 +1463,6 @@ in
         allowSystemProfileImport = false;
       };
       tts = {
-        enabled = false;
         auto = "off";
       };
       discovery.mdns.mode = "minimal";
