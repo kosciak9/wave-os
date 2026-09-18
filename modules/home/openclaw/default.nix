@@ -10,6 +10,7 @@ let
   home = config.home.homeDirectory;
   state = "${home}/.openclaw";
   workspace = "${state}/workspace";
+  browserWorkspace = "${state}/workspace-browser";
   telegramGroupIdFile = "${home}/.config/secrets/openclaw/telegram-group-id";
   telegramGroupAllowFromFile = "${home}/.config/secrets/openclaw/telegram-group-allow-from.json";
   runtimeConfigDirectory = "${state}/runtime-config";
@@ -70,6 +71,7 @@ let
     "camofox_close_tab"
     "camofox_list_tabs"
   ];
+  camofoxTextTools = lib.filter (tool: tool != "camofox_screenshot") camofoxTools;
   macAppsMcpReadTools = [
     "mail_list_accounts"
     "mail_list_mailboxes"
@@ -374,6 +376,7 @@ let
     "active-memory"
     "llama-cpp"
     "camofox-browser"
+    "opencode-go"
     "document-extract"
     "web-readability"
     "device-pair"
@@ -418,7 +421,6 @@ let
     "oc-path"
     "ollama"
     "onepassword"
-    "opencode-go"
     "openrouter"
     "policy"
     "reef"
@@ -870,7 +872,7 @@ in
   home.activation.openclawRuntimeStateDirectoryMaintenance =
     lib.hm.dag.entryAfter [ "writeBoundary" ]
       ''
-        ${install} -d -m 0700 -- "${state}" "${state}/logs"
+        ${install} -d -m 0700 -- "${state}" "${state}/logs" "${browserWorkspace}"
       '';
 
   home.packages = [
@@ -1056,6 +1058,11 @@ in
               agentRuntime.id = "openclaw";
               codeMode = false;
             };
+            "opencode-go/deepseek-v4-flash" = {
+              alias = "browser";
+              agentRuntime.id = "openclaw";
+              codeMode = false;
+            };
           };
           heartbeat = {
             every = "0m";
@@ -1114,11 +1121,52 @@ in
             "spike"
             "weather"
           ];
+          subagents = {
+            allowAgents = [ "browser" ];
+            requireAgentId = true;
+            delegationMode = "prefer";
+          };
+          tools.deny = camofoxTools;
+        };
+        entries.browser = {
+          name = "Browser";
+          description = "Obsługuje delegowane operacje przeglądarkowe przez Camofox i zwraca zwięzły, faktyczny wynik.";
+          workspace = browserWorkspace;
+          model = {
+            primary = "opencode-go/deepseek-v4-flash";
+            fallbacks = [ ];
+          };
+          modelPolicy.allow = [ "opencode-go/deepseek-v4-flash" ];
+          utilityModel = "";
+          thinkingDefault = "low";
+          fastModeDefault = false;
+          contextInjection = "never";
+          runtime = {
+            type = "embedded";
+          };
+          identity = {
+            name = "Browser";
+            theme = "Zwięzły, rzeczowy i dyskretny — wykonuje wyłącznie delegowane operacje przeglądarkowe przez Camofox i zwraca zwięzły, faktyczny wynik.";
+            emoji = "🌐";
+          };
+          sandbox = {
+            backend = "podman";
+            mode = "all";
+            workspaceAccess = "none";
+          };
+          skills = [ ];
+          subagents.allowAgents = [ ];
+          tools = {
+            allow = camofoxTextTools;
+            deny = [ ];
+            sandbox.tools.allow = camofoxTextTools;
+          };
         };
       };
 
       models = {
         mode = "merge";
+        providers."opencode-go".apiKey = secret "OPENCODE_API_KEY";
         providers.llama-cpp = {
           baseUrl = "http://127.0.0.1:19432/v1";
           api = "openai-completions";
@@ -1213,7 +1261,8 @@ in
           "memory_get"
           "view_image"
           "pdf"
-        ];
+        ]
+        ++ camofoxTextTools;
         swarm = false;
         updatePlan = true;
         web = {
@@ -1553,6 +1602,15 @@ in
         groupScope = "per-group";
         mainKey = "main";
       };
+      bindings = [
+        {
+          agentId = "main";
+          match = {
+            channel = "telegram";
+            accountId = "*";
+          };
+        }
+      ];
     };
   };
 
