@@ -1089,7 +1089,7 @@ in
             scope = "session";
             workspaceAccess = "rw";
             workspaceRoot = "/workspace";
-            sessionToolsVisibility = "spawned";
+            sessionToolsVisibility = "all";
             docker = {
               image = "openclaw-sandbox:bookworm-slim";
               network = "bridge";
@@ -1123,7 +1123,6 @@ in
           sandbox = {
             backend = "podman";
             mode = "all";
-            sessionToolsVisibility = "all";
           };
           skills = [
             "control-ui"
