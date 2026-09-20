@@ -45,6 +45,7 @@ let
     "sessions_list"
     "sessions_history"
     "sessions_search"
+    "sessions_send"
     "sessions_spawn"
     "sessions_yield"
     "subagents"
@@ -344,7 +345,6 @@ let
   homeAssistantMcpPolicyIds = map (tool: "home-assistant__${tool}") homeAssistantMcpTools;
   macAppsMcpHostApp = "${home}/Applications/Home Manager Apps/Mac Apps MCP Host.app";
   deniedTools = [
-    "sessions_send"
     "conversations_send"
     "code_execution"
     "browser"
@@ -888,6 +888,7 @@ in
     stateDir = state;
     workspaceDir = workspace;
     workspace.files."avatars/alfred.png" = ./assets/alfred.png;
+    workspace.files."skills/browser-delegation/SKILL.md" = ./skills/browser-delegation/SKILL.md;
     runtimePlugins = [
       "llama-cpp"
       "camofox-browser"
@@ -1122,10 +1123,12 @@ in
           sandbox = {
             backend = "podman";
             mode = "all";
+            sessionToolsVisibility = "all";
           };
           skills = [
             "control-ui"
             "diagram-maker"
+            "browser-delegation"
             "spike"
             "weather"
           ];
@@ -1241,11 +1244,14 @@ in
           maxSearchLimit = 10;
         };
         agentToAgent = {
-          enabled = false;
-          allow = [ ];
+          enabled = true;
+          allow = [
+            "main"
+            "browser"
+          ];
         };
         sessions = {
-          visibility = "tree";
+          visibility = "all";
         };
         sandbox.tools.allow =
           sandboxTools
