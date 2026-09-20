@@ -1109,6 +1109,7 @@ in
           };
         };
         entries.main = {
+          inherit workspace;
           identity = {
             name = "Alfred";
             theme = "Zwięzły, bezpośredni i dyskretny — technicznie dociekliwy, bez zbędnego hałasu i bez fluffu.";
@@ -1160,12 +1161,13 @@ in
             backend = "podman";
             mode = "all";
             workspaceAccess = "none";
+            workspaceRoot = browserWorkspace;
           };
           skills = [ ];
           subagents.allowAgents = [ ];
           tools = {
             allow = camofoxTextTools;
-            deny = [ ];
+            deny = [ "view_image" ];
             sandbox.tools.allow = camofoxTextTools;
           };
         };
