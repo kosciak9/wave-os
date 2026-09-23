@@ -11,6 +11,7 @@ let
   state = "${home}/.openclaw";
   workspace = "${state}/workspace";
   browserWorkspace = "${state}/workspace-browser";
+  telegramOwnerIdFile = "${home}/.config/secrets/openclaw/telegram-owner-id";
   telegramGroupIdFile = "${home}/.config/secrets/openclaw/telegram-group-id";
   telegramGroupAllowFromFile = "${home}/.config/secrets/openclaw/telegram-group-allow-from.json";
   runtimeConfigDirectory = "${state}/runtime-config";
@@ -31,6 +32,14 @@ let
     provider = "default";
     inherit id;
   };
+  ownerRestrictedTools = [
+    "automations"
+    "gateway"
+    "openclaw"
+    "sessions_send"
+    "sessions_spawn"
+    "subagents"
+  ];
   approvedTools = [
     "read"
     "write"
@@ -59,6 +68,7 @@ let
     "pdf"
     "image_generate"
     "message"
+    "gateway"
   ];
   sandboxTools = [ "session_status" ] ++ approvedTools;
   camofoxTools = [
@@ -358,7 +368,6 @@ let
     "canvas"
     "nodes"
     "computer"
-    "gateway"
     "skill_workshop"
     "publishing"
     "tts"
@@ -628,6 +637,7 @@ let
     machine_checker=${lib.escapeShellArg (lib.getExe pkgs.openclaw-sandbox-machine-check)}
     runtime_config_directory=${lib.escapeShellArg runtimeConfigDirectory}
     runtime_config=${lib.escapeShellArg runtimeConfig}
+    telegram_owner_id_file=${lib.escapeShellArg telegramOwnerIdFile}
     telegram_group_id_file=${lib.escapeShellArg telegramGroupIdFile}
     telegram_group_allow_from_file=${lib.escapeShellArg telegramGroupAllowFromFile}
     tmp_config=
@@ -642,6 +652,22 @@ let
     if [ -z "''${OPENCLAW_CONFIG_GENERATION:-}" ] || \
       [ ! -f "$OPENCLAW_CONFIG_GENERATION" ] || [ ! -r "$OPENCLAW_CONFIG_GENERATION" ]; then
       printf '%s\n' "refusing to start OpenClaw Gateway: generated config prerequisite is invalid" >&2
+      exit 1
+    fi
+    if [ -L "$telegram_owner_id_file" ] || [ ! -f "$telegram_owner_id_file" ] || \
+      [ ! -r "$telegram_owner_id_file" ] || \
+      [ "$(/usr/bin/stat -f %Lp "$telegram_owner_id_file" 2>/dev/null)" != 600 ] || \
+      [ "$(/usr/bin/stat -f %u "$telegram_owner_id_file" 2>/dev/null)" != "$(/usr/bin/id -u)" ]; then
+      printf '%s\n' "refusing to start OpenClaw Gateway: private Telegram owner configuration is invalid" >&2
+      exit 1
+    fi
+    if ! telegram_owner_id=$(
+      "$jq" -R -s -e -r '
+        (if endswith("\n") then .[:-1] else . end) |
+        select(test("^[1-9][0-9]*$") and (test("[\r\n]") | not))
+      ' "$telegram_owner_id_file" 2>/dev/null
+    ); then
+      printf '%s\n' "refusing to start OpenClaw Gateway: private Telegram owner configuration is invalid" >&2
       exit 1
     fi
     if [ -L "$telegram_group_id_file" ] || [ ! -f "$telegram_group_id_file" ] || \
@@ -677,6 +703,11 @@ let
       ' "$telegram_group_allow_from_file" 2>/dev/null
     ); then
       printf '%s\n' "refusing to start OpenClaw Gateway: private Telegram group configuration is invalid" >&2
+      exit 1
+    fi
+    if ! printf '%s' "$telegram_group_allow_from" |
+      "$jq" -e --arg owner_id "$telegram_owner_id" 'index($owner_id) != null' >/dev/null 2>&1; then
+      printf '%s\n' "refusing to start OpenClaw Gateway: private Telegram owner configuration is invalid" >&2
       exit 1
     fi
     if [ -L "$runtime_config_directory" ] || \
@@ -739,11 +770,16 @@ let
     fi
 
     if ! printf '%s' "$home_assistant_url" |
-      "$jq" -e -s --arg group_id "$telegram_group_id" \
+      "$jq" -e -s --arg owner_id "$telegram_owner_id" \
+        --arg group_id "$telegram_group_id" \
         --argjson group_allow_from "$telegram_group_allow_from" \
+        --argjson owner_restricted_tools ${lib.escapeShellArg (builtins.toJSON ownerRestrictedTools)} \
         --rawfile home_assistant_url /dev/stdin '
       if (length != 1 or (.[0] | type != "object")) then error("invalid config") else .[0] end |
-      .channels.telegram.groups = {($group_id): {requireMention: false}} |
+      .commands.ownerAllowFrom = ["telegram:" + $owner_id] |
+      .commands.allowFrom.telegram = [$owner_id] |
+      .channels.telegram.direct[$owner_id] = {tools: {}} |
+      .channels.telegram.groups = {($group_id): {requireMention: false, toolsBySender: {"*": {deny: $owner_restricted_tools}, ("id:" + $owner_id): {}}}} |
       .channels.telegram.groupPolicy = "allowlist" |
       .channels.telegram.groupAllowFrom = $group_allow_from |
       .mcp.servers["home-assistant"].url = $home_assistant_url
@@ -755,7 +791,7 @@ let
       exit 1
     fi
     tmp_config=
-    unset telegram_group_id telegram_group_allow_from home_assistant_url
+    unset telegram_owner_id telegram_group_id telegram_group_allow_from home_assistant_url
     export OPENCLAW_CONFIG_PATH="$runtime_config"
 
     if ! camofox_key=$(
@@ -1557,6 +1593,7 @@ in
           botToken = secret "TELEGRAM_ALFRED_BOT_TOKEN";
           dmPolicy = "pairing";
           allowFrom = [ ];
+          direct."*".tools.deny = ownerRestrictedTools;
           groupPolicy = "allowlist";
           groupAllowFrom = [ ];
           groups = { };
@@ -1704,11 +1741,14 @@ in
       cloudWorkers.desktop = false;
       commands = {
         bash = false;
-        config = false;
+        config = true;
+        # Config writes remain disabled; Nix retains persistent policy authority.
         debug = false;
-        mcp = false;
-        plugins = false;
-        restart = false;
+        mcp = true;
+        plugins = true;
+        restart = true;
+        ownerAllowFrom = [ ];
+        allowFrom.telegram = [ ];
       };
       logging = {
         level = "info";
@@ -1766,6 +1806,8 @@ in
     EnvironmentVariables = {
       CONTAINER_CONNECTION = "openclaw-sandbox";
       PATH = "${pkgs.podman}/bin:/usr/bin:/bin:/usr/sbin:/sbin";
+      # Config writes stay disabled and Nix remains the persistent config/plugin/update authority.
+      OPENCLAW_NIX_MODE = "1";
       # Deliberately changes the plist when generated OpenClaw config changes, so Home Manager restarts the Gateway.
       OPENCLAW_CONFIG_GENERATION = toString config.home.file.".openclaw/openclaw.json".source;
     };
