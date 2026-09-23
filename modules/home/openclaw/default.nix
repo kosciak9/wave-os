@@ -73,6 +73,11 @@ let
     "camofox_list_tabs"
   ];
   camofoxTextTools = lib.filter (tool: tool != "camofox_screenshot") camofoxTools;
+  browserTools = [
+    "web_search"
+    "web_fetch"
+  ]
+  ++ camofoxTextTools;
   macAppsMcpReadTools = [
     "mail_list_accounts"
     "mail_list_mailboxes"
@@ -1140,7 +1145,7 @@ in
         };
         entries.browser = {
           name = "Browser";
-          description = "Obsługuje delegowane operacje przeglądarkowe przez Camofox i zwraca zwięzły, faktyczny wynik.";
+          description = "Wykonuje delegowane wyszukiwanie i pobieranie stron, a Camofox stosuje wyłącznie jako ostateczność dla zadań dynamicznych, interaktywnych lub uwierzytelnionych; zwraca zwięzły, faktyczny wynik.";
           workspace = browserWorkspace;
           model = {
             primary = "opencode-go/deepseek-v4-flash";
@@ -1156,7 +1161,7 @@ in
           };
           identity = {
             name = "Browser";
-            theme = "Zwięzły, rzeczowy i dyskretny — wykonuje wyłącznie delegowane operacje przeglądarkowe przez Camofox i zwraca zwięzły, faktyczny wynik.";
+            theme = "Zwięzły, rzeczowy i dyskretny — najpierw używa web_search i web_fetch, a Camofox tylko wtedy, gdy wyszukiwanie i pobieranie nie wystarczą; bezpośrednie zadania interaktywne wykonuje bez zbędnego wyszukiwania.";
             emoji = "🌐";
           };
           sandbox = {
@@ -1168,9 +1173,9 @@ in
           skills = [ ];
           subagents.allowAgents = [ ];
           tools = {
-            allow = camofoxTextTools;
+            allow = browserTools;
             deny = [ "view_image" ];
-            sandbox.tools.allow = camofoxTextTools;
+            sandbox.tools.allow = browserTools;
           };
         };
       };
