@@ -83,7 +83,9 @@ let
     "camofox_list_tabs"
   ];
   camofoxTextTools = lib.filter (tool: tool != "camofox_screenshot") camofoxTools;
+  # Read is only exposed so the embedded browser runtime can load browser-research skill instructions.
   browserTools = [
+    "read"
     "web_search"
     "web_fetch"
   ]
@@ -910,15 +912,17 @@ in
 
   imports = [ ./darwin.nix ];
 
-  home.activation.openclawRuntimeStateDirectoryMaintenance =
-    lib.hm.dag.entryAfter [ "writeBoundary" ]
-      ''
-        ${install} -d -m 0700 -- "${state}" "${state}/logs" "${browserWorkspace}"
-      '';
+  home = {
+    activation.openclawRuntimeStateDirectoryMaintenance = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      ${install} -d -m 0700 -- "${state}" "${state}/logs" "${browserWorkspace}"
+    '';
 
-  home.packages = [
-    (lib.hiPrio openclawCliWrapper)
-  ];
+    packages = [
+      (lib.hiPrio openclawCliWrapper)
+    ];
+
+    file.".openclaw/skills/browser-research".source = ./skills/browser-research;
+  };
 
   programs.openclaw = {
     enable = true;
@@ -1050,9 +1054,13 @@ in
           contextInjection = "continuation-skip";
           model = {
             primary = "openai/gpt-6-astra";
-            fallbacks = [ "openai/gpt-6-sol" ];
+            fallbacks = [
+              "openai/gpt-6-sol"
+              "opencode-go/qwen3.8-max"
+              "opencode-go/deepseek-v4-pro"
+            ];
           };
-          utilityModel = "openai/gpt-6-luna";
+          utilityModel = "opencode-go/deepseek-v4-flash";
           modelSelectionScope = "session";
           thinkingDefault = "medium";
           fastModeDefault = "auto";
@@ -1069,7 +1077,7 @@ in
             memoryFlush = {
               enabled = true;
               softThresholdTokens = 4000;
-              model = "openai/gpt-6-luna";
+              model = "opencode-go/deepseek-v4-flash";
             };
             notifyUser = false;
             thinkingLevel = "inherit";
@@ -1083,11 +1091,11 @@ in
           };
           imageModel = {
             primary = "openai/gpt-6-sol";
-            fallbacks = [ ];
+            fallbacks = [ "opencode-go/qwen3.8-max" ];
           };
           pdfModel = {
             primary = "openai/gpt-6-sol";
-            fallbacks = [ ];
+            fallbacks = [ "opencode-go/qwen3.8-max" ];
           };
           pdfMaxMb = 20;
           pdfMaxPages = 100;
@@ -1112,11 +1120,23 @@ in
               agentRuntime.id = "openclaw";
               codeMode = false;
             };
+            "opencode-go/qwen3.8-max" = {
+              alias = "qwen";
+              agentRuntime.id = "openclaw";
+              codeMode = false;
+            };
+            "opencode-go/deepseek-v4-pro" = {
+              alias = "deepseek-pro";
+              agentRuntime.id = "openclaw";
+              codeMode = false;
+            };
           };
           modelPolicy.allow = [
             "openai/gpt-6-astra"
             "openai/gpt-6-sol"
             "openai/gpt-6-luna"
+            "opencode-go/qwen3.8-max"
+            "opencode-go/deepseek-v4-pro"
             "opencode-go/deepseek-v4-flash"
           ];
           heartbeat = {
@@ -1187,7 +1207,7 @@ in
         };
         entries.browser = {
           name = "Browser";
-          description = "Wykonuje delegowane wyszukiwanie i pobieranie stron, a Camofox stosuje wyłącznie jako ostateczność dla zadań dynamicznych, interaktywnych lub uwierzytelnionych; zwraca zwięzły, faktyczny wynik.";
+          description = "Delegowany agent dobierający web_search, web_fetch lub Camofox do charakteru zadania i zwracający zwięzłe, zweryfikowane ustalenia.";
           workspace = browserWorkspace;
           model = {
             primary = "openai/gpt-6-luna";
@@ -1206,7 +1226,7 @@ in
           };
           identity = {
             name = "Browser";
-            theme = "Zwięzły, rzeczowy i dyskretny — najpierw używa web_search i web_fetch, a Camofox tylko wtedy, gdy wyszukiwanie i pobieranie nie wystarczą; bezpośrednie zadania interaktywne wykonuje bez zbędnego wyszukiwania.";
+            theme = "Zwięzły, rzeczowy i dyskretny — dobiera narzędzia do charakteru zadania, sprawdza źródła i jasno sygnalizuje ograniczenia.";
             emoji = "🌐";
           };
           sandbox = {
@@ -1215,12 +1235,13 @@ in
             workspaceAccess = "none";
             workspaceRoot = browserWorkspace;
           };
-          skills = [ ];
+          skills = [ "browser-research" ];
           subagents.allowAgents = [ ];
           tools = {
             allow = browserTools;
             deny = [ "view_image" ];
             sandbox.tools.allow = browserTools;
+            sandbox.tools.deny = [ "view_image" ];
           };
         };
       };

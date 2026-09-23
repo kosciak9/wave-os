@@ -1,14 +1,16 @@
 ---
 name: browser-delegation
-description: Delegate browser and Camofox work to the independently privileged browser agent.
+description: Delegate browser research and interaction to the independently privileged browser agent.
 ---
 
 # Browser delegation
 
 Alfred must never use Camofox directly. Delegate browser work with `sessions_send` to `agentId="browser"`, using a bounded timeout (for example, `timeoutSeconds=120`); do not use `sessions_spawn`. Check the browser agent's result, then summarize the verified outcome for the user.
 
-Use the least-context tool that can complete the task:
+The browser agent chooses and composes tools according to the task:
 
-- For research and search tasks, instruct the browser agent to use `web_search` first, then `web_fetch` for specific pages when needed.
-- Use Camofox only as a last resort when search and fetching cannot accomplish the task, such as dynamic, interactive, or authenticated behavior.
-- Directly interactive tasks may use Camofox without pointless searching.
+- `web_search` is broad and low-overhead: use it to discover current information, locate candidate sources, and gather snippets. Results can be incomplete or lack page detail.
+- `web_fetch` is efficient for extracting detail from known URLs, but is limited by dynamic pages, authentication, and pages that resist extraction.
+- Camofox is stateful and suited to dynamic or interactive pages, authentication, forms, and other browser actions; it has higher latency and context/state overhead.
+
+These are task-dependent options, not a mandatory sequence. Search and fetch may be combined when useful, while a direct interactive task may go straight to Camofox. Report the approach used and any source, access, or material limitations.
