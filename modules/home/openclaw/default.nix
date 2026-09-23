@@ -1230,9 +1230,16 @@ in
         providers = {
           "opencode-go".apiKey = secret "OPENCODE_API_KEY";
           openai.models = [
+            {
+              id = "gpt-6-astra";
+              name = "GPT-6 Astra";
+              contextWindow = 872000;
+              contextTokens = 700000;
+            }
             # Client 0.153.4 omits these names; tested 0.155.1 advertises them.
             # Explicit rows use the verified OAuth ChatGPT route and account max context 872000.
             # Prices are API-reference estimates, not subscription billing.
+            # Keep primary and fallback at the same verified subscription input budget.
             {
               id = "gpt-6-sol";
               name = "GPT-6 Sol";
@@ -1243,7 +1250,7 @@ in
                 "image"
               ];
               contextWindow = 872000;
-              contextTokens = 272000;
+              contextTokens = 700000;
               maxTokens = 128000;
               cost = {
                 input = 2;
