@@ -1013,10 +1013,10 @@ in
           skipBootstrap = true;
           contextInjection = "continuation-skip";
           model = {
-            primary = "openai/gpt-5.6-sol";
-            fallbacks = [ ];
+            primary = "openai/gpt-6-astra";
+            fallbacks = [ "openai/gpt-6-sol" ];
           };
-          utilityModel = "openai/gpt-5.6-luna";
+          utilityModel = "openai/gpt-6-luna";
           modelSelectionScope = "session";
           thinkingDefault = "medium";
           fastModeDefault = "auto";
@@ -1033,7 +1033,7 @@ in
             memoryFlush = {
               enabled = true;
               softThresholdTokens = 4000;
-              model = "openai/gpt-5.6-luna";
+              model = "openai/gpt-6-luna";
             };
             notifyUser = false;
             thinkingLevel = "inherit";
@@ -1046,35 +1046,41 @@ in
             };
           };
           imageModel = {
-            primary = "openai/gpt-5.6-sol";
+            primary = "openai/gpt-6-sol";
             fallbacks = [ ];
           };
           pdfModel = {
-            primary = "openai/gpt-5.6-sol";
+            primary = "openai/gpt-6-sol";
             fallbacks = [ ];
           };
           pdfMaxMb = 20;
           pdfMaxPages = 100;
           models = {
-            "openai/gpt-5.6-sol" = {
+            "openai/gpt-6-astra" = {
+              alias = "astra";
+              agentRuntime.id = "openclaw";
+              codeMode = false;
+            };
+            "openai/gpt-6-sol" = {
               alias = "sol";
               agentRuntime.id = "openclaw";
               codeMode = false;
             };
-            "openai/gpt-5.6-luna" = {
+            "openai/gpt-6-luna" = {
               alias = "luna";
               agentRuntime.id = "openclaw";
               codeMode = false;
             };
             "opencode-go/deepseek-v4-flash" = {
-              alias = "browser";
+              alias = "deepseek";
               agentRuntime.id = "openclaw";
               codeMode = false;
             };
           };
           modelPolicy.allow = [
-            "openai/gpt-5.6-sol"
-            "openai/gpt-5.6-luna"
+            "openai/gpt-6-astra"
+            "openai/gpt-6-sol"
+            "openai/gpt-6-luna"
             "opencode-go/deepseek-v4-flash"
           ];
           heartbeat = {
@@ -1148,10 +1154,13 @@ in
           description = "Wykonuje delegowane wyszukiwanie i pobieranie stron, a Camofox stosuje wyłącznie jako ostateczność dla zadań dynamicznych, interaktywnych lub uwierzytelnionych; zwraca zwięzły, faktyczny wynik.";
           workspace = browserWorkspace;
           model = {
-            primary = "opencode-go/deepseek-v4-flash";
-            fallbacks = [ ];
+            primary = "openai/gpt-6-luna";
+            fallbacks = [ "opencode-go/deepseek-v4-flash" ];
           };
-          modelPolicy.allow = [ "opencode-go/deepseek-v4-flash" ];
+          modelPolicy.allow = [
+            "openai/gpt-6-luna"
+            "opencode-go/deepseek-v4-flash"
+          ];
           utilityModel = "";
           thinkingDefault = "low";
           fastModeDefault = false;
@@ -1182,37 +1191,157 @@ in
 
       models = {
         mode = "merge";
-        providers."opencode-go".apiKey = secret "OPENCODE_API_KEY";
-        providers.llama-cpp = {
-          baseUrl = "http://127.0.0.1:19432/v1";
-          api = "openai-completions";
-          localService = {
-            command = lib.getExe pkgs.openclaw-llama-server;
-            healthUrl = "http://127.0.0.1:19432/health";
-            readyTimeoutMs = 30000;
-            idleStopMs = 600000;
-            args = [
-              "--host"
-              "127.0.0.1"
-              "--port"
-              "19432"
-              "--model"
-              "${pkgs.openclaw-embeddinggemma}/share/openclaw/models/embeddinggemma-300m-qat-Q8_0.gguf"
-              "--embedding"
-              "--cache-ram"
-              "0"
-              "--no-cache-prompt"
-              "--ubatch-size"
-              "1024"
-              "--batch-size"
-              "1024"
-              "--parallel"
-              "1"
-              "--metrics"
-              "--no-ui"
-            ];
+        providers = {
+          "opencode-go".apiKey = secret "OPENCODE_API_KEY";
+          openai.models = [
+            # Client 0.153.4 omits these names; tested 0.155.1 advertises them.
+            # Explicit rows use the verified OAuth ChatGPT route and account max context 872000.
+            # Prices are API-reference estimates, not subscription billing.
+            {
+              id = "gpt-6-sol";
+              name = "GPT-6 Sol";
+              api = "openai-chatgpt-responses";
+              reasoning = true;
+              input = [
+                "text"
+                "image"
+              ];
+              contextWindow = 872000;
+              contextTokens = 272000;
+              maxTokens = 128000;
+              cost = {
+                input = 2;
+                output = 10;
+                cacheRead = 0.2;
+                cacheWrite = 2.5;
+                tieredPricing = [
+                  {
+                    range = [
+                      0
+                      272001
+                    ];
+                    input = 2;
+                    output = 10;
+                    cacheRead = 0.2;
+                    cacheWrite = 2.5;
+                  }
+                  {
+                    range = [ 272001 ];
+                    input = 4;
+                    output = 15;
+                    cacheRead = 0.4;
+                    cacheWrite = 5;
+                  }
+                ];
+              };
+              thinkingLevelMap = {
+                off = "none";
+                xhigh = "xhigh";
+                max = "max";
+              };
+              compat = {
+                supportsReasoningEffort = true;
+                supportsTemperature = false;
+                supportedReasoningEfforts = [
+                  "none"
+                  "low"
+                  "medium"
+                  "high"
+                  "xhigh"
+                  "max"
+                ];
+                codeMode = "preferred";
+              };
+            }
+            {
+              id = "gpt-6-luna";
+              name = "GPT-6 Luna";
+              api = "openai-chatgpt-responses";
+              reasoning = true;
+              input = [
+                "text"
+                "image"
+              ];
+              contextWindow = 872000;
+              # 700000 input tokens tested successfully through the subscription route.
+              contextTokens = 700000;
+              maxTokens = 128000;
+              cost = {
+                input = 0.1;
+                output = 0.5;
+                cacheRead = 0.01;
+                cacheWrite = 0.125;
+                tieredPricing = [
+                  {
+                    range = [
+                      0
+                      272001
+                    ];
+                    input = 0.1;
+                    output = 0.5;
+                    cacheRead = 0.01;
+                    cacheWrite = 0.125;
+                  }
+                  {
+                    range = [ 272001 ];
+                    input = 0.2;
+                    output = 0.75;
+                    cacheRead = 0.02;
+                    cacheWrite = 0.25;
+                  }
+                ];
+              };
+              thinkingLevelMap = {
+                off = "none";
+                xhigh = "xhigh";
+                max = "max";
+              };
+              compat = {
+                supportsReasoningEffort = true;
+                supportsTemperature = false;
+                supportedReasoningEfforts = [
+                  "none"
+                  "low"
+                  "medium"
+                  "high"
+                  "xhigh"
+                  "max"
+                ];
+                codeMode = "preferred";
+              };
+            }
+          ];
+          llama-cpp = {
+            baseUrl = "http://127.0.0.1:19432/v1";
+            api = "openai-completions";
+            localService = {
+              command = lib.getExe pkgs.openclaw-llama-server;
+              healthUrl = "http://127.0.0.1:19432/health";
+              readyTimeoutMs = 30000;
+              idleStopMs = 600000;
+              args = [
+                "--host"
+                "127.0.0.1"
+                "--port"
+                "19432"
+                "--model"
+                "${pkgs.openclaw-embeddinggemma}/share/openclaw/models/embeddinggemma-300m-qat-Q8_0.gguf"
+                "--embedding"
+                "--cache-ram"
+                "0"
+                "--no-cache-prompt"
+                "--ubatch-size"
+                "1024"
+                "--batch-size"
+                "1024"
+                "--parallel"
+                "1"
+                "--metrics"
+                "--no-ui"
+              ];
+            };
+            models = [ ];
           };
-          models = [ ];
         };
       };
 
@@ -1384,7 +1513,7 @@ in
                 mode = "escalate";
                 agents = [ "main" ];
                 allowedChatTypes = [ "direct" ];
-                model = "openai/gpt-5.6-luna";
+                model = "openai/gpt-6-luna";
                 thinking = "off";
                 fastMode = "auto";
                 queryMode = "recent";
