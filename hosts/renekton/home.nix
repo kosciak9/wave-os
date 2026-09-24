@@ -1,4 +1,4 @@
-{ ... }:
+{ lib, ... }:
 {
   imports = [
     ../../modules/home/openclaw
@@ -24,6 +24,13 @@
     username = "kosciak";
     homeDirectory = "/Users/kosciak";
     stateVersion = "26.05";
+    activation.switchStatus = lib.hm.dag.entryBefore [ "writeBoundary" ] ''
+      printf 'Home Manager activation started (PID %s, %s).\n' "$$" "$(/bin/date "+%Y-%m-%dT%H:%M:%S%z")" >&2
+      if [[ "$(/bin/launchctl managername)" != Aqua ]]; then
+        /usr/bin/osascript -e 'display notification "Home Manager activation started. Check macOS for permission prompts." with title "Nix switch"' \
+          >/dev/null 2>&1 </dev/null || true
+      fi
+    '';
   };
   programs = {
     home-manager.enable = true;
@@ -42,6 +49,10 @@
       macos-icon = "custom";
       macos-custom-icon = "~/.config/secrets/kanagawa-wave-ghostty.icns";
     };
+  };
+  targets.darwin = {
+    linkApps.enable = true;
+    copyApps.enable = false;
   };
   xdg.enable = true;
 }
