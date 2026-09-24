@@ -390,6 +390,7 @@ let
     "llama-cpp"
     "camofox-browser"
     "opencode-go"
+    "openrouter"
     "document-extract"
     "web-readability"
     "device-pair"
@@ -434,7 +435,6 @@ let
     "oc-path"
     "ollama"
     "onepassword"
-    "openrouter"
     "policy"
     "reef"
     "runway"
@@ -1063,6 +1063,10 @@ in
               "openai/gpt-6-luna"
               "opencode-go/deepseek-v4-flash"
               "opencode-go/deepseek-v4-pro"
+              "openrouter/deepseek/deepseek-v4-flash-0731"
+              "openrouter/z-ai/glm-5.3-flash"
+              "opencode-go/space-bunny-free"
+              "openrouter/openrouter/free"
             ];
           };
           utilityModel = "opencode-go/deepseek-v4-flash";
@@ -1135,6 +1139,26 @@ in
               agentRuntime.id = "openclaw";
               codeMode = false;
             };
+            "opencode-go/space-bunny-free" = {
+              alias = "space-bunny-free";
+              agentRuntime.id = "openclaw";
+              codeMode = false;
+            };
+            "openrouter/deepseek/deepseek-v4-flash-0731" = {
+              alias = "openrouter-deepseek";
+              agentRuntime.id = "openclaw";
+              codeMode = false;
+            };
+            "openrouter/z-ai/glm-5.3-flash" = {
+              alias = "openrouter-glm";
+              agentRuntime.id = "openclaw";
+              codeMode = false;
+            };
+            "openrouter/openrouter/free" = {
+              alias = "openrouter-free";
+              agentRuntime.id = "openclaw";
+              codeMode = false;
+            };
           };
           modelPolicy.allow = [
             "openai/gpt-6-astra"
@@ -1143,6 +1167,10 @@ in
             "opencode-go/qwen3.8-max"
             "opencode-go/deepseek-v4-pro"
             "opencode-go/deepseek-v4-flash"
+            "opencode-go/space-bunny-free"
+            "openrouter/deepseek/deepseek-v4-flash-0731"
+            "openrouter/z-ai/glm-5.3-flash"
+            "openrouter/openrouter/free"
           ];
           heartbeat = {
             every = "0m";
@@ -1219,12 +1247,20 @@ in
             fallbacks = [
               "opencode-go/deepseek-v4-flash"
               "opencode-go/deepseek-v4-pro"
+              "openrouter/deepseek/deepseek-v4-flash-0731"
+              "openrouter/z-ai/glm-5.3-flash"
+              "opencode-go/space-bunny-free"
+              "openrouter/openrouter/free"
             ];
           };
           modelPolicy.allow = [
             "openai/gpt-6-luna"
             "opencode-go/deepseek-v4-flash"
             "opencode-go/deepseek-v4-pro"
+            "openrouter/deepseek/deepseek-v4-flash-0731"
+            "openrouter/z-ai/glm-5.3-flash"
+            "opencode-go/space-bunny-free"
+            "openrouter/openrouter/free"
           ];
           utilityModel = "";
           thinkingDefault = "low";
