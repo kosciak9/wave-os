@@ -2,11 +2,9 @@ import { execFile, spawn } from "node:child_process";
 import { basename } from "node:path";
 
 const MIN_DURATION_SECONDS = 0;
-const PERMISSION_DEDUPE_MS = 1000;
 const IDLE_COMPLETE_DELAY_MS = 350;
 
 const MESSAGES = {
-  permission: "Permission requested: {details}",
   complete: "Turn complete: {sessionTitle}",
   subagent_complete: "Subagent complete: {sessionTitle}",
   error: "Error: {details}",
@@ -20,8 +18,6 @@ const MESSAGES = {
 
 const pendingIdleTimers = new Map();
 const subagentSessionIDs = new Set();
-const permissionLastSeenBySession = new Map();
-let permissionLastSeenAt = 0;
 
 function asRecord(value) {
   return value && typeof value === "object" ? value : {};
@@ -85,19 +81,6 @@ function shouldSuppressByDuration(eventType, elapsedSeconds) {
   return typeof elapsedSeconds === "number" && elapsedSeconds < MIN_DURATION_SECONDS;
 }
 
-function shouldSuppressPermission(sessionID, now = Date.now()) {
-  const sessionLastSeenAt = sessionID ? permissionLastSeenBySession.get(sessionID) : undefined;
-  const lastSeenAt = Math.max(permissionLastSeenAt, sessionLastSeenAt ?? 0);
-
-  if (lastSeenAt > 0 && now - lastSeenAt < PERMISSION_DEDUPE_MS) {
-    return true;
-  }
-
-  permissionLastSeenAt = now;
-  if (sessionID) permissionLastSeenBySession.set(sessionID, now);
-  return false;
-}
-
 function extractAgentName(sessionTitle) {
   const match = sessionTitle?.match(/\s*\(@([^\s)]+)\s+subagent\)\s*$/);
   return match?.[1] ?? "";
@@ -134,7 +117,6 @@ function notificationTitle(projectName) {
 
 function notificationStage(eventType) {
   return {
-    permission: "Permission requested",
     complete: "Turn complete",
     subagent_complete: "Subagent complete",
     error: "Error",
@@ -204,32 +186,6 @@ async function handleEvent(client, eventType, projectName, options = {}) {
   await sendNotification(eventType, projectName, message);
 }
 
-function permissionDetails(value) {
-  const record = asRecord(value);
-  const properties = asRecord(record.properties ?? value);
-  const permission = getString(properties.permission) ?? getString(record.permission) ?? "permission";
-  const patterns = Array.isArray(properties.patterns)
-    ? properties.patterns.filter((pattern) => typeof pattern === "string")
-    : [];
-
-  return patterns.length > 0 ? `${permission} - ${patterns.join(", ")}` : permission;
-}
-
-export async function sendPermissionNotification({ directory, request }) {
-  const record = asRecord(request);
-  const sessionID = getString(record.sessionID);
-  if (shouldSuppressPermission(sessionID)) return;
-
-  const projectName = directory ? basename(directory) : "";
-  const message = formatMessage("permission", {
-    projectName,
-    timestamp: formatTimestamp(),
-    details: permissionDetails(request),
-  });
-
-  await sendNotification("permission", projectName, message);
-}
-
 function errorDetails(event) {
   const error = asRecord(asRecord(event.properties).error);
   return getString(error.message) ?? getString(error.name) ?? "session error";
@@ -296,7 +252,7 @@ async function processIdle(client, projectName, event, sessionID, idleReceivedAt
   });
 }
 
-export const NotifyPlugin = async ({ client, directory }) => {
+const NotifyPlugin = async ({ client, directory }) => {
   const projectName = directory ? basename(directory) : "";
 
   setTimeout(() => {
@@ -386,4 +342,5 @@ export const NotifyPlugin = async ({ client, directory }) => {
   };
 };
 
+// Keep server helpers private: OpenCode treats every named export as a separate plugin.
 export default NotifyPlugin;

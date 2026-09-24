@@ -1,4 +1,4 @@
-import { sendPermissionNotification } from "./index.js";
+import { sendPermissionNotification } from "./permission.js";
 
 const PLUGIN_ID = "wave-os-notify";
 
