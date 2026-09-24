@@ -1053,10 +1053,12 @@ in
           skipBootstrap = true;
           contextInjection = "continuation-skip";
           model = {
-            primary = "openai/gpt-6-astra";
+            # Keep expensive frontier models opt-in; route routine work through
+            # the efficient GPT-6 tier before OpenCode Go fallbacks.
+            primary = "openai/gpt-6-sol";
             fallbacks = [
-              "openai/gpt-6-sol"
-              "opencode-go/qwen3.8-max"
+              "openai/gpt-6-luna"
+              "opencode-go/deepseek-v4-flash"
               "opencode-go/deepseek-v4-pro"
             ];
           };
@@ -1211,11 +1213,15 @@ in
           workspace = browserWorkspace;
           model = {
             primary = "openai/gpt-6-luna";
-            fallbacks = [ "opencode-go/deepseek-v4-flash" ];
+            fallbacks = [
+              "opencode-go/deepseek-v4-flash"
+              "opencode-go/deepseek-v4-pro"
+            ];
           };
           modelPolicy.allow = [
             "openai/gpt-6-luna"
             "opencode-go/deepseek-v4-flash"
+            "opencode-go/deepseek-v4-pro"
           ];
           utilityModel = "";
           thinkingDefault = "low";
