@@ -3,3 +3,5 @@
 /devenv.local.nix
 /devenv.local.yaml
 .playwright-mcp
+__pycache__/
+*.pyc

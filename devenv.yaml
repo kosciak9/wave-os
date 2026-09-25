@@ -3,3 +3,5 @@ shell: zsh
 inputs:
   nixpkgs:
     url: github:NixOS/nixpkgs/nixos-unstable
+  deploy-rs:
+    url: github:serokell/deploy-rs/e760371d631165e7d8de5b0dcf148e21ec4c16f0

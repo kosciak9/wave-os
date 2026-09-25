@@ -3,6 +3,7 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    deploy-rs.url = "github:serokell/deploy-rs/e760371d631165e7d8de5b0dcf148e21ec4c16f0";
     devenv-nixpkgs.url = "github:NixOS/nixpkgs/34ab99075ac4f7e40cf037eef32cb1c360bb85e9";
     # Vicinae intentionally keeps its release-tested Nixpkgs pin; following repository Nixpkgs triggers the known qtkeychain Darwin ld64 crash.
     vicinae = {
@@ -67,6 +68,7 @@
 
   outputs =
     inputs@{
+      self,
       nixpkgs,
       nixos-hardware,
       home-manager,
@@ -142,6 +144,11 @@
       kanagawa-kvantum = pkgs.callPackage ./packages/kanagawa-kvantum.nix {
         src = inputs.kanagawa-kvantum;
       };
+      deployment = import ./tools/deploy-renekton.nix {
+        pkgs = darwinPkgs;
+        deployLib = inputs.deploy-rs.lib.${darwinSystem};
+        configuration = self.darwinConfigurations.renekton;
+      };
     in
     {
       # TODO: Generated manuals remain enabled despite Determinate Nix's contextless options.json warning.
@@ -210,6 +217,9 @@
         inherit (pkgs) camofox-browser-cli;
       };
       packages.${darwinSystem} = {
+        deploy-rs = inputs.deploy-rs.packages.${darwinSystem}.deploy-rs;
+        wave-deploy-sudo = deployment.sudoWrapper;
+        wave-deploy-root = deployment.rootStdio;
         inherit (darwinPkgs)
           openclaw-sandbox-machine-check
           openclaw-languagetool-mcp-context
@@ -225,5 +235,7 @@
           camofox-browser-cli
           ;
       };
+      deploy.nodes.renekton = deployment.node;
+      checks.${darwinSystem} = inputs.deploy-rs.lib.${darwinSystem}.deployChecks self.deploy;
     };
 }

@@ -1,4 +1,9 @@
-{ pkgs, ... }:
+{
+  pkgs,
+  inputs,
+  config,
+  ...
+}:
 {
   packages = with pkgs; [
     deadnix
@@ -15,9 +20,15 @@
     nixfmt
     nvd
     statix
+    python3
+    inputs.deploy-rs.packages.${pkgs.stdenv.hostPlatform.system}.deploy-rs
   ];
 
   scripts = {
+    wave.exec = ''
+      exec ${pkgs.python3}/bin/python3 "${config.devenv.root}/tools/wave.py" "$@"
+    '';
+
     nix-format.exec = ''
       set -euo pipefail
       if (($# > 0)); then
