@@ -77,7 +77,7 @@
       "permission": {},
     },
     "plain-coder": {
-      "model": "openai/gpt-6-terra-fast",
+      "model": "openai/gpt-6-sol-fast",
       "permission": {
         "edit": "allow",
       },
@@ -112,7 +112,7 @@
       },
     },
     "file-level-code-reviewer": {
-      "model": "openai/gpt-6-terra-fast",
+      "model": "openai/gpt-6-sol-fast",
       "permission": {
         "readGuideline": "allow",
         "listGuidelines": "allow",
