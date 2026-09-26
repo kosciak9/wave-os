@@ -12,7 +12,7 @@ permissions:
 jobs:
   nix-validate:
     name: nix-validate
-    runs-on: macos-15
+    runs-on: blacksmith-6vcpu-macos-15
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -33,10 +33,10 @@ jobs:
 
   betterleaks:
     name: betterleaks
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: useblacksmith/checkout@v1
         with:
           fetch-depth: 0
           persist-credentials: false
