@@ -83,6 +83,7 @@
         {
           plannotator = final.callPackage ./packages/plannotator.nix { };
           opencode = final.callPackage ./packages/opencode-darwin.nix { };
+          opencode2 = final.callPackage ./packages/opencode2.nix { };
           kanagawa-gtk-theme = final.callPackage ./packages/kanagawa-gtk-theme.nix { };
           openclaw-sandbox-machine-check =
             final.callPackage ./packages/openclaw-sandbox-machine-check.nix

@@ -3,8 +3,16 @@
 {
   home.packages = [
     pkgs.opencode
+    pkgs.opencode2
     pkgs.camofox-browser-cli
   ];
+
+  # Keep the v2 installation completely separate from the v1 XDG config.
+  home.file.".config/opencode-v2/opencode" = {
+    source = ./config-v2;
+    force = true;
+    recursive = true;
+  };
 
   xdg.configFile = {
     "opencode/agent" = {
