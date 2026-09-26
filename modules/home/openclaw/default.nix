@@ -1065,7 +1065,6 @@ in
               "opencode-go/deepseek-v4-pro"
               "openrouter/deepseek/deepseek-v4-flash-0731"
               "openrouter/z-ai/glm-5.3-flash"
-              "opencode-go/space-bunny-free"
               "openrouter/openrouter/free"
             ];
           };
@@ -1139,11 +1138,6 @@ in
               agentRuntime.id = "openclaw";
               codeMode = false;
             };
-            "opencode-go/space-bunny-free" = {
-              alias = "space-bunny-free";
-              agentRuntime.id = "openclaw";
-              codeMode = false;
-            };
             "openrouter/deepseek/deepseek-v4-flash-0731" = {
               alias = "openrouter-deepseek";
               agentRuntime.id = "openclaw";
@@ -1167,7 +1161,6 @@ in
             "opencode-go/qwen3.8-max"
             "opencode-go/deepseek-v4-pro"
             "opencode-go/deepseek-v4-flash"
-            "opencode-go/space-bunny-free"
             "openrouter/deepseek/deepseek-v4-flash-0731"
             "openrouter/z-ai/glm-5.3-flash"
             "openrouter/openrouter/free"
@@ -1249,7 +1242,6 @@ in
               "opencode-go/deepseek-v4-pro"
               "openrouter/deepseek/deepseek-v4-flash-0731"
               "openrouter/z-ai/glm-5.3-flash"
-              "opencode-go/space-bunny-free"
               "openrouter/openrouter/free"
             ];
           };
@@ -1259,7 +1251,6 @@ in
             "opencode-go/deepseek-v4-pro"
             "openrouter/deepseek/deepseek-v4-flash-0731"
             "openrouter/z-ai/glm-5.3-flash"
-            "opencode-go/space-bunny-free"
             "openrouter/openrouter/free"
           ];
           utilityModel = "";
