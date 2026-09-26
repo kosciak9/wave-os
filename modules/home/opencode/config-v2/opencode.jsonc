@@ -1,0 +1,66 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugins": [
+    {
+      "package": "@plannotator/opencode@0.27.20",
+      "options": {
+        "workflow": "plan-agent",
+        "planningAgents": ["brainstorm-planner"],
+        "runtime": "cli",
+      },
+    },
+    {
+      "package": "cc-safety-net@2.4.7",
+      "options": { "shell": "posix" },
+    },
+    "./plugins/codex-websearch",
+  ],
+  "mcp": {
+    "servers": {
+      "context7": {
+        "type": "local",
+        "command": [
+          "sh",
+          "-c",
+          "if CONTEXT7_API_KEY=$(pass show context7.com/api-key 2>/dev/null); then export CONTEXT7_API_KEY; else unset CONTEXT7_API_KEY; fi; exec npx -y @upstash/context7-mcp@4.1.1",
+        ],
+        "disabled": false,
+      },
+      "linear": {
+        "type": "remote",
+        "url": "https://mcp.linear.app/mcp",
+        "disabled": false,
+      },
+    },
+  },
+  "permissions": [
+    { "action": "shell", "resource": "*", "effect": "allow" },
+    { "action": "edit", "resource": "*", "effect": "deny" },
+    { "action": "linear_*", "resource": "*", "effect": "deny" },
+  ],
+  "agents": {
+    "brainstorm-planner": { "model": "openai/gpt-6-sol-fast#xhigh", "permissions": [] },
+    "build-orchiestrator": { "model": "openai/gpt-6-sol-fast#xhigh", "permissions": [] },
+    "plain-coder": {
+      "model": "openai/gpt-6-terra-fast",
+      "permissions": [{ "action": "edit", "resource": "*", "effect": "allow" }],
+    },
+    "builder": {
+      "model": "openai/gpt-6-luna-fast",
+      "permissions": [{ "action": "edit", "resource": "*", "effect": "allow" }],
+    },
+    "explorer": { "model": "openai/gpt-6-luna-fast", "permissions": [] },
+    "manual-tester": {
+      "model": "openai/gpt-6-luna-fast",
+      "permissions": [{ "action": "context7_*", "resource": "*", "effect": "deny" }],
+    },
+    "linear": {
+      "model": "openai/gpt-6-luna-fast",
+      "permissions": [{ "action": "linear_*", "resource": "*", "effect": "allow" }],
+    },
+    "build": { "disabled": true },
+    "plan": { "disabled": true },
+    "general": { "disabled": true },
+    "explore": { "disabled": true },
+  },
+}

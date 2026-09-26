@@ -10,6 +10,10 @@ let
     homeDirectory = config.home.homeDirectory;
     profileDirectory = config.home.profileDirectory;
   };
+  server2 = pkgs.callPackage ../../../packages/opencode2-server.nix {
+    homeDirectory = config.home.homeDirectory;
+    profileDirectory = config.home.profileDirectory;
+  };
 in
 {
   systemd.user.services.opencode = {
@@ -17,6 +21,18 @@ in
     Service = {
       Type = "simple";
       ExecStart = lib.getExe server;
+      Restart = "always";
+      RestartSec = 5;
+      TimeoutStopSec = 20;
+    };
+    Install.WantedBy = [ "default.target" ];
+  };
+
+  systemd.user.services.opencode2 = {
+    Unit.Description = "OpenCode v2 headless server";
+    Service = {
+      Type = "simple";
+      ExecStart = lib.getExe server2;
       Restart = "always";
       RestartSec = 5;
       TimeoutStopSec = 20;
