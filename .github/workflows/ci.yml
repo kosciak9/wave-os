@@ -30,3 +30,28 @@ jobs:
         run: devenv shell -- nix-eval jayce
       - name: Run nix-eval renekton
         run: devenv shell -- nix-eval renekton
+
+  betterleaks:
+    name: betterleaks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+      - name: Configure devenv cache
+        uses: cachix/cachix-action@v16
+        with:
+          name: devenv
+      - name: Install devenv
+        run: nix profile add nixpkgs#devenv
+      - name: Run betterleaks
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            devenv shell -- betterleaks git . --log-opts="--full-history ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}" --redact --ignore-gitleaks-allow
+          else
+            devenv shell -- betterleaks git . --redact --ignore-gitleaks-allow
+          fi

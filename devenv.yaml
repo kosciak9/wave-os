@@ -1,6 +1,11 @@
 shell: zsh
 
 inputs:
+  git-hooks:
+    url: github:cachix/git-hooks.nix
+    inputs:
+      nixpkgs:
+        follows: nixpkgs
   nixpkgs:
     url: github:NixOS/nixpkgs/nixos-unstable
   deploy-rs:
