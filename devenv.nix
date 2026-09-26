@@ -96,11 +96,26 @@ in
       fi
 
       git_dir="$($git rev-parse --path-format=absolute --git-dir)"
+      common_dir="$($git rev-parse --path-format=absolute --git-common-dir)"
       hooks_path="$git_dir/hooks"
       current_hooks_path="$($git config --get core.hooksPath || true)"
       if [[ -n "$current_hooks_path" && "$current_hooks_path" != "$hooks_path" ]]; then
-        printf 'devenv: refusing to replace existing core.hooksPath: %s\n' "$current_hooks_path" >&2
-        exit 1
+        config_entry="$($git config --show-scope --show-origin --get core.hooksPath || true)"
+        IFS=$'\t' read -r config_scope config_origin config_value <<< "$config_entry"
+        stale_worktree=""
+        if [[ "$config_scope" == worktree && "$config_origin" == file:*config.worktree && "$config_value" == "$current_hooks_path" && "$current_hooks_path" == "$common_dir"/worktrees/*/hooks ]]; then
+          stale_worktree="''${current_hooks_path#"$common_dir"/worktrees/}"
+          stale_worktree="''${stale_worktree%/hooks}"
+          if [[ "$stale_worktree" == */* || -z "$stale_worktree" || "$stale_worktree" == "''${git_dir##*/}" ]]; then
+            stale_worktree=""
+          elif [[ ! -f "$common_dir/worktrees/$stale_worktree/gitdir" ]]; then
+            stale_worktree=""
+          fi
+        fi
+        if [[ -z "$stale_worktree" ]]; then
+          printf 'devenv: refusing to replace unexpected core.hooksPath: %s\n' "$current_hooks_path" >&2
+          exit 1
+        fi
       fi
 
       "$git" config extensions.worktreeConfig true

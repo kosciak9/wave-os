@@ -15,15 +15,16 @@ jobs:
     runs-on: macos-15
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install Nix
-        uses: cachix/install-nix-action@v31
+        uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31
       - name: Configure devenv cache
-        uses: cachix/cachix-action@v16
+        uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
         with:
           name: devenv
+          installCommand: nix profile add github:NixOS/nixpkgs/34ab99075ac4f7e40cf037eef32cb1c360bb85e9#cachix
       - name: Install devenv
-        run: nix profile add nixpkgs#devenv
+        run: nix profile add github:NixOS/nixpkgs/34ab99075ac4f7e40cf037eef32cb1c360bb85e9#devenv
       - name: Run nix-check
         run: devenv shell -- nix-check
       - name: Run nix-eval jayce
@@ -36,18 +37,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
       - name: Install Nix
-        uses: cachix/install-nix-action@v31
+        uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31
       - name: Configure devenv cache
-        uses: cachix/cachix-action@v16
+        uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
         with:
           name: devenv
+          installCommand: nix profile add github:NixOS/nixpkgs/34ab99075ac4f7e40cf037eef32cb1c360bb85e9#cachix
       - name: Install devenv
-        run: nix profile add nixpkgs#devenv
+        run: nix profile add github:NixOS/nixpkgs/34ab99075ac4f7e40cf037eef32cb1c360bb85e9#devenv
       - name: Run betterleaks
         run: |
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
