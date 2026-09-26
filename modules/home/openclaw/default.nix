@@ -14,6 +14,7 @@ let
   telegramOwnerIdFile = "${home}/.config/secrets/openclaw/telegram-owner-id";
   telegramGroupIdFile = "${home}/.config/secrets/openclaw/telegram-group-id";
   telegramGroupAllowFromFile = "${home}/.config/secrets/openclaw/telegram-group-allow-from.json";
+  obsidianVaultPathFile = "${home}/.config/secrets/openclaw/obsidian-vault-path";
   runtimeConfigDirectory = "${state}/runtime-config";
   runtimeConfig = "${runtimeConfigDirectory}/openclaw.json";
   # MCP deny patterns are either exact tool names or prefix patterns ending in '*'.
@@ -123,26 +124,22 @@ let
   macAppsMcpTools = macAppsMcpReadTools ++ macAppsMcpAutonomousWriteTools;
   macAppsMcpPolicyIds = map (tool: "mac-apps__${tool}") macAppsMcpTools;
   obsidianMcpReadTools = [
-    "vault_list"
-    "vault_read"
-    "vault_get_document_map"
-    "active_file_get_path"
-    "search_query"
-    "search_simple"
-    "tag_list"
-    "command_list"
+    "obsidian_list_vaults"
+    "obsidian_read_note"
+    "obsidian_search_vault"
   ];
   obsidianMcpAutonomousWriteTools = [
-    "vault_write"
-    "vault_append"
-    "vault_patch"
-    "vault_move"
-    "vault_copy"
+    "obsidian_create_note"
+    "obsidian_edit_note"
+    "obsidian_create_directory"
   ];
   obsidianMcpDeniedTools = [
-    "vault_delete"
-    "command_execute"
-    "open_file"
+    "obsidian_delete_note"
+    "obsidian_move_note"
+    "obsidian_add_tags"
+    "obsidian_remove_tags"
+    "obsidian_rename_tag"
+    "obsidian_manage_tags"
   ];
   obsidianMcpTools = obsidianMcpReadTools ++ obsidianMcpAutonomousWriteTools;
   obsidianMcpPolicyIds = map (tool: "obsidian__${tool}") obsidianMcpTools;
@@ -504,14 +501,6 @@ let
       fi
     fi
 
-    if [[ -z "''${OBSIDIAN_LOCAL_REST_API_KEY:-}" ]]; then
-      if obsidian_token=$(
-        ${lib.escapeShellArg openclaw} secrets store get OBSIDIAN_LOCAL_REST_API_KEY --plain 2>/dev/null
-      ) && [[ -n "$obsidian_token" ]]; then
-        export OBSIDIAN_LOCAL_REST_API_KEY="$obsidian_token"
-      fi
-    fi
-
     exec ${lib.escapeShellArg openclaw} "$@"
   '';
   podman = lib.getExe pkgs.podman;
@@ -548,6 +537,32 @@ let
       exec ${lib.getExe pkgs.anytype-mcp} "$@"
     '';
   };
+  obsidianMcpPackage = pkgs.callPackage ../../../packages/obsidian-mcp.nix { };
+  obsidianMcp = pkgs.writeShellApplication {
+    name = "openclaw-obsidian-mcp";
+    runtimeInputs = [ pkgs.coreutils ];
+    text = ''
+      set -euo pipefail
+
+      vault_path_file=${lib.escapeShellArg obsidianVaultPathFile}
+      if [[ -L "$vault_path_file" || ! -f "$vault_path_file" || ! -r "$vault_path_file" ]] ||
+        [[ "$(/usr/bin/stat -f '%Lp' "$vault_path_file")" != 600 ]] ||
+        [[ "$(/usr/bin/stat -f '%u' "$vault_path_file")" != "$(/usr/bin/id -u)" ]]; then
+        printf '%s\n' "refusing to start Obsidian MCP: private vault path file must be owned by the user and mode 0600" >&2
+        exit 1
+      fi
+
+      vault_path=$(< "$vault_path_file")
+      if [[ "$vault_path" != /* || "$vault_path" == *$'\n'* || "$vault_path" == *$'\r'* ]] ||
+        [[ ! -d "$vault_path/.obsidian" ]]; then
+        printf '%s\n' "refusing to start Obsidian MCP: private vault path is invalid or lacks Obsidian metadata" >&2
+        exit 1
+      fi
+
+      exec ${pkgs.coreutils}/bin/env -i HOME="$HOME" PATH="$PATH" \
+        ${lib.getExe obsidianMcpPackage} serve --vault "notes=$vault_path"
+    '';
+  };
   substackMcp = pkgs.writeShellApplication {
     name = "openclaw-substack-mcp";
     runtimeInputs = [
@@ -581,7 +596,7 @@ let
         printf '%s\n' "refusing to start Substack MCP: stored publication URL is not a bare canonical *.substack.com hostname" >&2
         exit 1
       fi
-      unset OPENCLAW_GATEWAY_TOKEN CAMOFOX_ACCESS_KEY OBSIDIAN_LOCAL_REST_API_KEY ANYTYPE_API_KEY OPENAPI_MCP_HEADERS
+      unset OPENCLAW_GATEWAY_TOKEN CAMOFOX_ACCESS_KEY ANYTYPE_API_KEY OPENAPI_MCP_HEADERS
       export SUBSTACK_PUBLICATION_URL="$publication_url"
       export SUBSTACK_SESSION_TOKEN="$session_token"
       export SUBSTACK_READ_ONLY=0
@@ -807,18 +822,6 @@ let
       exit 1
     fi
     export CAMOFOX_ACCESS_KEY="$camofox_key"
-
-    if ! obsidian_token=$(
-      "$openclaw" secrets store get OBSIDIAN_LOCAL_REST_API_KEY --plain 2>/dev/null
-    ); then
-      printf '%s\n' "refusing to start OpenClaw Gateway: could not retrieve OBSIDIAN_LOCAL_REST_API_KEY from the store" >&2
-      exit 1
-    fi
-    if [ -z "$obsidian_token" ]; then
-      printf '%s\n' "refusing to start OpenClaw Gateway: OBSIDIAN_LOCAL_REST_API_KEY is empty" >&2
-      exit 1
-    fi
-    export OBSIDIAN_LOCAL_REST_API_KEY="$obsidian_token"
 
     deadline=$(( $(/bin/date +%s) + 180 ))
     while ! info=$(
@@ -1700,11 +1703,9 @@ in
           };
           obsidian = {
             enabled = true;
-            url = "https://127.0.0.1:27124/mcp/";
-            transport = "streamable-http";
-            headers.Authorization = "Bearer $" + "{OBSIDIAN_LOCAL_REST_API_KEY}";
-            # Scoped only to the plugin's fixed self-signed loopback endpoint.
-            sslVerify = false;
+            transport = "stdio";
+            command = lib.getExe obsidianMcp;
+            args = [ ];
             connectionTimeoutMs = 10000;
             requestTimeoutMs = 300000;
             supportsParallelToolCalls = false;
