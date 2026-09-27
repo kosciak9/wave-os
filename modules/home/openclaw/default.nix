@@ -477,6 +477,18 @@ let
       fi
       substituteInPlace "$miniappChunk" \
         --replace-fail 'name: "dashboard",' 'name: "openclaw_ui",'
+
+      skillSyncChunkDir="$out/lib/openclaw/dist"
+      skillSyncChunkCount=$(find "$skillSyncChunkDir" -type f -name 'workspace-skill-sync.runtime-*.mjs' -print | wc -l | tr -d '[:space:]')
+      if [ "$skillSyncChunkCount" -ne 1 ]; then
+        printf '%s\n' "refusing to build OpenClaw Gateway: expected exactly one workspace skill sync runtime chunk in $skillSyncChunkDir, found $skillSyncChunkCount" >&2
+        exit 1
+      fi
+      skillSyncChunk=$(find "$skillSyncChunkDir" -type f -name 'workspace-skill-sync.runtime-*.mjs' -print)
+      substituteInPlace "$skillSyncChunk" \
+        --replace-fail 'async function ensureSyncedSkillsDirectory(targetSkillsDir) {' $'async function makeSkillDirectoriesWritable(directory) {\n  const stats = await fsp.lstat(directory);\n  if (stats.isSymbolicLink() || !stats.isDirectory()) return;\n  const mode = stats.mode & 0o7777;\n  if ((mode & 0o700) !== 0o700) await fsp.chmod(directory, mode | 0o700);\n  for (const child of await fsp.readdir(directory)) await makeSkillDirectoriesWritable(path.join(directory, child));\n}\nasync function ensureSyncedSkillsDirectory(targetSkillsDir) {' \
+        --replace-fail 'for (const child of await fsp.readdir(targetSkillsDir))' $'await makeSkillDirectoriesWritable(targetSkillsDir);\n\tfor (const child of await fsp.readdir(targetSkillsDir))' \
+        --replace-fail $'filter: shouldSyncSkillPath\n\t\t\t\t\t});' $'filter: shouldSyncSkillPath\n\t\t\t\t\t});\n\t\t\t\t\t// Copies from read-only Nix sources need writable directories for later sync cleanup.\n\t\t\t\t\tawait makeSkillDirectoriesWritable(destinationPath);'
     '';
   });
   openclawPackageSet = openclawPackageSetBase // {
