@@ -489,6 +489,33 @@ let
         --replace-fail 'async function ensureSyncedSkillsDirectory(targetSkillsDir) {' $'async function makeSkillDirectoriesWritable(directory) {\n  const stats = await fsp.lstat(directory);\n  if (stats.isSymbolicLink() || !stats.isDirectory()) return;\n  const mode = stats.mode & 0o7777;\n  if ((mode & 0o700) !== 0o700) await fsp.chmod(directory, mode | 0o700);\n  for (const child of await fsp.readdir(directory)) await makeSkillDirectoriesWritable(path.join(directory, child));\n}\nasync function ensureSyncedSkillsDirectory(targetSkillsDir) {' \
         --replace-fail 'for (const child of await fsp.readdir(targetSkillsDir))' $'await makeSkillDirectoriesWritable(targetSkillsDir);\n\tfor (const child of await fsp.readdir(targetSkillsDir))' \
         --replace-fail $'filter: shouldSyncSkillPath\n\t\t\t\t\t});' $'filter: shouldSyncSkillPath\n\t\t\t\t\t});\n\t\t\t\t\t// Copies from read-only Nix sources need writable directories for later sync cleanup.\n\t\t\t\t\tawait makeSkillDirectoriesWritable(destinationPath);'
+
+      controlUiAssetDir="$out/lib/openclaw/dist/control-ui/assets"
+      controlUiChunkCount=$(find "$controlUiAssetDir" -type f -name 'control-ui-boot-new-*.js' -print | wc -l | tr -d '[:space:]')
+      if [ "$controlUiChunkCount" -ne 1 ]; then
+        printf '%s\n' "refusing to build OpenClaw Gateway: expected exactly one new-conversation control UI bundle in $controlUiAssetDir, found $controlUiChunkCount" >&2
+        exit 1
+      fi
+      controlUiChunk=$(find "$controlUiAssetDir" -type f -name 'control-ui-boot-new-*.js' -print)
+      controlUiAgentListAnchor='agents(){return Ne(this.read().context?.agents.state.agentsList?.agents??[])}'
+      controlUiAgentListOccurrenceCount=$(awk -v needle="$controlUiAgentListAnchor" '
+        {
+          remaining = $0
+          while ((position = index(remaining, needle)) != 0) {
+            count++
+            remaining = substr(remaining, position + length(needle))
+          }
+        }
+        END { print count + 0 }
+      ' "$controlUiChunk")
+      if [ "$controlUiAgentListOccurrenceCount" -ne 1 ]; then
+        printf '%s\n' "refusing to build OpenClaw Gateway: expected exactly one new-conversation agent-list anchor in $controlUiChunk, found $controlUiAgentListOccurrenceCount" >&2
+        exit 1
+      fi
+      # UI-only chooser visibility until upstream supports per-agent user-facing visibility; not a runtime security control.
+      substituteInPlace "$controlUiChunk" \
+        --replace-fail "$controlUiAgentListAnchor" 'agents(){return Ne(this.read().context?.agents.state.agentsList?.agents??[]).filter(e=>e.id!==`browser`)}'
+      rm -f -- "$controlUiChunk.br" "$controlUiChunk.gz"
     '';
   });
   openclawPackageSet = openclawPackageSetBase // {
@@ -1496,7 +1523,8 @@ in
           ];
         };
         sessions = {
-          visibility = "all";
+          # Tree permits the spawned Browser child without exposing unrelated sessions.
+          visibility = "tree";
         };
         sandbox.tools.allow =
           sandboxTools

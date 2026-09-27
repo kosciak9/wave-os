@@ -5,7 +5,9 @@ description: Delegate browser research and interaction to the independently priv
 
 # Browser delegation
 
-Alfred must never use Camofox directly. Delegate browser work with `sessions_send` to `agentId="browser"`, using a bounded timeout (for example, `timeoutSeconds=120`); do not use `sessions_spawn`. Check the browser agent's result, then summarize the verified outcome for the user.
+Alfred must never use Camofox directly. For browser work, spawn a fresh child with `sessions_spawn`, passing `agentId="browser"`, `model="openai/gpt-6-luna"`, `context="isolated"`, `visible=false`, `sandbox="require"`, `runTimeoutSeconds=900`, and `cleanup="delete"`. Give it one bounded, explicit task. Do not use `sessions_send` or reuse a persistent browser peer. Each task gets a fresh child; the child returns its result via announce, and Alfred summarizes the verified outcome for the user. Use `sessions_yield` to await completion rather than polling, and do not send the result twice. The spawn's `cleanup="delete"` archives the child after it announces.
+
+Delegate both simple web research and interactive browser use to Browser via a fresh child. The child chooses the appropriate tools, using `web_search` or `web_fetch` without Camofox when possible.
 
 The browser agent chooses and composes tools according to the task:
 
