@@ -32,7 +32,8 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command")
     health = sub.add_parser("health", help="run read-only host health checks")
     health.add_argument("--json", action="store_true", help="emit one JSON object")
-    sub.add_parser("safe-switch", help="validate and safely activate Renekton")
+    safe_switch = sub.add_parser("safe-switch", help="validate and safely activate Renekton")
+    safe_switch.add_argument("--approve-rollback", metavar="FULL_SHA40", help="approve retrying a previously rolled-back commit")
     args = parser.parse_args(argv)
     if args.command == "health" and args.json:
         return _health_json()
@@ -41,7 +42,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "safe-switch":
         from wave_switch import safe_switch
 
-        return safe_switch()
+        return safe_switch(approve_rollback=args.approve_rollback)
     parser.print_help()
     return 2
 

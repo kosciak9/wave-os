@@ -569,14 +569,14 @@ def _reconcile_latest(run: Path, result_path: Path) -> None:
         common.atomic_json(latest_path, common.load_json(result_path))
 
 
-def _approve_rollback(commit: str) -> bool:
+def _approve_rollback(commit: str) -> bool | None:
     try:
         with open("/dev/tty", "r+", encoding="utf-8") as tty:
             tty.write(f"Wersja {commit[:8]} została wcześniej wycofana. Czy zatwierdzasz nową próbę wdrożenia? Wpisz dokładnie TAK: ")
             tty.flush()
             return tty.readline().rstrip("\r\n") == "TAK"
     except (OSError, EOFError):
-        return False
+        return None
 
 
 def _finalize(run: Path, active_owned: bool,
@@ -595,7 +595,11 @@ def _finalize(run: Path, active_owned: bool,
     return code, active_owned
 
 
-def safe_switch(repo: Path | None = None) -> int:
+def safe_switch(repo: Path | None = None, *, approve_rollback: str | None = None) -> int:
+    if approve_rollback is not None and not HEX40.fullmatch(approve_rollback):
+        print("--approve-rollback must be exactly 40 lowercase hexadecimal characters", file=sys.stderr)
+        return 2
+
     global _cancel, _current_run, _console_broken
     _cancel = False
     _current_run = None
@@ -646,9 +650,22 @@ def safe_switch(repo: Path | None = None) -> int:
         if active is not None:
             print("safe-switch is blocked by an unresolved active deployment; verify native state before removing its marker", file=sys.stderr)
             return 10
-        if rollback_commit is not None and not _approve_rollback(rollback_commit):
-            print("Poprzednia wersja została wycofana. Nie rozpoczęto wdrożenia; uruchom ponownie i wpisz dokładnie TAK.", file=sys.stderr)
+        if rollback_commit is None and approve_rollback is not None:
+            print("--approve-rollback was supplied, but there is no prior rolled-back commit to approve; no deployment was started.", file=sys.stderr)
             return 30
+        if rollback_commit is not None:
+            if approve_rollback is not None:
+                if approve_rollback != rollback_commit:
+                    print(f"--approve-rollback does not match the prior rolled-back commit {rollback_commit}; no deployment was started.", file=sys.stderr)
+                    return 30
+            else:
+                approval = _approve_rollback(rollback_commit)
+                if approval is None:
+                    print(f"A TTY is unavailable, so rollback approval cannot be requested interactively. To approve this retry, rerun: wave safe-switch --approve-rollback {rollback_commit}", file=sys.stderr)
+                    return 30
+                if not approval:
+                    print("Rollback retry was explicitly declined. No deployment was started.", file=sys.stderr)
+                    return 30
         try:
             try:
                 commit = _commit(repo)
