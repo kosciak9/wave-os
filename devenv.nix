@@ -103,6 +103,11 @@ in
         config_entry="$($git config --show-scope --show-origin --get core.hooksPath || true)"
         IFS=$'\t' read -r config_scope config_origin config_value <<< "$config_entry"
         stale_worktree=""
+        inherited_primary_hooks=""
+        if [[ "$config_scope" == worktree && "$config_origin" == file:*config.worktree && "$config_value" == "$current_hooks_path" && "$git_dir" != "$common_dir" && "$current_hooks_path" == "$common_dir/hooks" ]]; then
+          # Replace only the exact primary checkout hook path inherited by a linked worktree.
+          inherited_primary_hooks="yes"
+        fi
         if [[ "$config_scope" == worktree && "$config_origin" == file:*config.worktree && "$config_value" == "$current_hooks_path" && "$current_hooks_path" == "$common_dir"/worktrees/*/hooks ]]; then
           stale_worktree="''${current_hooks_path#"$common_dir"/worktrees/}"
           stale_worktree="''${stale_worktree%/hooks}"
@@ -112,7 +117,7 @@ in
             stale_worktree=""
           fi
         fi
-        if [[ -z "$stale_worktree" ]]; then
+        if [[ -z "$stale_worktree" && -z "$inherited_primary_hooks" ]]; then
           printf 'devenv: refusing to replace unexpected core.hooksPath: %s\n' "$current_hooks_path" >&2
           exit 1
         fi

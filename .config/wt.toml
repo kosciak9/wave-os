@@ -1,0 +1,3 @@
+[pre-start]
+# Synchronously install per-worktree hooks once when a linked worktree is created.
+hooks = "devenv shell -- true"
