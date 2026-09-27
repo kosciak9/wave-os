@@ -333,7 +333,14 @@ def _run_context(run: Path) -> dict:
         raise ValueError("activation context identity is invalid")
     if context.get("commit") not in (None, match.group(2)):
         raise ValueError("activation commit identity is invalid")
-    if any(not isinstance(old.get(k), str) or not old[k].startswith("/") for k in ("profile_link", "profile_closure", "current_system")):
+    profile_link = old.get("profile_link")
+    # Nix system profile links may be relative generation basenames.
+    valid_profile_link = (isinstance(profile_link, str) and bool(profile_link)
+                          and (profile_link.startswith("/nix/store/")
+                               or re.fullmatch(r"system-[0-9]+-link", profile_link) is not None))
+    if (not valid_profile_link
+            or any(not isinstance(old.get(k), str) or not old[k].startswith("/nix/store/")
+                   for k in ("profile_closure", "current_system"))):
         raise ValueError("activation old snapshot is invalid")
     if not new.startswith("/nix/store/") or not new_system.startswith("/nix/store/"):
         raise ValueError("activation new snapshot is invalid")
