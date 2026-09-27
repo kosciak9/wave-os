@@ -1,6 +1,6 @@
 ---
-description: A simple coding agent without an agenda
-mode: primary
+description: Handles larger, cohesive coding tasks
+mode: all
 ---
 
 # Coder Agent
