@@ -16,6 +16,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Callable
 
@@ -270,6 +271,307 @@ def _lock_path(path: Path) -> int:
     return os.open(path, os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0), 0o600)
 
 
+class RecoveredRollback(Exception):
+    """A verified stale active marker was cleared; this invocation must stop."""
+
+
+class RecoveredSuccessMarker(Exception):
+    """A stale marker after verified successful activation was cleared."""
+
+
+RUN_NAME = re.compile(r"^(\d{4}-\d{2}-\d{2}T\d{6}(?:\.\d+)?Z)-([0-9a-f]{40})-([A-Za-z0-9_-]+)$")
+UNKNOWN_RUN_NAME = re.compile(r"^(\d{4}-\d{2}-\d{2}T\d{6}(?:\.\d+)?Z)-unknown-([A-Za-z0-9_-]+)$")
+
+
+def _native_evidence(run: Path) -> bool:
+    return (run / "native.pid").exists() or any(run.glob("activate_activate_*.log"))
+
+
+def _run_dirs() -> tuple[list[Path], bool]:
+    """Return a bounded, newest-first set of canonical private run directories."""
+    root = LOGS.resolve(strict=True)
+    items = []
+    for path in LOGS.iterdir():
+        try:
+            if path.is_symlink():
+                raise ValueError("symlinked run directory in private log root")
+            if not path.is_dir() or path.resolve(strict=True).parent != root:
+                continue
+            match = RUN_NAME.fullmatch(path.name)
+            unknown = UNKNOWN_RUN_NAME.fullmatch(path.name)
+            if unknown is not None:
+                if (path / "context.json").exists() or _native_evidence(path):
+                    raise ValueError("unknown preflight run contains native evidence")
+                stamp = unknown.group(1)
+                datetime.strptime(stamp[:-1], "%Y-%m-%dT%H%M%S") if "." not in stamp else datetime.strptime(stamp[:-1], "%Y-%m-%dT%H%M%S.%f")
+                continue
+            if match is None:
+                if ("-unknown-" in path.name or (path / "context.json").exists()
+                        or _native_evidence(path)):
+                    raise ValueError("activation run directory name is malformed")
+                continue
+            stamp = match.group(1)
+            timestamp = (datetime.strptime(stamp[:-1], "%Y-%m-%dT%H%M%S") if "." not in stamp
+                         else datetime.strptime(stamp[:-1], "%Y-%m-%dT%H%M%S.%f"))
+            items.append((timestamp, path.name, path))
+        except OSError as exc:
+            raise ValueError("cannot safely inspect private activation run") from exc
+    ordered = [path for _, _, path in sorted(items, reverse=True)]
+    return ordered[:200], len(ordered) > 200
+
+
+def _run_context(run: Path) -> dict:
+    if run.parent != LOGS.resolve(strict=True) or run.is_symlink() or run.resolve(strict=True) != run:
+        raise ValueError("noncanonical activation run")
+    context = common.load_json(run / "context.json")
+    match = RUN_NAME.fullmatch(run.name)
+    old = context.get("old")
+    new = context.get("new_profile_closure")
+    new_system = context.get("new_system")
+    if (match is None or context.get("run_dir") != str(run) or not isinstance(old, dict)
+            or not isinstance(new, str) or not isinstance(new_system, str)):
+        raise ValueError("activation context identity is invalid")
+    if context.get("commit") not in (None, match.group(2)):
+        raise ValueError("activation commit identity is invalid")
+    if any(not isinstance(old.get(k), str) or not old[k].startswith("/") for k in ("profile_link", "profile_closure", "current_system")):
+        raise ValueError("activation old snapshot is invalid")
+    if not new.startswith("/nix/store/") or not new_system.startswith("/nix/store/"):
+        raise ValueError("activation new snapshot is invalid")
+    context["commit"] = match.group(2)
+    return context
+
+
+def _rollback_proof(run: Path, context: dict, *, persist: bool = False) -> dict | None:
+    pid = common.process_state(run)
+    native = common.activation_result(run)
+    old = context["old"]
+    if pid not in {"absent", "exited"} or native != "rolled_back":
+        return None
+    if not (run / "native.pid").is_file() or not common.same_system(common.snapshot_system(), old):
+        return None
+    health = wave_monitor._health_window(common.ROLLBACK_HEALTH_WINDOW, lambda _text: None)
+    after = common.snapshot_system()
+    if (health.get("ok") is not True or not isinstance(health.get("health"), dict)
+            or health["health"].get("ok") is not True or not common.same_system(after, old)
+            or common.process_state(run) not in {"absent", "exited"}
+            or common.activation_result(run) != "rolled_back"):
+        return None
+    if persist:
+        record = {**health, "latest_checks": health.get("health", {})}
+        common.atomic_json(run / "rollback-health.json", record)
+    return health
+
+
+def _active_matches(active: dict, run: Path, context: dict) -> bool:
+    return (active.get("run_dir") == str(run) and active.get("commit") == context["commit"]
+            and active.get("old") == context["old"]
+            and active.get("new", {}).get("profile_closure") == context["new_profile_closure"]
+            and active.get("new", {}).get("current_system") == context["new_system"])
+
+
+def _confirmed_health_approval(run: Path) -> bool:
+    try:
+        approval = common.load_json(run / "health-approved.json")
+    except (OSError, ValueError, TypeError, UnicodeError):
+        return False
+    health = approval.get("health")
+    return (isinstance(approval.get("timestamp"), str) and bool(approval["timestamp"])
+            and isinstance(health, dict) and health.get("ok") is True
+            and isinstance(health.get("health"), dict) and health["health"].get("ok") is True
+            and isinstance(health["health"].get("checks"), dict))
+
+
+def _approval_required(active: dict | None) -> str | None:
+    """Resolve the latest meaningful native activation without trusting latest.json."""
+    runs, truncated = _run_dirs()
+    if active is not None:
+        active_run = Path(active.get("run_dir", ""))
+        if active_run not in runs:
+            runs.insert(0, active_run)
+            runs = runs[:200]
+    for run in runs:
+        result_path = run / "result.json"
+        try:
+            context = _run_context(run)
+            native = common.activation_result(run)
+            if native == "not_started":
+                if not _native_evidence(run) and not result_path.exists():
+                    continue
+                pid = common.process_state(run)
+                if pid not in {"absent", "exited"} or any(run.glob("activate_activate_*.log")):
+                    raise ValueError("nonterminal native activation evidence is ambiguous")
+                if not result_path.exists():
+                    raise ValueError("native activation did not start but has no terminal result")
+                unchanged = common.load_json(result_path)
+                old = context["old"]
+                actual = common.snapshot_system()
+                if (unchanged.get("result") != "deploy_failed_unchanged"
+                        or unchanged.get("commit") != context["commit"]
+                        or unchanged.get("log_dir") != str(run)
+                        or unchanged.get("old") != old
+                        or unchanged.get("new", {}).get("profile_closure") != context["new_profile_closure"]
+                        or unchanged.get("new", {}).get("current_system") != context["new_system"]
+                        or not isinstance(unchanged.get("health"), dict)
+                        or unchanged["health"].get("ok") is not True
+                        or not isinstance(unchanged["health"].get("checks"), dict)
+                        or not isinstance(unchanged.get("state"), dict)
+                        or not common.same_system(unchanged["state"], old)
+                        or not common.same_system(actual, old)):
+                    raise ValueError("unchanged activation result conflicts with native/system evidence")
+                if active is not None and _active_matches(active, run, context):
+                    raise ValueError("active marker remains for an unchanged activation; manual review required")
+                continue
+            if native in {"not_started", "pending"} and not _native_evidence(run):
+                continue
+            if native in {"not_started", "pending"}:
+                raise ValueError("native activation has no terminal outcome")
+            if native not in {"rolled_back", "confirmed"}:
+                raise ValueError("ambiguous native activation evidence")
+            if not (run / "native.pid").is_file():
+                raise ValueError("terminal native activation has no PID evidence")
+            if common.process_state(run) not in {"absent", "exited"}:
+                raise ValueError("native activation may still be running")
+            actual = common.snapshot_system()
+            old = context["old"]
+            if native == "rolled_back":
+                if not common.same_system(actual, old):
+                    raise ValueError("rollback system does not match recorded old snapshot")
+                if result_path.exists():
+                    result = common.load_json(result_path)
+                    if (result.get("result") != "deploy_failed_rolled_back"
+                            or result.get("commit") != context["commit"] or result.get("log_dir") != str(run)
+                            or result.get("old") != old
+                            or result.get("new", {}).get("profile_closure") != context["new_profile_closure"]
+                            or result.get("new", {}).get("current_system") != context["new_system"]
+                            or not isinstance(result.get("health"), dict)
+                            or result["health"].get("ok") is not True
+                            or not isinstance(result["health"].get("checks"), dict)
+                            or not isinstance(result.get("state"), dict)
+                            or not common.same_system(result["state"], old)):
+                        raise ValueError("rollback result conflicts with native evidence")
+                    recovery_health = _rollback_proof(run, context)
+                    if recovery_health is None:
+                        raise ValueError("rollback health/state proof is incomplete")
+                else:
+                    if active is not None and not _active_matches(active, run, context):
+                        raise ValueError("active marker does not identify recovered activation")
+                    recovery_health = _rollback_proof(run, context, persist=True)
+                    if recovery_health is None:
+                        raise ValueError("rollback health/state proof is incomplete")
+                    payload = {"commit": context["commit"],
+                               "result": "deploy_failed_rolled_back", "timestamp": common.utc_now(),
+                               "health": recovery_health.get("health", {}),
+                               "log_dir": str(run), "old": old,
+                               "new": {"profile_closure": context["new_profile_closure"], "current_system": context["new_system"]},
+                               "state": actual, "interrupted": False, "error": "recovered native rollback"}
+                    common.atomic_json(run / "result.json", payload)
+                _reconcile_latest(run, result_path)
+                if active is not None:
+                    active_path = STATE / "active.json"
+                    if not _active_matches(active, run, context):
+                        raise ValueError("active marker does not identify recovered activation")
+                    fresh = _rollback_proof(run, context)
+                    if fresh is None or common.load_json(active_path) != active:
+                        raise ValueError("active marker rollback recheck failed")
+                    active_path.unlink()
+                    raise RecoveredRollback()
+                return context["commit"]
+            if not result_path.exists():
+                raise ValueError("native success has no persisted result")
+            result = common.load_json(result_path)
+            success_consistent = (result.get("result") == "success" and result.get("commit") == context["commit"]
+                    and result.get("log_dir") == str(run)
+                    and result.get("old") == context["old"]
+                    and result.get("new", {}).get("profile_closure") == context["new_profile_closure"]
+                    and result.get("new", {}).get("current_system") == context["new_system"]
+                    and isinstance(result.get("health"), dict) and result["health"].get("ok") is True
+                    and isinstance(result.get("state"), dict)
+                    and common.same_system(result["state"], actual)
+                    and actual.get("profile_closure") == context["new_profile_closure"]
+                    and actual.get("current_system") == context["new_system"]
+                    and _confirmed_health_approval(run))
+            if success_consistent:
+                if active is not None:
+                    if not _active_matches(active, run, context) or not _confirmed_health_approval(run):
+                        raise ValueError("stale active marker lacks matching confirmed activation proof")
+                    fresh = wave_monitor._health_window(common.HEALTH_WINDOW, lambda _text: None)
+                    after = common.snapshot_system()
+                    if (fresh.get("ok") is not True or not isinstance(fresh.get("health"), dict)
+                            or fresh["health"].get("ok") is not True
+                            or not isinstance(fresh["health"].get("checks"), dict)
+                            or not common.same_system(after, actual)
+                            or common.process_state(run) not in {"absent", "exited"}
+                            or common.activation_result(run) != "confirmed"
+                            or common.load_json(STATE / "active.json") != active):
+                        raise ValueError("stale active marker success recheck failed")
+                    _reconcile_latest(run, result_path)
+                    if (common.load_json(STATE / "active.json") != active
+                            or not common.same_system(common.snapshot_system(), actual)
+                            or common.process_state(run) not in {"absent", "exited"}
+                            or common.activation_result(run) != "confirmed"):
+                        raise ValueError("stale active marker changed before removal")
+                    (STATE / "active.json").unlink()
+                    raise RecoveredSuccessMarker()
+                return None
+            raise ValueError("native activation result conflicts with evidence")
+        except FileNotFoundError:
+            if _native_evidence(run):
+                raise ValueError("native evidence has no readable activation context") from None
+            continue
+        except Exception:
+            raise
+    if truncated:
+        raise ValueError("recent run scan reached its safety bound without a terminal activation")
+    return None
+
+
+def _run_order(path: Path, *, allow_unknown_preflight: bool = False) -> tuple[datetime, str]:
+    if path.parent != LOGS.resolve(strict=True) or path.is_symlink() or path.resolve(strict=True) != path:
+        raise ValueError("noncanonical result run")
+    match = RUN_NAME.fullmatch(path.name)
+    unknown = UNKNOWN_RUN_NAME.fullmatch(path.name) if allow_unknown_preflight else None
+    if match is None and unknown is None:
+        raise ValueError("result run name is malformed")
+    if unknown is not None:
+        if _native_evidence(path) or (path / "context.json").exists():
+            raise ValueError("unknown run contains native evidence")
+        stamp = unknown.group(1)
+    else:
+        stamp = match.group(1)
+    timestamp = (datetime.strptime(stamp[:-1], "%Y-%m-%dT%H%M%S") if "." not in stamp
+                 else datetime.strptime(stamp[:-1], "%Y-%m-%dT%H%M%S.%f"))
+    return timestamp, path.name
+
+
+def _reconcile_latest(run: Path, result_path: Path) -> None:
+    latest_path = STATE / "latest.json"
+    if not latest_path.exists():
+        common.atomic_json(latest_path, common.load_json(result_path))
+        return
+    latest = common.load_json(latest_path)
+    latest_run_text = latest.get("log_dir")
+    if not isinstance(latest_run_text, str):
+        raise ValueError("latest result identity is invalid")
+    latest_run = Path(latest_run_text)
+    latest_order = _run_order(latest_run, allow_unknown_preflight=True)
+    if UNKNOWN_RUN_NAME.fullmatch(latest_run.name):
+        if latest.get("result") not in {"preflight_failed", "interrupted"}:
+            raise ValueError("unknown latest run is not a preflight-only result")
+    current_order = _run_order(run)
+    if latest_order < current_order:
+        common.atomic_json(latest_path, common.load_json(result_path))
+
+
+def _approve_rollback(commit: str) -> bool:
+    try:
+        with open("/dev/tty", "r+", encoding="utf-8") as tty:
+            tty.write(f"Wersja {commit[:8]} została wcześniej wycofana. Czy zatwierdzasz nową próbę wdrożenia? Wpisz dokładnie TAK: ")
+            tty.flush()
+            return tty.readline().rstrip("\r\n") == "TAK"
+    except (OSError, EOFError):
+        return False
+
+
 def _finalize(run: Path, active_owned: bool,
               outcome: wave_monitor.DeploymentOutcome, commit: str | None,
               old: dict, new: dict) -> tuple[int, bool]:
@@ -312,14 +614,34 @@ def safe_switch(repo: Path | None = None) -> int:
         os.close(lock_fd)
         if exc.errno in (errno.EACCES, errno.EAGAIN): print("safe-switch is already running; inspect active.json", file=sys.stderr)
         return 10
-    old_handlers = {sig: signal.signal(sig, _signal) for sig in (signal.SIGINT, signal.SIGTERM)}
+    old_handlers = {sig: signal.signal(sig, _signal) for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)}
     run = temp_root = None; active_owned = False; launched = False; context: dict | None = None
     run_prefix = common.utc_now().replace(":", "")
     phase = "preflight"
     old: dict = {}; new: dict = {}; health: dict = {}; commit: str | None = None
     try:
-        if (STATE / "active.json").exists():
-            print("an incomplete safe-switch is active; inspect active.json manually", file=sys.stderr); return 10
+        try:
+            active = common.load_json(STATE / "active.json") if (STATE / "active.json").exists() else None
+            if active is not None:
+                active_run = Path(active.get("run_dir", ""))
+                if active_run.parent != LOGS.resolve(strict=True) or active_run.is_symlink() or active_run.resolve(strict=True) != active_run:
+                    raise ValueError("active marker identity is invalid")
+            rollback_commit = _approval_required(active)
+        except RecoveredRollback:
+            print("Odzyskano dowód wycofania poprzedniej wersji. Sprawdź wdrożenie; ta próba została zatrzymana.", file=sys.stderr)
+            return 30
+        except RecoveredSuccessMarker:
+            print("Potwierdzone wdrożenie zostało odzyskane; znacznik aktywnego wdrożenia usunięto. Ta próba została zatrzymana.", file=sys.stderr)
+            return 0
+        except Exception as exc:
+            print("safe-switch recovery is blocked by ambiguous activation evidence; verify native state and the Nix profile/current-system links manually", file=sys.stderr)
+            return 10
+        if active is not None:
+            print("safe-switch is blocked by an unresolved active deployment; verify native state before removing its marker", file=sys.stderr)
+            return 10
+        if rollback_commit is not None and not _approve_rollback(rollback_commit):
+            print("Poprzednia wersja została wycofana. Nie rozpoczęto wdrożenia; uruchom ponownie i wpisz dokładnie TAK.", file=sys.stderr)
+            return 30
         try:
             try:
                 commit = _commit(repo)
