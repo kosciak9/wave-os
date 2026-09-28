@@ -22,6 +22,7 @@ in
     infisical
     plannotator
     sqlit
+    tmux
     weave
     worktrunk
   ];
