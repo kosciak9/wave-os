@@ -75,6 +75,7 @@ let
   camofoxTools = [
     "camofox_create_tab"
     "camofox_snapshot"
+    "camofox_select"
     "camofox_click"
     "camofox_type"
     "camofox_navigate"
