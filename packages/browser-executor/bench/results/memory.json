@@ -1,0 +1,25 @@
+{
+  "measurement_scope": "Separate offline, authored synthetic decision probes; not end-to-end browser resource guarantees or peak host memory under concurrent workloads",
+  "native_stock_laya_v17s": {
+    "model_artifact_mib_approx": 644,
+    "uncapped_mlx_cache_gib_approx": 10.9,
+    "uncapped_swap_after_mib_greater_than": 8192,
+    "capped_cache_mib_range": [256, 261],
+    "capped_active_mib_approx": 614,
+    "capped_peak_mib_approx": 1557,
+    "capped_rss_mib_approx": 1103,
+    "native_format_decisions": 144,
+    "native_format_exact": 89,
+    "native_format_p50_ms": 124,
+    "native_format_p95_ms": 161,
+    "torch_2_6_mps": "Earlier runtime/format crash; not evidence of model architecture incompatibility",
+    "torch_2_11_mps": "Matched MLX top operation and target on 12 of 12 small cases, not a browser success measurement"
+  },
+  "packaged_worker_post_response_rss_mib": {
+    "method": "ps RSS just after each of four sequential synthetic decisions; not inference peak",
+    "kev_four_samples": [599, 599, 599, 599],
+    "laya_four_samples": [1097, 1097, 1097, 1097]
+  },
+  "kev_merged_4bit_model_artifact_mib_approx": 404,
+  "provenance": "Selected aggregates from contemporaneous offline benchmark reports; raw model checkpoints and telemetry are deliberately not included in the public repository. These observations are separate from measurements.jsonl browser tasks."
+}
