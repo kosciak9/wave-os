@@ -64,23 +64,23 @@ stdenvNoCC.mkDerivation {
   installPhase = ''
         runHook preInstall
         mkdir -p "$out"
-          jq --argjson allowed '${allowedToolsJson}' --argjson executor ${
-            if executorEnabled then "true" else "false"
-          } --arg version ${lib.escapeShellArg version} \
+        jq --argjson allowed '${allowedToolsJson}' --argjson executor ${
+          if executorEnabled then "true" else "false"
+        } --arg version ${lib.escapeShellArg version} \
           ' .version = $version
           | .main = "plugin.js"
            | .files = [ "plugin.js", "openclaw.plugin.json" ]
            | .openclaw.extensions = [ "plugin.js" ]
            | .openclaw.runtimeExtensions = [ "plugin.js" ]
-            | .openclaw.tools = ([ .openclaw.tools[] | select(.name as $name | ($allowed | index($name)) != null) |
+           | .openclaw.tools = ([ .openclaw.tools[] | select(.name as $name | ($allowed | index($name)) != null) |
                 if .name == "camofox_snapshot" then .description = "Text-only accessibility snapshot with offset pagination" else . end ] +
-                 [{name: "camofox_select", description: "Select an option in a native select by snapshot ref"}] +
+                [{name: "camofox_select", description: "Select an option in a native select by snapshot ref"}] +
                 (if $executor then [{name: "browser_execute", description: "Bounded local browser execution"}] else [] end))
            | del(.bin, .scripts, .dependencies, .optionalDependencies, .devDependencies,
                .peerDependencies, .peerDependenciesMeta, .overrides)' \
            '${camofox-browser-source}/package.json' > "$out/package.json"
-          jq --argjson defaults '${executorDefaultsJson}' --argjson allowed '${advertisedToolsJson}' --arg version ${lib.escapeShellArg version} \
-           '.version = $version | .tools = $allowed | .contracts.tools = $allowed |
+        jq --argjson defaults '${executorDefaultsJson}' --argjson allowed '${advertisedToolsJson}' --arg version ${lib.escapeShellArg version} \
+          '.version = $version | .tools = $allowed | .contracts.tools = $allowed |
             .configSchema.properties.browserExecutor = {
               type: "object", additionalProperties: false,
               properties: {enabled: {type: "boolean", default: false},
@@ -268,38 +268,38 @@ stdenvNoCC.mkDerivation {
         },
       });
 
-       const result = registerUpstream(proxy);
-       registerTool.call(api, ctx => {
-         const scoped = scopedContext([ctx])[0];
-         const tool = localTool("camofox_select", api, scoped);
-         return ${
-           if executorEnabled then ''guardMutation(tool, "camofox_select", api, scoped)'' else "tool"
-         };
-       }, { name: "camofox_select" });
-       ${lib.optionalString executorEnabled ''
-         if (api.pluginConfig?.browserExecutor?.enabled === true) {
-            const cfg = {...executorDefaults, ...api.pluginConfig.browserExecutor};
-            if (!(["kev", "laya"].includes(cfg.backend) &&
-                  Number.isInteger(cfg.maxSteps) && cfg.maxSteps >= 1 && cfg.maxSteps <= 8 &&
-                  Number.isInteger(cfg.timeoutMs) && cfg.timeoutMs >= 1000 && cfg.timeoutMs <= 120000 &&
-                  typeof cfg.threshold === "number" && Number.isFinite(cfg.threshold) && cfg.threshold >= 0 && cfg.threshold <= 1 &&
-                  typeof cfg.margin === "number" && Number.isFinite(cfg.margin) && cfg.margin >= 0 && cfg.margin <= 1))
-             throw new Error("Invalid browser executor configuration");
-           registerHybridBrowserExecutor({
-             registerTool(factory, options) {
-               return registerTool.call(api, ctx => factory(scopedContext([ctx])[0]), options);
-             },
-           }, {
-             scope: ctx => ctx.agentId,
-             executable: "${lib.getExe browser-decision}",
-              backend: cfg.backend, baseUrl: backendUrl(api),
-              accessKey: process.env.CAMOFOX_ACCESS_KEY,
-              maxSteps: cfg.maxSteps, timeoutMs: cfg.timeoutMs,
-              threshold: cfg.threshold, margin: cfg.margin,
-           });
-         }
-       ''}
-       return result;
+      const result = registerUpstream(proxy);
+      registerTool.call(api, ctx => {
+        const scoped = scopedContext([ctx])[0];
+        const tool = localTool("camofox_select", api, scoped);
+        return ${
+          if executorEnabled then ''guardMutation(tool, "camofox_select", api, scoped)'' else "tool"
+        };
+      }, { name: "camofox_select" });
+      ${lib.optionalString executorEnabled ''
+        if (api.pluginConfig?.browserExecutor?.enabled === true) {
+           const cfg = {...executorDefaults, ...api.pluginConfig.browserExecutor};
+           if (!(["kev", "laya"].includes(cfg.backend) &&
+                 Number.isInteger(cfg.maxSteps) && cfg.maxSteps >= 1 && cfg.maxSteps <= 8 &&
+                 Number.isInteger(cfg.timeoutMs) && cfg.timeoutMs >= 1000 && cfg.timeoutMs <= 120000 &&
+                 typeof cfg.threshold === "number" && Number.isFinite(cfg.threshold) && cfg.threshold >= 0 && cfg.threshold <= 1 &&
+                 typeof cfg.margin === "number" && Number.isFinite(cfg.margin) && cfg.margin >= 0 && cfg.margin <= 1))
+            throw new Error("Invalid browser executor configuration");
+          registerHybridBrowserExecutor({
+            registerTool(factory, options) {
+              return registerTool.call(api, ctx => factory(scopedContext([ctx])[0]), options);
+            },
+          }, {
+            scope: ctx => ctx.agentId,
+            executable: "${lib.getExe browser-decision}",
+             backend: cfg.backend, baseUrl: backendUrl(api),
+             accessKey: process.env.CAMOFOX_ACCESS_KEY,
+             maxSteps: cfg.maxSteps, timeoutMs: cfg.timeoutMs,
+             threshold: cfg.threshold, margin: cfg.margin,
+          });
+        }
+      ''}
+      return result;
     }
     EOF
         runHook postInstall
