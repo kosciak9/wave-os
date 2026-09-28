@@ -10,6 +10,8 @@ let
   home = config.home.homeDirectory;
   state = "${home}/.openclaw";
   workspace = "${state}/workspace";
+  localBrowserExecutorEnabled =
+    pkgs.openclawRuntimePlugins."camofox-browser".executorEnabled or false;
   browserWorkspace = "${state}/workspace-browser";
   telegramOwnerIdFile = "${home}/.config/secrets/openclaw/telegram-owner-id";
   telegramGroupIdFile = "${home}/.config/secrets/openclaw/telegram-group-id";
@@ -84,6 +86,7 @@ let
     "camofox_close_tab"
     "camofox_list_tabs"
   ];
+  executorTools = lib.optional localBrowserExecutorEnabled "browser_execute";
   camofoxTextTools = lib.filter (tool: tool != "camofox_screenshot") camofoxTools;
   # Read is only exposed so the embedded browser runtime can load browser-research skill instructions.
   browserTools = [
@@ -91,7 +94,8 @@ let
     "web_search"
     "web_fetch"
   ]
-  ++ camofoxTextTools;
+  ++ camofoxTextTools
+  ++ executorTools;
   macAppsMcpReadTools = [
     "mail_list_accounts"
     "mail_list_mailboxes"
@@ -1322,7 +1326,7 @@ in
             requireAgentId = true;
             delegationMode = "prefer";
           };
-          tools.deny = camofoxTools;
+          tools.deny = camofoxTools ++ executorTools;
         };
         entries.browser = {
           name = "Browser";
@@ -1542,6 +1546,7 @@ in
         alsoAllow =
           approvedTools
           ++ camofoxTools
+          ++ executorTools
           ++ macAppsMcpPolicyIds
           ++ obsidianMcpPolicyIds
           ++ anytypeMcpPolicyIds
@@ -1583,6 +1588,7 @@ in
         sandbox.tools.allow =
           sandboxTools
           ++ camofoxTools
+          ++ executorTools
           ++ macAppsMcpPolicyIds
           ++ obsidianMcpPolicyIds
           ++ anytypeMcpPolicyIds
@@ -1605,7 +1611,8 @@ in
           "view_image"
           "pdf"
         ]
-        ++ camofoxTextTools;
+        ++ camofoxTextTools
+        ++ executorTools;
         swarm = false;
         updatePlan = true;
         web = {
@@ -1732,6 +1739,9 @@ in
               config = {
                 url = "http://127.0.0.1:9377";
                 autoStart = false;
+                browserExecutor = pkgs.openclawRuntimePlugins."camofox-browser".executorDefaults // {
+                  enabled = localBrowserExecutorEnabled;
+                };
               };
             };
           };
