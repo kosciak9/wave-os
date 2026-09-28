@@ -29,10 +29,15 @@ let
   # Experimental Laya native candidate; measured locally, not calibrated for production.
   executorDefaults = {
     backend = "laya";
-    maxSteps = 8;
+    maxSteps = 24;
     timeoutMs = 120000;
     threshold = 0.5;
     margin = 0.05;
+    candidateMode = "strictBindings";
+    applyPrepared = true;
+    representation = "current";
+    history = 0;
+    stopPolicy = "success";
   };
   executorDefaultsJson = builtins.toJSON executorDefaults;
   inherit (camofox-browser-source) version;
@@ -85,10 +90,15 @@ stdenvNoCC.mkDerivation {
               type: "object", additionalProperties: false,
               properties: {enabled: {type: "boolean", default: false},
                 backend: {type: "string", enum: ["kev", "laya"], default: $defaults.backend},
-                maxSteps: {type: "integer", minimum: 1, maximum: 8, default: $defaults.maxSteps},
+                maxSteps: {type: "integer", minimum: 1, maximum: 24, default: $defaults.maxSteps},
                 timeoutMs: {type: "integer", minimum: 1000, maximum: 120000, default: $defaults.timeoutMs},
                 threshold: {type: "number", minimum: 0, maximum: 1, default: $defaults.threshold},
-                margin: {type: "number", minimum: 0, maximum: 1, default: $defaults.margin}}
+                margin: {type: "number", minimum: 0, maximum: 1, default: $defaults.margin},
+                candidateMode: {type: "string", enum: ["legacy", "strictBindings"], default: $defaults.candidateMode},
+                applyPrepared: {type: "boolean", default: $defaults.applyPrepared},
+                representation: {type: "string", enum: ["full", "current"], default: $defaults.representation},
+                history: {type: "integer", enum: [0, 2], default: $defaults.history},
+                stopPolicy: {type: "string", enum: ["checkpoint", "success"], default: $defaults.stopPolicy}}
             }' \
           '${camofox-browser-source}/openclaw.plugin.json' > "$out/openclaw.plugin.json"
         cat > "$out/plugin.js" <<'EOF'
@@ -280,10 +290,14 @@ stdenvNoCC.mkDerivation {
         if (api.pluginConfig?.browserExecutor?.enabled === true) {
            const cfg = {...executorDefaults, ...api.pluginConfig.browserExecutor};
            if (!(["kev", "laya"].includes(cfg.backend) &&
-                 Number.isInteger(cfg.maxSteps) && cfg.maxSteps >= 1 && cfg.maxSteps <= 8 &&
-                 Number.isInteger(cfg.timeoutMs) && cfg.timeoutMs >= 1000 && cfg.timeoutMs <= 120000 &&
-                 typeof cfg.threshold === "number" && Number.isFinite(cfg.threshold) && cfg.threshold >= 0 && cfg.threshold <= 1 &&
-                 typeof cfg.margin === "number" && Number.isFinite(cfg.margin) && cfg.margin >= 0 && cfg.margin <= 1))
+                  Number.isInteger(cfg.maxSteps) && cfg.maxSteps >= 1 && cfg.maxSteps <= 24 &&
+                  Number.isInteger(cfg.timeoutMs) && cfg.timeoutMs >= 1000 && cfg.timeoutMs <= 120000 &&
+                  typeof cfg.threshold === "number" && Number.isFinite(cfg.threshold) && cfg.threshold >= 0 && cfg.threshold <= 1 &&
+                  typeof cfg.margin === "number" && Number.isFinite(cfg.margin) && cfg.margin >= 0 && cfg.margin <= 1 &&
+                  ["legacy", "strictBindings"].includes(cfg.candidateMode) &&
+                  typeof cfg.applyPrepared === "boolean" && (!cfg.applyPrepared || cfg.candidateMode === "strictBindings") &&
+                  ["full", "current"].includes(cfg.representation) && [0, 2].includes(cfg.history) &&
+                  ["checkpoint", "success"].includes(cfg.stopPolicy)))
             throw new Error("Invalid browser executor configuration");
           registerHybridBrowserExecutor({
             registerTool(factory, options) {
@@ -294,8 +308,10 @@ stdenvNoCC.mkDerivation {
             executable: "${lib.getExe browser-decision}",
              backend: cfg.backend, baseUrl: backendUrl(api),
              accessKey: process.env.CAMOFOX_ACCESS_KEY,
-             maxSteps: cfg.maxSteps, timeoutMs: cfg.timeoutMs,
-             threshold: cfg.threshold, margin: cfg.margin,
+              maxSteps: cfg.maxSteps, timeoutMs: cfg.timeoutMs,
+              threshold: cfg.threshold, margin: cfg.margin,
+              candidateMode: cfg.candidateMode, applyPrepared: cfg.applyPrepared,
+              representation: cfg.representation, history: cfg.history, stopPolicy: cfg.stopPolicy,
           });
         }
       ''}

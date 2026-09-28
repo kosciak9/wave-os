@@ -7,7 +7,8 @@ import { createDecisionBridge } from './bridge.mjs';
  * Camofox userId, not ctx.agentId, sessionKey, or a caller supplied value.
  * decide is a configured local bridge; it does not receive credentials or backend config.
  */
-export function registerBrowserExecutor(api, { scope, decide, baseUrl, accessKey, telemetry, maxSteps, timeoutMs, threshold, margin }) {
+export function registerBrowserExecutor(api, { scope, decide, baseUrl, accessKey, telemetry, maxSteps, timeoutMs, threshold, margin,
+  modelGoal, bindings, candidateMode, applyPrepared, stopPolicy }) {
   if (typeof scope !== 'function' || typeof decide !== 'function') throw Error('scope_and_bridge_required');
   api.registerTool(ctx => ({
     name: 'browser_execute',
@@ -15,9 +16,14 @@ export function registerBrowserExecutor(api, { scope, decide, baseUrl, accessKey
     parameters: {
       type: 'object', additionalProperties: false,
       properties: {
-        goal: { type: 'string' }, tabId: { type: 'string' },
+        goal: { type: 'string' }, modelGoal: { type: 'string' }, tabId: { type: 'string' },
         variables: { type: 'object', additionalProperties: { type: 'string' } },
-        success: { type: 'object', additionalProperties: false, properties: { textIncludes: { type: 'string' }, urlPath: { type: 'string' } } },
+        bindings: { type: 'object', additionalProperties: { type: 'string' } },
+        success: { type: 'object', additionalProperties: false, properties: {
+          textIncludes: { type: 'string' }, urlPath: { type: 'string' },
+          allText: { type: 'array', items: { type: 'string' } },
+          fieldValues: { type: 'object', additionalProperties: { type: 'string' } },
+        } },
         allowedOrigins: { type: 'array', items: { type: 'string' } },
         forbidActions: { type: 'array', items: { type: 'string' } },
       }, required: ['goal', 'tabId', 'variables'],
@@ -25,18 +31,20 @@ export function registerBrowserExecutor(api, { scope, decide, baseUrl, accessKey
     async execute(_id, params) {
       const userId = scope(ctx);
       const browser = createCamofoxBrowser({ baseUrl, userId, accessKey });
-      const outcome = await executeBrowser(params, { browser, decide, telemetry, maxSteps, timeoutMs, threshold, margin });
+      const outcome = await executeBrowser(params, { browser, decide, telemetry, maxSteps, timeoutMs, threshold, margin,
+        modelGoal, bindings, candidateMode, applyPrepared, stopPolicy });
       return { content: [{ type: 'text', text: JSON.stringify(outcome) }] };
     },
   }), { name: 'browser_execute' });
 }
 
 /** Trusted wrapper entry point. Executable and backend come from deployment config, never tool input. */
-export function registerHybridBrowserExecutor(api, { executable, backend = 'kev', onMetric, ...options }) {
-  const decide = createDecisionBridge({ executable, backend, onMetric });
+export function registerHybridBrowserExecutor(api, { executable, backend = 'kev', onMetric, history, representation, ...options }) {
+  const decide = createDecisionBridge({ executable, backend, onMetric, history, representation });
   try {
     // The synthetic .2/.01 arm is not a calibrated production policy.
-    registerBrowserExecutor(api, { ...options, decide, threshold: options.threshold ?? 0.5, margin: options.margin ?? 0.05 });
+    registerBrowserExecutor(api, { ...options, decide,
+      threshold: options.threshold ?? 0.5, margin: options.margin ?? 0.05 });
   } catch (error) {
     decide.close();
     throw error;

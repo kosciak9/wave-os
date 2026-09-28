@@ -192,6 +192,89 @@ def synthetic_trace(db, session_id):
     return result
 
 
+def hosted_trace(db, session_id):
+    """Value-free tool and usage timeline from the isolated synthetic session."""
+    if not db.is_file() or not session_id:
+        return []
+    conn = sqlite3.connect('file:' + str(db) + '?mode=ro', uri=True, timeout=1)
+    try:
+        events = [json.loads(row[0]) for row in conn.execute(
+            'SELECT event_json FROM transcript_events WHERE session_id=? ORDER BY seq', (session_id,))]
+    finally:
+        conn.close()
+    timeline, pending = [], {}
+    for event in events:
+        if event.get('type') != 'message':
+            continue
+        msg = event.get('message', {})
+        if msg.get('role') == 'assistant':
+            usage = msg.get('usage') or {}
+            record = {'role': 'assistant', 'at': msg.get('timestamp'), 'stop': msg.get('stopReason'),
+                      'usage': {key: usage.get(key) for key in ('input', 'cacheRead', 'output')},
+                      'prompt_tokens': (usage.get('contextUsage') or {}).get('promptTokens'), 'calls': []}
+            for block in msg.get('content', []):
+                if not isinstance(block, dict):
+                    continue
+                if block.get('type') != 'toolCall':
+                    continue
+                outer = block.get('arguments') or {}
+                name = outer.get('id', '') if block.get('name') == 'tool_call' and isinstance(outer, dict) else block.get('name', '')
+                name = name.split(':')[-1] if isinstance(name, str) else ''
+                raw = outer.get('args', {}) if block.get('name') == 'tool_call' else outer
+                if isinstance(raw, str):
+                    try:
+                        raw = json.loads(raw)
+                    except ValueError:
+                        raw = {}
+                arguments = raw if isinstance(raw, dict) else {}
+                pending[block.get('id')] = name
+                detail = {'tool': name}
+                if name == 'browser_execute':
+                    detail['request_bytes'] = len(json.dumps(arguments).encode())
+                    detail['goal_bytes'] = len(str(arguments.get('goal', '')).encode())
+                    detail['model_goal_bytes'] = len(str(arguments.get('modelGoal', '')).encode())
+                    variables = arguments.get('variables')
+                    bindings = arguments.get('bindings')
+                    public_names = {'target', 'location', 'service', 'date', 'summary', 'destination',
+                                    'arrival', 'travel', 'reference', 'quantity', 'party', 'time',
+                                    'guest', 'seat', 'meal', 'fare', 'name', 'email', 'search', 'venue',
+                                    'item', 'entry', 'label', 'notes', 'departure', 'return'}
+                    detail['variable_names'] = [key if key in public_names else '[other]'
+                                                for key in list(variables)[:32]] if isinstance(variables, dict) else []
+                    detail['binding_count'] = len(bindings) if isinstance(bindings, dict) else 0
+                    success = arguments.get('success')
+                    detail['success_criteria'] = sorted(key for key in success if key in
+                        ('urlPath', 'textIncludes', 'allText', 'fieldValues')) if isinstance(success, dict) else []
+                elif name.startswith('camofox_'):
+                    detail['argument_names'] = sorted(key for key in arguments if key in
+                        ('ref', 'option', 'offset', 'direction', 'amount', 'tabId', 'url', 'text', 'value'))
+                record['calls'].append(detail)
+            if usage or record['calls']:
+                timeline.append(record)
+        elif msg.get('role') == 'toolResult':
+            name = pending.pop(msg.get('toolCallId'), msg.get('toolName'))
+            if name not in ('browser_execute', 'camofox_snapshot'):
+                continue
+            texts = [part.get('text', '') for part in msg.get('content', [])
+                     if isinstance(part, dict) and part.get('type') == 'text']
+            raw = '\n'.join(texts)
+            record = {'role': 'result', 'tool': name, 'at': msg.get('timestamp'),
+                      'error': bool(msg.get('isError')), 'output_bytes': len(raw.encode())}
+            if name == 'browser_execute':
+                try:
+                    payload = json.loads(raw)
+                    content = payload.get('result', {}).get('content', [])
+                    body = json.loads(content[0]['text']) if content else payload
+                    if isinstance(body, dict):
+                        record['result'] = {key: body[key] for key in ('status', 'reason', 'steps')
+                                            if isinstance(body.get(key), int) or isinstance(body.get(key), str)
+                                            and re.fullmatch(r'[a-z_]{1,48}', body[key])}
+                except (ValueError, TypeError, KeyError, IndexError, AttributeError):
+                    record['result_parse_error'] = True
+            timeline.append(record)
+    return timeline
+
+
 def private_access_profile(path, remaining_seconds):
     path = Path(path)
     status = path.lstat()
@@ -458,6 +541,8 @@ def run_one(args, item, ports, oracle_key, base_env, catalog, output):
         summary.update(transcript_metrics(db, session_id))
         if args.trace_synthetic:
             (directory / 'synthetic-tool-trace.json').write_text(json.dumps(synthetic_trace(db, session_id)))
+        if args.hosted_trace:
+            (directory / 'hosted-trace.json').write_text(json.dumps(hosted_trace(db, session_id), indent=2))
         metrics_file = directory / 'local-metrics.jsonl'
         if metrics_file.is_file():
             events = [json.loads(line) for line in metrics_file.read_text().splitlines() if line.strip()]
@@ -526,6 +611,7 @@ def parse_args(argv=None):
     parser.add_argument('--model-executable', type=Path, help='Optional plugin-specific executable; see docs')
     parser.add_argument('--executor-backend', choices=('kev', 'laya'),
                         help='Enable configured browser_execute for a plugin variant that declares it')
+    parser.add_argument('--hosted-trace', action='store_true', help='Keep value-free tool and usage metrics by turn')
     parser.add_argument('--prompt-template-file', type=Path)
     parser.add_argument('--trace-synthetic', action='store_true',
                         help='Keep compact fixture-only tool names/refs; never raw transcripts or images')

@@ -101,16 +101,25 @@ export function mapFields(structure, nodes) {
 }
 
 function validateRequest(request) {
-  if (!record(request) || Object.keys(request).some(k => !['goal', 'tabId', 'variables', 'success', 'allowedOrigins', 'forbidActions'].includes(k)) ||
+  if (!record(request) || Object.keys(request).some(k => !['goal', 'modelGoal', 'tabId', 'variables', 'bindings', 'success', 'allowedOrigins', 'forbidActions'].includes(k)) ||
       typeof request.goal !== 'string' || !request.goal.trim() || request.goal.length > 2000 ||
-      typeof request.tabId !== 'string' || !/^[\w-]{1,128}$/.test(request.tabId) ||
-      !record(request.variables)) throw Error('invalid_request');
+       typeof request.tabId !== 'string' || !/^[\w-]{1,128}$/.test(request.tabId) ||
+       !record(request.variables)) throw Error('invalid_request');
+  if (request.modelGoal != null && (typeof request.modelGoal !== 'string' || !request.modelGoal.trim() || request.modelGoal.length > 360)) throw Error('invalid_request');
   const variables = Object.entries(request.variables);
   if (variables.length > 32 || variables.some(([k, v]) => !k || k.length > 100 || typeof v !== 'string' || v.length > 100 ||
-      SENSITIVE_VALUE_TEST.test(v))) throw Error('invalid_request');
-  if (request.success != null && (!record(request.success) ||
-      Object.keys(request.success).some(k => !['textIncludes', 'urlPath'].includes(k)) ||
-      Object.values(request.success).some(v => typeof v !== 'string' || !v.trim() || v.length > 300))) throw Error('invalid_request');
+       SENSITIVE_VALUE_TEST.test(v))) throw Error('invalid_request');
+  if (request.bindings != null && (!record(request.bindings) || Object.keys(request.bindings).length > 32 ||
+      Object.entries(request.bindings).some(([key, label]) => !Object.hasOwn(request.variables, key) ||
+        typeof label !== 'string' || !normalize(label) || label.length > 120 || SENSITIVE.test(label)))) throw Error('invalid_request');
+  if (request.success != null && (!record(request.success) || !Object.keys(request.success).length ||
+       Object.keys(request.success).some(k => !['textIncludes', 'urlPath', 'allText', 'fieldValues'].includes(k)) ||
+       Object.entries(request.success).some(([k, v]) => k === 'allText' ?
+         !Array.isArray(v) || !v.length || v.length > 8 || v.some(s => typeof s !== 'string' || !s.trim() || s.length > 300) :
+         k === 'fieldValues' ? !record(v) || !Object.keys(v).length || Object.keys(v).length > 12 ||
+           Object.entries(v).some(([label, value]) => !label || label.length > 120 || typeof value !== 'string' ||
+             !value || value.length > 120 || SENSITIVE.test(label) || SENSITIVE_VALUE_TEST.test(value)) :
+           typeof v !== 'string' || !v.trim() || v.length > 300))) throw Error('invalid_request');
   if (request.allowedOrigins != null && (!Array.isArray(request.allowedOrigins) || request.allowedOrigins.length > 8 ||
       request.allowedOrigins.some(origin => safeUrl(origin).origin !== origin))) throw Error('invalid_request');
   if (request.forbidActions != null && (!Array.isArray(request.forbidActions) || request.forbidActions.length > 24 ||
@@ -143,7 +152,7 @@ function view(snapshot, request, origins) {
     .map(line => clean(line.replace(/^\s*- (?:heading|paragraph|alert|text|listitem)\b:?\s*/, ''), 220))
     .filter(Boolean).join(' | ');
   const state = {
-    goal: redact(clean(request.goal, 1200)), url: redact(displayUrl(snapshot.url)),
+    goal: redact(clean(request.goal, 2000)), url: redact(displayUrl(snapshot.url)),
     variables: Object.fromEntries(Object.entries(request.variables).filter(([key]) => !SENSITIVE.test(key)).map(([key, value]) => [key, redact(clean(value, 100))])),
     title: redact(clean(snapshot.snapshot.match(/^\s*- heading "([^"]+)"/m)?.[1] ?? '', 140)),
     text: semantic.length > 950 ? `${semantic.slice(0, 920)} [observation abbreviated]` : semantic,
@@ -163,17 +172,24 @@ function view(snapshot, request, origins) {
 function success(viewed, success) {
   if (!success || !Object.keys(success).length) return false;
   return (!success.urlPath || viewed.url.pathname === success.urlPath) &&
-    (!success.textIncludes || viewed.visible.toLowerCase().includes(success.textIncludes.toLowerCase()));
+    (!success.textIncludes || viewed.visible.toLowerCase().includes(success.textIncludes.toLowerCase())) &&
+    (!success.allText || success.allText.every(text => viewed.visible.toLowerCase().includes(text.toLowerCase()))) &&
+    (!success.fieldValues || Object.entries(success.fieldValues).every(([label, value]) => {
+      const matches = viewed.fields.filter(({ field, ref }) => ref && !isSensitive(field) &&
+        [field.label, viewed.nodes.find(node => node.ref === ref)?.name].some(name => normalize(name) === normalize(label)));
+      return matches.length === 1 && matches[0].field.value === value;
+    }));
 }
 
-function choicesFor(viewed, request) {
+function choicesFor(viewed, request, { candidateMode = 'legacy', stopPolicy = 'success' } = {}) {
   if (viewed.fields.some(({ field }) => isSensitive(field))) throw Error('sensitive_fields');
   const forbidden = request.forbidActions ?? [];
   const blocked = label => forbidden.some(literal => normalize(label).includes(normalize(literal)));
   const numericNodes = viewed.nodes.filter(n => n.role === 'spinbutton' && !n.disabled && !SENSITIVE.test(n.name));
   const searchNodes = viewed.nodes.filter(n => n.role === 'searchbox' && !n.disabled && !SENSITIVE.test(n.name));
   const fields = viewed.fields.filter(({ field, ref }) => ref && !field.disabled && !isSensitive(field))
-    .map(({ field, ref }) => ({ ...field, ref, context: viewed.nodes.find(n => n.ref === ref)?.context ?? '' }));
+    .map(({ field, ref }) => ({ ...field, ref, context: viewed.nodes.find(n => n.ref === ref)?.context ?? '',
+      axName: viewed.nodes.find(n => n.ref === ref)?.name ?? '' }));
   // A repeated AX spinbutton is independently actionable from its ref and AX value;
   // no assumption is made about which structurally ambiguous DOM form owns it.
   for (const node of [...numericNodes, ...searchNodes]) {
@@ -187,18 +203,40 @@ function choicesFor(viewed, request) {
     const words = new Set(normalize(`${field.label} ${field.name}`).split(' '));
     return normalize(key).split(' ').some(word => word.length > 2 && words.has(word));
   };
-  const matchedKeys = new Set(prepared.filter(([key]) => fields.some(f => matches(f, key))).map(([key]) => key));
-  const incompleteForm = unmatchedStructure.some(({ field }) => {
+  const strict = candidateMode === 'strictBindings';
+  const aliases = key => normalize(request.bindings?.[key] ?? key);
+  const bound = (field, key) => aliases(key) && [field.label, field.name, field.axName].some(s => normalize(s) === aliases(key));
+  const unique = key => fields.filter(f => bound(f, key)).length === 1 &&
+    prepared.filter(([other]) => bound(fields.find(f => bound(f, key)), other)).length === 1;
+  const aligned = (field, key) => strict || Object.hasOwn(request.bindings ?? {}, key) ?
+    bound(field, key) && unique(key) : matches(field, key);
+  const matchedKeys = new Set(prepared.filter(([key]) => fields.some(f => aligned(f, key))).map(([key]) => key));
+  const ambiguousBindings = prepared.some(([key]) => (strict || Object.hasOwn(request.bindings ?? {}, key)) &&
+    fields.some(field => bound(field, key)) && !unique(key));
+  const currentEditable = [...fields.filter(field => field.tag === 'select' || field.tag === 'textarea' ||
+    field.tag === 'input' && EDITABLE.has(field.type || 'text')), ...unmatchedStructure.map(({ field }) => field)];
+  const strictUnresolved = strict && currentEditable.some(field => {
+    const related = prepared.filter(([key]) => bound(field, key));
+    return !related.length || new Set(related.map(([, value]) => value)).size !== 1 ||
+      related.some(([key]) => currentEditable.filter(other => bound(other, key)).length !== 1) ||
+      related.some(([, value]) => field.value !== value && (field.tag !== 'select' ||
+        !(field.options ?? []).some(option => option.selected && (option.label === value || option.value === value))));
+  });
+  const incompleteForm = ambiguousBindings || strictUnresolved || unmatchedStructure.some(({ field }) => {
     if ((field.type === 'number' && numericNodes.some(n => normalize(n.name) === normalize(field.label))) ||
         (field.type === 'search' && searchNodes.some(n => normalize(n.name) === normalize(field.label)))) return false;
-    const related = prepared.filter(([key]) => matches(field, key));
+    // An unmapped field has no AX ref, so uniqueness among actionable refs
+    // cannot establish whether its observed value satisfies a bound request.
+    const related = prepared.filter(([key]) => strict || Object.hasOwn(request.bindings ?? {}, key) ?
+      bound(field, key) : matches(field, key));
     return !field.value || related.some(([, value]) => value !== field.value);
   });
   const desired = new Map(fields.map(field => {
-    const aligned = prepared.filter(([key]) => matches(field, key));
+    const matching = prepared.filter(([key]) => aligned(field, key));
     // Retain unmatched values only for unmatched fields. If an alias has the
     // same value as an aligned key, the aligned key supplies its coverage.
-    const alternatives = aligned.length ? aligned : prepared.filter(([key, value]) => !matchedKeys.has(key) &&
+    const alternatives = matching.length ? matching : strict ? [] : prepared.filter(([key, value]) =>
+      !Object.hasOwn(request.bindings ?? {}, key) && !matchedKeys.has(key) &&
       !prepared.some(([other, v]) => matchedKeys.has(other) && value === v));
     return [field.ref, alternatives];
   }));
@@ -206,8 +244,11 @@ function choicesFor(viewed, request) {
   const targetedNumeric = target && numericNodes.some(n => normalize(n.context).includes(target));
   const targetLinks = target && viewed.nodes.some(n => n.role === 'link' && normalize(n.name).includes(target));
   const pending = field => (desired.get(field.ref) ?? []).some(([, value]) => field.value !== value &&
-    (field.tag !== 'select' || (field.options ?? []).some(o => (o.label === value || o.value === value) && !o.selected)));
+    (field.tag !== 'select' || !(field.options ?? []).some(o => o.selected && (o.label === value || o.value === value))));
   const stageHasPendingValues = fields.some(pending);
+  const unsupportedValue = fields.some(field => field.tag === 'select' && pending(field) &&
+    (desired.get(field.ref) ?? []).some(([, value]) => field.value !== value &&
+      (field.optionsTruncated || (field.options ?? []).filter(o => o.value === value || o.label === value).length !== 1)));
   const choices = [], actions = new Map();
   let unsafeControls = false;
   const add = (kind, description, data) => {
@@ -223,7 +264,7 @@ function choicesFor(viewed, request) {
       continue;
     }
     if (!['button', 'link', 'checkbox', 'radio'].includes(node.role) || node.disabled ||
-        stageHasPendingValues && node.role === 'link' ||
+        (stageHasPendingValues || strictUnresolved) && node.role === 'link' ||
         targetLinks && node.role === 'link' && !normalize(node.name).includes(target) ||
         node.role === 'button' && (incompleteForm || fields.some(f => f.context === node.context && pending(f)) ||
           targetedNumeric && !normalize(node.context).includes(target)) ||
@@ -246,11 +287,12 @@ function choicesFor(viewed, request) {
     }
   }
   const canScroll = /\b(scroll|load more|more results|infinite)\b/i.test(viewed.state.text);
-  if (choices.length > MAX_CHOICES - (Number(canScroll) + Number(!stageHasPendingValues) + 1)) throw Error('choice_limit');
+  const canStop = !stageHasPendingValues && (stopPolicy === 'checkpoint' || !request.success);
+  if (choices.length > MAX_CHOICES - (Number(canScroll) + Number(canStop) + 1)) throw Error('choice_limit');
   if (canScroll) add('SCROLL', 'down 600 pixels', { direction: 'down', amount: 600 });
-  if (!stageHasPendingValues) add('STOP', 'request human checkpoint', {});
+  if (canStop) add('STOP', 'request human checkpoint', {});
   add('ESCALATE', 'cannot proceed safely', {});
-  return { choices, actions, incompleteForm, unsafeControls };
+  return { choices, actions, incompleteForm, unsafeControls, unsupportedValue };
 }
 
 function validateDecision(answer, choices, threshold, margin) {
@@ -290,11 +332,14 @@ export async function recoverBrowserTab(browser, tabId, { confirm } = {}) {
 
 /** decide receives only a bounded redacted state and exact legal choices; browser handles scoped refs only. */
 export async function executeBrowser(request, { browser, decide, telemetry, signal, maxSteps = 8, timeoutMs = 120_000,
-  threshold = 0.5, margin = 0.05 } = {}) {
-  let steps = 0, currentUrl = '', relevantState = '';
+  threshold = 0.5, margin = 0.05, modelGoal, bindings, candidateMode = 'legacy', applyPrepared = false,
+  stopPolicy = 'success' } = {}) {
+  let steps = 0, currentUrl = '', relevantState = '', diagnosticField = '';
   const result = (status, reason) => {
     try { telemetry?.({ event: 'result', status, reason, steps }); } catch { /* metrics never affect outcomes */ }
-    return { status, reason, steps, current_url: currentUrl, relevant_state: relevantState.slice(0, 1500),
+    return { status, reason, steps, current_url: currentUrl, relevant_state: relevantState.slice(0, 600),
+      ...(['unmapped_fields', 'unsupported_value', 'field_unverifiable', 'value_not_applied'].includes(reason) && diagnosticField &&
+        { diagnostic_field: diagnosticField }),
       ...(['action_outcome_unknown', 'tab_quarantined'].includes(reason) && {
         recovery_hint: 'Remote mutation may complete later. Stop all mutations on this tab; trusted operator must re-snapshot, inspect, then acknowledge recovery.',
       }),
@@ -305,7 +350,13 @@ export async function executeBrowser(request, { browser, decide, telemetry, sign
     validateRequest(request);
     if (!browser || typeof browser.snapshot !== 'function' || typeof decide !== 'function' ||
         !Number.isInteger(maxSteps) || maxSteps < 1 || maxSteps > 24 || !Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 120_000 ||
-        !Number.isFinite(threshold) || threshold < 0 || threshold > 1 || !Number.isFinite(margin) || margin < 0 || margin > 1) throw Error('invalid_configuration');
+         !Number.isFinite(threshold) || threshold < 0 || threshold > 1 || !Number.isFinite(margin) || margin < 0 || margin > 1 ||
+         modelGoal != null && (typeof modelGoal !== 'string' || !modelGoal.trim() || modelGoal.length > 360) ||
+         !['legacy', 'strictBindings'].includes(candidateMode) || !['success', 'checkpoint'].includes(stopPolicy) ||
+         typeof applyPrepared !== 'boolean' || applyPrepared && candidateMode !== 'strictBindings' ||
+         bindings != null && (!record(bindings) || Object.keys(bindings).length > 32 ||
+           Object.entries(bindings).some(([key, label]) => !Object.hasOwn(request.variables, key) ||
+             typeof label !== 'string' || !normalize(label) || label.length > 120 || SENSITIVE.test(label)))) throw Error('invalid_configuration');
   } catch { return result('escalated', 'invalid_request'); }
   const key = tabKey(browser, request.tabId);
   if (locks.has(key)) return result('escalated', locks.get(key).poisoned ? 'tab_quarantined' : 'tab_busy');
@@ -334,31 +385,41 @@ export async function executeBrowser(request, { browser, decide, telemetry, sign
     };
     let raw = await snapshot();
     const initial = safeUrl(raw.url);
-    const initialPage = view(raw, request, new Set([initial.origin])).state.title;
     const origins = new Set([initial.origin, ...(request.allowedOrigins ?? [])]);
     const seen = new Set();
-    let recent = [], decisions = 0;
+    let recent = [], pagesSeen = [], decisions = 0;
+    const task = { ...request, bindings: bindings ?? request.bindings };
     for (;;) {
       const v = view(raw, request, origins);
       currentUrl = v.redact(displayUrl(raw.url));
-      relevantState = clean(v.state.text, 1500);
+      relevantState = clean(v.state.text, 600);
+      diagnosticField = '';
+      const page = `${v.state.title} ${v.state.url}`;
+      if (!pagesSeen.includes(page)) pagesSeen = [...pagesSeen, page].slice(-4);
       if (success(v, request.success)) return steps ? result('completed', 'matched_conditions_after_action') :
         result('checkpoint', 'matched_on_entry');
-      if (!request.success && steps > 0 && (v.state.title !== initialPage || v.url.pathname !== initial.pathname))
-        return result('checkpoint', 'page_changed_checkpoint');
       if (steps >= maxSteps) break;
       if (++decisions > maxSteps * 3) throw Error('decision_limit');
-      const { choices, actions, incompleteForm, unsafeControls } = choicesFor(v, request);
-      if (![...actions.values()].some(action => !['STOP', 'ESCALATE'].includes(action.kind)))
-        return incompleteForm ? result('escalated', 'unmapped_fields') : unsafeControls ?
+      const { choices, actions, incompleteForm, unsafeControls, unsupportedValue } = choicesFor(v, task, { candidateMode, stopPolicy });
+      if (![...actions.values()].some(action => !['STOP', 'ESCALATE'].includes(action.kind))) {
+        diagnosticField = v.state.fields.filter(field => !field.ref).map(field => field.label).slice(0, 3).join('; ');
+        if (unsupportedValue) diagnosticField = v.state.fields.filter(field => field.ref &&
+          v.fields.some(({ field: observed, ref }) => ref === field.ref && observed.tag === 'select')).map(field => field.label).slice(0, 3).join('; ');
+        return unsupportedValue ? result('escalated', 'unsupported_value') : incompleteForm ? result('escalated', 'unmapped_fields') : unsafeControls ?
           result('escalated', 'unsafe_controls') : result('checkpoint', 'no_actionable_controls');
-      const answer = await guard(decide({ state: { ...v.state, recent }, choices: [...choices] }, { signal: combined }));
+      }
+      const prepared = applyPrepared ? choices.filter(c => ['TYPE', 'SELECT'].includes(actions.get(c)?.kind)) : [];
+      const automatic = prepared[0];
+      const answer = automatic ? null : await guard(decide({ state: { ...v.state,
+        goal: v.redact(modelGoal ?? request.modelGoal ?? v.state.goal),
+        bindings: task.bindings, terminal_conditions_met: false,
+        recent, pagesSeen }, choices: [...choices] }, { signal: combined }));
       if (answer?.probabilities && typeof answer.probabilities === 'object') {
         const ranked = Object.values(answer.probabilities).filter(Number.isFinite).sort((a, b) => b - a);
         try { telemetry?.({ event: 'decision', kind: String(answer.choice ?? '').split(' ')[0].slice(0, 12),
           index: choices.indexOf(answer.choice), confidence: ranked[0], margin: ranked[0] - ranked[1], candidates: choices.length }); } catch { /* metadata only */ }
       }
-      const choice = validateDecision(answer, choices, threshold, margin);
+      const choice = automatic ?? validateDecision(answer, choices, threshold, margin);
       const action = actions.get(choice);
       if (action.kind === 'STOP') return result('checkpoint', 'model_stop');
       if (action.kind === 'ESCALATE') return result('escalated', 'model_escalation');
@@ -381,7 +442,7 @@ export async function executeBrowser(request, { browser, decide, telemetry, sign
       await guard(mutation);
       steps++;
       recent = [...recent, choice.replace(/\[e\d+\]/g, '[ref]').replace(/<- .+$/, '<- variable')].slice(-2);
-      try { telemetry?.({ event: 'action', kind: action.kind, step: steps }); } catch { /* observation must not affect browser control */ }
+      try { telemetry?.({ event: 'action', kind: action.kind, step: steps, deterministic: Boolean(automatic) }); } catch { /* observation must not affect browser control */ }
       raw = await snapshot();
       safeUrl(raw.url);
       observedAfterMutation = true;
@@ -390,6 +451,7 @@ export async function executeBrowser(request, { browser, decide, telemetry, sign
       if (after.fingerprint === v.fingerprint) return result('escalated', 'no_state_change');
       if (action.kind === 'TYPE' || action.kind === 'SELECT') {
         const beforeNode = v.nodes.find(node => node.ref === action.ref);
+        diagnosticField = v.redact(clean(beforeNode?.name, 120));
         const candidates = after.nodes.filter(node => beforeNode && node.role === beforeNode.role &&
           node.name === beforeNode.name && node.context === beforeNode.context);
         if (candidates.length !== 1) return result('escalated', 'field_unverifiable');
