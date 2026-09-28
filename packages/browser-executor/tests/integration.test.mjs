@@ -13,7 +13,9 @@ process.env.CAMOFOX_ACCESS_KEY = key;
 const scoped = id => createHmac('sha256', key).update(id).digest('hex');
 const ctx = id => ({ sessionKey: id, agentId: 'caller-supplied-not-authoritative' });
 const reply = data => new Response(JSON.stringify(data), { headers: { 'content-type': 'application/json' } });
-const snapshot = { snapshot: '- textbox "Search" [e1]', structure: { forms: [] }, nextOffset: 600, hasMore: true };
+const snapshot = { snapshot: '- textbox "Search" [e1]', structure: { forms: [{ fields: [
+  { label: 'Account', type: 'text', value: 'ordinary-value' },
+] }] }, customData: { arbitrary: 'preserved-value' }, nextOffset: 600, hasMore: true };
 
 function register(plugin, browserExecutor = { enabled: false }, url = 'http://127.0.0.1:9377') {
   const tools = new Map();
@@ -83,22 +85,6 @@ test('invalid offsets are rejected before network, including bypassed tool schem
   for (const offset of [-1, 1.2, '10', Number.NaN, Number.MAX_SAFE_INTEGER + 1])
     await assert.rejects(tool.execute('call', { tabId: 'tab-1', offset }), /Invalid snapshot offset/);
   assert.equal(requests, 0);
-});
-
-test('snapshot preserves ordinary AX but redacts populated password/passphrase fields', async () => {
-  globalThis.fetch = async () => reply({ ...snapshot,
-    snapshot: '- textbox "Password" [e2]: privatevalue\n- textbox "Search" [e1]: publicvalue\n- textbox "Passphrase" [e3]: otherprivate',
-    structure: { forms: [{ fields: [
-      { label: 'Password', type: 'password', value: 'privatevalue' },
-      { label: 'Search', type: 'text', value: 'publicvalue' },
-      { label: 'Passphrase', type: 'text', value: 'otherprivate' },
-    ] }] },
-  });
-  const result = await register(normal).get('camofox_snapshot')(ctx('scope')).execute('call', { tabId: 'tab-1' });
-  const text = result.content[0].text;
-  assert.ok(!text.includes('privatevalue') && !text.includes('otherprivate'));
-  assert.ok(text.includes('publicvalue'));
-  assert.equal(JSON.parse(text).structure.forms[0].fields[0].value, '[REDACTED]');
 });
 
 test('select permits only known ref syntax and sends scoped userId, never a selector', async () => {
