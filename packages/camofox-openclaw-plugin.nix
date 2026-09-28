@@ -53,30 +53,7 @@ stdenvNoCC.mkDerivation {
 
      const allowedTools = new Set(${allowedToolsJson});
 
-     function redactSensitiveSnapshot(payload) {
-       if (!payload || typeof payload !== "object" || Array.isArray(payload))
-         throw new Error("Invalid snapshot response");
-       const {screenshot: _ignored, ...rest} = payload;
-       const sensitive = /password|passphrase/i;
-       const values = [];
-       if (rest.structure?.forms && Array.isArray(rest.structure.forms))
-         rest.structure = {...rest.structure, forms: rest.structure.forms.map(form => ({...form,
-           fields: Array.isArray(form.fields) ? form.fields.map(field => {
-             if (!field || !(field.type === "password" || sensitive.test(`''${field.label ?? ""} ''${field.name ?? ""}`)))
-               return field;
-             if (typeof field.value === "string" && field.value.length >= 4) values.push(field.value);
-             return {...field, value: "[REDACTED]"};
-           }) : form.fields,
-         }))};
-       if (typeof rest.snapshot === "string") {
-         rest.snapshot = rest.snapshot.replace(/^([^\n]*\b(?:textbox|input)\b[^\n]*(?:password|passphrase)[^\n]*?\]:) [^\n]+/gim,
-           "$1 [REDACTED]");
-         for (const value of values) rest.snapshot = rest.snapshot.replaceAll(value, "[REDACTED]");
-       }
-       return rest;
-     }
-
-     function backendUrl(api) {
+      function backendUrl(api) {
        const url = new URL(api.pluginConfig?.url ?? "http://127.0.0.1:9377");
        if (url.protocol !== "http:" || url.hostname !== "127.0.0.1" || url.username || url.password ||
            url.pathname !== "/" || url.search || url.hash || !url.port)
@@ -132,8 +109,11 @@ stdenvNoCC.mkDerivation {
              throw new Error("Invalid snapshot offset");
            const query = new URLSearchParams({userId, includeScreenshot: "false"});
            if (params.offset != null) query.set("offset", String(params.offset));
-           return text(redactSensitiveSnapshot(await localRequest(api,
-             `/tabs/''${tab(params)}/snapshot?''${query}`)));
+            const payload = await localRequest(api, `/tabs/''${tab(params)}/snapshot?''${query}`);
+            if (!payload || typeof payload !== "object" || Array.isArray(payload))
+              throw new Error("Invalid snapshot response");
+            const {screenshot: _ignored, ...rest} = payload;
+            return text(rest);
          },
        };
        return {
