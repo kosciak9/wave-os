@@ -2,6 +2,7 @@ import http from 'node:http';
 import { randomBytes } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { manifest, taskById } from './tasks.js';
+import { createChallenge } from './challenge.js';
 
 const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -99,6 +100,7 @@ async function bodyParams(request) {
 export async function startFixtureServer({ host = '127.0.0.1', port = 0 } = {}) {
   const runs = new Map();
   const oracleKey = randomBytes(32).toString('hex');
+  const challenge = createChallenge(oracleKey);
   const server = http.createServer(async (request, response) => {
     const send = (status, data, mime = 'text/html; charset=utf-8', headers = {}) => {
       response.writeHead(status, { 'content-type': mime, 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', ...headers });
@@ -106,6 +108,7 @@ export async function startFixtureServer({ host = '127.0.0.1', port = 0 } = {}) 
     };
     try {
       const url = new URL(request.url, 'http://fixture.invalid');
+      if (await challenge(request, response, url)) return;
       if (request.method === 'GET' && url.pathname === '/api/tasks') {
         send(200, JSON.stringify(manifest()), 'application/json'); return;
       }
