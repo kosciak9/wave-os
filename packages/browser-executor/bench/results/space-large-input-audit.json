@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "fixture_sha256": "b409daf0b142a6a6c1b02e6d2c16c532dc96341bf94714526762d58a2f2343e7",
+  "fixture_goal_includes_fact_values": false,
+  "supplied_fact_count": 23,
+  "previous_prompt_template_sha256": "be32c640df9b468c715418b89c36d4b172c75896651c0b6371b0635b8e4a4590",
+  "previous_prompt_contains_variables": false,
+  "corrected_prompt_template_sha256": "ff81445e6f682e8abcca64634c1a3a5aad8a19c3c102ebad22cd366e743cad69",
+  "corrected_prompt_contains_variables": true,
+  "affected_prior_cohorts": ["space-large-luna-20260929", "space-large-diag-luna-20260929", "space-large-diag-sol-20260929"],
+  "interpretation": "Earlier hosted space agents were not supplied the fixture facts; their failures cannot measure performance on the intended fact-supplied task. Exact model stop motivation remains unknown. Historical artifacts are unchanged."
+}

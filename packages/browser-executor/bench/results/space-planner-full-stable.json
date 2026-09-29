@@ -1,0 +1,501 @@
+{
+  "provenance": {
+    "head": "baf71d2c42016ce3b0f75a870d09069610d7952d",
+    "source_sha256_before": {
+      "packages/browser-executor/bench/space-fixtures.js": "b409daf0b142a6a6c1b02e6d2c16c532dc96341bf94714526762d58a2f2343e7",
+      "packages/browser-executor/bench/server.js": "2f68c94a3547e541bae3f54851eb7b4653ad0ce43d01ecd3633ce3102230fc31",
+      "packages/browser-executor/bench/run.py": "dc503e42d8a45bab1240491230b091e0275f579922643645343664a0d138241b",
+      "packages/browser-executor/bench/space-runtime.mjs": "93c98bb1eb0a58a7be9c22756473d226952930e685249895723a335b85b5a26a",
+      "packages/browser-executor/bench/space-study.py": "6e14bd2125a73875853c7698121f9ede7cad5702f60f8bbd3a975bf654fea6b6",
+      "packages/browser-executor/bench/space-study.mjs": "61e13fde8d2a4b63614e3528d5287e19447a39599786f0f623fdc9a65e341970",
+      "packages/browser-executor/bridge.mjs": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+      "packages/browser-executor/resolver.mjs": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+      "packages/browser-executor/camofox.mjs": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+      "packages/browser-executor/bench/space-deterministic-policy.mjs": "0ab01cf8771e45bdcbfd4cd6a532b5271456ca8e09c056a3ee8fbe526198ca7c",
+      "packages/browser-executor/bench/space-planner-policy.mjs": "b4f968b034a931e708dd08a3447889cd0eac0eb99bdda0fb9e5275e9598b6da9"
+    },
+    "source_sha256_after": {
+      "packages/browser-executor/bench/space-fixtures.js": "b409daf0b142a6a6c1b02e6d2c16c532dc96341bf94714526762d58a2f2343e7",
+      "packages/browser-executor/bench/server.js": "2f68c94a3547e541bae3f54851eb7b4653ad0ce43d01ecd3633ce3102230fc31",
+      "packages/browser-executor/bench/run.py": "dc503e42d8a45bab1240491230b091e0275f579922643645343664a0d138241b",
+      "packages/browser-executor/bench/space-runtime.mjs": "93c98bb1eb0a58a7be9c22756473d226952930e685249895723a335b85b5a26a",
+      "packages/browser-executor/bench/space-study.py": "6e14bd2125a73875853c7698121f9ede7cad5702f60f8bbd3a975bf654fea6b6",
+      "packages/browser-executor/bench/space-study.mjs": "61e13fde8d2a4b63614e3528d5287e19447a39599786f0f623fdc9a65e341970",
+      "packages/browser-executor/bridge.mjs": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+      "packages/browser-executor/resolver.mjs": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+      "packages/browser-executor/camofox.mjs": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+      "packages/browser-executor/bench/space-deterministic-policy.mjs": "0ab01cf8771e45bdcbfd4cd6a532b5271456ca8e09c056a3ee8fbe526198ca7c",
+      "packages/browser-executor/bench/space-planner-policy.mjs": "b4f968b034a931e708dd08a3447889cd0eac0eb99bdda0fb9e5275e9598b6da9"
+    },
+    "core_copy": {
+      "original_sha256": "6ebbb81a1b894f8f463ecbb3a64baa593eea16e5d6ffa1fcad59cc69cdfabd3b",
+      "derived_sha256": "a08644f0afe3912344ff916e0acf9a800303b3127c6db54938d73d0234f9bbda",
+      "config": {
+        "variant": "planner-full",
+        "cap": 128,
+        "timeout_ms": 240000,
+        "semantic_stop_offered": true,
+        "manual_fields": true
+      },
+      "config_sha256": "22497314f75c932f67a39e7af40f8b42d8c84925eeb208ae1c379fcec9bb3cb7",
+      "transforms_sha256": "d1558836534caee3a7d422315efa24940f6cff313aca1f3d23abc27aaa363c33",
+      "anchors": [
+        "resolver_import",
+        "cap",
+        "timeout",
+        "semantic_stop",
+        "manual_fields"
+      ]
+    },
+    "native_sha256": "538c3699c45b37f7a75dc62ac68204eba1e7d7c92fca550e45576794ed8a948e",
+    "hosted_calls": 0
+  },
+  "variant": "planner-full",
+  "backend": "laya",
+  "rows": [
+    {
+      "task": "space-01",
+      "variant": "planner-full",
+      "backend": "laya",
+      "policy_mode": null,
+      "hosted": false,
+      "core_sha256": "a08644f0afe3912344ff916e0acf9a800303b3127c6db54938d73d0234f9bbda",
+      "runtime_sha256": "93c98bb1eb0a58a7be9c22756473d226952930e685249895723a335b85b5a26a",
+      "trajectory": [
+        {
+          "event": "initial_fields",
+          "fields": [
+            {
+              "name": "location",
+              "label": "location",
+              "type": "text"
+            },
+            {
+              "name": "service",
+              "label": "service",
+              "type": "text"
+            },
+            {
+              "name": "date",
+              "label": "other",
+              "type": "text"
+            },
+            {
+              "name": "summary",
+              "label": "summary",
+              "type": "text"
+            },
+            {
+              "name": "destination",
+              "label": "destination",
+              "type": "text"
+            }
+          ]
+        },
+        {
+          "event": "observation",
+          "route": "start",
+          "phase": "form",
+          "stage": 1,
+          "digest": "d3d940527e922555",
+          "repeated": false
+        },
+        {
+          "event": "policy",
+          "kind": "bridge",
+          "metric": "model_call",
+          "reason": null
+        },
+        {
+          "event": "strategy",
+          "label": "refused",
+          "accepted": false,
+          "reason": "uncertain",
+          "repeat_observations": 0,
+          "candidates": 5
+        },
+        {
+          "event": "core",
+          "kind": "result",
+          "step": 0,
+          "action": null,
+          "reason": "uncertain",
+          "deterministic": null
+        }
+      ],
+      "goal_format": "task_description_without_repeated_manifest_facts",
+      "cap": 128,
+      "timeout_ms": 240000,
+      "boundary": "none",
+      "semantic_stop_offered": true,
+      "prepared_fields": false,
+      "fact_policy": "native_model_each_field",
+      "navigation_policy": "two_level_native",
+      "policy_calls": 1,
+      "elapsed_ms": 7716,
+      "native_calls": 1,
+      "result": {
+        "status": "escalated",
+        "reason": "uncertain",
+        "steps": 0,
+        "progress": {
+          "assignments_verified": 0,
+          "pages_seen": 1,
+          "remaining_facts": null
+        }
+      },
+      "oracle": {
+        "passed": false,
+        "failure": "incomplete_other",
+        "mistakes": 0,
+        "first_error_server_step": null,
+        "success_server_step": null,
+        "first_error_browser_mutation": null,
+        "action_alignment": "click_ordinal_matches_server_count",
+        "server_action_steps": 0,
+        "correct_server_transitions_before_error": 0,
+        "post_success_overrun": false,
+        "server_actions": [],
+        "browser_mutations": 0,
+        "browser_observations": 1,
+        "duplicate_observations": 0,
+        "cap_censored": false,
+        "cap": 128
+      },
+      "native_timeout_censored": false
+    },
+    {
+      "task": "space-02",
+      "variant": "planner-full",
+      "backend": "laya",
+      "policy_mode": null,
+      "hosted": false,
+      "core_sha256": "a08644f0afe3912344ff916e0acf9a800303b3127c6db54938d73d0234f9bbda",
+      "runtime_sha256": "93c98bb1eb0a58a7be9c22756473d226952930e685249895723a335b85b5a26a",
+      "trajectory": [
+        {
+          "event": "initial_fields",
+          "fields": [
+            {
+              "name": "location",
+              "label": "location",
+              "type": "text"
+            },
+            {
+              "name": "service",
+              "label": "service",
+              "type": "text"
+            },
+            {
+              "name": "date",
+              "label": "other",
+              "type": "text"
+            },
+            {
+              "name": "summary",
+              "label": "summary",
+              "type": "text"
+            },
+            {
+              "name": "destination",
+              "label": "destination",
+              "type": "text"
+            }
+          ]
+        },
+        {
+          "event": "observation",
+          "route": "start",
+          "phase": "form",
+          "stage": 1,
+          "digest": "d3d940527e922555",
+          "repeated": false
+        },
+        {
+          "event": "policy",
+          "kind": "bridge",
+          "metric": "model_call",
+          "reason": null
+        },
+        {
+          "event": "strategy",
+          "label": "refused",
+          "accepted": false,
+          "reason": "uncertain",
+          "repeat_observations": 0,
+          "candidates": 5
+        },
+        {
+          "event": "core",
+          "kind": "result",
+          "step": 0,
+          "action": null,
+          "reason": "uncertain",
+          "deterministic": null
+        }
+      ],
+      "goal_format": "task_description_without_repeated_manifest_facts",
+      "cap": 128,
+      "timeout_ms": 240000,
+      "boundary": "none",
+      "semantic_stop_offered": true,
+      "prepared_fields": false,
+      "fact_policy": "native_model_each_field",
+      "navigation_policy": "two_level_native",
+      "policy_calls": 1,
+      "elapsed_ms": 4600,
+      "native_calls": 1,
+      "result": {
+        "status": "escalated",
+        "reason": "uncertain",
+        "steps": 0,
+        "progress": {
+          "assignments_verified": 0,
+          "pages_seen": 1,
+          "remaining_facts": null
+        }
+      },
+      "oracle": {
+        "passed": false,
+        "failure": "incomplete_other",
+        "mistakes": 0,
+        "first_error_server_step": null,
+        "success_server_step": null,
+        "first_error_browser_mutation": null,
+        "action_alignment": "click_ordinal_matches_server_count",
+        "server_action_steps": 0,
+        "correct_server_transitions_before_error": 0,
+        "post_success_overrun": false,
+        "server_actions": [],
+        "browser_mutations": 0,
+        "browser_observations": 1,
+        "duplicate_observations": 0,
+        "cap_censored": false,
+        "cap": 128
+      },
+      "native_timeout_censored": false
+    },
+    {
+      "task": "space-03",
+      "variant": "planner-full",
+      "backend": "laya",
+      "policy_mode": null,
+      "hosted": false,
+      "core_sha256": "a08644f0afe3912344ff916e0acf9a800303b3127c6db54938d73d0234f9bbda",
+      "runtime_sha256": "93c98bb1eb0a58a7be9c22756473d226952930e685249895723a335b85b5a26a",
+      "trajectory": [
+        {
+          "event": "initial_fields",
+          "fields": [
+            {
+              "name": "location",
+              "label": "location",
+              "type": "text"
+            },
+            {
+              "name": "service",
+              "label": "service",
+              "type": "text"
+            },
+            {
+              "name": "date",
+              "label": "other",
+              "type": "text"
+            },
+            {
+              "name": "summary",
+              "label": "summary",
+              "type": "text"
+            },
+            {
+              "name": "destination",
+              "label": "destination",
+              "type": "text"
+            }
+          ]
+        },
+        {
+          "event": "observation",
+          "route": "start",
+          "phase": "form",
+          "stage": 1,
+          "digest": "d3d940527e922555",
+          "repeated": false
+        },
+        {
+          "event": "policy",
+          "kind": "bridge",
+          "metric": "model_call",
+          "reason": null
+        },
+        {
+          "event": "strategy",
+          "label": "refused",
+          "accepted": false,
+          "reason": "uncertain",
+          "repeat_observations": 0,
+          "candidates": 5
+        },
+        {
+          "event": "core",
+          "kind": "result",
+          "step": 0,
+          "action": null,
+          "reason": "uncertain",
+          "deterministic": null
+        }
+      ],
+      "goal_format": "task_description_without_repeated_manifest_facts",
+      "cap": 128,
+      "timeout_ms": 240000,
+      "boundary": "none",
+      "semantic_stop_offered": true,
+      "prepared_fields": false,
+      "fact_policy": "native_model_each_field",
+      "navigation_policy": "two_level_native",
+      "policy_calls": 1,
+      "elapsed_ms": 4673,
+      "native_calls": 1,
+      "result": {
+        "status": "escalated",
+        "reason": "uncertain",
+        "steps": 0,
+        "progress": {
+          "assignments_verified": 0,
+          "pages_seen": 1,
+          "remaining_facts": null
+        }
+      },
+      "oracle": {
+        "passed": false,
+        "failure": "incomplete_other",
+        "mistakes": 0,
+        "first_error_server_step": null,
+        "success_server_step": null,
+        "first_error_browser_mutation": null,
+        "action_alignment": "click_ordinal_matches_server_count",
+        "server_action_steps": 0,
+        "correct_server_transitions_before_error": 0,
+        "post_success_overrun": false,
+        "server_actions": [],
+        "browser_mutations": 0,
+        "browser_observations": 1,
+        "duplicate_observations": 0,
+        "cap_censored": false,
+        "cap": 128
+      },
+      "native_timeout_censored": false
+    },
+    {
+      "task": "space-04",
+      "variant": "planner-full",
+      "backend": "laya",
+      "policy_mode": null,
+      "hosted": false,
+      "core_sha256": "a08644f0afe3912344ff916e0acf9a800303b3127c6db54938d73d0234f9bbda",
+      "runtime_sha256": "93c98bb1eb0a58a7be9c22756473d226952930e685249895723a335b85b5a26a",
+      "trajectory": [
+        {
+          "event": "initial_fields",
+          "fields": [
+            {
+              "name": "location",
+              "label": "location",
+              "type": "text"
+            },
+            {
+              "name": "service",
+              "label": "service",
+              "type": "text"
+            },
+            {
+              "name": "date",
+              "label": "other",
+              "type": "text"
+            },
+            {
+              "name": "summary",
+              "label": "summary",
+              "type": "text"
+            },
+            {
+              "name": "destination",
+              "label": "destination",
+              "type": "text"
+            }
+          ]
+        },
+        {
+          "event": "observation",
+          "route": "start",
+          "phase": "form",
+          "stage": 1,
+          "digest": "d3d940527e922555",
+          "repeated": false
+        },
+        {
+          "event": "policy",
+          "kind": "bridge",
+          "metric": "model_call",
+          "reason": null
+        },
+        {
+          "event": "strategy",
+          "label": "refused",
+          "accepted": false,
+          "reason": "uncertain",
+          "repeat_observations": 0,
+          "candidates": 5
+        },
+        {
+          "event": "core",
+          "kind": "result",
+          "step": 0,
+          "action": null,
+          "reason": "uncertain",
+          "deterministic": null
+        }
+      ],
+      "goal_format": "task_description_without_repeated_manifest_facts",
+      "cap": 128,
+      "timeout_ms": 240000,
+      "boundary": "none",
+      "semantic_stop_offered": true,
+      "prepared_fields": false,
+      "fact_policy": "native_model_each_field",
+      "navigation_policy": "two_level_native",
+      "policy_calls": 1,
+      "elapsed_ms": 7056,
+      "native_calls": 1,
+      "result": {
+        "status": "escalated",
+        "reason": "uncertain",
+        "steps": 0,
+        "progress": {
+          "assignments_verified": 0,
+          "pages_seen": 1,
+          "remaining_facts": null
+        }
+      },
+      "oracle": {
+        "passed": false,
+        "failure": "incomplete_other",
+        "mistakes": 0,
+        "first_error_server_step": null,
+        "success_server_step": null,
+        "first_error_browser_mutation": null,
+        "action_alignment": "click_ordinal_matches_server_count",
+        "server_action_steps": 0,
+        "correct_server_transitions_before_error": 0,
+        "post_success_overrun": false,
+        "server_actions": [],
+        "browser_mutations": 0,
+        "browser_observations": 1,
+        "duplicate_observations": 0,
+        "cap_censored": false,
+        "cap": 128
+      },
+      "native_timeout_censored": false
+    }
+  ]
+}
