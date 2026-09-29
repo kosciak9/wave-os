@@ -94,8 +94,10 @@ export function createDecisionBridge({ executable, backend = 'kev', idleMs = 60_
         worker.proc.stdin.write(line, error => { if (error) finish(Error('model_write_failed')); });
       });
       if (reply.error) throw Error('model_rejected_input');
-      try { onMetric?.({ backend, latency_ms: reply.latency_ms, wall_ms: Math.round(performance.now() - started), pid: worker.proc.pid }); } catch { /* metrics never affect decisions */ }
-      return backend === 'kev' ? reply : nativeDecision(reply, request, choices);
+      const decision = backend === 'kev' ? reply : nativeDecision(reply, request, choices);
+      try { onMetric?.({ event: 'model_call', backend, latency_ms: reply.latency_ms,
+        wall_ms: Math.round(performance.now() - started) }); } catch { /* metrics never affect decisions */ }
+      return decision;
     } catch (error) {
       try { onMetric?.({ event: 'failure', backend, reason: error.message, wall_ms: Math.round(performance.now() - started) }); } catch { /* metadata only */ }
       void retire(worker);
@@ -134,10 +136,22 @@ function projectState(state, choices, representation) {
   }
   const fields = state.fields;
   const normalized = value => String(value ?? '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+  const contextMatches = (actual, expected) => {
+    const path = value => String(value ?? '').split('/').map(normalized).filter(Boolean);
+    const observed = path(actual), wanted = path(expected);
+    return wanted.length > 0 && observed.length >= wanted.length &&
+      wanted.every((part, i) => part === observed[observed.length - wanted.length + i]);
+  };
   const variables = Object.entries(state.variables ?? {}).filter(([key, value]) =>
     keys.has(key) || keys.has(key.slice(0, 40)) ||
-    fields.some(field => [field.label, field.name].some(label => normalized(label) === normalized(state.bindings?.[key] ?? key)) ||
-      field.value && field.value === value) ||
+    fields.some(field => {
+      const binding = state.bindings?.[key];
+      if (binding !== null && typeof binding === 'object')
+        return field.ref && [field.label, field.name].some(label => normalized(label) === normalized(binding.field)) &&
+          contextMatches(field.context, binding.context);
+      return [field.label, field.name].some(label => normalized(label) === normalized(binding ?? key)) ||
+        field.value && field.value === value;
+    }) ||
     key === 'target' && normalized(value) && choices.some(choice => {
       const control = /^CLICK (?:button|link|checkbox|radio) "(.*)" \((.*)\) \[e\d+\]$/.exec(choice);
       return control && normalized(`${control[1]} ${control[2]}`).includes(normalized(value));
@@ -158,7 +172,7 @@ export function compactState(state) {
   // rejected by the packaged worker's actual 384-token check.
   const goal = state.goal;
   const values = Object.entries(state.variables ?? {}).map(([k, v]) => `${k}=${v}`).join('; ');
-  const fields = state.fields.map(f => `${f.label}=${f.value || '(empty)'}`).join('; ');
+  const fields = state.fields.map(f => `${f.context ? `${f.context} / ` : ''}${f.label}=${f.value || '(empty)'}`).join('; ');
   const recent = (state.recent ?? []).join('; ');
   const pages = (state.pagesSeen ?? []).slice(-2).map(page => page.slice(-90)).join('; ');
   if ([goal.length > 360, values.length > 400, fields.length > 380, recent.length > 180].some(Boolean)) throw Error('model_input_limit');
@@ -184,7 +198,7 @@ export function nativeRequest(state, choices) {
   }
   const ops = [...groups.keys()];
   if (state.goal.length > 360 || state.text.length > 1200) throw Error('model_input_limit');
-  const current = state.fields.map(f => `${f.label}=${f.value || '(empty)'}`).join('; ');
+  const current = state.fields.map(f => `${f.context ? `${f.context} / ` : ''}${f.label}=${f.value || '(empty)'}`).join('; ');
   if (current.length > 400) throw Error('model_input_limit');
   const suffix = `Current field values: ${current}`;
   const available = 1200 - suffix.length - 1;

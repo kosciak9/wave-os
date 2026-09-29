@@ -61,10 +61,136 @@ def redact(text):
     if not isinstance(text, str):
         return ''
     text = re.sub(r'(?i)(authorization\s*[:=]\s*bearer\s+)\S+', r'\1[REDACTED]', text)
+    text = re.sub(r'(?i)\bsk-[a-z0-9_-]{4,}\b', '[REDACTED]', text)
     text = re.sub(r'https?://[^\s"<>]+', '[URL]', text)
     text = re.sub(r'(?i)(password|passphrase|token|api[_-]?key)(["\s:=]+)[^\s,"}]+',
                   r'\1\2[REDACTED]', text)
     return text[:600]
+
+
+def failure_details(envelope, stderr, exit_code, credentials=()):
+    """Keep diagnostic text, never the original CLI envelope or unfiltered stderr."""
+    error = envelope.get('error') if isinstance(envelope, dict) else None
+    error = error if isinstance(error, dict) else {}
+    kind = error.get('kind') or error.get('type')
+    kind = kind if isinstance(kind, str) and re.fullmatch(r'[a-zA-Z0-9_-]{1,48}', kind) else 'unknown'
+
+    def clean(value):
+        if not isinstance(value, str):
+            return ''
+        for secret in credentials:
+            if secret:
+                value = value.replace(secret, '[REDACTED]')
+        value = re.sub(r'(?i)\bsk-[a-z0-9_-]{4,}\b', '[REDACTED]', value)
+        value = re.sub(r'(?i)\bBearer\s+\S+', 'Bearer [REDACTED]', value)
+        value = re.sub(r'(?i)\b(?:api[_-]?key|token|password|secret)\s*[:=]\s*\S+',
+                       '[REDACTED]', value)
+        value = re.sub(r'(?i)\b(?:https?|file)://\S+', '[URL]', value)
+        value = re.sub(r'(?<!\w)/(?:[^\s,:;()\[\]{}]+/?)+', '[PATH]', value)
+        value = re.sub(r'[^\x20-\x7e]', ' ', value)
+        return re.sub(r'\s+', ' ', value).strip()[:240]
+
+    message = error.get('message')
+    stderr_lines = [clean(line) for line in stderr.splitlines()[-16:]
+                    if re.search(r'(?i)error|fail|HTTP|provider|model|auth|plugin', line)]
+    # An HTTP status is useful even when its surrounding provider text is discarded.
+    source = '\n'.join((message if isinstance(message, str) else '', stderr[-4000:]))
+    status = re.search(r'(?i)\b(?:HTTP|status(?:\s+code)?|error)\s*[:=]?\s*([45]\d\d)\b', source)
+    return {'kind': kind, 'exit_code': exit_code,
+            'http_status': int(status[1]) if status else None,
+            'message': clean(message), 'stderr_tail': [line for line in stderr_lines if line][-3:]}
+
+
+def provider_block_reason(failure):
+    """Classify terminal provider authorization failures, not normal model/tool refusals."""
+    if not isinstance(failure, dict):
+        return None
+    status = failure.get('http_status')
+    if status not in (401, 403):
+        return None
+    diagnostic = ' '.join([str(failure.get('message') or '')] +
+                          [str(line) for line in (failure.get('stderr_tail') or [])])
+    if status == 403 and re.search(r'(?i)workspace lifetime budget\b.{0,80}\bexceeded\b', diagnostic):
+        return 'workspace_lifetime_budget_exceeded'
+    return 'provider_unauthorized' if status == 401 else 'provider_forbidden'
+
+
+def synthetic_contract(arguments, item):
+    """Only bounded fixture text and public fields; omit tab IDs and arbitrary model data."""
+    if not isinstance(arguments, dict) or not isinstance(item, dict):
+        return {}
+    public = {key: str(value) for key, value in item.get('variables', {}).items()}
+    if item.get('category') == 'forms' and 'target' in public:
+        public['location'] = public['target']
+    safe_names = {'target', 'location', 'service', 'date', 'summary', 'destination', 'arrival',
+                  'travel', 'reference', 'attendee', 'seat', 'access', 'ticket', 'meal',
+                  'session', 'venue', 'reminder', 'timezone', 'contact', 'confirm', 'party',
+                  'preference', 'quantity', 'label', 'search', 'time', 'filter'}
+
+    def text(value, limit=200):
+        if not isinstance(value, str) or len(value) > limit or re.search(
+                r'(?i)\b(?:bearer|password|passphrase|secret|token|api[_-]?key|sk-[\w-]+)\b|'
+                r'(?:https?|file)://|/(?:run|Users|private|var|tmp|nix)/|[\\@]', value):
+            return '[omitted]'
+        return value if re.fullmatch(r'[\x20-\x7e]*', value) else '[omitted]'
+
+    def binding(value):
+        if isinstance(value, str):
+            return text(value, 120)
+        if isinstance(value, dict):
+            return {key: text(value[key], 120) for key in ('field', 'context') if key in value}
+        return '[omitted]'
+
+    variables = arguments.get('variables')
+    bindings = arguments.get('bindings')
+    policies = arguments.get('fieldPolicies')
+    success = arguments.get('success')
+    keys = {'goal', 'modelGoal', 'tabId', 'variables', 'bindings', 'fieldPolicies',
+            'executionScope', 'stopAfter', 'success', 'allowedOrigins', 'forbidActions'}
+    scope = arguments.get('executionScope')
+    stop_after = arguments.get('stopAfter')
+    origins = arguments.get('allowedOrigins')
+    forbidden = arguments.get('forbidActions')
+    return {
+        'present_keys': sorted(set(arguments) & keys), 'unknown_key_count': len(set(arguments) - keys),
+        'variable_count': len(variables) if isinstance(variables, dict) else None,
+        'variable_names': [key if key in safe_names else '[other]'
+                           for key in list(variables)[:32]] if isinstance(variables, dict) else None,
+        'binding_count': len(bindings) if isinstance(bindings, dict) else None,
+        'binding_names': [key if key in safe_names else '[other]'
+                          for key in list(bindings)[:32]] if isinstance(bindings, dict) else None,
+        'fixture_variable_values_only': True,
+        'goal': text(arguments.get('goal'), 600), 'modelGoal': text(arguments.get('modelGoal'), 360)
+        if 'modelGoal' in arguments else None,
+        'variables': {key: value if variables.get(key) == value else '[other]'
+                      for key, value in public.items() if isinstance(variables, dict) and key in variables},
+        'bindings': {key: binding(value) for key, value in list(bindings.items())[:32] if key in public}
+        if isinstance(bindings, dict) else None,
+        'fieldPolicies': [{'field': binding(row.get('field')), 'preserve': text(row.get('preserve'), 120)}
+                          for row in policies[:32] if isinstance(row, dict)] if isinstance(policies, list) else None,
+        'executionScope': {key: text(scope[key], 200 if key == 'context' else 140)
+                           for key in ('title', 'context') if key in scope}
+        if isinstance(scope, dict) else None,
+        'stopAfter': {key: text(stop_after[key], 200 if key == 'context' else 120)
+                      for key in ('click', 'context') if key in stop_after}
+        if isinstance(stop_after, dict) else None,
+        'allowed_origins': [('[fixture-origin]' if origin == 'http://127.0.0.1:%d' % PORT_INSIDE
+                             else '[other-origin]') for origin in origins[:8]] if isinstance(origins, list) else None,
+        'allowed_origins_count': len(origins) if isinstance(origins, list) else None,
+        'forbid_actions': [text(action, 100) for action in forbidden[:24]]
+        if isinstance(forbidden, list) else None,
+        'forbid_actions_count': len(forbidden) if isinstance(forbidden, list) else None,
+        'success': {key: (('[fixture-route:%s]' % match[1] if (match := re.fullmatch(
+                            r'/run/[\w-]{8,128}/[a-z]+-\d\d/([a-z]+)', value)) else '[path]')
+                         if key == 'urlPath' and isinstance(value, str) else
+                         text(value, 160) if isinstance(value, str) else
+                         [text(part, 160) for part in value[:16] if isinstance(part, str)] if isinstance(value, list) else
+                         {text(k, 80): text(v, 120) for k, v in list(value.items())[:16]}
+                         if isinstance(value, dict) else '[omitted]')
+                    for key, value in success.items() if key in
+                    ('urlPath', 'textIncludes', 'allText', 'fieldValues')}
+        if isinstance(success, dict) else None,
+    }
 
 
 def oracle_actions(oracle, target):
@@ -136,7 +262,38 @@ def transcript_metrics(db, session_id):
             'image_blocks': image_blocks, 'image_encoded_chars': image_chars}
 
 
-def synthetic_trace(db, session_id):
+def hosted_usage(db, session_id, catalog):
+    """Per-turn OpenClaw usage; costs are catalog estimates, NOT OpenRouter billed cost."""
+    if not session_id or not db.is_file():
+        return []
+    conn = sqlite3.connect('file:' + str(db) + '?mode=ro', uri=True, timeout=1)
+    try:
+        rows = conn.execute('SELECT event_json FROM transcript_events WHERE session_id=? ORDER BY seq',
+                            (session_id,)).fetchall()
+    finally:
+        conn.close()
+    row = next(iter(next(iter(catalog['providers'].values()))['models']))
+    rates = row.get('cost') or {}
+    result = []
+    for (raw,) in rows:
+        event = json.loads(raw)
+        message = event.get('message') or {}
+        if event.get('type') != 'message' or message.get('role') != 'assistant' or not message.get('usage'):
+            continue
+        usage = message['usage']
+        values = {key: usage.get(key) for key in ('input', 'cacheRead', 'cacheWrite', 'output')}
+        valid = all(isinstance(v, int) and v >= 0 for v in values.values() if v is not None)
+        estimate = None
+        if valid and all(values[key] is not None for key in ('input', 'cacheRead', 'cacheWrite', 'output')) and all(
+                isinstance(rates.get(k), (float, int)) and rates[k] >= 0 for k in ('input', 'output')):
+            estimate = (values['input'] * rates['input'] + values['output'] * rates['output'] +
+                        (values['cacheRead'] or 0) * rates.get('cacheRead', rates['input']) +
+                        (values['cacheWrite'] or 0) * rates.get('cacheWrite', rates['input'])) / 1_000_000
+        result.append({**values, 'estimated_usd': round(estimate, 8) if estimate is not None else None})
+    return result
+
+
+def synthetic_trace(db, session_id, item=None):
     """Optional compact tool-only evidence: omit typed values, images, URLs and all user/system text."""
     if not db.is_file() or not session_id:
         return []
@@ -164,15 +321,61 @@ def synthetic_trace(db, session_id):
                 if name not in TOOLS and name not in EXTRA_TOOLS:
                     continue
                 arguments = outer.get('args', {}) if block.get('name') == 'tool_call' else outer
+                if isinstance(arguments, str):
+                    try:
+                        arguments = json.loads(arguments)
+                    except ValueError:
+                        arguments = {}
                 if not isinstance(arguments, dict):
                     arguments = {}
-                result.append({'tool': name, 'args': {key: arguments[key] for key in
-                    ('ref', 'selector', 'offset', 'direction', 'amount', 'option') if key in arguments
-                    and isinstance(arguments[key], (int, float, str))}, 'at': msg.get('timestamp')})
+                entry = {'tool': name, 'args': {key: arguments[key] for key in
+                    ('ref', 'offset', 'direction', 'amount') if key in arguments
+                    and isinstance(arguments[key], (int, float, str)) and
+                    (not isinstance(arguments[key], str) or re.fullmatch(r'[a-zA-Z0-9_-]{1,32}', arguments[key]))},
+                    'at': msg.get('timestamp')}
+                if name == 'browser_execute' and item:
+                    entry['fixture_contract'] = synthetic_contract(arguments, item)
+                result.append(entry)
         elif msg.get('role') == 'toolResult':
             name = pending.pop(msg.get('toolCallId'), msg.get('toolName'))
             if msg.get('isError'):
                 result.append({'tool_error': True, 'at': msg.get('timestamp')})
+            if name == 'browser_execute' and item:
+                for part in msg.get('content', []):
+                    if not isinstance(part, dict) or part.get('type') != 'text':
+                        continue
+                    try:
+                        payload = json.loads(part.get('text', ''))
+                        contents = payload.get('result', {}).get('content', [])
+                        body = json.loads(contents[0]['text']) if contents else payload
+                        if isinstance(body, dict):
+                            outcome = {key: body[key] for key in
+                                ('status', 'reason', 'steps', 'diagnostic_reason', 'verification')
+                                if type(body.get(key)) is int and 0 <= body[key] <= 24 or
+                                isinstance(body.get(key), str) and re.fullmatch(r'[a-z_]{1,48}', body[key])}
+                            matched = body.get('matched_conditions')
+                            if isinstance(matched, list):
+                                outcome['matched_conditions'] = [value for value in matched[:4] if value in
+                                    ('urlPath', 'textIncludes', 'allText', 'fieldValues')]
+                            url = body.get('current_url')
+                            if isinstance(url, str) and re.fullmatch(
+                                    r'http://127\.0\.0\.1:%d/run/[\w-]{8,128}/%s/[a-z]+'
+                                    % (PORT_INSIDE, re.escape(item['id'])), url):
+                                outcome['fixture_route'] = url.rsplit('/', 1)[-1]
+                                for key in ('relevant_state', 'diagnostic_field'):
+                                    if isinstance(body.get(key), str):
+                                        outcome[key] = redact(body[key])[:240]
+                                if body.get('verification') == 'action_and_fresh_observation' and isinstance(
+                                        body.get('observed_action'), dict):
+                                    observed = body['observed_action']
+                                    outcome['observed_action'] = {key: value for key, value in
+                                        ((key, observed.get(key)) for key in ('click', 'context'))
+                                        if isinstance(value, str) and len(value) <= (120 if key == 'click' else 200)
+                                        and re.fullmatch(r'[a-zA-Z0-9 .,;:/_-]+', value) and
+                                        not re.search(r'(?i)password|passphrase|secret|token|api[_-]?key|/(?:run|Users|var|nix|tmp)/', value)}
+                            result.append({'executor_outcome': outcome, 'at': msg.get('timestamp')})
+                    except (ValueError, IndexError, KeyError, TypeError, AttributeError):
+                        pass
             if name != 'camofox_snapshot':
                 continue
             for part in msg.get('content', []):
@@ -296,6 +499,22 @@ def erase_db(db):
         (db.parent / (db.name + suffix)).unlink(missing_ok=True)
 
 
+def transcript_session_id(db):
+    """Recover only an unambiguous session ID from this task's isolated transcript."""
+    if not db.is_file():
+        return None
+    try:
+        conn = sqlite3.connect('file:' + str(db) + '?mode=ro', uri=True, timeout=1)
+        try:
+            rows = conn.execute('SELECT DISTINCT session_id FROM transcript_events '
+                                'WHERE session_id IS NOT NULL LIMIT 2').fetchall()
+        finally:
+            conn.close()
+        return rows[0][0] if len(rows) == 1 and isinstance(rows[0][0], str) else None
+    except sqlite3.Error:
+        return None
+
+
 def install_access_profile(openclaw, config_path, state, cwd, env, profile, model):
     db = state / 'agents/main/agent/openclaw-agent.sqlite'
     # Pinned 2026.9.4 initializes its SQLite schema on a no-auth agent exec.
@@ -336,10 +555,14 @@ def model_config(config_file, model):
                'maxTokens', 'cost', 'thinkingLevelMap', 'compat'}
     if set(row) - allowed or re.search(r'(?i)(https?://|bearer\s+|api[_-]?key|secret)', json.dumps(row)):
         raise ValueError('model row contains unknown or potentially sensitive data')
-    return {'mode': 'merge', 'providers': {provider: {'models': [row]}}}
+    provider_config = {'models': [row]}
+    if provider == 'openrouter':
+        provider_config.update({'api': 'openai-completions', 'baseUrl': 'https://openrouter.ai/api/v1'})
+    return {'mode': 'merge', 'providers': {provider: provider_config}}
 
 
-def agent_config(models, model, plugin_path, port_number, extras, profile, executor_backend=None):
+def agent_config(models, model, plugin_path, port_number, extras, profile, executor_backend=None,
+                 max_steps=8, candidate_mode='legacy', apply_prepared=False, stop_policy='success'):
     tools = list(TOOLS) + list(extras)
     return {
         'agents': {'defaults': {'skipBootstrap': True, 'contextInjection': 'never', 'thinkingDefault': 'low',
@@ -361,7 +584,9 @@ def agent_config(models, model, plugin_path, port_number, extras, profile, execu
                     'load': {'paths': [str(plugin_path)]}, 'entries': {'camofox-browser': {'enabled': True,
                         'config': {'autoStart': False, 'url': 'http://127.0.0.1:' + str(port_number),
                                    **({'browserExecutor': {'enabled': True, 'backend': executor_backend,
-                                        'maxSteps': 8, 'timeoutMs': 120000, 'threshold': 0.5, 'margin': 0.05}}
+                                         'maxSteps': max_steps, 'timeoutMs': 120000, 'threshold': 0.5, 'margin': 0.05,
+                                         'candidateMode': candidate_mode, 'applyPrepared': apply_prepared,
+                                         'stopPolicy': stop_policy}}
                                        if executor_backend else {})}}}},
         'skills': {'load': {'extraDirs': [str(REPO / 'modules/home/openclaw/skills')]}}
     }
@@ -458,7 +683,7 @@ def clean_up_own_tabs(port_number, access_key, session_id):
 
 def run_one(args, item, ports, oracle_key, base_env, catalog, output):
     task = item['id']
-    if not re.fullmatch(r'[a-z]+-\d\d', task) or item['category'] not in ('search', 'booking', 'forms', 'login', 'cart', 'spa', 'long'):
+    if not re.fullmatch(r'(?:[a-z]+|challenge)-\d\d', task) or item['category'] not in ('search', 'booking', 'forms', 'login', 'cart', 'spa', 'long', 'challenge'):
         raise ValueError('invalid synthetic fixture manifest')
     duration = 600 if item['category'] == 'long' else 300
     run_id = uuid.uuid4().hex
@@ -469,13 +694,15 @@ def run_one(args, item, ports, oracle_key, base_env, catalog, output):
         path.mkdir(mode=0o700)
     config_path = directory / 'config.json'
     config_path.write_text(json.dumps(agent_config(catalog, args.model, args.plugin_path,
-                             ports['camofox'], args.extra_tool, bool(args.auth_profile_file), args.executor_backend)))
+                             ports['camofox'], args.extra_tool, bool(args.auth_profile_file), args.executor_backend,
+                             args.max_steps, args.candidate_mode, args.apply_prepared, args.stop_policy)))
     config_path.chmod(0o600)
     env = dict(base_env, HOME=str(home), OPENCLAW_STATE_DIR=str(state),
                OPENCLAW_CONFIG_PATH=str(config_path), CAMOFOX_ACCESS_KEY=base_env['CAMOFOX_ACCESS_KEY'])
     db = state / 'agents/main/agent/openclaw-agent.sqlite'
     start_url = 'http://127.0.0.1:%d/run/%s/%s/start' % (PORT_INSIDE, run_id, task)
-    oracle_url = 'http://127.0.0.1:%d/api/runs/%s' % (ports['fixture'], run_id)
+    oracle_url = 'http://127.0.0.1:%d/api/%sruns/%s' % (
+        ports['fixture'], 'challenge/' if item['category'] == 'challenge' else '', run_id)
     prompt = args.prompt_template.format(goal=item['goal'], start_url=start_url,
                                          variables=json.dumps(item['variables'], sort_keys=True))
     started = time.monotonic()
@@ -515,51 +742,100 @@ def run_one(args, item, ports, oracle_key, base_env, catalog, output):
                                 for row in rows)
                 except sqlite3.Error:
                     pass
-            if steps >= item['max_steps'] or time.monotonic() - turn_started > duration + 20:
-                summary['step_budget_hit'] = steps >= item['max_steps']
+            tool_budget = args.hosted_tool_budget or (60 if args.challenge else item['max_steps'])
+            if steps >= tool_budget or time.monotonic() - turn_started > duration + 20:
+                summary['step_budget_hit'] = steps >= tool_budget
                 summary['timed_out'] = time.monotonic() - turn_started > duration + 20
                 agent.terminate()
                 break
             time.sleep(1)
         try:
-            stdout, _ = agent.communicate(timeout=12)
+            stdout, stderr = agent.communicate(timeout=12)
         except subprocess.TimeoutExpired:
             agent.kill()
-            stdout, _ = agent.communicate(timeout=8)
+            stdout, stderr = agent.communicate(timeout=8)
         try:
             envelope = json.loads(stdout)
         except ValueError:
             envelope = {}
         session_id = envelope.get('sessionId')
+        if not session_id:
+            session_id = transcript_session_id(db)
+            summary['session_recovered_from_transcript'] = bool(session_id)
+        complete_usage = (envelope.get('status') == 'ok' and agent.returncode == 0
+                          and not summary.get('step_budget_hit') and not summary.get('timed_out'))
         summary.update({'status': envelope.get('status', 'error'), 'model_resolved':
                         (envelope.get('provider') or '') + '/' + (envelope.get('model') or ''),
                         'turns': envelope.get('assistantTurns'), 'agent_rss_peak_kib': rss_peak,
                         'camofox_server_rss_peak_mib': max(browser_rss, default=None),
                         'agent_turn_seconds': round(time.monotonic() - turn_started, 3),
-                        'steps_budget_hit': summary.get('step_budget_hit', False),
-                        'timed_out': summary.get('timed_out', envelope.get('status') == 'timeout')})
+                         'steps_budget_hit': summary.get('step_budget_hit', False),
+                         'hosted_tool_budget': args.hosted_tool_budget or
+                             (60 if args.challenge else item['max_steps']),
+                         'hosted_tool_calls_observed': steps,
+                         'usage_complete': complete_usage,
+                         'termination_reason': 'hosted_tool_budget' if summary.get('step_budget_hit') else
+                             'timeout' if summary.get('timed_out') else None,
+                         'timed_out': summary.get('timed_out', envelope.get('status') == 'timeout')})
+        if agent.returncode or summary['status'] != 'ok':
+            summary['failure'] = failure_details(envelope, stderr, agent.returncode,
+                [env[name] for name in args.auth_env] + [env['CAMOFOX_ACCESS_KEY']])
+            if summary['status'] != 'ok':
+                summary['provider_stop_reason'] = provider_block_reason(summary['failure'])
         summary.update(transcript_metrics(db, session_id))
+        summary['hosted_usage'] = hosted_usage(db, session_id, catalog)
+        summary['observed_usage_tokens'] = {key: sum(entry.get(key) or 0 for entry in summary['hosted_usage'])
+                                            for key in ('input', 'cacheRead', 'cacheWrite', 'output')}
+        for key, name in (('input', 'model_input_tokens'), ('cacheRead', 'model_cache_read_tokens'),
+                          ('cacheWrite', 'model_cache_write_tokens'), ('output', 'model_output_tokens')):
+            summary[name] = summary['observed_usage_tokens'][key] if complete_usage and summary['hosted_usage'] else None
+        if not complete_usage:
+            summary['model_input_plus_cache'] = None
+        summary['model_prompt_tokens'] = (summary['model_input_tokens'] + summary['model_cache_read_tokens'] +
+                                          summary['model_cache_write_tokens'] if complete_usage and summary['hosted_usage'] and
+                                          all(all(isinstance(entry.get(key), int) and entry[key] >= 0 for key in
+                                                  ('input', 'cacheRead', 'cacheWrite')) for entry in summary['hosted_usage'])
+                                          else None)
+        summary['estimated_usd'] = (round(sum(row['estimated_usd'] for row in summary['hosted_usage']), 8)
+                                    if complete_usage and summary['hosted_usage']
+                                    and all(row['estimated_usd'] is not None
+                                    for row in summary['hosted_usage']) else None)
         if args.trace_synthetic:
-            (directory / 'synthetic-tool-trace.json').write_text(json.dumps(synthetic_trace(db, session_id)))
+            (directory / 'synthetic-tool-trace.json').write_text(json.dumps(synthetic_trace(db, session_id, item)))
         if args.hosted_trace:
             (directory / 'hosted-trace.json').write_text(json.dumps(hosted_trace(db, session_id), indent=2))
         metrics_file = directory / 'local-metrics.jsonl'
         if metrics_file.is_file():
             events = [json.loads(line) for line in metrics_file.read_text().splitlines() if line.strip()]
             latencies = [round(float(event['latency_ms']), 3) for event in events
-                         if event.get('backend') in ('kev', 'laya') and isinstance(event.get('latency_ms'), (float, int))]
+                         if event.get('event') == 'model_call' and event.get('backend') in ('kev', 'laya')
+                         and isinstance(event.get('latency_ms'), (float, int))]
             result_reasons = {}
             for event in events:
                 if event.get('event') == 'result' and re.fullmatch('[a-z_]+', str(event.get('reason', ''))):
                     reason = event['reason']
                     result_reasons['reason:' + reason] = result_reasons.get('reason:' + reason, 0) + 1
-            summary.update({'local_calls': len(latencies),
+            purposes = ('initial', 'pre_action', 'post_action')
+            summary.update({'local_calls': sum(e.get('event') in ('model_call', 'failure') for e in events),
+                            'local_model_errors': sum(e.get('event') == 'failure' for e in events),
+                            'snapshots_by_purpose': {purpose: sum(e.get('event') == 'snapshot' and
+                                e.get('purpose') == purpose for e in events) for purpose in purposes},
                             'local_steps': sum(e.get('event') == 'action' for e in events),
+                            'local_deterministic_actions': sum(e.get('event') == 'action' and
+                                                               e.get('deterministic') is True for e in events),
+                            'local_model_actions': sum(e.get('event') == 'action' and
+                                                       e.get('deterministic') is False for e in events),
                             'local_snapshots_unexposed': sum(e.get('event') == 'snapshot' and
                                                               e.get('exposed_to_large_model') is False for e in events),
                             'local_latency_ms': latencies, 'executor_results': result_reasons,
                             'loop_detected': result_reasons.get('reason:action_loop', 0)})
             metrics_file.unlink()
+        else:
+            summary.update({'local_calls': None, 'local_model_errors': None,
+                            'snapshots_by_purpose': None, 'local_steps': None,
+                            'local_deterministic_actions': None, 'local_model_actions': None,
+                            'local_snapshots_unexposed': None, 'local_latency_ms': None,
+                            'executor_results': None, 'loop_detected': None})
     except (OSError, RuntimeError, ValueError, subprocess.TimeoutExpired) as error:
         summary['error_kind'] = type(error).__name__
     finally:
@@ -567,7 +843,7 @@ def run_one(args, item, ports, oracle_key, base_env, catalog, output):
             agent.kill()
             agent.wait(timeout=8)
         try:
-            summary.update(oracle_actions(fetch_json(oracle_url, oracle_key), item['variables']['target']))
+            summary.update(oracle_actions(fetch_json(oracle_url, oracle_key), item['variables'].get('target')))
             summary['oracle_unavailable'] = False
         except (OSError, KeyError, ValueError):
             pass
@@ -591,6 +867,31 @@ def load_prompt(path):
     return text
 
 
+def select_fixture_tasks(frozen, challenge, selected):
+    if not isinstance(frozen, list) or len(frozen) != 30:
+        raise RuntimeError('frozen fixture must have 30 tasks')
+    if challenge is not None:
+        original = {'challenge-%02d' % n for n in range(31, 38)}
+        if (not isinstance(challenge, list) or not 7 <= len(challenge) <= 50 or
+                any(not isinstance(task, dict) or task.get('category') != 'challenge' or
+                    not re.fullmatch(r'challenge-\d\d', str(task.get('id', ''))) or
+                    not isinstance(task.get('goal'), str) or not isinstance(task.get('split'), str) or
+                    not isinstance(task.get('variables'), dict) or
+                    type(task.get('max_steps')) is not int or not 1 <= task['max_steps'] <= 75
+                    for task in challenge)):
+            raise RuntimeError('challenge fixture manifest invalid')
+        ids = [task['id'] for task in challenge]
+        if len(set(ids)) != len(ids) or not original.issubset(ids):
+            raise RuntimeError('challenge fixture manifest invalid')
+    tasks = challenge if challenge is not None else frozen
+    if selected:
+        names = set(selected)
+        tasks = [task for task in tasks if task['id'] in names]
+        if len(tasks) != len(names):
+            raise ValueError('requested task not found')
+    return tasks
+
+
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--openclaw', required=True, help='Absolute path to installed OpenClaw executable')
@@ -604,6 +905,7 @@ def parse_args(argv=None):
     parser.add_argument('--podman', default='podman')
     parser.add_argument('--connection', default='openclaw-sandbox')
     parser.add_argument('--task', action='append', default=[], help='Run only selected frozen task ID; repeatable')
+    parser.add_argument('--challenge', action='store_true', help='Use separate challenge fixtures instead of frozen tasks')
     parser.add_argument('--extra-tool', action='append', default=[], choices=sorted(EXTRA_TOOLS))
     parser.add_argument('--auth-env', action='append', default=[], choices=sorted(AUTH_ENV),
                         help='Read only this provider key from the caller environment')
@@ -611,6 +913,12 @@ def parse_args(argv=None):
     parser.add_argument('--model-executable', type=Path, help='Optional plugin-specific executable; see docs')
     parser.add_argument('--executor-backend', choices=('kev', 'laya'),
                         help='Enable configured browser_execute for a plugin variant that declares it')
+    parser.add_argument('--max-steps', type=int, default=8, help='Executor mutation limit (1..24)')
+    parser.add_argument('--hosted-tool-budget', type=int,
+                        help='Outer OpenClaw tool-call cap (1..200), independent of fixture/executor steps; challenge default 60')
+    parser.add_argument('--candidate-mode', choices=('legacy', 'strictBindings'), default='legacy')
+    parser.add_argument('--apply-prepared', action='store_true')
+    parser.add_argument('--stop-policy', choices=('success', 'checkpoint'), default='success')
     parser.add_argument('--hosted-trace', action='store_true', help='Keep value-free tool and usage metrics by turn')
     parser.add_argument('--prompt-template-file', type=Path)
     parser.add_argument('--trace-synthetic', action='store_true',
@@ -635,6 +943,10 @@ def parse_args(argv=None):
         parser.error('--model-executable requires --extra-tool browser_execute')
     if args.executor_backend and 'browser_execute' not in args.extra_tool:
         parser.error('--executor-backend requires --extra-tool browser_execute')
+    if args.max_steps not in range(1, 25) or args.apply_prepared and args.candidate_mode != 'strictBindings':
+        parser.error('invalid executor bounds or prepared mode')
+    if args.hosted_tool_budget is not None and not 1 <= args.hosted_tool_budget <= 200:
+        parser.error('--hosted-tool-budget must be in 1..200')
     if args.auth_profile_file and args.auth_env:
         parser.error('choose environment credentials OR an explicit OAuth profile, not both')
     if not args.auth_profile_file and not args.auth_env:
@@ -676,36 +988,46 @@ def main(argv=None):
         # Podman needs its own connection configuration; agents do not inherit it.
         podman_env = dict(os.environ, CAMOFOX_ACCESS_KEY=env['CAMOFOX_ACCESS_KEY'])
         with temporary_fixture(args.podman, args.connection, args.image, podman_env) as (ports, key):
-            tasks = fetch_json('http://127.0.0.1:%d/api/tasks' % ports['fixture'])
-            if len(tasks) != 30:
-                raise RuntimeError('frozen fixture must have 30 tasks')
-            if args.task:
-                selected = set(args.task)
-                tasks = [task for task in tasks if task['id'] in selected]
-                if len(tasks) != len(selected):
-                    raise ValueError('requested task not found')
+            frozen = fetch_json('http://127.0.0.1:%d/api/tasks' % ports['fixture'])
+            challenge = (fetch_json('http://127.0.0.1:%d/api/challenge/tasks' % ports['fixture'])
+                         if args.challenge else None)
+            tasks = select_fixture_tasks(frozen, challenge, args.task)
             fingerprint = hashlib.sha256(''.join(digest(path) for path in
                 (Path(__file__), HERE / 'server.js', HERE / 'tasks.js', args.config,
                  args.plugin_path / 'plugin.js')).encode()).hexdigest()
-            (output / 'manifest.json').write_text(json.dumps({
+            manifest = {
                 'suite': args.suite, 'model': args.model, 'image': args.image,
-                'fixture_sha256': {'tasks.js': digest(HERE / 'tasks.js'), 'server.js': digest(HERE / 'server.js')},
+                 'fixture_sha256': {'tasks.js': digest(HERE / 'tasks.js'), 'server.js': digest(HERE / 'server.js'),
+                                    'challenge.js': digest(HERE / 'challenge.js')},
                 'code_fingerprint_sha256': fingerprint, 'task_count': len(tasks),
+                 'prompt_template_sha256': hashlib.sha256(args.prompt_template.encode()).hexdigest(),
+                 'executor_configuration': {'backend': args.executor_backend, 'maxSteps': args.max_steps,
+                     'candidateMode': args.candidate_mode, 'applyPrepared': args.apply_prepared,
+                     'stopPolicy': args.stop_policy},
+                 'hosted_tool_budget': args.hosted_tool_budget or (60 if args.challenge else 'fixture'),
                 'credential_mode': 'explicit-access-only-oauth' if args.auth_profile_file else 'allowlisted-provider-environment',
-                'note': 'Agent exec uses pinned config and isolated HOME/state; --auth-env-only conflicts with --config in OpenClaw 2026.9.4. Never route this to a live Camofox service.'
-            }, sort_keys=True, indent=2) + '\n')
-            for item in tasks:
+                 'note': 'Agent exec uses pinned config and isolated HOME/state; --auth-env-only conflicts with --config in OpenClaw 2026.9.4. Usage costs are catalog estimates, not billed OpenRouter cost. Never route this to a live Camofox service.'
+            }
+            manifest_path = output / 'manifest.json'
+            manifest_path.write_text(json.dumps(manifest, sort_keys=True, indent=2) + '\n')
+            for index, item in enumerate(tasks):
                 summary = run_one(args, item, ports, key, env, catalog, output)
-                row = {'suite': args.suite, 'scenario': 'frozen30', 'implementation': args.implementation,
+                row = {'suite': args.suite, 'scenario': 'challenge' if args.challenge else 'frozen30', 'implementation': args.implementation,
                        **summary, 'historical_code_sha256': fingerprint,
                        'local_calls': summary.get('local_calls'), 'local_steps': summary.get('local_steps'),
-                       'local_latency_ms': summary.get('local_latency_ms', []),
-                       'executor_results': summary.get('executor_results', {}),
+                        'local_latency_ms': summary.get('local_latency_ms'),
+                        'executor_results': summary.get('executor_results'),
                        'loop_detected': summary.get('loop_detected')}
                 with (output / 'measurements.jsonl').open('a') as stream:
                     stream.write(json.dumps(row, sort_keys=True) + '\n')
                 print(json.dumps({'task': item['id'], 'oracle_pass': row['success'],
                                   'status': row['status'], 'wall_seconds': row['wall_seconds']}), flush=True)
+                if summary.get('provider_stop_reason'):
+                    manifest.update({'abort_reason': summary['provider_stop_reason'],
+                                     'attempted_task_count': index + 1,
+                                     'not_attempted_tasks': [task['id'] for task in tasks[index + 1:]]})
+                    manifest_path.write_text(json.dumps(manifest, sort_keys=True, indent=2) + '\n')
+                    raise RuntimeError('provider blocked; suite stopped')
     finally:
         signal.signal(signal.SIGTERM, old)
 
@@ -714,5 +1036,11 @@ if __name__ == '__main__':
     try:
         main()
     except (ValueError, RuntimeError, OSError) as error:
-        print('benchmark failed: ' + type(error).__name__, file=sys.stderr)
+        reason = str(error)
+        allowed = {'frozen fixture must have 30 tasks', 'challenge fixture manifest invalid',
+                   'requested task not found', 'disposable Camofox container failed to start',
+                   'disposable Camofox health check timed out', 'disposable fixture did not start',
+                   'invalid fixture startup', 'port collision', 'provider blocked; suite stopped'}
+        safe = reason if reason in allowed else 'unclassified'
+        print('benchmark failed: %s: %s' % (type(error).__name__, safe), file=sys.stderr)
         sys.exit(2)

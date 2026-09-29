@@ -56,6 +56,40 @@ const digest = value => createHash('sha256').update(JSON.stringify(value)).diges
 const safeUrl = url => { const u = new URL(url); if (!['http:', 'https:'].includes(u.protocol) || u.username || u.password) throw Error('unsafe_url'); return u; };
 const displayUrl = url => { const u = safeUrl(url); return `${u.origin}${u.pathname.slice(0, 300)}`; };
 const isSensitive = f => f.type === 'password' || /^(?:pin|security code)$/i.test(String(f.name ?? f.label ?? '')) || SENSITIVE.test([f.label, f.name, f.id, f.type, f.autocomplete].join(' '));
+const validBinding = binding => {
+  const label = typeof binding === 'string' ? binding : binding?.field;
+  return (typeof binding === 'string' || record(binding) && Object.keys(binding).length === 2 &&
+    Object.hasOwn(binding, 'field') && Object.hasOwn(binding, 'context') &&
+    typeof binding.context === 'string' && binding.context.length <= 200 &&
+    binding.context.split('/').every(part => normalize(part) && !SENSITIVE.test(part))) &&
+    typeof label === 'string' && label.length <= 120 && normalize(label) && !SENSITIVE.test(label);
+};
+const contextMatches = (actual, expected) => {
+  const path = value => value.split('/').map(normalize).filter(Boolean);
+  const observed = path(actual), wanted = path(expected);
+  return wanted.length > 0 && observed.length >= wanted.length &&
+    wanted.every((part, i) => part === observed[observed.length - wanted.length + i]);
+};
+const selectorMatches = (field, selector) => {
+  const name = normalize(typeof selector === 'string' ? selector : selector.field);
+  return name && [field.label, field.name, field.axName].some(label => normalize(label) === name) &&
+    (typeof selector === 'string' || field.grounded && contextMatches(field.context, selector.context));
+};
+const validPolicies = policies => policies == null || Array.isArray(policies) && policies.length <= 16 &&
+  policies.every(policy => record(policy) && Object.keys(policy).length === 2 &&
+    Object.hasOwn(policy, 'field') && Object.hasOwn(policy, 'preserve') && validBinding(policy.field) &&
+    typeof policy.preserve === 'string' && policy.preserve.length <= 120 &&
+    !SENSITIVE_VALUE_TEST.test(policy.preserve));
+const validScope = scope => scope == null || record(scope) && Object.keys(scope).length === 2 &&
+  Object.hasOwn(scope, 'title') && Object.hasOwn(scope, 'context') &&
+  typeof scope.title === 'string' && scope.title.length <= 140 && normalize(scope.title) && !SENSITIVE.test(scope.title) &&
+  validBinding({ field: scope.title, context: scope.context });
+const validStopAfter = stop => stop == null || record(stop) &&
+  Object.keys(stop).every(key => ['click', 'context'].includes(key)) && Object.hasOwn(stop, 'click') &&
+  typeof stop.click === 'string' && stop.click.length <= 120 && normalize(stop.click) && !SENSITIVE.test(stop.click) &&
+  (stop.context === undefined ? !Object.hasOwn(stop, 'context') :
+    validBinding({ field: stop.click, context: stop.context }));
+const invalidRequest = category => { const error = Error('invalid_request'); error.category = category; throw error; };
 
 /** Only AX refs are actionable; indented headings provide context for repeated controls. */
 export function extractAx(snapshot) {
@@ -101,17 +135,22 @@ export function mapFields(structure, nodes) {
 }
 
 function validateRequest(request) {
-  if (!record(request) || Object.keys(request).some(k => !['goal', 'modelGoal', 'tabId', 'variables', 'bindings', 'success', 'allowedOrigins', 'forbidActions'].includes(k)) ||
+  if (!record(request) || Object.keys(request).some(k => !['goal', 'modelGoal', 'tabId', 'variables', 'bindings', 'fieldPolicies', 'executionScope', 'stopAfter', 'success', 'allowedOrigins', 'forbidActions'].includes(k)) ||
       typeof request.goal !== 'string' || !request.goal.trim() || request.goal.length > 2000 ||
        typeof request.tabId !== 'string' || !/^[\w-]{1,128}$/.test(request.tabId) ||
-       !record(request.variables)) throw Error('invalid_request');
-  if (request.modelGoal != null && (typeof request.modelGoal !== 'string' || !request.modelGoal.trim() || request.modelGoal.length > 360)) throw Error('invalid_request');
+        !record(request.variables)) invalidRequest('request_shape');
+  if (request.modelGoal != null && (typeof request.modelGoal !== 'string' || !request.modelGoal.trim() || request.modelGoal.length > 360))
+    invalidRequest('model_goal_length');
   const variables = Object.entries(request.variables);
   if (variables.length > 32 || variables.some(([k, v]) => !k || k.length > 100 || typeof v !== 'string' || v.length > 100 ||
-       SENSITIVE_VALUE_TEST.test(v))) throw Error('invalid_request');
+       SENSITIVE_VALUE_TEST.test(v))) invalidRequest('variables');
   if (request.bindings != null && (!record(request.bindings) || Object.keys(request.bindings).length > 32 ||
-      Object.entries(request.bindings).some(([key, label]) => !Object.hasOwn(request.variables, key) ||
-        typeof label !== 'string' || !normalize(label) || label.length > 120 || SENSITIVE.test(label)))) throw Error('invalid_request');
+      Object.entries(request.bindings).some(([key, binding]) => !Object.hasOwn(request.variables, key) ||
+        !validBinding(binding)))) invalidRequest('bindings');
+  if (!validPolicies(request.fieldPolicies)) invalidRequest('field_policies');
+  if (!validScope(request.executionScope)) invalidRequest('execution_scope');
+  if (!validStopAfter(request.stopAfter) || request.stopAfter != null && request.success != null)
+    invalidRequest('stop_after');
   if (request.success != null && (!record(request.success) || !Object.keys(request.success).length ||
        Object.keys(request.success).some(k => !['textIncludes', 'urlPath', 'allText', 'fieldValues'].includes(k)) ||
        Object.entries(request.success).some(([k, v]) => k === 'allText' ?
@@ -119,12 +158,16 @@ function validateRequest(request) {
          k === 'fieldValues' ? !record(v) || !Object.keys(v).length || Object.keys(v).length > 12 ||
            Object.entries(v).some(([label, value]) => !label || label.length > 120 || typeof value !== 'string' ||
              !value || value.length > 120 || SENSITIVE.test(label) || SENSITIVE_VALUE_TEST.test(value)) :
-           typeof v !== 'string' || !v.trim() || v.length > 300))) throw Error('invalid_request');
-  if (request.allowedOrigins != null && (!Array.isArray(request.allowedOrigins) || request.allowedOrigins.length > 8 ||
-      request.allowedOrigins.some(origin => safeUrl(origin).origin !== origin))) throw Error('invalid_request');
+            typeof v !== 'string' || !v.trim() || v.length > 300))) invalidRequest('success');
+  if (request.allowedOrigins != null) {
+    if (!Array.isArray(request.allowedOrigins) || request.allowedOrigins.length > 8) invalidRequest('allowed_origins');
+    try {
+      if (request.allowedOrigins.some(origin => safeUrl(origin).origin !== origin)) invalidRequest('allowed_origins');
+    } catch { invalidRequest('allowed_origins'); }
+  }
   if (request.forbidActions != null && (!Array.isArray(request.forbidActions) || request.forbidActions.length > 24 ||
-      request.forbidActions.some(s => typeof s !== 'string' || !s || s.length > 100))) throw Error('invalid_request');
-  if (request.forbidActions?.some(s => !normalize(s))) throw Error('invalid_request');
+      request.forbidActions.some(s => typeof s !== 'string' || !s || s.length > 100))) invalidRequest('forbid_actions');
+  if (request.forbidActions?.some(s => !normalize(s))) invalidRequest('forbid_actions');
 }
 
 function view(snapshot, request, origins) {
@@ -151,22 +194,87 @@ function view(snapshot, request, origins) {
   const semantic = visible.split('\n').filter(line => /^\s*- (?:heading|paragraph|alert|text|listitem)\b/.test(line))
     .map(line => clean(line.replace(/^\s*- (?:heading|paragraph|alert|text|listitem)\b:?\s*/, ''), 220))
     .filter(Boolean).join(' | ');
+  // Duplicate DOM labels have no safe positional mapping to AX refs. When the
+  // entire same-label group has matching observed values, use AX refs directly
+  // for text/number inputs; never invent select options or DOM ownership.
+  const axOnly = nodes.filter(node => ['textbox', 'spinbutton'].includes(node.role) && !node.disabled &&
+    !fields.some(entry => entry.ref === node.ref) && !SENSITIVE.test(node.name) &&
+    (() => {
+      const group = fields.filter(({ field }) => !isSensitive(field) && !field.disabled && field.tag === 'input' &&
+        (field.type === 'text' && node.role === 'textbox' || field.type === 'number' && node.role === 'spinbutton') &&
+        normalize(field.label) === normalize(node.name));
+      const peers = nodes.filter(other => other.role === node.role && normalize(other.name) === normalize(node.name) && !other.disabled);
+      const counts = values => values.toSorted().join('\u0000');
+      return group.length > 1 && group.length === peers.length && group.every(entry => !entry.ref) &&
+        counts(group.map(entry => entry.field.value ?? '')) === counts(peers.map(peer => peer.value));
+    })());
+  const axGroups = new Set(axOnly.map(node => `${node.role}:${normalize(node.name)}`));
+  const represented = ({ field, ref }) => ref || axGroups.has(`${field.type === 'number' ? 'spinbutton' : 'textbox'}:${normalize(field.label)}`) &&
+    field.tag === 'input' && ['text', 'number'].includes(field.type);
   const state = {
     goal: redact(clean(request.goal, 2000)), url: redact(displayUrl(snapshot.url)),
     variables: Object.fromEntries(Object.entries(request.variables).filter(([key]) => !SENSITIVE.test(key)).map(([key, value]) => [key, redact(clean(value, 100))])),
     title: redact(clean(snapshot.snapshot.match(/^\s*- heading "([^"]+)"/m)?.[1] ?? '', 140)),
     text: semantic.length > 950 ? `${semantic.slice(0, 920)} [observation abbreviated]` : semantic,
-    fields: fields.filter(({ field }) => !isSensitive(field)).map(({ field, ref }) => ({
+    fields: fields.filter(({ field, ref }) => !isSensitive(field) && field.type !== 'hidden' &&
+      (ref || !represented({ field, ref }))).map(({ field, ref }) => ({
       label: redact(clean(field.label, 120)), name: clean(field.name, 80), ref,
       value: redact(clean(field.value, 120)), type: field.type,
-    })).concat(nodes.filter(n => ['spinbutton', 'searchbox'].includes(n.role) && !fields.some(f => f.ref === n.ref) && !SENSITIVE.test(n.name))
+      ...(ref && { context: redact(nodes.find(node => node.ref === ref)?.context ?? '') }),
+    })).concat(nodes.filter(n => !SENSITIVE.test(n.name) &&
+      (['spinbutton', 'searchbox'].includes(n.role) && !fields.some(f => f.ref === n.ref) || axOnly.includes(n)))
       .map(n => ({ label: redact(n.name), name: '', ref: n.ref, value: redact(n.value),
-        type: n.role === 'spinbutton' ? 'number' : 'search', context: redact(n.context) }))),
+        type: n.role === 'spinbutton' ? 'number' : n.role === 'searchbox' ? 'search' : 'text', context: redact(n.context) }))),
   };
   // Hash includes actual field values and URL, not volatile AX refs or timestamps.
   const fingerprint = digest([url.href, fields.map(({ field }) => [field.name, field.label, field.value, field.options?.map(o => o.selected)]),
     nodes.map(({ role, name, context, value }) => [role, name, context, value]), visible.replace(/\[e\d+\]/g, '')]);
-  return { nodes, fields, state, fingerprint, visible, url, redact };
+  return { nodes, fields, axOnly, represented, state, fingerprint, visible, url, redact };
+}
+
+function actionableFields(viewed) {
+  const fields = viewed.fields.filter(({ field, ref }) => ref && !field.disabled && !isSensitive(field))
+    .map(({ field, ref }) => ({ ...field, ref, grounded: true, context: viewed.nodes.find(n => n.ref === ref)?.context ?? '',
+      axName: viewed.nodes.find(n => n.ref === ref)?.name ?? '' }));
+  const numericNodes = viewed.nodes.filter(n => n.role === 'spinbutton' && !n.disabled && !SENSITIVE.test(n.name));
+  const searchNodes = viewed.nodes.filter(n => n.role === 'searchbox' && !n.disabled && !SENSITIVE.test(n.name));
+  for (const node of [...numericNodes, ...searchNodes, ...viewed.axOnly]) {
+    if (!fields.some(f => f.ref === node.ref)) fields.push({ label: node.name, name: '', type: 'number', tag: 'input',
+      grounded: viewed.axOnly.includes(node) || !viewed.fields.some(({ field }) =>
+        field.type === 'number' && normalize(field.label) === normalize(node.name)),
+      value: node.value, ref: node.ref, context: node.context, ...(node.role === 'searchbox' && { type: 'search' }),
+      ...(node.role === 'textbox' && { type: 'text' }) });
+  }
+  return { fields, numericNodes, searchNodes };
+}
+
+function preservation(viewed, policies) {
+  const { fields } = actionableFields(viewed);
+  const refs = new Set();
+  for (const { field: selector, preserve } of policies ?? []) {
+    const name = normalize(typeof selector === 'string' ? selector : selector.field);
+    // A hidden field is never a preservation authorization, even if an
+    // actionable control elsewhere happens to share its name.
+    if (viewed.fields.some(({ field }) => field.type === 'hidden' &&
+      [field.label, field.name].some(label => normalize(label) === name)))
+      return { reason: 'preserved_field_unverifiable', label: name };
+    const candidates = fields.filter(field => field.grounded && selectorMatches(field, selector));
+    const observed = typeof selector === 'string' ?
+      viewed.fields.some(({ field }) => [field.label, field.name].some(label => normalize(label) === name)) ||
+        viewed.nodes.some(node => normalize(node.name) === name && ['textbox', 'combobox', 'spinbutton', 'searchbox'].includes(node.role)) :
+      viewed.nodes.some(node => contextMatches(node.context, selector.context));
+    if (!candidates.length && !observed) continue; // Future stage, not a missing current field.
+    if (candidates.length !== 1 || viewed.fields.some(({ field, ref }) => !ref && field.type !== 'hidden' &&
+      [field.label, field.name].some(label => normalize(label) === name) && !viewed.represented({ field, ref })))
+      return { reason: 'preserved_field_unverifiable', label: name };
+    const candidate = candidates[0];
+    const node = viewed.nodes.find(n => n.ref === candidate.ref);
+    if (candidate.value !== preserve || node?.value && node.value !== preserve)
+      return { reason: 'preserved_field_changed', label: name };
+    if (refs.has(candidate.ref)) return { reason: 'preserved_field_unverifiable', label: name };
+    refs.add(candidate.ref);
+  }
+  return { refs };
 }
 
 function success(viewed, success) {
@@ -181,22 +289,13 @@ function success(viewed, success) {
     }));
 }
 
-function choicesFor(viewed, request, { candidateMode = 'legacy', stopPolicy = 'success' } = {}) {
+function choicesFor(viewed, request, preservedRefs, { candidateMode = 'legacy', stopPolicy = 'success' } = {}) {
   if (viewed.fields.some(({ field }) => isSensitive(field))) throw Error('sensitive_fields');
   const forbidden = request.forbidActions ?? [];
   const blocked = label => forbidden.some(literal => normalize(label).includes(normalize(literal)));
-  const numericNodes = viewed.nodes.filter(n => n.role === 'spinbutton' && !n.disabled && !SENSITIVE.test(n.name));
-  const searchNodes = viewed.nodes.filter(n => n.role === 'searchbox' && !n.disabled && !SENSITIVE.test(n.name));
-  const fields = viewed.fields.filter(({ field, ref }) => ref && !field.disabled && !isSensitive(field))
-    .map(({ field, ref }) => ({ ...field, ref, context: viewed.nodes.find(n => n.ref === ref)?.context ?? '',
-      axName: viewed.nodes.find(n => n.ref === ref)?.name ?? '' }));
-  // A repeated AX spinbutton is independently actionable from its ref and AX value;
-  // no assumption is made about which structurally ambiguous DOM form owns it.
-  for (const node of [...numericNodes, ...searchNodes]) {
-    if (!fields.some(f => f.ref === node.ref)) fields.push({ label: node.name, name: '', type: 'number', tag: 'input',
-      value: node.value, ref: node.ref, context: node.context, ...(node.role === 'searchbox' && { type: 'search' }) });
-  }
-  const unmatchedStructure = viewed.fields.filter(({ field, ref }) => !field.disabled && !ref &&
+  const { fields: allFields, numericNodes, searchNodes } = actionableFields(viewed);
+  const fields = request.executionScope ? allFields.filter(field => contextMatches(field.context, request.executionScope.context)) : allFields;
+  const unmatchedStructure = viewed.fields.filter(({ field, ref }) => !field.disabled && !viewed.represented({ field, ref }) &&
     (field.tag === 'select' || field.tag === 'textarea' || field.tag === 'input' && EDITABLE.has(field.type || 'text')));
   const prepared = Object.entries(request.variables).filter(([key, value]) => !SENSITIVE.test(key) && value);
   const matches = (field, key) => {
@@ -204,25 +303,40 @@ function choicesFor(viewed, request, { candidateMode = 'legacy', stopPolicy = 's
     return normalize(key).split(' ').some(word => word.length > 2 && words.has(word));
   };
   const strict = candidateMode === 'strictBindings';
-  const aliases = key => normalize(request.bindings?.[key] ?? key);
-  const bound = (field, key) => aliases(key) && [field.label, field.name, field.axName].some(s => normalize(s) === aliases(key));
+  const binding = key => request.bindings?.[key] ?? key;
+  const bound = (field, key) => selectorMatches(field, binding(key));
+  if (request.executionScope && unmatchedStructure.some(({ field }) => prepared.some(([key]) => {
+    const selector = binding(key);
+    return [field.label, field.name].some(label => normalize(label) === normalize(
+      typeof selector === 'string' ? selector : selector.field)) || matches(field, key);
+  }))) throw Error('scope_conflict');
   const unique = key => fields.filter(f => bound(f, key)).length === 1 &&
     prepared.filter(([other]) => bound(fields.find(f => bound(f, key)), other)).length === 1;
   const aligned = (field, key) => strict || Object.hasOwn(request.bindings ?? {}, key) ?
-    bound(field, key) && unique(key) : matches(field, key);
+    bound(field, key) && unique(key) : matches(field, key) && fields.filter(other => matches(other, key)).length === 1;
+  if (request.executionScope && prepared.some(([key]) => allFields.some(field => !fields.includes(field) &&
+    (strict || Object.hasOwn(request.bindings ?? {}, key) ? bound(field, key) : matches(field, key)))))
+    throw Error('scope_conflict');
   const matchedKeys = new Set(prepared.filter(([key]) => fields.some(f => aligned(f, key))).map(([key]) => key));
   const ambiguousBindings = prepared.some(([key]) => (strict || Object.hasOwn(request.bindings ?? {}, key)) &&
     fields.some(field => bound(field, key)) && !unique(key));
+  const wrongContext = prepared.some(([key]) => {
+    const spec = request.bindings?.[key];
+    return record(spec) && fields.some(field => [field.label, field.name, field.axName].some(
+      label => normalize(label) === normalize(spec.field))) && !fields.some(field => bound(field, key));
+  });
   const currentEditable = [...fields.filter(field => field.tag === 'select' || field.tag === 'textarea' ||
     field.tag === 'input' && EDITABLE.has(field.type || 'text')), ...unmatchedStructure.map(({ field }) => field)];
-  const strictUnresolved = strict && currentEditable.some(field => {
+  const strictUnresolvedFields = strict ? currentEditable.filter(field => {
+    if (preservedRefs.has(field.ref)) return false;
     const related = prepared.filter(([key]) => bound(field, key));
     return !related.length || new Set(related.map(([, value]) => value)).size !== 1 ||
       related.some(([key]) => currentEditable.filter(other => bound(other, key)).length !== 1) ||
       related.some(([, value]) => field.value !== value && (field.tag !== 'select' ||
         !(field.options ?? []).some(option => option.selected && (option.label === value || option.value === value))));
-  });
-  const incompleteForm = ambiguousBindings || strictUnresolved || unmatchedStructure.some(({ field }) => {
+  }) : [];
+  const strictUnresolved = strictUnresolvedFields.length > 0;
+  const incompleteForm = ambiguousBindings || wrongContext || strictUnresolved || unmatchedStructure.some(({ field }) => {
     if ((field.type === 'number' && numericNodes.some(n => normalize(n.name) === normalize(field.label))) ||
         (field.type === 'search' && searchNodes.some(n => normalize(n.name) === normalize(field.label)))) return false;
     // An unmapped field has no AX ref, so uniqueness among actionable refs
@@ -237,17 +351,20 @@ function choicesFor(viewed, request, { candidateMode = 'legacy', stopPolicy = 's
     // same value as an aligned key, the aligned key supplies its coverage.
     const alternatives = matching.length ? matching : strict ? [] : prepared.filter(([key, value]) =>
       !Object.hasOwn(request.bindings ?? {}, key) && !matchedKeys.has(key) &&
+      !fields.some(other => matches(other, key)) &&
       !prepared.some(([other, v]) => matchedKeys.has(other) && value === v));
     return [field.ref, alternatives];
   }));
+  if (fields.some(field => preservedRefs.has(field.ref) && desired.get(field.ref)?.length))
+    throw Error('preserved_field_conflict');
   const target = normalize(request.variables.target);
   const targetedNumeric = target && numericNodes.some(n => normalize(n.context).includes(target));
   const targetLinks = target && viewed.nodes.some(n => n.role === 'link' && normalize(n.name).includes(target));
   const pending = field => (desired.get(field.ref) ?? []).some(([, value]) => field.value !== value &&
     (field.tag !== 'select' || !(field.options ?? []).some(o => o.selected && (o.label === value || o.value === value))));
   const stageHasPendingValues = fields.some(pending);
-  const unsupportedValue = fields.some(field => field.tag === 'select' && pending(field) &&
-    (desired.get(field.ref) ?? []).some(([, value]) => field.value !== value &&
+  const unsupportedValue = fields.some(field => field.type === 'number' && field.value && pending(field) ||
+    field.tag === 'select' && pending(field) && (desired.get(field.ref) ?? []).some(([, value]) => field.value !== value &&
       (field.optionsTruncated || (field.options ?? []).filter(o => o.value === value || o.label === value).length !== 1)));
   const choices = [], actions = new Map();
   let unsafeControls = false;
@@ -264,9 +381,10 @@ function choicesFor(viewed, request, { candidateMode = 'legacy', stopPolicy = 's
       continue;
     }
     if (!['button', 'link', 'checkbox', 'radio'].includes(node.role) || node.disabled ||
+        request.executionScope && !contextMatches(node.context, request.executionScope.context) ||
         (stageHasPendingValues || strictUnresolved) && node.role === 'link' ||
         targetLinks && node.role === 'link' && !normalize(node.name).includes(target) ||
-        node.role === 'button' && (incompleteForm || fields.some(f => f.context === node.context && pending(f)) ||
+        node.role === 'button' && (incompleteForm || stageHasPendingValues ||
           targetedNumeric && !normalize(node.context).includes(target)) ||
         SENSITIVE_ACTION.test(node.name) || blocked(`${node.context} ${node.name}`)) continue;
     add('CLICK', `${node.role} "${clean(node.name, 100)}" (${clean(node.context, 100)}) [${node.ref}]`, { ref: node.ref });
@@ -281,18 +399,23 @@ function choicesFor(viewed, request, { candidateMode = 'legacy', stopPolicy = 's
         if (options.length !== 1 || options[0].selected || field.optionsTruncated) continue;
         add('SELECT', label, { ref, option: options[0].value });
       } else if ((field.tag === 'textarea' || field.tag === 'input' && EDITABLE.has(field.type || 'text')) &&
-          field.value !== value && (field.type !== 'number' || /^-?\d+(?:\.\d+)?$/.test(value))) {
+          field.value !== value && (field.type !== 'number' || !field.value && /^-?\d+(?:\.\d+)?$/.test(value))) {
         add('TYPE', label, { ref, text: value });
       }
     }
   }
-  const canScroll = /\b(scroll|load more|more results|infinite)\b/i.test(viewed.state.text);
-  const canStop = !stageHasPendingValues && (stopPolicy === 'checkpoint' || !request.success);
+  const canScroll = !request.executionScope && /\b(scroll|load more|more results|infinite)\b/i.test(viewed.state.text);
+  const canStop = !request.stopAfter && !stageHasPendingValues && (stopPolicy === 'checkpoint' || !request.success);
   if (choices.length > MAX_CHOICES - (Number(canScroll) + Number(canStop) + 1)) throw Error('choice_limit');
   if (canScroll) add('SCROLL', 'down 600 pixels', { direction: 'down', amount: 600 });
   if (canStop) add('STOP', 'request human checkpoint', {});
   add('ESCALATE', 'cannot proceed safely', {});
-  return { choices, actions, incompleteForm, unsafeControls, unsupportedValue };
+  const unbound = strictUnresolvedFields.filter(field => !prepared.some(([key]) => bound(field, key)));
+  const diagnosticFields = unbound.length ? unbound : strictUnresolvedFields.length ? strictUnresolvedFields :
+    unmatchedStructure.map(({ field }) => field);
+  const diagnosticReason = unbound.length ? 'unbound_current_fields' : ambiguousBindings ? 'ambiguous_current_fields' :
+    wrongContext ? 'wrong_field_context' : unmatchedStructure.length ? 'unverifiable_current_fields' : 'unresolved_current_fields';
+  return { choices, actions, incompleteForm, unsafeControls, unsupportedValue, diagnosticFields, diagnosticReason };
 }
 
 function validateDecision(answer, choices, threshold, margin) {
@@ -334,17 +457,21 @@ export async function recoverBrowserTab(browser, tabId, { confirm } = {}) {
 export async function executeBrowser(request, { browser, decide, telemetry, signal, maxSteps = 8, timeoutMs = 120_000,
   threshold = 0.5, margin = 0.05, modelGoal, bindings, candidateMode = 'legacy', applyPrepared = false,
   stopPolicy = 'success' } = {}) {
-  let steps = 0, currentUrl = '', relevantState = '', diagnosticField = '';
+  let steps = 0, currentUrl = '', relevantState = '', diagnosticField = '', diagnosticReason = '', observedAction;
   const result = (status, reason) => {
     try { telemetry?.({ event: 'result', status, reason, steps }); } catch { /* metrics never affect outcomes */ }
     return { status, reason, steps, current_url: currentUrl, relevant_state: relevantState.slice(0, 600),
-      ...(['unmapped_fields', 'unsupported_value', 'field_unverifiable', 'value_not_applied'].includes(reason) && diagnosticField &&
+      ...(['unmapped_fields', 'unsupported_value', 'field_unverifiable', 'value_not_applied',
+        'preserved_field_changed', 'preserved_field_unverifiable'].includes(reason) && diagnosticField &&
         { diagnostic_field: diagnosticField }),
+      ...(['unmapped_fields', 'invalid_request'].includes(reason) && diagnosticReason && { diagnostic_reason: diagnosticReason }),
       ...(['action_outcome_unknown', 'tab_quarantined'].includes(reason) && {
         recovery_hint: 'Remote mutation may complete later. Stop all mutations on this tab; trusted operator must re-snapshot, inspect, then acknowledge recovery.',
       }),
       ...(['matched_on_entry', 'matched_conditions_after_action'].includes(reason) &&
-        { matched_conditions: Object.keys(request.success) }) };
+        { verification: 'caller_conditions', matched_conditions: Object.keys(request.success) }),
+      ...(reason === 'requested_action_observed' && observedAction &&
+        { verification: 'action_and_fresh_observation', observed_action: observedAction }) };
   };
   try {
     validateRequest(request);
@@ -354,10 +481,13 @@ export async function executeBrowser(request, { browser, decide, telemetry, sign
          modelGoal != null && (typeof modelGoal !== 'string' || !modelGoal.trim() || modelGoal.length > 360) ||
          !['legacy', 'strictBindings'].includes(candidateMode) || !['success', 'checkpoint'].includes(stopPolicy) ||
          typeof applyPrepared !== 'boolean' || applyPrepared && candidateMode !== 'strictBindings' ||
-         bindings != null && (!record(bindings) || Object.keys(bindings).length > 32 ||
-           Object.entries(bindings).some(([key, label]) => !Object.hasOwn(request.variables, key) ||
-             typeof label !== 'string' || !normalize(label) || label.length > 120 || SENSITIVE.test(label)))) throw Error('invalid_configuration');
-  } catch { return result('escalated', 'invalid_request'); }
+          bindings != null && (!record(bindings) || Object.keys(bindings).length > 32 ||
+            Object.entries(bindings).some(([key, binding]) => !Object.hasOwn(request.variables, key) ||
+              !validBinding(binding)))) throw Error('invalid_configuration');
+  } catch (error) {
+    diagnosticReason = error.message === 'invalid_request' ? error.category ?? 'request_shape' : 'configuration';
+    return result('escalated', 'invalid_request');
+  }
   const key = tabKey(browser, request.tabId);
   if (locks.has(key)) return result('escalated', locks.get(key).poisoned ? 'tab_quarantined' : 'tab_busy');
   const lease = { busy: true, poisoned: false, mutationSettled: true };
@@ -377,34 +507,53 @@ export async function executeBrowser(request, { browser, decide, telemetry, sign
   let reason = 'max_steps';
   let mutationStarted = false, observedAfterMutation = false;
   try {
-    const snapshot = async () => {
+    const snapshot = async purpose => {
       if (combined.aborted) throw Error('timeout_or_cancelled');
       const observed = await guard(browser.snapshot(request.tabId, { signal: combined }));
-      try { telemetry?.({ event: 'snapshot', exposed_to_large_model: false }); } catch { /* metadata only */ }
+      try { telemetry?.({ event: 'snapshot', purpose, exposed_to_large_model: false }); } catch { /* metadata only */ }
       return observed;
     };
-    let raw = await snapshot();
+    let raw = await snapshot('initial');
     const initial = safeUrl(raw.url);
     const origins = new Set([initial.origin, ...(request.allowedOrigins ?? [])]);
     const seen = new Set();
-    let recent = [], pagesSeen = [], decisions = 0;
+    let recent = [], pagesSeen = [], decisions = 0, scopeUrl;
     const task = { ...request, bindings: bindings ?? request.bindings };
     for (;;) {
       const v = view(raw, request, origins);
       currentUrl = v.redact(displayUrl(raw.url));
       relevantState = clean(v.state.text, 600);
-      diagnosticField = '';
+      diagnosticField = ''; diagnosticReason = '';
       const page = `${v.state.title} ${v.state.url}`;
       if (!pagesSeen.includes(page)) pagesSeen = [...pagesSeen, page].slice(-4);
+      const preserved = preservation(v, task.fieldPolicies);
+      if (preserved.reason) {
+        diagnosticField = v.redact(clean(preserved.label, 120));
+        return result('escalated', preserved.reason);
+      }
+      if (task.executionScope && !(steps && success(v, request.success))) {
+        scopeUrl ??= v.url.href;
+        if (scopeUrl !== v.url.href) return result('escalated', 'scope_changed');
+        if (v.state.title !== task.executionScope.title ||
+            v.nodes.filter(node => node.role === 'button' && !node.disabled &&
+              contextMatches(node.context, task.executionScope.context)).length !== 1)
+          return result('escalated', 'scope_unverifiable');
+      }
+      if (request.success && task.fieldPolicies?.length && success(v, request.success))
+        choicesFor(v, task, preserved.refs, { candidateMode, stopPolicy });
       if (success(v, request.success)) return steps ? result('completed', 'matched_conditions_after_action') :
         result('checkpoint', 'matched_on_entry');
       if (steps >= maxSteps) break;
       if (++decisions > maxSteps * 3) throw Error('decision_limit');
-      const { choices, actions, incompleteForm, unsafeControls, unsupportedValue } = choicesFor(v, task, { candidateMode, stopPolicy });
+      const { choices, actions, incompleteForm, unsafeControls, unsupportedValue, diagnosticFields,
+        diagnosticReason: unresolvedReason } = choicesFor(v, task, preserved.refs, { candidateMode, stopPolicy });
       if (![...actions.values()].some(action => !['STOP', 'ESCALATE'].includes(action.kind))) {
-        diagnosticField = v.state.fields.filter(field => !field.ref).map(field => field.label).slice(0, 3).join('; ');
+        diagnosticReason = unresolvedReason;
+        diagnosticField = clean(v.redact((diagnosticFields.length ? diagnosticFields : v.state.fields.filter(field => !field.ref))
+          .slice(0, 3).map(field => [field.context, field.label].filter(Boolean).join(' / ')).join('; ')), 120);
         if (unsupportedValue) diagnosticField = v.state.fields.filter(field => field.ref &&
-          v.fields.some(({ field: observed, ref }) => ref === field.ref && observed.tag === 'select')).map(field => field.label).slice(0, 3).join('; ');
+          (field.type === 'number' || v.fields.some(({ field: observed, ref }) => ref === field.ref && observed.tag === 'select')))
+          .map(field => field.label).slice(0, 3).join('; ');
         return unsupportedValue ? result('escalated', 'unsupported_value') : incompleteForm ? result('escalated', 'unmapped_fields') : unsafeControls ?
           result('escalated', 'unsafe_controls') : result('checkpoint', 'no_actionable_controls');
       }
@@ -423,12 +572,18 @@ export async function executeBrowser(request, { browser, decide, telemetry, sign
       const action = actions.get(choice);
       if (action.kind === 'STOP') return result('checkpoint', 'model_stop');
       if (action.kind === 'ESCALATE') return result('escalated', 'model_escalation');
+      const stopMatches = task.stopAfter && action.kind === 'CLICK' ? v.nodes.filter(node =>
+        !node.disabled && ['button', 'link'].includes(node.role) && node.name === task.stopAfter.click &&
+        (!task.stopAfter.context || contextMatches(node.context, task.stopAfter.context))) : [];
+      if (stopMatches.some(node => node.ref === action.ref) && stopMatches.length !== 1)
+        return result('escalated', 'ambiguous_stop_after');
+      const stoppingClick = stopMatches.length === 1 && stopMatches[0].ref === action.ref ? stopMatches[0] : null;
       const tuple = `${v.fingerprint}:${choice.replace(/\[e\d+\]/g, '[ref]')}`;
       if (seen.has(tuple)) return result('escalated', 'action_loop');
       seen.add(tuple);
       // A fresh snapshot before mutation prevents stale refs after model latency.
       if (combined.aborted) throw Error('timeout_or_cancelled');
-      const fresh = await snapshot();
+      const fresh = await snapshot('pre_action');
       const next = view(fresh, request, origins);
       if (next.fingerprint !== v.fingerprint || JSON.stringify(next.nodes) !== JSON.stringify(v.nodes)) {
         raw = fresh; reason = 'state_changed'; continue;
@@ -443,7 +598,7 @@ export async function executeBrowser(request, { browser, decide, telemetry, sign
       steps++;
       recent = [...recent, choice.replace(/\[e\d+\]/g, '[ref]').replace(/<- .+$/, '<- variable')].slice(-2);
       try { telemetry?.({ event: 'action', kind: action.kind, step: steps, deterministic: Boolean(automatic) }); } catch { /* observation must not affect browser control */ }
-      raw = await snapshot();
+      raw = await snapshot('post_action');
       safeUrl(raw.url);
       observedAfterMutation = true;
       currentUrl = v.redact(displayUrl(raw.url));
@@ -464,6 +619,18 @@ export async function executeBrowser(request, { browser, decide, telemetry, sign
         if (observed !== (action.kind === 'TYPE' ? action.text : action.option))
           return result('escalated', 'value_not_applied');
       }
+      if (stoppingClick) {
+        const preservedAfter = preservation(after, task.fieldPolicies);
+        if (preservedAfter.reason) {
+          diagnosticField = clean(after.redact(preservedAfter.label), 120);
+          return result('escalated', preservedAfter.reason);
+        }
+        currentUrl = after.redact(displayUrl(raw.url));
+        relevantState = clean(after.state.text, 600);
+        observedAction = { click: clean(v.redact(stoppingClick.name), 120),
+          context: clean(v.redact(stoppingClick.context), 200) };
+        return result('checkpoint', 'requested_action_observed');
+      }
     }
   } catch (error) {
     if (mutationStarted && !observedAfterMutation) {
@@ -472,7 +639,7 @@ export async function executeBrowser(request, { browser, decide, telemetry, sign
     } else reason = ['origin_changed', 'choice_limit', 'choice_representation_limit', 'model_input_limit', 'model_rejected_input',
       'model_timeout', 'model_exit', 'model_output_limit', 'invalid_native_answer', 'backend_unavailable', 'response_too_large',
       'action_loop', 'decision_limit', 'incomplete_snapshot', 'sensitive_fields', 'duplicate_refs', 'ambiguous_choices',
-      'invalid_model_output', 'uncertain', 'timeout_or_cancelled'].includes(error.message) ? error.message :
+        'invalid_model_output', 'uncertain', 'timeout_or_cancelled', 'preserved_field_conflict', 'scope_conflict'].includes(error.message) ? error.message :
       combined.aborted ? 'timeout_or_cancelled' : 'backend_or_model_error';
   } finally {
     lease.busy = false;

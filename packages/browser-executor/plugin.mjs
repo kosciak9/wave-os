@@ -1,6 +1,81 @@
 import { createCamofoxBrowser } from './camofox.mjs';
 import { executeBrowser } from './core.mjs';
 import { createDecisionBridge } from './bridge.mjs';
+import { appendFileSync, closeSync, fchmodSync, fstatSync, openSync } from 'node:fs';
+import { constants } from 'node:fs';
+import { lstatSync } from 'node:fs';
+import process from 'node:process';
+
+const metricEvents = new Set(['action', 'decision', 'failure', 'model_call', 'result', 'snapshot']);
+const actionKinds = new Set(['CLICK', 'TYPE', 'SELECT', 'SCROLL', 'NAVIGATE', 'STOP', 'ESCALATE']);
+const backends = new Set(['kev', 'laya']);
+const snapshotPurposes = new Set(['initial', 'pre_action', 'post_action']);
+const resultReasons = new Set([
+  'invalid_request', 'tab_busy', 'tab_quarantined', 'matched_on_entry', 'matched_conditions_after_action',
+  'preserved_field_changed', 'preserved_field_unverifiable', 'scope_changed', 'scope_unverifiable',
+  'unsupported_value', 'unmapped_fields', 'unsafe_controls', 'no_actionable_controls',
+  'model_stop', 'model_escalation', 'action_loop', 'no_state_change', 'field_unverifiable', 'value_not_applied',
+  'action_outcome_unknown', 'max_steps', 'state_changed', 'origin_changed', 'choice_limit',
+  'choice_representation_limit', 'model_input_limit', 'model_rejected_input', 'model_timeout', 'model_exit',
+  'model_output_limit', 'invalid_native_answer', 'backend_unavailable', 'response_too_large',
+  'decision_limit', 'incomplete_snapshot', 'sensitive_fields', 'duplicate_refs', 'ambiguous_choices',
+  'invalid_model_output', 'uncertain', 'timeout_or_cancelled', 'preserved_field_conflict',
+  'scope_conflict', 'backend_or_model_error',
+  'requested_action_observed', 'ambiguous_stop_after',
+]);
+const fieldSelectorSchema = { oneOf: [
+  { type: 'string', minLength: 1, maxLength: 120 },
+  { type: 'object', additionalProperties: false, required: ['field', 'context'], properties: {
+    field: { type: 'string', minLength: 1, maxLength: 120 },
+    context: { type: 'string', minLength: 1, maxLength: 200 },
+  } },
+] };
+
+export function createValueFreeMetricSink(path) {
+  if (typeof path !== 'string' || !path.startsWith('/')) return undefined;
+  return event => {
+    try {
+      if (!event || !metricEvents.has(event.event)) return;
+      const safe = { event: event.event };
+      if (backends.has(event.backend)) safe.backend = event.backend;
+      if (event.event === 'action') {
+        if (actionKinds.has(event.kind)) safe.kind = event.kind;
+        if (Number.isSafeInteger(event.step) && event.step >= 0) safe.step = event.step;
+        if (typeof event.deterministic === 'boolean') safe.deterministic = event.deterministic;
+      }
+      if (event.event === 'decision') {
+        if (actionKinds.has(event.kind)) safe.kind = event.kind;
+        for (const key of ['index', 'candidates'])
+          if (Number.isSafeInteger(event[key]) && event[key] >= 0) safe[key] = event[key];
+        for (const key of ['confidence', 'margin'])
+          if (Number.isFinite(event[key])) safe[key] = event[key];
+      }
+      if (event.event === 'snapshot') {
+        if (snapshotPurposes.has(event.purpose)) safe.purpose = event.purpose;
+        safe.exposed_to_large_model = event.exposed_to_large_model === true;
+      }
+      if (event.event === 'result') {
+        if (['completed', 'checkpoint', 'escalated'].includes(event.status)) safe.status = event.status;
+        if (Number.isSafeInteger(event.steps) && event.steps >= 0) safe.steps = event.steps;
+        if (resultReasons.has(event.reason)) safe.reason = event.reason;
+      }
+      for (const key of ['latency_ms', 'wall_ms'])
+        if (Number.isFinite(event[key]) && event[key] >= 0) safe[key] = event[key];
+      let fd;
+      try {
+        try {
+          const existing = lstatSync(path);
+          if (!existing.isFile() || existing.uid !== process.getuid()) return;
+        } catch (error) { if (error.code !== 'ENOENT') return; }
+        fd = openSync(path, constants.O_WRONLY | constants.O_APPEND | constants.O_CREAT | constants.O_NOFOLLOW, 0o600);
+        const status = fstatSync(fd);
+        if (!status.isFile() || status.uid !== process.getuid()) return;
+        fchmodSync(fd, 0o600);
+        appendFileSync(fd, `${JSON.stringify(safe)}\n`);
+      } finally { if (fd !== undefined) closeSync(fd); }
+    } catch { /* telemetry must never affect browser outcomes */ }
+  };
+}
 
 /**
  * Integrate inside the trusted wrapper: scope(ctx) MUST return the existing HMAC-derived
@@ -16,16 +91,44 @@ export function registerBrowserExecutor(api, { scope, decide, baseUrl, accessKey
     parameters: {
       type: 'object', additionalProperties: false,
       properties: {
-        goal: { type: 'string' }, modelGoal: { type: 'string' }, tabId: { type: 'string' },
-        variables: { type: 'object', additionalProperties: { type: 'string' } },
-        bindings: { type: 'object', additionalProperties: { type: 'string' } },
-        success: { type: 'object', additionalProperties: false, properties: {
-          textIncludes: { type: 'string' }, urlPath: { type: 'string' },
-          allText: { type: 'array', items: { type: 'string' } },
-          fieldValues: { type: 'object', additionalProperties: { type: 'string' } },
-        } },
-        allowedOrigins: { type: 'array', items: { type: 'string' } },
-        forbidActions: { type: 'array', items: { type: 'string' } },
+        goal: { type: 'string', minLength: 1, maxLength: 2000 },
+        modelGoal: { type: 'string', minLength: 1, maxLength: 360,
+          description: 'Optional concise local-model goal. It does not supply variables or change the full goal.' },
+        tabId: { type: 'string', pattern: '^[A-Za-z0-9_-]{1,128}$' },
+        variables: { type: 'object', maxProperties: 32, propertyNames: { minLength: 1, maxLength: 100 },
+          additionalProperties: { type: 'string', maxLength: 100 },
+          description: 'Explicit values to set; goal/modelGoal text alone does not generate field actions.' },
+        bindings: { type: 'object', maxProperties: 32, additionalProperties: fieldSelectorSchema,
+          description: 'Variable keys map to exact observed field labels/names, optionally qualified by a heading context; no selectors.' },
+        fieldPolicies: { type: 'array', maxItems: 16, description: 'Preserve an exact value already observed in a uniquely grounded field.',
+          items: { type: 'object', additionalProperties: false,
+            required: ['field', 'preserve'], properties: {
+              field: fieldSelectorSchema,
+              preserve: { type: 'string', maxLength: 120 },
+            },
+          } },
+        executionScope: { type: 'object', additionalProperties: false, required: ['title', 'context'],
+          description: 'Anchor actions to one observed page title and heading context; cannot authorize another nonterminal page.',
+          properties: { title: { type: 'string', minLength: 1, maxLength: 120 },
+            context: { type: 'string', minLength: 1, maxLength: 200 } } },
+        stopAfter: { type: 'object', additionalProperties: false, required: ['click'],
+          description: 'Alternative to success when the receipt is unknown: checkpoint only after a unique legal button/link click and fresh changed observation; not proof of completion.',
+          properties: { click: { type: 'string', minLength: 1, maxLength: 120,
+            description: 'Exact observed button or link name, never a selector.' },
+          context: { type: 'string', minLength: 1, maxLength: 200,
+            description: 'Optional observed heading path or trailing heading components.' } } },
+        success: { type: 'object', additionalProperties: false, minProperties: 1,
+          description: 'All supplied checks must match. Completion proves only these caller conditions, not the full goal.', properties: {
+            textIncludes: { type: 'string', minLength: 1, maxLength: 300 },
+            urlPath: { type: 'string', minLength: 1, maxLength: 300 },
+            allText: { type: 'array', minItems: 1, maxItems: 8, items: { type: 'string', minLength: 1, maxLength: 300 } },
+            fieldValues: { type: 'object', minProperties: 1, maxProperties: 12,
+              propertyNames: { minLength: 1, maxLength: 120 },
+              additionalProperties: { type: 'string', minLength: 1, maxLength: 120 } },
+          } },
+        allowedOrigins: { type: 'array', maxItems: 8, items: { type: 'string' },
+          description: 'Exact additional origins only; never an arbitrary navigation URL.' },
+        forbidActions: { type: 'array', maxItems: 24, items: { type: 'string', minLength: 1, maxLength: 100 } },
       }, required: ['goal', 'tabId', 'variables'],
     },
     async execute(_id, params) {

@@ -47,6 +47,27 @@ export function intendedAction({ state, choices }, task) {
   };
   const target = task.variables.target;
   if (task.category === 'challenge') {
+    if (task.id === 'challenge-38') return route === 'start' ? fill([['Search catalog', 'target']], () => click('Search')) :
+      route === 'results' ? click('Open Harbor Studio') : route === 'detail' ? click('Open inquiry modal') :
+      route === 'modal' ? fill([['Location', 'location'], ['Preference', 'preference']], () => click('Send inquiry')) :
+      { intended: { operation: 'stop', route }, selected: null, reason: 'unexpected_route' };
+    if (task.id === 'challenge-39') return route === 'review' ? click('Confirm demo request') :
+      fill([['Location (autocomplete)', 'location'], ['Service', 'service']], () => click('Continue'));
+    if (['challenge-40', 'challenge-41', 'challenge-42'].includes(task.id)) return fill([
+      ['Party size', 'party', task.variables.party, 'Garden Room'],
+      ['Preference', 'preference', task.variables.preference, 'Garden Room'],
+    ], () => click('Send inquiry', 'Garden Room'));
+    if (task.id === 'challenge-43' || task.id === 'challenge-44') return route === 'review' ? click('Confirm inquiry', 'Garden Room') : fill([
+      ['Party size', 'party', task.variables.party, 'Garden Room'],
+      ['Preference', 'preference', task.variables.preference, 'Garden Room'],
+    ], () => click('Continue', 'Garden Room'));
+    if (task.id === 'challenge-45') return fill([
+      ['Party size', 'party'], ['Preference', 'preference', 'Quiet'],
+    ], () => click('Send inquiry'));
+    if (task.id === 'challenge-34' || task.id === 'challenge-35') return fill([
+      ['Quantity', 'quantity', task.variables.quantity, 'Coral Workshop'],
+    ], () => click('Send inquiry', 'Coral Workshop'));
+    if (task.id === 'challenge-36' || task.id === 'challenge-37') return fill([['Location', 'location']], () => click('Send inquiry'));
     if (task.id === 'challenge-31') return route === 'start' || route === 'review' ?
       (route === 'start' ? fill([['Location', 'location'], ['Service', 'service'], ['Requested date', 'date']],
         () => click('Continue')) : fill([['Confirmation label', 'summary']], () => click('Confirm demo request'))) :
