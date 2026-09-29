@@ -224,7 +224,179 @@ def oracle_actions(oracle, target):
                       and event.get('item') not in (None, target) for event in events)
     return {'success': bool(oracle['passed']), 'mistakes': oracle['mistakes'],
             'wrong_actions': invalid + wrong_views,
-            'oracle_actions': max(0, len(events) - 1)}
+             'oracle_actions': max(0, len(events) - 1)}
+
+
+def space_oracle_actions(oracle):
+    events = oracle['events']
+    return {'success': bool(oracle['passed']), 'mistakes': oracle['mistakes'],
+            'wrong_actions': sum(event.get('valid') is False for event in events),
+            'oracle_actions': max(0, len(events) - 1),
+            'server_action_steps': oracle['server_action_steps'],
+            'first_failure_server_step': oracle['first_error_step'],
+            'success_server_step': oracle['success_step'],
+            'post_success_overrun': oracle['post_success_overrun'],
+            'server_transitions': sum(event.get('server_mutation') is True for event in events),
+            'server_actions_after_success': sum(event.get('server_mutation') is True and
+                oracle['success_step'] is not None and event.get('server_action_step', 0) > oracle['success_step']
+                for event in events)}
+
+
+def space_browser_metrics(db, session_id):
+    """Digest repeated snapshot outputs without exporting their content or browser references."""
+    if not db.is_file() or not session_id:
+        return {}
+    conn = sqlite3.connect('file:' + str(db) + '?mode=ro', uri=True, timeout=1)
+    try:
+        rows = conn.execute('SELECT event_json FROM transcript_events WHERE session_id=? ORDER BY seq',
+                            (session_id,)).fetchall()
+    finally:
+        conn.close()
+    pending, counts, snapshot_sizes, hashes = {}, {}, [], set()
+    for (raw,) in rows:
+        event = json.loads(raw)
+        if event.get('type') != 'message':
+            continue
+        message = event.get('message') or {}
+        if message.get('role') == 'assistant':
+            for block in message.get('content') or []:
+                if not isinstance(block, dict) or block.get('type') != 'toolCall':
+                    continue
+                arguments = block.get('arguments') or {}
+                name = arguments.get('id', '') if block.get('name') == 'tool_call' and isinstance(arguments, dict) else block.get('name', '')
+                name = name.split(':')[-1] if isinstance(name, str) else ''
+                if block.get('id'):
+                    pending[block['id']] = name
+                if name.startswith('camofox_'):
+                    counts[name] = counts.get(name, 0) + 1
+        elif message.get('role') == 'toolResult':
+            if pending.pop(message.get('toolCallId'), message.get('toolName')) != 'camofox_snapshot':
+                continue
+            raw_text = '\n'.join(part.get('text', '') for part in message.get('content') or []
+                                 if isinstance(part, dict) and part.get('type') == 'text')
+            snapshot_sizes.append(len(raw_text.encode()))
+            hashes.add(hashlib.sha256(raw_text.encode()).digest())
+    mutations = sum(counts.get(name, 0) for name in
+                    ('camofox_click', 'camofox_type', 'camofox_select', 'camofox_navigate', 'camofox_scroll'))
+    return {'browser_tool_calls_by_name': counts, 'browser_mutation_calls': mutations,
+            'snapshot_result_bytes': sum(snapshot_sizes), 'snapshot_result_count': len(snapshot_sizes),
+            'snapshot_repeat_exact_count': len(snapshot_sizes) - len(hashes)}
+
+
+def space_diagnostics(db, session_id):
+    """Classify actual tool-result envelopes and final answer; never persist their text."""
+    if not db.is_file() or not session_id:
+        return {'available': False}
+    conn = sqlite3.connect('file:' + str(db) + '?mode=ro', uri=True, timeout=1)
+    try:
+        rows = conn.execute('SELECT event_json FROM transcript_events WHERE session_id=? ORDER BY seq',
+                            (session_id,)).fetchall()
+    finally:
+        conn.close()
+
+    def error_class(value):
+        if not isinstance(value, str):
+            return None
+        if re.search(r'(?i)invalid.?ref|stale.?ref|element.?not.?found', value):
+            return 'invalid_or_stale_ref'
+        if re.search(r'(?i)timeout|timed.out', value):
+            return 'timeout'
+        if re.search(r'(?i)unauthori[sz]ed|forbidden|denied|permission', value):
+            return 'permission_or_auth'
+        if re.search(r'(?i)unavailable|connection|network|fetch.failed', value):
+            return 'transport_unavailable'
+        if re.search(r'(?i)invalid.?tab|tab.?not.?found', value):
+            return 'invalid_tab'
+        return 'other_error'
+
+    def final_class(text):
+        if re.search(r'(?i)cannot|can.t|unable|failed|error|blocked|not\s+(?:yet\s+)?(?:complete|completed|done|finished|submitted|sent)', text):
+            return 'unable_or_error'
+        if re.search(r'(?i)ask|clarif|missing|not specified|need.*(choice|preference|information)', text):
+            return 'asks_for_information'
+        if re.search(r'(?i)complete|completed|done|finished|submitted|sent|receipt', text):
+            return 'claims_completion'
+        return 'other_or_empty' if text.strip() else 'empty'
+
+    results, pending, answer = [], {}, None
+    for (raw,) in rows:
+        event = json.loads(raw)
+        if event.get('type') != 'message':
+            continue
+        message = event.get('message') or {}
+        if message.get('role') == 'assistant':
+            for block in message.get('content') or []:
+                if not isinstance(block, dict) or block.get('type') != 'toolCall':
+                    continue
+                arguments = block.get('arguments') or {}
+                name = arguments.get('id', '') if block.get('name') == 'tool_call' and isinstance(arguments, dict) else block.get('name', '')
+                if block.get('id'):
+                    pending[block['id']] = name.split(':')[-1] if isinstance(name, str) else ''
+            if message.get('stopReason') == 'stop':
+                text = '\n'.join(block.get('text', '') for block in message.get('content') or []
+                                 if isinstance(block, dict) and block.get('type') == 'text')
+                answer = {'class': final_class(text), 'text_present': bool(text.strip()),
+                          'text_length': len(text), 'stop_reason': 'stop'}
+        elif message.get('role') == 'toolResult':
+            name = pending.pop(message.get('toolCallId'), message.get('toolName'))
+            if name not in TOOLS and name not in EXTRA_TOOLS:
+                continue
+            record = {'tool': name, 'outer_is_error': bool(message.get('isError')),
+                      'wrapper_parse': 'missing', 'inner_parse': 'missing',
+                      'inner_is_error': None, 'inner_status': None, 'error_class': None}
+            parts = [block.get('text', '') for block in message.get('content') or []
+                     if isinstance(block, dict) and block.get('type') == 'text']
+            if parts:
+                try:
+                    payload = json.loads(parts[0])
+                    record['wrapper_parse'] = 'json' if isinstance(payload, dict) else 'other_json'
+                    if isinstance(payload, dict):
+                        wrapped = payload.get('result')
+                        if not isinstance(wrapped, dict):
+                            wrapped = payload
+                        contents = wrapped.get('content')
+                        body_text = next((part.get('text') for part in contents
+                                          if isinstance(part, dict) and isinstance(part.get('text'), str)), None) \
+                            if isinstance(contents, list) else None
+                        body = wrapped
+                        if body_text is not None:
+                            try:
+                                body = json.loads(body_text)
+                                record['inner_parse'] = 'json' if isinstance(body, dict) else 'other_json'
+                            except ValueError:
+                                record['inner_parse'] = 'text'
+                                body = {}
+                        else:
+                            record['inner_parse'] = 'wrapper_only'
+                        errors = [value for source in (payload, wrapped, body) if isinstance(source, dict)
+                                  for field in ('error', 'message', 'reason', 'kind', 'code', 'type')
+                                  if (value := source.get(field)) is not None]
+                        explicit_errors = [source.get('error') for source in (payload, wrapped, body)
+                                           if isinstance(source, dict) and source.get('error')]
+                        flags = [source.get('isError') for source in (payload, wrapped, body)
+                                 if isinstance(source, dict) and isinstance(source.get('isError'), bool)]
+                        record['inner_is_error'] = any(flags) or bool(explicit_errors) if flags or explicit_errors else None
+                        statuses = [source.get('status') for source in (body, wrapped, payload)
+                                    if isinstance(source, dict)]
+                        status = next((value for value in statuses if isinstance(value, str)), None)
+                        record['inner_status'] = (status.lower() if status.lower() in
+                            ('ok', 'success', 'error', 'failed', 'not_found') else 'other') if status else None
+                        if record['outer_is_error'] or record['inner_is_error'] or record['inner_status'] in ('error', 'failed'):
+                            record['error_class'] = next((label for value in errors
+                                if (label := error_class(value)) and label != 'other_error'), 'other_error')
+                        if name == 'camofox_snapshot' and isinstance(body, dict):
+                            snapshot = body.get('snapshot')
+                            if isinstance(snapshot, str):
+                                record['snapshot_lines'] = len(snapshot.splitlines())
+                                record['snapshot_ref_markers'] = len(re.findall(r'\[ref[:=]?\s*\d+\]|\be\d+\b', snapshot))
+                                record['snapshot_editable_markers'] = len(re.findall(
+                                    r'(?im)^\s*[-*]?\s*(?:textbox|input|combobox|textarea)\b', snapshot))
+                except ValueError:
+                    record['wrapper_parse'] = 'text'
+                    if record['outer_is_error']:
+                        record['error_class'] = error_class(parts[0])
+            results.append(record)
+    return {'available': True, 'tool_results': results, 'final_answer': answer}
 
 
 def transcript_metrics(db, session_id):
@@ -651,9 +823,9 @@ def contract_schema_sha256(mode):
 
 
 def agent_config(models, model, plugin_path, port_number, extras, profile, executor_backend=None,
-                   max_steps=8, candidate_mode='legacy', apply_prepared=False, stop_policy='success',
-                   contract_mode='procedural', semantic_problem_detail='contextual'):
-    tools = list(TOOLS) + list(extras)
+                    max_steps=8, candidate_mode='legacy', apply_prepared=False, stop_policy='success',
+                    contract_mode='procedural', semantic_problem_detail='contextual', space=False):
+    tools = ([name for name in TOOLS if name.startswith('camofox_')] if space else list(TOOLS)) + list(extras)
     return {
         'agents': {'defaults': {'skipBootstrap': True, 'contextInjection': 'never', 'thinkingDefault': 'low',
                                 'model': {'primary': model, 'fallbacks': []}, 'sandbox': {'mode': 'off'},
@@ -774,9 +946,9 @@ def clean_up_own_tabs(port_number, access_key, session_id):
 
 def run_one(args, item, ports, oracle_key, base_env, catalog, output):
     task = item['id']
-    if not re.fullmatch(r'(?:[a-z]+|challenge)-\d\d', task) or item['category'] not in ('search', 'booking', 'forms', 'login', 'cart', 'spa', 'long', 'challenge'):
+    if not re.fullmatch(r'(?:[a-z]+|challenge)-\d\d', task) or item['category'] not in ('search', 'booking', 'forms', 'login', 'cart', 'spa', 'long', 'challenge', 'space'):
         raise ValueError('invalid synthetic fixture manifest')
-    duration = 600 if item['category'] == 'long' else 300
+    duration = 1200 if args.space else 600 if item['category'] == 'long' else 300
     run_id = uuid.uuid4().hex
     directory = output / (task + '-' + uuid.uuid4().hex[:8])
     directory.mkdir(mode=0o700)
@@ -787,19 +959,24 @@ def run_one(args, item, ports, oracle_key, base_env, catalog, output):
     config_path.write_text(json.dumps(agent_config(catalog, args.model, args.plugin_path,
                              ports['camofox'], args.extra_tool, bool(args.auth_profile_file), args.executor_backend,
                              args.max_steps, args.candidate_mode, args.apply_prepared, args.stop_policy,
-                             args.contract_mode, args.semantic_problem_detail)))
+                             args.contract_mode, args.semantic_problem_detail, args.space)))
     config_path.chmod(0o600)
     env = dict(base_env, HOME=str(home), OPENCLAW_STATE_DIR=str(state),
                OPENCLAW_CONFIG_PATH=str(config_path), CAMOFOX_ACCESS_KEY=base_env['CAMOFOX_ACCESS_KEY'])
     db = state / 'agents/main/agent/openclaw-agent.sqlite'
-    start_url = 'http://127.0.0.1:%d/run/%s/%s/start' % (PORT_INSIDE, run_id, task)
+    start_url = 'http://127.0.0.1:%d%s' % (PORT_INSIDE, item['start_path'].replace('{runId}', run_id)) if args.space else \
+        'http://127.0.0.1:%d/run/%s/%s/start' % (PORT_INSIDE, run_id, task)
     oracle_url = 'http://127.0.0.1:%d/api/%sruns/%s' % (
-        ports['fixture'], 'challenge/' if item['category'] == 'challenge' else '', run_id)
+        ports['fixture'], 'space/' if args.space else 'challenge/' if item['category'] == 'challenge' else '', run_id)
     prompt = args.prompt_template.format(goal=item['goal'], start_url=start_url,
                                          variables=json.dumps(item['variables'], sort_keys=True))
     started = time.monotonic()
     summary = {'task': task, 'category': item['category'], 'split': item['split'], 'status': 'error',
-               'success': None, 'oracle_unavailable': True}
+                'success': None, 'oracle_unavailable': True}
+    if args.space:
+        summary.update({'supplied_fact_count': len(item['variables']),
+                        'prompt_contains_variables': '{variables}' in args.prompt_template,
+                        'formatted_prompt_sha256': hashlib.sha256(prompt.encode()).hexdigest()})
     agent = None
     session_id = None
     try:
@@ -817,6 +994,10 @@ def run_one(args, item, ports, oracle_key, base_env, catalog, output):
         agent.stdin = None
         turn_started = time.monotonic()
         rss_peak, browser_rss, steps = 0, [], 0
+        last_browser_mutations = 0
+        failure_mutation_bounds = None
+        completion_mutation_bounds = None
+        tool_budget = args.hosted_tool_budget or (220 if args.space else 60 if args.challenge else item['max_steps'])
         while agent.poll() is None:
             rss_peak = max(rss_peak, sample_rss(agent.pid))
             try:
@@ -828,13 +1009,28 @@ def run_one(args, item, ports, oracle_key, base_env, catalog, output):
                     conn = sqlite3.connect('file:' + str(db) + '?mode=ro', uri=True, timeout=.5)
                     rows = conn.execute('SELECT event_json FROM transcript_events WHERE event_json LIKE ?', ('%"toolCall"%',)).fetchall()
                     conn.close()
-                    steps = sum(sum(1 for block in json.loads(row[0]).get('message', {}).get('content', [])
-                                    if isinstance(block, dict) and block.get('type') == 'toolCall' and
-                                    (block.get('name') == 'tool_call' or block.get('name', '').startswith('camofox_')))
-                                for row in rows)
+                    calls = [block for row in rows for block in json.loads(row[0]).get('message', {}).get('content', [])
+                             if isinstance(block, dict) and block.get('type') == 'toolCall' and
+                             (block.get('name') == 'tool_call' or block.get('name', '').startswith('camofox_'))]
+                    steps = len(calls)
+                    if args.space:
+                        mutation_names = {'camofox_click', 'camofox_type', 'camofox_select',
+                                          'camofox_navigate', 'camofox_scroll'}
+                        observed_mutations = sum((block['arguments'].get('id', '').split(':')[-1]
+                                                  if block.get('name') == 'tool_call' and
+                                                  isinstance(block.get('arguments'), dict) else block.get('name'))
+                                                 in mutation_names for block in calls)
+                        try:
+                            progress = fetch_json(oracle_url, oracle_key, timeout=2)
+                            if progress.get('first_error_step') is not None and failure_mutation_bounds is None:
+                                failure_mutation_bounds = [last_browser_mutations, observed_mutations]
+                            if progress.get('success_step') is not None and completion_mutation_bounds is None:
+                                completion_mutation_bounds = [last_browser_mutations, observed_mutations]
+                            last_browser_mutations = observed_mutations
+                        except (OSError, ValueError):
+                            pass
                 except sqlite3.Error:
                     pass
-            tool_budget = args.hosted_tool_budget or (60 if args.challenge else item['max_steps'])
             if steps >= tool_budget or time.monotonic() - turn_started > duration + 20:
                 summary['step_budget_hit'] = steps >= tool_budget
                 summary['timed_out'] = time.monotonic() - turn_started > duration + 20
@@ -862,8 +1058,7 @@ def run_one(args, item, ports, oracle_key, base_env, catalog, output):
                         'camofox_server_rss_peak_mib': max(browser_rss, default=None),
                         'agent_turn_seconds': round(time.monotonic() - turn_started, 3),
                          'steps_budget_hit': summary.get('step_budget_hit', False),
-                         'hosted_tool_budget': args.hosted_tool_budget or
-                             (60 if args.challenge else item['max_steps']),
+                          'hosted_tool_budget': tool_budget,
                          'hosted_tool_calls_observed': steps,
                          'usage_complete': complete_usage,
                          'termination_reason': 'hosted_tool_budget' if summary.get('step_budget_hit') else
@@ -875,6 +1070,15 @@ def run_one(args, item, ports, oracle_key, base_env, catalog, output):
             if summary['status'] != 'ok':
                 summary['provider_stop_reason'] = provider_block_reason(summary['failure'])
         summary.update(transcript_metrics(db, session_id))
+        if args.space:
+            summary.update(space_browser_metrics(db, session_id))
+            summary['space_diagnostics'] = space_diagnostics(db, session_id)
+            summary['first_failure_browser_mutation_bounds'] = failure_mutation_bounds
+            summary['completion_browser_mutation_bounds'] = completion_mutation_bounds
+            summary['browser_mutations_after_completion_bounds'] = (
+                [max(0, summary['browser_mutation_calls'] - completion_mutation_bounds[1]),
+                 max(0, summary['browser_mutation_calls'] - completion_mutation_bounds[0])]
+                if completion_mutation_bounds and 'browser_mutation_calls' in summary else None)
         summary['hosted_usage'] = hosted_usage(db, session_id, catalog)
         summary['observed_usage_tokens'] = {key: sum(entry.get(key) or 0 for entry in summary['hosted_usage'])
                                             for key in ('input', 'cacheRead', 'cacheWrite', 'output')}
@@ -936,7 +1140,9 @@ def run_one(args, item, ports, oracle_key, base_env, catalog, output):
             agent.kill()
             agent.wait(timeout=8)
         try:
-            summary.update(oracle_actions(fetch_json(oracle_url, oracle_key), item['variables'].get('target')))
+            oracle = fetch_json(oracle_url, oracle_key)
+            summary.update(space_oracle_actions(oracle) if args.space else
+                           oracle_actions(oracle, item['variables'].get('target')))
             summary['oracle_unavailable'] = False
         except (OSError, KeyError, ValueError):
             pass
@@ -985,6 +1191,23 @@ def select_fixture_tasks(frozen, challenge, selected):
     return tasks
 
 
+def select_space_tasks(space, selected):
+    if (not isinstance(space, list) or len(space) != 4 or
+            {item.get('id') for item in space if isinstance(item, dict)} !=
+            {'space-01', 'space-02', 'space-03', 'space-04'} or
+            any(not isinstance(item, dict) or item.get('category') != 'space' or
+                not isinstance(item.get('goal'), str) or not isinstance(item.get('split'), str) or
+                not isinstance(item.get('variables'), dict) or
+                item.get('start_path') != '/space/run/{runId}/%s/start' % item.get('id') or
+                type(item.get('max_steps')) is not int or not 1 <= item['max_steps'] <= 256
+                for item in space)):
+        raise RuntimeError('space fixture manifest invalid')
+    tasks = [item for item in space if not selected or item['id'] in selected]
+    if selected and len(tasks) != len(set(selected)):
+        raise ValueError('requested task not found')
+    return tasks
+
+
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--openclaw', required=True, help='Absolute path to installed OpenClaw executable')
@@ -997,8 +1220,10 @@ def parse_args(argv=None):
     parser.add_argument('--image', default=IMAGE, help='Preloaded Camofox image; no pull')
     parser.add_argument('--podman', default='podman')
     parser.add_argument('--connection', default='openclaw-sandbox')
-    parser.add_argument('--task', action='append', default=[], help='Run only selected frozen task ID; repeatable')
-    parser.add_argument('--challenge', action='store_true', help='Use separate challenge fixtures instead of frozen tasks')
+    parser.add_argument('--task', action='append', default=[], help='Run only selected fixture task ID; repeatable')
+    fixture_group = parser.add_mutually_exclusive_group()
+    fixture_group.add_argument('--challenge', action='store_true', help='Use separate challenge fixtures instead of frozen tasks')
+    fixture_group.add_argument('--space', action='store_true', help='Use hosted space workflow fixtures instead of frozen tasks')
     parser.add_argument('--extra-tool', action='append', default=[], choices=sorted(EXTRA_TOOLS))
     parser.add_argument('--auth-env', action='append', default=[], choices=sorted(AUTH_ENV),
                         help='Read only this provider key from the caller environment')
@@ -1008,7 +1233,7 @@ def parse_args(argv=None):
                         help='Enable configured browser_execute for a plugin variant that declares it')
     parser.add_argument('--max-steps', type=int, default=8, help='Executor mutation limit (1..24)')
     parser.add_argument('--hosted-tool-budget', type=int,
-                        help='Outer OpenClaw tool-call cap (1..200), independent of fixture/executor steps; challenge default 60')
+                         help='Outer OpenClaw tool-call cap (1..200; space 1..400), independent of fixture/executor steps')
     parser.add_argument('--candidate-mode', choices=('legacy', 'strictBindings'), default='legacy')
     parser.add_argument('--apply-prepared', action='store_true')
     parser.add_argument('--stop-policy', choices=('success', 'checkpoint'), default='success')
@@ -1046,8 +1271,10 @@ def parse_args(argv=None):
         parser.error('--semantic-problem-detail compact requires --contract-mode semantic')
     if args.max_steps not in range(1, 25) or args.apply_prepared and args.candidate_mode != 'strictBindings':
         parser.error('invalid executor bounds or prepared mode')
-    if args.hosted_tool_budget is not None and not 1 <= args.hosted_tool_budget <= 200:
-        parser.error('--hosted-tool-budget must be in 1..200')
+    if args.hosted_tool_budget is not None and not 1 <= args.hosted_tool_budget <= (400 if args.space else 200):
+        parser.error('--hosted-tool-budget out of range (space 1..400, other suites 1..200)')
+    if args.space and (args.extra_tool or args.executor_backend or args.model_executable):
+        parser.error('--space permits only low-level Camofox tools, not executor or extra tools')
     if args.auth_profile_file and args.auth_env:
         parser.error('choose environment credentials OR an explicit OAuth profile, not both')
     if not args.auth_profile_file and not args.auth_env:
@@ -1064,6 +1291,13 @@ def parse_args(argv=None):
         parser.error('output must be a new directory outside this public repository')
     args.output = output
     args.prompt_template = load_prompt(args.prompt_template_file)
+    if args.space and not args.prompt_template_file:
+        args.prompt_template = ('Complete this synthetic browser task: {goal} Start at {start_url}. Known facts: {variables}. '
+            'Use only low-level Camofox create_tab, snapshot, click, type, navigate, scroll, and close_tab. '
+            'Observe the current page and use references from observations before interacting. '
+            'Only use this fixture, never request the oracle, and do not use an executor. '
+            'Finish when the requested intention is met; intermediate details receipts are not final receipts. '
+            'For an unspecified decision, ask rather than guessing. Do not restart after completion.')
     return args
 
 
@@ -1089,13 +1323,16 @@ def main(argv=None):
         # Podman needs its own connection configuration; agents do not inherit it.
         podman_env = dict(os.environ, CAMOFOX_ACCESS_KEY=env['CAMOFOX_ACCESS_KEY'])
         with temporary_fixture(args.podman, args.connection, args.image, podman_env) as (ports, key):
-            frozen = fetch_json('http://127.0.0.1:%d/api/tasks' % ports['fixture'])
+            frozen = (fetch_json('http://127.0.0.1:%d/api/tasks' % ports['fixture'])
+                      if not args.space else None)
             challenge = (fetch_json('http://127.0.0.1:%d/api/challenge/tasks' % ports['fixture'])
                          if args.challenge else None)
-            tasks = select_fixture_tasks(frozen, challenge, args.task)
+            space = (fetch_json('http://127.0.0.1:%d/api/space/tasks' % ports['fixture'])
+                     if args.space else None)
+            tasks = select_space_tasks(space, args.task) if args.space else select_fixture_tasks(frozen, challenge, args.task)
             fingerprint = hashlib.sha256(''.join(digest(path) for path in
                 (Path(__file__), HERE / 'server.js', HERE / 'tasks.js', args.config,
-                  args.plugin_path / 'plugin.js')).encode()).hexdigest()
+                  args.plugin_path / 'plugin.js', *((HERE / 'space-fixtures.js',) if args.space else ()))).encode()).hexdigest()
             model_row = next(iter(next(iter(catalog['providers'].values()))['models']))
             source_files = {'core': REPO / 'packages/browser-executor/core.mjs',
                             'resolver': REPO / 'packages/browser-executor/resolver.mjs',
@@ -1104,11 +1341,14 @@ def main(argv=None):
                             'tool_definition': REPO / 'packages/browser-executor/plugin.mjs',
                             'runner': Path(__file__), 'tasks_fixture': HERE / 'tasks.js',
                             'server_fixture': HERE / 'server.js', 'challenge_fixture': HERE / 'challenge.js',
-                            'browser_skill': REPO / 'modules/home/openclaw/skills/browser-research/SKILL.md'}
+                             'browser_skill': REPO / 'modules/home/openclaw/skills/browser-research/SKILL.md'}
+            if args.space:
+                source_files['space_fixture'] = HERE / 'space-fixtures.js'
             manifest = {
                 'suite': args.suite, 'model': args.model, 'image': args.image,
                  'fixture_sha256': {'tasks.js': digest(HERE / 'tasks.js'), 'server.js': digest(HERE / 'server.js'),
-                                    'challenge.js': digest(HERE / 'challenge.js')},
+                                     'challenge.js': digest(HERE / 'challenge.js'),
+                                     **({'space-fixtures.js': digest(HERE / 'space-fixtures.js')} if args.space else {})},
                 'code_fingerprint_sha256': fingerprint, 'task_count': len(tasks),
                  'source_sha256': {name: digest(path) for name, path in source_files.items()},
                  'packaged_plugin_sha256': {'wrapper': digest(args.plugin_path / 'plugin.js'),
@@ -1120,12 +1360,14 @@ def main(argv=None):
                  'catalog_cost_per_million_usd': model_row.get('cost'),
                  'model_limits': {'maxTokens': model_row.get('maxTokens'),
                                   'contextWindow': model_row.get('contextWindow'), 'thinking': 'low'},
-                 'prompt_template_sha256': hashlib.sha256(args.prompt_template.encode()).hexdigest(),
+                  'prompt_template_sha256': hashlib.sha256(args.prompt_template.encode()).hexdigest(),
+                  **({'supplied_fact_count': len(tasks[0]['variables']),
+                      'prompt_contains_variables': '{variables}' in args.prompt_template} if args.space else {}),
                    'executor_configuration': {'backend': args.executor_backend, 'maxSteps': args.max_steps,
                        'candidateMode': args.candidate_mode, 'applyPrepared': args.apply_prepared,
                        'stopPolicy': args.stop_policy, 'contractMode': args.contract_mode,
                        'semanticProblemDetail': args.semantic_problem_detail},
-                 'hosted_tool_budget': args.hosted_tool_budget or (60 if args.challenge else 'fixture'),
+                  'hosted_tool_budget': args.hosted_tool_budget or (220 if args.space else 60 if args.challenge else 'fixture'),
                 'credential_mode': 'explicit-access-only-oauth' if args.auth_profile_file else 'allowlisted-provider-environment',
                  'note': 'Agent exec uses pinned config and isolated HOME/state; --auth-env-only conflicts with --config in OpenClaw 2026.9.4. Usage costs are catalog estimates, not billed OpenRouter cost. Never route this to a live Camofox service.'
             }
@@ -1133,7 +1375,7 @@ def main(argv=None):
             manifest_path.write_text(json.dumps(manifest, sort_keys=True, indent=2) + '\n')
             for index, item in enumerate(tasks):
                 summary = run_one(args, item, ports, key, env, catalog, output)
-                row = {'suite': args.suite, 'scenario': 'challenge' if args.challenge else 'frozen30', 'implementation': args.implementation,
+                row = {'suite': args.suite, 'scenario': 'space' if args.space else 'challenge' if args.challenge else 'frozen30', 'implementation': args.implementation,
                        **summary, 'historical_code_sha256': fingerprint,
                        'local_calls': summary.get('local_calls'), 'local_steps': summary.get('local_steps'),
                         'local_latency_ms': summary.get('local_latency_ms'),
@@ -1159,7 +1401,7 @@ if __name__ == '__main__':
     except (ValueError, RuntimeError, OSError) as error:
         reason = str(error)
         allowed = {'frozen fixture must have 30 tasks', 'challenge fixture manifest invalid',
-                   'requested task not found', 'disposable Camofox container failed to start',
+                   'requested task not found', 'space fixture manifest invalid', 'disposable Camofox container failed to start',
                    'disposable Camofox health check timed out', 'disposable fixture did not start',
                    'invalid fixture startup', 'port collision', 'provider blocked; suite stopped'}
         safe = reason if reason in allowed else 'unclassified'
