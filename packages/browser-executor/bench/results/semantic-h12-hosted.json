@@ -1,0 +1,1231 @@
+{
+  "sources": [
+    {
+      "catalog_cost_per_million_usd": {
+        "cacheRead": 0.01,
+        "cacheWrite": 0.125,
+        "input": 0.1,
+        "output": 0.5
+      },
+      "executor_configuration": {
+        "applyPrepared": true,
+        "backend": "laya",
+        "candidateMode": "strictBindings",
+        "contractMode": "semantic",
+        "maxSteps": 24,
+        "semanticProblemDetail": "compact",
+        "stopPolicy": "success"
+      },
+      "fixture_sha256": {
+        "challenge.js": "9ffb0274e89814b9e85db8b6e70fb46a1db5af19893336dcc6cd473918b5a2ff",
+        "server.js": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks.js": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "manifest_hosted_tool_budget": 60,
+      "model": "openrouter/openai/gpt-6-luna",
+      "model_catalog_sha256": "1518d1bce54aee45765d238d3d5a4152f978283430a824b1de25de3d152d4648",
+      "model_limits": {
+        "contextWindow": 32768,
+        "maxTokens": 2048,
+        "thinking": "low"
+      },
+      "packaged_plugin_sha256": {
+        "manifest": "e6283d56dd1705d55295c653d4e712c8083c44c69fb1ae508f81a3ac87e0cd88",
+        "wrapper": "e3da046eedab60413910ca619d3db462134af44a0fcd6f6f85dfdf6c4339987d"
+      },
+      "recorded_prompt_template_sha256": "2f0981dd2886a70c92d5c6a371baeed71213573408ee3a23b579f0dae233ad72",
+      "runs": [
+        {
+          "assistant_turns": 18,
+          "assistant_usage_entries": 18,
+          "billed_usd": null,
+          "catalog_estimated_usd": 0.00299343,
+          "direct_mutation_calls": {
+            "camofox_click": 2,
+            "camofox_navigate": 0,
+            "camofox_scroll": 0,
+            "camofox_select": 2,
+            "camofox_type": 1
+          },
+          "executor_calls": [
+            {
+              "contract_shape": {
+                "binding_count": 1,
+                "binding_names": [
+                  "party"
+                ],
+                "contract_mode": "semantic",
+                "fact_count": 3,
+                "fact_names": [
+                  "party",
+                  "[other]",
+                  "[other]"
+                ],
+                "raw_key_metadata_available": true,
+                "variable_count": null,
+                "variable_names": null,
+                "visible_fixture_binding_names": [
+                  "party"
+                ],
+                "visible_fixture_fact_names": [
+                  "party"
+                ],
+                "visible_fixture_variable_names": []
+              },
+              "direct_mutation_calls_before_next_contract": {
+                "camofox_click": 2,
+                "camofox_navigate": 0,
+                "camofox_scroll": 0,
+                "camofox_select": 2,
+                "camofox_type": 1
+              },
+              "next_exposed_heading": "Garden Room guests",
+              "outcome": {
+                "problem": {
+                  "context": "Garden Room guests",
+                  "field": "Guests",
+                  "kind": "missing_fact",
+                  "options": [],
+                  "options_count": 0
+                },
+                "progress": {
+                  "assignments_verified": 0,
+                  "pages_seen": 1,
+                  "remaining_facts": 3
+                },
+                "reason": "missing_fact",
+                "status": "needs_decision",
+                "steps": 0
+              },
+              "post_problem_snapshot_calls_before_next_contract": 5,
+              "request": {
+                "allowed_origins": null,
+                "allowed_origins_count": null,
+                "binding_count": 1,
+                "binding_names": [
+                  "party"
+                ],
+                "bindings": {
+                  "party": {
+                    "context": "Start page guest count",
+                    "field": "Guests"
+                  }
+                },
+                "constraints": {
+                  "allowed_origins": [
+                    "[fixture-origin]"
+                  ],
+                  "allowed_origins_count": 1,
+                  "forbid_actions": [
+                    "Do not access oracle",
+                    "Do not send more than one inquiry"
+                  ],
+                  "forbid_actions_count": 2,
+                  "present_keys": [
+                    "allowedOrigins",
+                    "forbidActions"
+                  ],
+                  "unknown_key_count": 0
+                },
+                "contract_mode": "semantic",
+                "executionScope": null,
+                "fact_count": 3,
+                "fact_names": [
+                  "party",
+                  "[other]",
+                  "[other]"
+                ],
+                "facts": {
+                  "party": "2"
+                },
+                "fieldPolicies": null,
+                "fixture_variable_values_only": true,
+                "forbid_actions": null,
+                "forbid_actions_count": null,
+                "goal": "Set party size to 2, continue through the Garden Room flow, compare the displayed totals for two guests, choose the lower total, then send one demo inquiry and verify the resulting confirmation. Stay on the fixture origin.",
+                "modelGoal": null,
+                "present_keys": [
+                  "bindings",
+                  "constraints",
+                  "facts",
+                  "goal",
+                  "tabId"
+                ],
+                "stopAfter": null,
+                "success": null,
+                "unknown_key_count": 0,
+                "variable_count": null,
+                "variable_names": null,
+                "variables": {}
+              },
+              "tool_request_json_bytes": 586,
+              "tool_result_text_bytes": 493
+            }
+          ],
+          "executor_steps_reported": 0,
+          "failure": null,
+          "hosted_tool_budget": 60,
+          "hosted_tool_budget_hit": false,
+          "hosted_tool_calls_observed": 14,
+          "legacy_input_plus_cache_read": 117982,
+          "local_action_telemetry": 0,
+          "local_deterministic_actions": 0,
+          "local_latency_ms": [],
+          "local_model_actions": 0,
+          "local_model_calls": 0,
+          "local_model_errors": 0,
+          "local_result_reasons": {
+            "reason:missing_fact": 1
+          },
+          "local_snapshots_by_purpose": {
+            "initial": 1,
+            "post_action": 0,
+            "pre_action": 0
+          },
+          "local_snapshots_unexposed": 1,
+          "mistakes": 0,
+          "model_visible_camofox_calls": 13,
+          "model_visible_snapshot_result_bytes": 6344,
+          "model_visible_snapshots": 6,
+          "model_visible_tool_errors": 1,
+          "normalized_prompt_tokens": 127600,
+          "observed_prompt_tokens": 127600,
+          "observed_tokens": {
+            "cacheRead": 117928,
+            "cacheWrite": 9618,
+            "input": 54,
+            "output": 1213
+          },
+          "oracle_passed": true,
+          "oracle_unavailable": false,
+          "provider_stop_reason": null,
+          "sanitized_trace_available": true,
+          "status": "ok",
+          "task": "challenge-55",
+          "usage_complete": true,
+          "wall_seconds": 45.297,
+          "wrong_actions": 0
+        }
+      ],
+      "selected_model_row_sha256": "d18304f10e6f24214d8cbc51604218c1e2a91fc61a0b38bf11e458b590d8965b",
+      "source_directory": "semantic-h12-luna-compact",
+      "source_fingerprint": "b4bbb535009a169a5239cf4048a20ba5940556610d33e459b7797b99f5c39513",
+      "source_sha256": {
+        "bridge": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "browser_skill": "5b906292971ec7a4282d05e93a167abd1e01eb6babd6e10b19a8d413662ab24d",
+        "browser_transport": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "challenge_fixture": "9ffb0274e89814b9e85db8b6e70fb46a1db5af19893336dcc6cd473918b5a2ff",
+        "core": "ebfd540a60bedf711a5fcaaeae0cac18672e1457442099c6f614e01b408288ca",
+        "resolver": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "runner": "eef71f3290fac0739b0cb852ef4b5c63e85197c798406abc73f6c66d6ec697d8",
+        "server_fixture": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_fixture": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c",
+        "tool_definition": "01bfcff1f3b7b62eb5964604e89a0fecadfb112f1a30c04f78dd90cc299e4429"
+      },
+      "suite": "semantic-h12-luna-compact",
+      "tool_contract_schema_sha256": "587561b0683027b64f05740b948500be63a32187046b1a3552b73e8eb0d15420"
+    },
+    {
+      "catalog_cost_per_million_usd": {
+        "cacheRead": 0.01,
+        "cacheWrite": 0.125,
+        "input": 0.1,
+        "output": 0.5
+      },
+      "executor_configuration": {
+        "applyPrepared": true,
+        "backend": "laya",
+        "candidateMode": "strictBindings",
+        "contractMode": "semantic",
+        "maxSteps": 24,
+        "semanticProblemDetail": "contextual",
+        "stopPolicy": "success"
+      },
+      "fixture_sha256": {
+        "challenge.js": "9ffb0274e89814b9e85db8b6e70fb46a1db5af19893336dcc6cd473918b5a2ff",
+        "server.js": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks.js": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "manifest_hosted_tool_budget": 60,
+      "model": "openrouter/openai/gpt-6-luna",
+      "model_catalog_sha256": "1518d1bce54aee45765d238d3d5a4152f978283430a824b1de25de3d152d4648",
+      "model_limits": {
+        "contextWindow": 32768,
+        "maxTokens": 2048,
+        "thinking": "low"
+      },
+      "packaged_plugin_sha256": {
+        "manifest": "e6283d56dd1705d55295c653d4e712c8083c44c69fb1ae508f81a3ac87e0cd88",
+        "wrapper": "e3da046eedab60413910ca619d3db462134af44a0fcd6f6f85dfdf6c4339987d"
+      },
+      "recorded_prompt_template_sha256": "2f0981dd2886a70c92d5c6a371baeed71213573408ee3a23b579f0dae233ad72",
+      "runs": [
+        {
+          "assistant_turns": 10,
+          "assistant_usage_entries": 10,
+          "billed_usd": null,
+          "catalog_estimated_usd": 0.0018275,
+          "direct_mutation_calls": {
+            "camofox_click": 0,
+            "camofox_navigate": 0,
+            "camofox_scroll": 0,
+            "camofox_select": 0,
+            "camofox_type": 0
+          },
+          "executor_calls": [
+            {
+              "contract_shape": {
+                "binding_count": 1,
+                "binding_names": [
+                  "[other]"
+                ],
+                "contract_mode": "semantic",
+                "fact_count": 1,
+                "fact_names": [
+                  "[other]"
+                ],
+                "raw_key_metadata_available": true,
+                "variable_count": null,
+                "variable_names": null,
+                "visible_fixture_binding_names": [],
+                "visible_fixture_fact_names": [],
+                "visible_fixture_variable_names": []
+              },
+              "direct_mutation_calls_before_next_contract": {
+                "camofox_click": 0,
+                "camofox_navigate": 0,
+                "camofox_scroll": 0,
+                "camofox_select": 0,
+                "camofox_type": 0
+              },
+              "next_exposed_heading": "Garden Room choices",
+              "outcome": {
+                "problem": {
+                  "context": "Garden Room choices",
+                  "evidence": "\"Standard: 45 per guest. Quiet: 35 per guest plus a 5 booking fee.\" | Guests",
+                  "field": "Room tier StandardQuiet",
+                  "kind": "missing_fact",
+                  "options": [
+                    {
+                      "label": "Standard",
+                      "value": "Standard"
+                    },
+                    {
+                      "label": "Quiet",
+                      "value": "Quiet"
+                    }
+                  ],
+                  "options_count": 2
+                },
+                "progress": {
+                  "assignments_verified": 1,
+                  "pages_seen": 2,
+                  "remaining_facts": 0
+                },
+                "reason": "missing_fact",
+                "status": "needs_decision",
+                "steps": 2
+              },
+              "post_problem_snapshot_calls_before_next_contract": 1,
+              "request": {
+                "allowed_origins": null,
+                "allowed_origins_count": null,
+                "binding_count": 1,
+                "binding_names": [
+                  "[other]"
+                ],
+                "bindings": {},
+                "constraints": {
+                  "allowed_origins": [
+                    "[fixture-origin]"
+                  ],
+                  "allowed_origins_count": 1,
+                  "forbid_actions": [
+                    "access oracle",
+                    "send more than one inquiry",
+                    "invent contact details or message"
+                  ],
+                  "forbid_actions_count": 3,
+                  "present_keys": [
+                    "allowedOrigins",
+                    "forbidActions"
+                  ],
+                  "unknown_key_count": 0
+                },
+                "contract_mode": "semantic",
+                "executionScope": null,
+                "fact_count": 1,
+                "fact_names": [
+                  "[other]"
+                ],
+                "facts": {},
+                "fieldPolicies": null,
+                "fixture_variable_values_only": true,
+                "forbid_actions": null,
+                "forbid_actions_count": null,
+                "goal": "For the Garden Room, find availability/prices for 2 guests, compare the displayed totals and choose the lower total, then send exactly one demo inquiry. Stop if details needed to submit inquiry are not provided in page; verify completion.",
+                "modelGoal": null,
+                "present_keys": [
+                  "bindings",
+                  "constraints",
+                  "facts",
+                  "goal",
+                  "tabId"
+                ],
+                "stopAfter": null,
+                "success": null,
+                "unknown_key_count": 0,
+                "variable_count": null,
+                "variable_names": null,
+                "variables": {}
+              },
+              "tool_request_json_bytes": 525,
+              "tool_result_text_bytes": 700
+            },
+            {
+              "contract_shape": {
+                "binding_count": 1,
+                "binding_names": [
+                  "[other]"
+                ],
+                "contract_mode": "semantic",
+                "fact_count": 2,
+                "fact_names": [
+                  "[other]",
+                  "[other]"
+                ],
+                "raw_key_metadata_available": true,
+                "variable_count": null,
+                "variable_names": null,
+                "visible_fixture_binding_names": [],
+                "visible_fixture_fact_names": [],
+                "visible_fixture_variable_names": []
+              },
+              "direct_mutation_calls_before_next_contract": {
+                "camofox_click": 0,
+                "camofox_navigate": 0,
+                "camofox_scroll": 0,
+                "camofox_select": 0,
+                "camofox_type": 0
+              },
+              "next_exposed_heading": null,
+              "outcome": {
+                "fixture_route": "done",
+                "observed_action": {
+                  "click": "Send inquiry",
+                  "context": "Garden Room choices"
+                },
+                "progress": {
+                  "assignments_verified": 2,
+                  "pages_seen": 2,
+                  "remaining_fact_key_count": 0,
+                  "remaining_fact_keys": []
+                },
+                "reason": "submission_observed",
+                "relevant_state": "\"Receipt verified\" [level=1] | Final demo request accepted.",
+                "status": "checkpoint",
+                "steps": 2,
+                "verification": "action_and_fresh_observation"
+              },
+              "post_problem_snapshot_calls_before_next_contract": null,
+              "request": {
+                "allowed_origins": null,
+                "allowed_origins_count": null,
+                "binding_count": 1,
+                "binding_names": [
+                  "[other]"
+                ],
+                "bindings": {},
+                "constraints": {
+                  "allowed_origins": [
+                    "[fixture-origin]"
+                  ],
+                  "allowed_origins_count": 1,
+                  "forbid_actions": [
+                    "access oracle",
+                    "send more than one inquiry",
+                    "invent contact details or message"
+                  ],
+                  "forbid_actions_count": 3,
+                  "present_keys": [
+                    "allowedOrigins",
+                    "forbidActions"
+                  ],
+                  "unknown_key_count": 0
+                },
+                "contract_mode": "semantic",
+                "executionScope": null,
+                "fact_count": 2,
+                "fact_names": [
+                  "[other]",
+                  "[other]"
+                ],
+                "facts": {},
+                "fieldPolicies": null,
+                "fixture_variable_values_only": true,
+                "forbid_actions": null,
+                "forbid_actions_count": null,
+                "goal": "[omitted]",
+                "modelGoal": null,
+                "present_keys": [
+                  "bindings",
+                  "constraints",
+                  "facts",
+                  "goal",
+                  "tabId"
+                ],
+                "stopAfter": null,
+                "success": null,
+                "unknown_key_count": 0,
+                "variable_count": null,
+                "variable_names": null,
+                "variables": {}
+              },
+              "tool_request_json_bytes": 594,
+              "tool_result_text_bytes": 712
+            }
+          ],
+          "executor_steps_reported": 4,
+          "failure": null,
+          "hosted_tool_budget": 60,
+          "hosted_tool_budget_hit": false,
+          "hosted_tool_calls_observed": 6,
+          "legacy_input_plus_cache_read": 48442,
+          "local_action_telemetry": 4,
+          "local_deterministic_actions": 2,
+          "local_latency_ms": [
+            182.95,
+            234.65
+          ],
+          "local_model_actions": 2,
+          "local_model_calls": 2,
+          "local_model_errors": 0,
+          "local_result_reasons": {
+            "reason:missing_fact": 1,
+            "reason:submission_observed": 1
+          },
+          "local_snapshots_by_purpose": {
+            "initial": 2,
+            "post_action": 4,
+            "pre_action": 4
+          },
+          "local_snapshots_unexposed": 10,
+          "mistakes": 0,
+          "model_visible_camofox_calls": 4,
+          "model_visible_snapshot_result_bytes": 2404,
+          "model_visible_snapshots": 2,
+          "model_visible_tool_errors": 0,
+          "normalized_prompt_tokens": 55817,
+          "observed_prompt_tokens": 55817,
+          "observed_tokens": {
+            "cacheRead": 48412,
+            "cacheWrite": 7375,
+            "input": 30,
+            "output": 837
+          },
+          "oracle_passed": true,
+          "oracle_unavailable": false,
+          "provider_stop_reason": null,
+          "sanitized_trace_available": true,
+          "status": "ok",
+          "task": "challenge-55",
+          "usage_complete": true,
+          "wall_seconds": 45.172,
+          "wrong_actions": 0
+        }
+      ],
+      "selected_model_row_sha256": "d18304f10e6f24214d8cbc51604218c1e2a91fc61a0b38bf11e458b590d8965b",
+      "source_directory": "semantic-h12-luna-contextual",
+      "source_fingerprint": "b4bbb535009a169a5239cf4048a20ba5940556610d33e459b7797b99f5c39513",
+      "source_sha256": {
+        "bridge": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "browser_skill": "5b906292971ec7a4282d05e93a167abd1e01eb6babd6e10b19a8d413662ab24d",
+        "browser_transport": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "challenge_fixture": "9ffb0274e89814b9e85db8b6e70fb46a1db5af19893336dcc6cd473918b5a2ff",
+        "core": "ebfd540a60bedf711a5fcaaeae0cac18672e1457442099c6f614e01b408288ca",
+        "resolver": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "runner": "eef71f3290fac0739b0cb852ef4b5c63e85197c798406abc73f6c66d6ec697d8",
+        "server_fixture": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_fixture": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c",
+        "tool_definition": "01bfcff1f3b7b62eb5964604e89a0fecadfb112f1a30c04f78dd90cc299e4429"
+      },
+      "suite": "semantic-h12-luna-contextual",
+      "tool_contract_schema_sha256": "587561b0683027b64f05740b948500be63a32187046b1a3552b73e8eb0d15420"
+    },
+    {
+      "catalog_cost_per_million_usd": {
+        "cacheRead": 0.2,
+        "cacheWrite": 2.5,
+        "input": 2,
+        "output": 10
+      },
+      "executor_configuration": {
+        "applyPrepared": true,
+        "backend": "laya",
+        "candidateMode": "strictBindings",
+        "contractMode": "semantic",
+        "maxSteps": 24,
+        "semanticProblemDetail": "compact",
+        "stopPolicy": "success"
+      },
+      "fixture_sha256": {
+        "challenge.js": "9ffb0274e89814b9e85db8b6e70fb46a1db5af19893336dcc6cd473918b5a2ff",
+        "server.js": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks.js": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "manifest_hosted_tool_budget": 60,
+      "model": "openrouter/openai/gpt-6-sol",
+      "model_catalog_sha256": "7131403c53f5b84bc0b18052b6375b2bf4891708e85b9d462aa0a5a7d58230ad",
+      "model_limits": {
+        "contextWindow": 32768,
+        "maxTokens": 2048,
+        "thinking": "low"
+      },
+      "packaged_plugin_sha256": {
+        "manifest": "e6283d56dd1705d55295c653d4e712c8083c44c69fb1ae508f81a3ac87e0cd88",
+        "wrapper": "e3da046eedab60413910ca619d3db462134af44a0fcd6f6f85dfdf6c4339987d"
+      },
+      "recorded_prompt_template_sha256": "2f0981dd2886a70c92d5c6a371baeed71213573408ee3a23b579f0dae233ad72",
+      "runs": [
+        {
+          "assistant_turns": 16,
+          "assistant_usage_entries": 16,
+          "billed_usd": null,
+          "catalog_estimated_usd": 0.0538067,
+          "direct_mutation_calls": {
+            "camofox_click": 1,
+            "camofox_navigate": 0,
+            "camofox_scroll": 0,
+            "camofox_select": 1,
+            "camofox_type": 0
+          },
+          "executor_calls": [
+            {
+              "contract_shape": {
+                "binding_count": 1,
+                "binding_names": [
+                  "party"
+                ],
+                "contract_mode": "semantic",
+                "fact_count": 1,
+                "fact_names": [
+                  "party"
+                ],
+                "raw_key_metadata_available": true,
+                "variable_count": null,
+                "variable_names": null,
+                "visible_fixture_binding_names": [
+                  "party"
+                ],
+                "visible_fixture_fact_names": [
+                  "party"
+                ],
+                "visible_fixture_variable_names": []
+              },
+              "direct_mutation_calls_before_next_contract": {
+                "camofox_click": 0,
+                "camofox_navigate": 0,
+                "camofox_scroll": 0,
+                "camofox_select": 0,
+                "camofox_type": 0
+              },
+              "next_exposed_heading": "Garden Room choices",
+              "outcome": {
+                "problem": {
+                  "context": "Garden Room choices",
+                  "field": "Room tier StandardQuiet",
+                  "kind": "missing_fact",
+                  "options": [
+                    {
+                      "label": "Standard",
+                      "value": "Standard"
+                    },
+                    {
+                      "label": "Quiet",
+                      "value": "Quiet"
+                    }
+                  ],
+                  "options_count": 2
+                },
+                "progress": {
+                  "assignments_verified": 1,
+                  "pages_seen": 2,
+                  "remaining_facts": 0
+                },
+                "reason": "missing_fact",
+                "status": "needs_decision",
+                "steps": 2
+              },
+              "post_problem_snapshot_calls_before_next_contract": 1,
+              "request": {
+                "allowed_origins": null,
+                "allowed_origins_count": null,
+                "binding_count": 1,
+                "binding_names": [
+                  "party"
+                ],
+                "bindings": {
+                  "party": "Guests"
+                },
+                "constraints": {
+                  "allowed_origins": [
+                    "[fixture-origin]"
+                  ],
+                  "allowed_origins_count": 1,
+                  "forbid_actions": [
+                    "Do not send more than one inquiry",
+                    "Do not access the oracle",
+                    "Do not choose an option before both totals are shown"
+                  ],
+                  "forbid_actions_count": 3,
+                  "present_keys": [
+                    "allowedOrigins",
+                    "forbidActions"
+                  ],
+                  "unknown_key_count": 0
+                },
+                "contract_mode": "semantic",
+                "executionScope": null,
+                "fact_count": 1,
+                "fact_names": [
+                  "party"
+                ],
+                "facts": {
+                  "party": "2"
+                },
+                "fieldPolicies": null,
+                "fixture_variable_values_only": true,
+                "forbid_actions": null,
+                "forbid_actions_count": null,
+                "goal": "Set Guests to 2, continue to Garden Room options, compare displayed totals and choose the lower total, then send exactly one demo inquiry. Verify the terminal confirmation; if prices or required inquiry details are unclear, stop for inspection.",
+                "modelGoal": null,
+                "present_keys": [
+                  "bindings",
+                  "constraints",
+                  "facts",
+                  "goal",
+                  "tabId"
+                ],
+                "stopAfter": null,
+                "success": null,
+                "unknown_key_count": 0,
+                "variable_count": null,
+                "variable_names": null,
+                "variables": {}
+              },
+              "tool_request_json_bytes": 566,
+              "tool_result_text_bytes": 600
+            },
+            {
+              "contract_shape": {
+                "binding_count": 2,
+                "binding_names": [
+                  "party",
+                  "room_tier"
+                ],
+                "contract_mode": "semantic",
+                "fact_count": 2,
+                "fact_names": [
+                  "party",
+                  "room_tier"
+                ],
+                "raw_key_metadata_available": true,
+                "variable_count": null,
+                "variable_names": null,
+                "visible_fixture_binding_names": [
+                  "party"
+                ],
+                "visible_fixture_fact_names": [
+                  "party",
+                  "room_tier"
+                ],
+                "visible_fixture_variable_names": []
+              },
+              "direct_mutation_calls_before_next_contract": {
+                "camofox_click": 1,
+                "camofox_navigate": 0,
+                "camofox_scroll": 0,
+                "camofox_select": 1,
+                "camofox_type": 0
+              },
+              "next_exposed_heading": "Garden Room choices",
+              "outcome": {
+                "fixture_route": "review",
+                "progress": {
+                  "assignments_verified": 1,
+                  "pages_seen": 1,
+                  "remaining_fact_key_count": 1,
+                  "remaining_fact_keys": [
+                    "room_tier"
+                  ]
+                },
+                "reason": "preserved_field_conflict",
+                "relevant_state": "\"Garden Room choices\" [level=1] | \"Standard: 45 per guest. Quiet: 35 per guest plus a 5 booking fee.\" | Guests | Room tier",
+                "status": "escalated",
+                "steps": 0
+              },
+              "post_problem_snapshot_calls_before_next_contract": null,
+              "request": {
+                "allowed_origins": null,
+                "allowed_origins_count": null,
+                "binding_count": 2,
+                "binding_names": [
+                  "party",
+                  "room_tier"
+                ],
+                "bindings": {
+                  "party": "Guests"
+                },
+                "constraints": {
+                  "allowed_origins": [
+                    "[fixture-origin]"
+                  ],
+                  "allowed_origins_count": 1,
+                  "forbid_actions": [
+                    "Do not send more than one inquiry",
+                    "Do not access the oracle",
+                    "Do not change Guests from 2"
+                  ],
+                  "forbid_actions_count": 3,
+                  "present_keys": [
+                    "allowedOrigins",
+                    "forbidActions"
+                  ],
+                  "unknown_key_count": 0
+                },
+                "contract_mode": "semantic",
+                "executionScope": null,
+                "fact_count": 2,
+                "fact_names": [
+                  "party",
+                  "room_tier"
+                ],
+                "facts": {
+                  "party": "2",
+                  "room_tier": "[redacted]"
+                },
+                "fieldPolicies": [
+                  {
+                    "field": "Guests",
+                    "preserve": "2"
+                  }
+                ],
+                "fixture_variable_values_only": true,
+                "forbid_actions": null,
+                "forbid_actions_count": null,
+                "goal": "For 2 Garden Room guests, select Quiet (35 per guest plus 5 fee = 75, below Standard's 90), send exactly one demo inquiry, and inspect the resulting confirmation.",
+                "modelGoal": null,
+                "present_keys": [
+                  "bindings",
+                  "constraints",
+                  "facts",
+                  "fieldPolicies",
+                  "goal",
+                  "tabId"
+                ],
+                "stopAfter": null,
+                "success": null,
+                "unknown_key_count": 0,
+                "variable_count": null,
+                "variable_names": null,
+                "variables": {}
+              },
+              "tool_request_json_bytes": 578,
+              "tool_result_text_bytes": 665
+            }
+          ],
+          "executor_steps_reported": 2,
+          "failure": null,
+          "hosted_tool_budget": 60,
+          "hosted_tool_budget_hit": false,
+          "hosted_tool_calls_observed": 11,
+          "legacy_input_plus_cache_read": 97214,
+          "local_action_telemetry": 2,
+          "local_deterministic_actions": 1,
+          "local_latency_ms": [
+            347.96
+          ],
+          "local_model_actions": 1,
+          "local_model_calls": 1,
+          "local_model_errors": 0,
+          "local_result_reasons": {
+            "reason:missing_fact": 1,
+            "reason:preserved_field_conflict": 1
+          },
+          "local_snapshots_by_purpose": {
+            "initial": 2,
+            "post_action": 2,
+            "pre_action": 2
+          },
+          "local_snapshots_unexposed": 6,
+          "mistakes": 0,
+          "model_visible_camofox_calls": 9,
+          "model_visible_snapshot_result_bytes": 5994,
+          "model_visible_snapshots": 5,
+          "model_visible_tool_errors": 0,
+          "normalized_prompt_tokens": 106349,
+          "observed_prompt_tokens": 106349,
+          "observed_tokens": {
+            "cacheRead": 97166,
+            "cacheWrite": 9135,
+            "input": 48,
+            "output": 1144
+          },
+          "oracle_passed": true,
+          "oracle_unavailable": false,
+          "provider_stop_reason": null,
+          "sanitized_trace_available": true,
+          "status": "ok",
+          "task": "challenge-55",
+          "usage_complete": true,
+          "wall_seconds": 63.498,
+          "wrong_actions": 0
+        }
+      ],
+      "selected_model_row_sha256": "aef708d8eb30b3866761064b09e813c9a96a111fe21e42b3c640907805251ae1",
+      "source_directory": "semantic-h12-sol-compact",
+      "source_fingerprint": "2c4f7049bf8288e311abb6ff5bdcfa2f8ab5c1b312395f1707e56ecf48c07dab",
+      "source_sha256": {
+        "bridge": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "browser_skill": "5b906292971ec7a4282d05e93a167abd1e01eb6babd6e10b19a8d413662ab24d",
+        "browser_transport": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "challenge_fixture": "9ffb0274e89814b9e85db8b6e70fb46a1db5af19893336dcc6cd473918b5a2ff",
+        "core": "ebfd540a60bedf711a5fcaaeae0cac18672e1457442099c6f614e01b408288ca",
+        "resolver": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "runner": "eef71f3290fac0739b0cb852ef4b5c63e85197c798406abc73f6c66d6ec697d8",
+        "server_fixture": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_fixture": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c",
+        "tool_definition": "01bfcff1f3b7b62eb5964604e89a0fecadfb112f1a30c04f78dd90cc299e4429"
+      },
+      "suite": "semantic-h12-sol-compact",
+      "tool_contract_schema_sha256": "587561b0683027b64f05740b948500be63a32187046b1a3552b73e8eb0d15420"
+    },
+    {
+      "catalog_cost_per_million_usd": {
+        "cacheRead": 0.2,
+        "cacheWrite": 2.5,
+        "input": 2,
+        "output": 10
+      },
+      "executor_configuration": {
+        "applyPrepared": true,
+        "backend": "laya",
+        "candidateMode": "strictBindings",
+        "contractMode": "semantic",
+        "maxSteps": 24,
+        "semanticProblemDetail": "contextual",
+        "stopPolicy": "success"
+      },
+      "fixture_sha256": {
+        "challenge.js": "9ffb0274e89814b9e85db8b6e70fb46a1db5af19893336dcc6cd473918b5a2ff",
+        "server.js": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks.js": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "manifest_hosted_tool_budget": 60,
+      "model": "openrouter/openai/gpt-6-sol",
+      "model_catalog_sha256": "7131403c53f5b84bc0b18052b6375b2bf4891708e85b9d462aa0a5a7d58230ad",
+      "model_limits": {
+        "contextWindow": 32768,
+        "maxTokens": 2048,
+        "thinking": "low"
+      },
+      "packaged_plugin_sha256": {
+        "manifest": "e6283d56dd1705d55295c653d4e712c8083c44c69fb1ae508f81a3ac87e0cd88",
+        "wrapper": "e3da046eedab60413910ca619d3db462134af44a0fcd6f6f85dfdf6c4339987d"
+      },
+      "recorded_prompt_template_sha256": "2f0981dd2886a70c92d5c6a371baeed71213573408ee3a23b579f0dae233ad72",
+      "runs": [
+        {
+          "assistant_turns": 11,
+          "assistant_usage_entries": 11,
+          "billed_usd": null,
+          "catalog_estimated_usd": 0.0389649,
+          "direct_mutation_calls": {
+            "camofox_click": 0,
+            "camofox_navigate": 0,
+            "camofox_scroll": 0,
+            "camofox_select": 0,
+            "camofox_type": 0
+          },
+          "executor_calls": [
+            {
+              "contract_shape": {
+                "binding_count": 1,
+                "binding_names": [
+                  "[other]"
+                ],
+                "contract_mode": "semantic",
+                "fact_count": 1,
+                "fact_names": [
+                  "[other]"
+                ],
+                "raw_key_metadata_available": true,
+                "variable_count": null,
+                "variable_names": null,
+                "visible_fixture_binding_names": [],
+                "visible_fixture_fact_names": [],
+                "visible_fixture_variable_names": []
+              },
+              "direct_mutation_calls_before_next_contract": {
+                "camofox_click": 0,
+                "camofox_navigate": 0,
+                "camofox_scroll": 0,
+                "camofox_select": 0,
+                "camofox_type": 0
+              },
+              "next_exposed_heading": "Garden Room choices",
+              "outcome": {
+                "problem": {
+                  "context": "Garden Room choices",
+                  "evidence": "\"Standard: 45 per guest. Quiet: 35 per guest plus a 5 booking fee.\" | Guests",
+                  "field": "Room tier StandardQuiet",
+                  "kind": "missing_fact",
+                  "options": [
+                    {
+                      "label": "Standard",
+                      "value": "Standard"
+                    },
+                    {
+                      "label": "Quiet",
+                      "value": "Quiet"
+                    }
+                  ],
+                  "options_count": 2
+                },
+                "progress": {
+                  "assignments_verified": 1,
+                  "pages_seen": 2,
+                  "remaining_facts": 0
+                },
+                "reason": "missing_fact",
+                "status": "needs_decision",
+                "steps": 2
+              },
+              "post_problem_snapshot_calls_before_next_contract": 1,
+              "request": {
+                "allowed_origins": null,
+                "allowed_origins_count": null,
+                "binding_count": 1,
+                "binding_names": [
+                  "[other]"
+                ],
+                "bindings": {},
+                "constraints": {
+                  "allowed_origins": [
+                    "[fixture-origin]"
+                  ],
+                  "allowed_origins_count": 1,
+                  "forbid_actions": [
+                    "Access oracle",
+                    "Send more than one inquiry"
+                  ],
+                  "forbid_actions_count": 2,
+                  "present_keys": [
+                    "allowedOrigins",
+                    "forbidActions"
+                  ],
+                  "unknown_key_count": 0
+                },
+                "contract_mode": "semantic",
+                "executionScope": null,
+                "fact_count": 1,
+                "fact_names": [
+                  "[other]"
+                ],
+                "facts": {},
+                "fieldPolicies": null,
+                "fixture_variable_values_only": true,
+                "forbid_actions": null,
+                "forbid_actions_count": null,
+                "goal": "Set Guests to 2, continue to reveal prices for the Garden Room options, compare totals for two guests, choose the lower total, and send exactly one demo inquiry. Verify the final outcome; do not access oracle.",
+                "modelGoal": null,
+                "present_keys": [
+                  "bindings",
+                  "constraints",
+                  "facts",
+                  "goal",
+                  "tabId"
+                ],
+                "stopAfter": null,
+                "success": null,
+                "unknown_key_count": 0,
+                "variable_count": null,
+                "variable_names": null,
+                "variables": {}
+              },
+              "tool_request_json_bytes": 459,
+              "tool_result_text_bytes": 700
+            },
+            {
+              "contract_shape": {
+                "binding_count": 2,
+                "binding_names": [
+                  "[other]",
+                  "[other]"
+                ],
+                "contract_mode": "semantic",
+                "fact_count": 2,
+                "fact_names": [
+                  "[other]",
+                  "[other]"
+                ],
+                "raw_key_metadata_available": true,
+                "variable_count": null,
+                "variable_names": null,
+                "visible_fixture_binding_names": [],
+                "visible_fixture_fact_names": [],
+                "visible_fixture_variable_names": []
+              },
+              "direct_mutation_calls_before_next_contract": {
+                "camofox_click": 0,
+                "camofox_navigate": 0,
+                "camofox_scroll": 0,
+                "camofox_select": 0,
+                "camofox_type": 0
+              },
+              "next_exposed_heading": "Receipt verified",
+              "outcome": {
+                "fixture_route": "done",
+                "observed_action": {
+                  "click": "Send inquiry",
+                  "context": "Garden Room choices"
+                },
+                "progress": {
+                  "assignments_verified": 2,
+                  "pages_seen": 2,
+                  "remaining_fact_key_count": 0,
+                  "remaining_fact_keys": []
+                },
+                "reason": "submission_observed",
+                "relevant_state": "\"Receipt verified\" [level=1] | Final demo request accepted.",
+                "status": "checkpoint",
+                "steps": 2,
+                "verification": "action_and_fresh_observation"
+              },
+              "post_problem_snapshot_calls_before_next_contract": null,
+              "request": {
+                "allowed_origins": null,
+                "allowed_origins_count": null,
+                "binding_count": 2,
+                "binding_names": [
+                  "[other]",
+                  "[other]"
+                ],
+                "bindings": {},
+                "constraints": {
+                  "allowed_origins": [
+                    "[fixture-origin]"
+                  ],
+                  "allowed_origins_count": 1,
+                  "forbid_actions": [
+                    "Access oracle",
+                    "Send more than one inquiry"
+                  ],
+                  "forbid_actions_count": 2,
+                  "present_keys": [
+                    "allowedOrigins",
+                    "forbidActions"
+                  ],
+                  "unknown_key_count": 0
+                },
+                "contract_mode": "semantic",
+                "executionScope": null,
+                "fact_count": 2,
+                "fact_names": [
+                  "[other]",
+                  "[other]"
+                ],
+                "facts": {},
+                "fieldPolicies": null,
+                "fixture_variable_values_only": true,
+                "forbid_actions": null,
+                "forbid_actions_count": null,
+                "goal": "For 2 Garden Room guests, Quiet totals 75 (35 each plus 5 fee), below Standard's 90 (45 each). Select Quiet and send exactly one demo inquiry, then verify the outcome. Do not access oracle.",
+                "modelGoal": null,
+                "present_keys": [
+                  "bindings",
+                  "constraints",
+                  "facts",
+                  "goal",
+                  "tabId"
+                ],
+                "stopAfter": null,
+                "success": null,
+                "unknown_key_count": 0,
+                "variable_count": null,
+                "variable_names": null,
+                "variables": {}
+              },
+              "tool_request_json_bytes": 501,
+              "tool_result_text_bytes": 712
+            }
+          ],
+          "executor_steps_reported": 4,
+          "failure": null,
+          "hosted_tool_budget": 60,
+          "hosted_tool_budget_hit": false,
+          "hosted_tool_calls_observed": 7,
+          "legacy_input_plus_cache_read": 57165,
+          "local_action_telemetry": 4,
+          "local_deterministic_actions": 2,
+          "local_latency_ms": [
+            192.73,
+            207.25
+          ],
+          "local_model_actions": 2,
+          "local_model_calls": 2,
+          "local_model_errors": 0,
+          "local_result_reasons": {
+            "reason:missing_fact": 1,
+            "reason:submission_observed": 1
+          },
+          "local_snapshots_by_purpose": {
+            "initial": 2,
+            "post_action": 4,
+            "pre_action": 4
+          },
+          "local_snapshots_unexposed": 10,
+          "mistakes": 0,
+          "model_visible_camofox_calls": 5,
+          "model_visible_snapshot_result_bytes": 3017,
+          "model_visible_snapshots": 3,
+          "model_visible_tool_errors": 0,
+          "normalized_prompt_tokens": 64910,
+          "observed_prompt_tokens": 64910,
+          "observed_tokens": {
+            "cacheRead": 57132,
+            "cacheWrite": 7745,
+            "input": 33,
+            "output": 811
+          },
+          "oracle_passed": true,
+          "oracle_unavailable": false,
+          "provider_stop_reason": null,
+          "sanitized_trace_available": true,
+          "status": "ok",
+          "task": "challenge-55",
+          "usage_complete": true,
+          "wall_seconds": 49.453,
+          "wrong_actions": 0
+        }
+      ],
+      "selected_model_row_sha256": "aef708d8eb30b3866761064b09e813c9a96a111fe21e42b3c640907805251ae1",
+      "source_directory": "semantic-h12-sol-contextual",
+      "source_fingerprint": "2c4f7049bf8288e311abb6ff5bdcfa2f8ab5c1b312395f1707e56ecf48c07dab",
+      "source_sha256": {
+        "bridge": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "browser_skill": "5b906292971ec7a4282d05e93a167abd1e01eb6babd6e10b19a8d413662ab24d",
+        "browser_transport": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "challenge_fixture": "9ffb0274e89814b9e85db8b6e70fb46a1db5af19893336dcc6cd473918b5a2ff",
+        "core": "ebfd540a60bedf711a5fcaaeae0cac18672e1457442099c6f614e01b408288ca",
+        "resolver": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "runner": "eef71f3290fac0739b0cb852ef4b5c63e85197c798406abc73f6c66d6ec697d8",
+        "server_fixture": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_fixture": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c",
+        "tool_definition": "01bfcff1f3b7b62eb5964604e89a0fecadfb112f1a30c04f78dd90cc299e4429"
+      },
+      "suite": "semantic-h12-sol-contextual",
+      "tool_contract_schema_sha256": "587561b0683027b64f05740b948500be63a32187046b1a3552b73e8eb0d15420"
+    }
+  ]
+}

@@ -1,0 +1,1169 @@
+{
+  "decision_sources": [
+    {
+      "case_ids": [
+        "no-preference",
+        "explicit-cheapest",
+        "price-evidence-missing",
+        "price-evidence-present"
+      ],
+      "model": "openai/gpt-6-luna",
+      "parameters": {
+        "max_completion_tokens": 2048,
+        "reasoning": {
+          "effort": "low"
+        },
+        "response_format": {
+          "type": "json_object"
+        },
+        "stream": false
+      },
+      "probe_sha256": "20337952bda42f53de675fec4a6a43947d808d4f6e2c061fc97492af9acab17d",
+      "source_directory": "h12-payload-luna-a",
+      "system_sha256": "6a94a51f4bd960e6a88dfdc7897130f558bb934ab51e818c2131f61682f5732c"
+    },
+    {
+      "case_ids": [
+        "no-preference",
+        "explicit-cheapest",
+        "price-evidence-missing",
+        "price-evidence-present"
+      ],
+      "model": "openai/gpt-6-sol",
+      "parameters": {
+        "max_completion_tokens": 2048,
+        "reasoning": {
+          "effort": "low"
+        },
+        "response_format": {
+          "type": "json_object"
+        },
+        "stream": false
+      },
+      "probe_sha256": "20337952bda42f53de675fec4a6a43947d808d4f6e2c061fc97492af9acab17d",
+      "source_directory": "h12-payload-sol-a",
+      "system_sha256": "6a94a51f4bd960e6a88dfdc7897130f558bb934ab51e818c2131f61682f5732c"
+    }
+  ],
+  "hosted_sources": [
+    {
+      "catalog_cost_per_million_usd": {
+        "cacheRead": 0.01,
+        "cacheWrite": 0.125,
+        "input": 0.1,
+        "output": 0.5
+      },
+      "executor_configuration": {
+        "applyPrepared": true,
+        "backend": "laya",
+        "candidateMode": "strictBindings",
+        "contractMode": "semantic",
+        "maxSteps": 24,
+        "semanticProblemDetail": "compact",
+        "stopPolicy": "success"
+      },
+      "fixture_sha256": {
+        "challenge.js": "9ffb0274e89814b9e85db8b6e70fb46a1db5af19893336dcc6cd473918b5a2ff",
+        "server.js": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks.js": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "manifest_hosted_tool_budget": 60,
+      "model": "openrouter/openai/gpt-6-luna",
+      "model_catalog_sha256": "1518d1bce54aee45765d238d3d5a4152f978283430a824b1de25de3d152d4648",
+      "model_limits": {
+        "contextWindow": 32768,
+        "maxTokens": 2048,
+        "thinking": "low"
+      },
+      "packaged_plugin_sha256": {
+        "manifest": "e6283d56dd1705d55295c653d4e712c8083c44c69fb1ae508f81a3ac87e0cd88",
+        "wrapper": "e3da046eedab60413910ca619d3db462134af44a0fcd6f6f85dfdf6c4339987d"
+      },
+      "recorded_prompt_template_sha256": "2f0981dd2886a70c92d5c6a371baeed71213573408ee3a23b579f0dae233ad72",
+      "selected_model_row_sha256": "d18304f10e6f24214d8cbc51604218c1e2a91fc61a0b38bf11e458b590d8965b",
+      "source_directory": "semantic-h12-luna-compact",
+      "source_fingerprint": "b4bbb535009a169a5239cf4048a20ba5940556610d33e459b7797b99f5c39513",
+      "source_sha256": {
+        "bridge": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "browser_skill": "5b906292971ec7a4282d05e93a167abd1e01eb6babd6e10b19a8d413662ab24d",
+        "browser_transport": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "challenge_fixture": "9ffb0274e89814b9e85db8b6e70fb46a1db5af19893336dcc6cd473918b5a2ff",
+        "core": "ebfd540a60bedf711a5fcaaeae0cac18672e1457442099c6f614e01b408288ca",
+        "resolver": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "runner": "eef71f3290fac0739b0cb852ef4b5c63e85197c798406abc73f6c66d6ec697d8",
+        "server_fixture": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_fixture": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c",
+        "tool_definition": "01bfcff1f3b7b62eb5964604e89a0fecadfb112f1a30c04f78dd90cc299e4429"
+      },
+      "suite": "semantic-h12-luna-compact",
+      "tool_contract_schema_sha256": "587561b0683027b64f05740b948500be63a32187046b1a3552b73e8eb0d15420"
+    },
+    {
+      "catalog_cost_per_million_usd": {
+        "cacheRead": 0.01,
+        "cacheWrite": 0.125,
+        "input": 0.1,
+        "output": 0.5
+      },
+      "executor_configuration": {
+        "applyPrepared": true,
+        "backend": "laya",
+        "candidateMode": "strictBindings",
+        "contractMode": "semantic",
+        "maxSteps": 24,
+        "semanticProblemDetail": "contextual",
+        "stopPolicy": "success"
+      },
+      "fixture_sha256": {
+        "challenge.js": "9ffb0274e89814b9e85db8b6e70fb46a1db5af19893336dcc6cd473918b5a2ff",
+        "server.js": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks.js": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "manifest_hosted_tool_budget": 60,
+      "model": "openrouter/openai/gpt-6-luna",
+      "model_catalog_sha256": "1518d1bce54aee45765d238d3d5a4152f978283430a824b1de25de3d152d4648",
+      "model_limits": {
+        "contextWindow": 32768,
+        "maxTokens": 2048,
+        "thinking": "low"
+      },
+      "packaged_plugin_sha256": {
+        "manifest": "e6283d56dd1705d55295c653d4e712c8083c44c69fb1ae508f81a3ac87e0cd88",
+        "wrapper": "e3da046eedab60413910ca619d3db462134af44a0fcd6f6f85dfdf6c4339987d"
+      },
+      "recorded_prompt_template_sha256": "2f0981dd2886a70c92d5c6a371baeed71213573408ee3a23b579f0dae233ad72",
+      "selected_model_row_sha256": "d18304f10e6f24214d8cbc51604218c1e2a91fc61a0b38bf11e458b590d8965b",
+      "source_directory": "semantic-h12-luna-contextual",
+      "source_fingerprint": "b4bbb535009a169a5239cf4048a20ba5940556610d33e459b7797b99f5c39513",
+      "source_sha256": {
+        "bridge": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "browser_skill": "5b906292971ec7a4282d05e93a167abd1e01eb6babd6e10b19a8d413662ab24d",
+        "browser_transport": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "challenge_fixture": "9ffb0274e89814b9e85db8b6e70fb46a1db5af19893336dcc6cd473918b5a2ff",
+        "core": "ebfd540a60bedf711a5fcaaeae0cac18672e1457442099c6f614e01b408288ca",
+        "resolver": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "runner": "eef71f3290fac0739b0cb852ef4b5c63e85197c798406abc73f6c66d6ec697d8",
+        "server_fixture": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_fixture": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c",
+        "tool_definition": "01bfcff1f3b7b62eb5964604e89a0fecadfb112f1a30c04f78dd90cc299e4429"
+      },
+      "suite": "semantic-h12-luna-contextual",
+      "tool_contract_schema_sha256": "587561b0683027b64f05740b948500be63a32187046b1a3552b73e8eb0d15420"
+    },
+    {
+      "catalog_cost_per_million_usd": {
+        "cacheRead": 0.2,
+        "cacheWrite": 2.5,
+        "input": 2,
+        "output": 10
+      },
+      "executor_configuration": {
+        "applyPrepared": true,
+        "backend": "laya",
+        "candidateMode": "strictBindings",
+        "contractMode": "semantic",
+        "maxSteps": 24,
+        "semanticProblemDetail": "compact",
+        "stopPolicy": "success"
+      },
+      "fixture_sha256": {
+        "challenge.js": "9ffb0274e89814b9e85db8b6e70fb46a1db5af19893336dcc6cd473918b5a2ff",
+        "server.js": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks.js": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "manifest_hosted_tool_budget": 60,
+      "model": "openrouter/openai/gpt-6-sol",
+      "model_catalog_sha256": "7131403c53f5b84bc0b18052b6375b2bf4891708e85b9d462aa0a5a7d58230ad",
+      "model_limits": {
+        "contextWindow": 32768,
+        "maxTokens": 2048,
+        "thinking": "low"
+      },
+      "packaged_plugin_sha256": {
+        "manifest": "e6283d56dd1705d55295c653d4e712c8083c44c69fb1ae508f81a3ac87e0cd88",
+        "wrapper": "e3da046eedab60413910ca619d3db462134af44a0fcd6f6f85dfdf6c4339987d"
+      },
+      "recorded_prompt_template_sha256": "2f0981dd2886a70c92d5c6a371baeed71213573408ee3a23b579f0dae233ad72",
+      "selected_model_row_sha256": "aef708d8eb30b3866761064b09e813c9a96a111fe21e42b3c640907805251ae1",
+      "source_directory": "semantic-h12-sol-compact",
+      "source_fingerprint": "2c4f7049bf8288e311abb6ff5bdcfa2f8ab5c1b312395f1707e56ecf48c07dab",
+      "source_sha256": {
+        "bridge": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "browser_skill": "5b906292971ec7a4282d05e93a167abd1e01eb6babd6e10b19a8d413662ab24d",
+        "browser_transport": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "challenge_fixture": "9ffb0274e89814b9e85db8b6e70fb46a1db5af19893336dcc6cd473918b5a2ff",
+        "core": "ebfd540a60bedf711a5fcaaeae0cac18672e1457442099c6f614e01b408288ca",
+        "resolver": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "runner": "eef71f3290fac0739b0cb852ef4b5c63e85197c798406abc73f6c66d6ec697d8",
+        "server_fixture": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_fixture": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c",
+        "tool_definition": "01bfcff1f3b7b62eb5964604e89a0fecadfb112f1a30c04f78dd90cc299e4429"
+      },
+      "suite": "semantic-h12-sol-compact",
+      "tool_contract_schema_sha256": "587561b0683027b64f05740b948500be63a32187046b1a3552b73e8eb0d15420"
+    },
+    {
+      "catalog_cost_per_million_usd": {
+        "cacheRead": 0.2,
+        "cacheWrite": 2.5,
+        "input": 2,
+        "output": 10
+      },
+      "executor_configuration": {
+        "applyPrepared": true,
+        "backend": "laya",
+        "candidateMode": "strictBindings",
+        "contractMode": "semantic",
+        "maxSteps": 24,
+        "semanticProblemDetail": "contextual",
+        "stopPolicy": "success"
+      },
+      "fixture_sha256": {
+        "challenge.js": "9ffb0274e89814b9e85db8b6e70fb46a1db5af19893336dcc6cd473918b5a2ff",
+        "server.js": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks.js": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "manifest_hosted_tool_budget": 60,
+      "model": "openrouter/openai/gpt-6-sol",
+      "model_catalog_sha256": "7131403c53f5b84bc0b18052b6375b2bf4891708e85b9d462aa0a5a7d58230ad",
+      "model_limits": {
+        "contextWindow": 32768,
+        "maxTokens": 2048,
+        "thinking": "low"
+      },
+      "packaged_plugin_sha256": {
+        "manifest": "e6283d56dd1705d55295c653d4e712c8083c44c69fb1ae508f81a3ac87e0cd88",
+        "wrapper": "e3da046eedab60413910ca619d3db462134af44a0fcd6f6f85dfdf6c4339987d"
+      },
+      "recorded_prompt_template_sha256": "2f0981dd2886a70c92d5c6a371baeed71213573408ee3a23b579f0dae233ad72",
+      "selected_model_row_sha256": "aef708d8eb30b3866761064b09e813c9a96a111fe21e42b3c640907805251ae1",
+      "source_directory": "semantic-h12-sol-contextual",
+      "source_fingerprint": "2c4f7049bf8288e311abb6ff5bdcfa2f8ab5c1b312395f1707e56ecf48c07dab",
+      "source_sha256": {
+        "bridge": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "browser_skill": "5b906292971ec7a4282d05e93a167abd1e01eb6babd6e10b19a8d413662ab24d",
+        "browser_transport": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "challenge_fixture": "9ffb0274e89814b9e85db8b6e70fb46a1db5af19893336dcc6cd473918b5a2ff",
+        "core": "ebfd540a60bedf711a5fcaaeae0cac18672e1457442099c6f614e01b408288ca",
+        "resolver": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "runner": "eef71f3290fac0739b0cb852ef4b5c63e85197c798406abc73f6c66d6ec697d8",
+        "server_fixture": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_fixture": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c",
+        "tool_definition": "01bfcff1f3b7b62eb5964604e89a0fecadfb112f1a30c04f78dd90cc299e4429"
+      },
+      "suite": "semantic-h12-sol-contextual",
+      "tool_contract_schema_sha256": "587561b0683027b64f05740b948500be63a32187046b1a3552b73e8eb0d15420"
+    }
+  ],
+  "limits": [
+    "Only the selected artifact directories are represented.",
+    "Incomplete or zero-usage errors do not establish zero spend.",
+    "A checkpoint or needs_decision/needs_mapping is not a fixture-oracle success.",
+    "Source tool schema hashes describe the registered source definition; packaged wrapper and runtime hashes are retained separately. Absent historical hashes remain null.",
+    "Only fixture-matched facts are shown by value; other fact values are redacted.",
+    "Safe fact-name filtering can render an identifier as [other]; never infer that an alias was absent from that placeholder. Compare full key counts separately.",
+    "Local diagnostic provenance may differ from hosted core; source hashes and hosted_core_match prevent treating historical local runs as current-runtime parity.",
+    "H1-H8 taxonomy labels are not encoded by the source artifacts; fact_id links observations without inventing hypothesis assignments.",
+    "Standalone decision probes are authored payload questions, not browser-loop outcomes or fixture oracles. A malformed answer does not reveal the discarded raw response.",
+    "Hosted OpenClaw costs are catalog estimates. Standalone decision-probe costs are OpenRouter response usage.cost when present, not independent account invoices."
+  ],
+  "local_sources": [
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "9ffb0274e89814b9e85db8b6e70fb46a1db5af19893336dcc6cd473918b5a2ff",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": true,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "5d2c729befa0f0fdf31ae991f9807e1582a7a426d00d4427fd70493118d037f3",
+        "diagnose.mjs": "bc5a15950d1ce8bd0f5bb6df916ef789cedce2876e95cc5565f42fabc9bb3252",
+        "diagnose.py": "e620ca5974e55fbcbb9b8a831d9a2e48ffc702b599f4a30316d990a798d24932",
+        "run.py": "eef71f3290fac0739b0cb852ef4b5c63e85197c798406abc73f6c66d6ec697d8"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "ebfd540a60bedf711a5fcaaeae0cac18672e1457442099c6f614e01b408288ca",
+        "model_executable_sha256": null,
+        "packaged_runtime_sha256": null,
+        "plugin_sha256": null,
+        "resolver_sha256": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "heldPreference": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "optionalMetadata": false,
+        "optionalMetadataIntervention": null,
+        "preserveVariant": null,
+        "problemDetail": "compact",
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "semanticBindings": false,
+        "semanticBoundary": "conservative",
+        "semanticFacts": "minimal",
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5,
+        "trustedDefaultPolicy": "strict"
+      },
+      "source": "semantic-finalboundary55-compact-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "9ffb0274e89814b9e85db8b6e70fb46a1db5af19893336dcc6cd473918b5a2ff",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": true,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "5d2c729befa0f0fdf31ae991f9807e1582a7a426d00d4427fd70493118d037f3",
+        "diagnose.mjs": "bc5a15950d1ce8bd0f5bb6df916ef789cedce2876e95cc5565f42fabc9bb3252",
+        "diagnose.py": "e620ca5974e55fbcbb9b8a831d9a2e48ffc702b599f4a30316d990a798d24932",
+        "run.py": "eef71f3290fac0739b0cb852ef4b5c63e85197c798406abc73f6c66d6ec697d8"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "ebfd540a60bedf711a5fcaaeae0cac18672e1457442099c6f614e01b408288ca",
+        "model_executable_sha256": null,
+        "packaged_runtime_sha256": null,
+        "plugin_sha256": null,
+        "resolver_sha256": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "heldPreference": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "optionalMetadata": false,
+        "optionalMetadataIntervention": null,
+        "preserveVariant": null,
+        "problemDetail": "contextual",
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "semanticBindings": false,
+        "semanticBoundary": "conservative",
+        "semanticFacts": "minimal",
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5,
+        "trustedDefaultPolicy": "strict"
+      },
+      "source": "semantic-finalboundary55-contextual-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "9ffb0274e89814b9e85db8b6e70fb46a1db5af19893336dcc6cd473918b5a2ff",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": true,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "5d2c729befa0f0fdf31ae991f9807e1582a7a426d00d4427fd70493118d037f3",
+        "diagnose.mjs": "bc5a15950d1ce8bd0f5bb6df916ef789cedce2876e95cc5565f42fabc9bb3252",
+        "diagnose.py": "e620ca5974e55fbcbb9b8a831d9a2e48ffc702b599f4a30316d990a798d24932",
+        "run.py": "eef71f3290fac0739b0cb852ef4b5c63e85197c798406abc73f6c66d6ec697d8"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "ebfd540a60bedf711a5fcaaeae0cac18672e1457442099c6f614e01b408288ca",
+        "model_executable_sha256": null,
+        "packaged_runtime_sha256": null,
+        "plugin_sha256": null,
+        "resolver_sha256": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "heldPreference": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "optionalMetadata": false,
+        "optionalMetadataIntervention": null,
+        "preserveVariant": null,
+        "problemDetail": "contextual",
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "semanticBindings": false,
+        "semanticBoundary": "conservative",
+        "semanticFacts": "minimal",
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5,
+        "trustedDefaultPolicy": "strict"
+      },
+      "source": "semantic-finalboundary56-oracle-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "9ffb0274e89814b9e85db8b6e70fb46a1db5af19893336dcc6cd473918b5a2ff",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": true,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "5d2c729befa0f0fdf31ae991f9807e1582a7a426d00d4427fd70493118d037f3",
+        "diagnose.mjs": "bc5a15950d1ce8bd0f5bb6df916ef789cedce2876e95cc5565f42fabc9bb3252",
+        "diagnose.py": "e620ca5974e55fbcbb9b8a831d9a2e48ffc702b599f4a30316d990a798d24932",
+        "run.py": "eef71f3290fac0739b0cb852ef4b5c63e85197c798406abc73f6c66d6ec697d8"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "ebfd540a60bedf711a5fcaaeae0cac18672e1457442099c6f614e01b408288ca",
+        "model_executable_sha256": "538c3699c45b37f7a75dc62ac68204eba1e7d7c92fca550e45576794ed8a948e",
+        "packaged_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062",
+        "plugin_sha256": null,
+        "resolver_sha256": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "heldPreference": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "optionalMetadata": false,
+        "optionalMetadataIntervention": null,
+        "preserveVariant": null,
+        "problemDetail": "contextual",
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "semanticBindings": false,
+        "semanticBoundary": "conservative",
+        "semanticFacts": "minimal",
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5,
+        "trustedDefaultPolicy": "strict"
+      },
+      "source": "semantic-finalboundary56-laya-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "9ffb0274e89814b9e85db8b6e70fb46a1db5af19893336dcc6cd473918b5a2ff",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": true,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "5d2c729befa0f0fdf31ae991f9807e1582a7a426d00d4427fd70493118d037f3",
+        "diagnose.mjs": "bc5a15950d1ce8bd0f5bb6df916ef789cedce2876e95cc5565f42fabc9bb3252",
+        "diagnose.py": "e620ca5974e55fbcbb9b8a831d9a2e48ffc702b599f4a30316d990a798d24932",
+        "run.py": "eef71f3290fac0739b0cb852ef4b5c63e85197c798406abc73f6c66d6ec697d8"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "ebfd540a60bedf711a5fcaaeae0cac18672e1457442099c6f614e01b408288ca",
+        "model_executable_sha256": "538c3699c45b37f7a75dc62ac68204eba1e7d7c92fca550e45576794ed8a948e",
+        "packaged_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062",
+        "plugin_sha256": null,
+        "resolver_sha256": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "heldPreference": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "optionalMetadata": false,
+        "optionalMetadataIntervention": null,
+        "preserveVariant": null,
+        "problemDetail": "contextual",
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "semanticBindings": false,
+        "semanticBoundary": "conservative",
+        "semanticFacts": "minimal",
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5,
+        "trustedDefaultPolicy": "strict"
+      },
+      "source": "semantic-finalboundary56-kev-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "9ffb0274e89814b9e85db8b6e70fb46a1db5af19893336dcc6cd473918b5a2ff",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": true,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "5d2c729befa0f0fdf31ae991f9807e1582a7a426d00d4427fd70493118d037f3",
+        "diagnose.mjs": "bc5a15950d1ce8bd0f5bb6df916ef789cedce2876e95cc5565f42fabc9bb3252",
+        "diagnose.py": "e620ca5974e55fbcbb9b8a831d9a2e48ffc702b599f4a30316d990a798d24932",
+        "run.py": "eef71f3290fac0739b0cb852ef4b5c63e85197c798406abc73f6c66d6ec697d8"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "ebfd540a60bedf711a5fcaaeae0cac18672e1457442099c6f614e01b408288ca",
+        "model_executable_sha256": "538c3699c45b37f7a75dc62ac68204eba1e7d7c92fca550e45576794ed8a948e",
+        "packaged_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062",
+        "plugin_sha256": null,
+        "resolver_sha256": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "heldPreference": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "optionalMetadata": false,
+        "optionalMetadataIntervention": null,
+        "preserveVariant": null,
+        "problemDetail": "contextual",
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "semanticBindings": false,
+        "semanticBoundary": "none",
+        "semanticFacts": "minimal",
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5,
+        "trustedDefaultPolicy": "strict"
+      },
+      "source": "semantic-finalboundary56-none-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "9ffb0274e89814b9e85db8b6e70fb46a1db5af19893336dcc6cd473918b5a2ff",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": true,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "5d2c729befa0f0fdf31ae991f9807e1582a7a426d00d4427fd70493118d037f3",
+        "diagnose.mjs": "bc5a15950d1ce8bd0f5bb6df916ef789cedce2876e95cc5565f42fabc9bb3252",
+        "diagnose.py": "e620ca5974e55fbcbb9b8a831d9a2e48ffc702b599f4a30316d990a798d24932",
+        "run.py": "eef71f3290fac0739b0cb852ef4b5c63e85197c798406abc73f6c66d6ec697d8"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "ebfd540a60bedf711a5fcaaeae0cac18672e1457442099c6f614e01b408288ca",
+        "model_executable_sha256": null,
+        "packaged_runtime_sha256": null,
+        "plugin_sha256": null,
+        "resolver_sha256": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "heldPreference": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "optionalMetadata": false,
+        "optionalMetadataIntervention": null,
+        "preserveVariant": null,
+        "problemDetail": "contextual",
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "semanticBindings": false,
+        "semanticBoundary": "conservative",
+        "semanticFacts": "minimal",
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5,
+        "trustedDefaultPolicy": "strict"
+      },
+      "source": "semantic-boundary57-conservative-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "9ffb0274e89814b9e85db8b6e70fb46a1db5af19893336dcc6cd473918b5a2ff",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": true,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "5d2c729befa0f0fdf31ae991f9807e1582a7a426d00d4427fd70493118d037f3",
+        "diagnose.mjs": "bc5a15950d1ce8bd0f5bb6df916ef789cedce2876e95cc5565f42fabc9bb3252",
+        "diagnose.py": "e620ca5974e55fbcbb9b8a831d9a2e48ffc702b599f4a30316d990a798d24932",
+        "run.py": "eef71f3290fac0739b0cb852ef4b5c63e85197c798406abc73f6c66d6ec697d8"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "ebfd540a60bedf711a5fcaaeae0cac18672e1457442099c6f614e01b408288ca",
+        "model_executable_sha256": null,
+        "packaged_runtime_sha256": null,
+        "plugin_sha256": null,
+        "resolver_sha256": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "heldPreference": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "optionalMetadata": false,
+        "optionalMetadataIntervention": null,
+        "preserveVariant": null,
+        "problemDetail": "contextual",
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "semanticBindings": false,
+        "semanticBoundary": "none",
+        "semanticFacts": "minimal",
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5,
+        "trustedDefaultPolicy": "strict"
+      },
+      "source": "semantic-boundary57-none-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "9ffb0274e89814b9e85db8b6e70fb46a1db5af19893336dcc6cd473918b5a2ff",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": true,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "5d2c729befa0f0fdf31ae991f9807e1582a7a426d00d4427fd70493118d037f3",
+        "diagnose.mjs": "bc5a15950d1ce8bd0f5bb6df916ef789cedce2876e95cc5565f42fabc9bb3252",
+        "diagnose.py": "e620ca5974e55fbcbb9b8a831d9a2e48ffc702b599f4a30316d990a798d24932",
+        "run.py": "eef71f3290fac0739b0cb852ef4b5c63e85197c798406abc73f6c66d6ec697d8"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "ebfd540a60bedf711a5fcaaeae0cac18672e1457442099c6f614e01b408288ca",
+        "model_executable_sha256": "538c3699c45b37f7a75dc62ac68204eba1e7d7c92fca550e45576794ed8a948e",
+        "packaged_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062",
+        "plugin_sha256": null,
+        "resolver_sha256": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "heldPreference": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "optionalMetadata": false,
+        "optionalMetadataIntervention": null,
+        "preserveVariant": null,
+        "problemDetail": "contextual",
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "semanticBindings": false,
+        "semanticBoundary": "conservative",
+        "semanticFacts": "minimal",
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5,
+        "trustedDefaultPolicy": "strict"
+      },
+      "source": "semantic-finalboundary-long-kev-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "9ffb0274e89814b9e85db8b6e70fb46a1db5af19893336dcc6cd473918b5a2ff",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": true,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "5d2c729befa0f0fdf31ae991f9807e1582a7a426d00d4427fd70493118d037f3",
+        "diagnose.mjs": "bc5a15950d1ce8bd0f5bb6df916ef789cedce2876e95cc5565f42fabc9bb3252",
+        "diagnose.py": "e620ca5974e55fbcbb9b8a831d9a2e48ffc702b599f4a30316d990a798d24932",
+        "run.py": "eef71f3290fac0739b0cb852ef4b5c63e85197c798406abc73f6c66d6ec697d8"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "ebfd540a60bedf711a5fcaaeae0cac18672e1457442099c6f614e01b408288ca",
+        "model_executable_sha256": "538c3699c45b37f7a75dc62ac68204eba1e7d7c92fca550e45576794ed8a948e",
+        "packaged_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062",
+        "plugin_sha256": null,
+        "resolver_sha256": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "heldPreference": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "optionalMetadata": false,
+        "optionalMetadataIntervention": null,
+        "preserveVariant": null,
+        "problemDetail": "contextual",
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "semanticBindings": false,
+        "semanticBoundary": "conservative",
+        "semanticFacts": "minimal",
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5,
+        "trustedDefaultPolicy": "strict"
+      },
+      "source": "semantic-finalboundary-long-laya-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "9ffb0274e89814b9e85db8b6e70fb46a1db5af19893336dcc6cd473918b5a2ff",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": true,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "5d2c729befa0f0fdf31ae991f9807e1582a7a426d00d4427fd70493118d037f3",
+        "diagnose.mjs": "bc5a15950d1ce8bd0f5bb6df916ef789cedce2876e95cc5565f42fabc9bb3252",
+        "diagnose.py": "e620ca5974e55fbcbb9b8a831d9a2e48ffc702b599f4a30316d990a798d24932",
+        "run.py": "eef71f3290fac0739b0cb852ef4b5c63e85197c798406abc73f6c66d6ec697d8"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "ebfd540a60bedf711a5fcaaeae0cac18672e1457442099c6f614e01b408288ca",
+        "model_executable_sha256": "538c3699c45b37f7a75dc62ac68204eba1e7d7c92fca550e45576794ed8a948e",
+        "packaged_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062",
+        "plugin_sha256": null,
+        "resolver_sha256": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "heldPreference": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "optionalMetadata": false,
+        "optionalMetadataIntervention": null,
+        "preserveVariant": null,
+        "problemDetail": "contextual",
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "semanticBindings": false,
+        "semanticBoundary": "conservative",
+        "semanticFacts": "minimal",
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5,
+        "trustedDefaultPolicy": "strict"
+      },
+      "source": "semantic-finalboundary-search-kev-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "9ffb0274e89814b9e85db8b6e70fb46a1db5af19893336dcc6cd473918b5a2ff",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": true,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "5d2c729befa0f0fdf31ae991f9807e1582a7a426d00d4427fd70493118d037f3",
+        "diagnose.mjs": "bc5a15950d1ce8bd0f5bb6df916ef789cedce2876e95cc5565f42fabc9bb3252",
+        "diagnose.py": "e620ca5974e55fbcbb9b8a831d9a2e48ffc702b599f4a30316d990a798d24932",
+        "run.py": "eef71f3290fac0739b0cb852ef4b5c63e85197c798406abc73f6c66d6ec697d8"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "ebfd540a60bedf711a5fcaaeae0cac18672e1457442099c6f614e01b408288ca",
+        "model_executable_sha256": "538c3699c45b37f7a75dc62ac68204eba1e7d7c92fca550e45576794ed8a948e",
+        "packaged_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062",
+        "plugin_sha256": null,
+        "resolver_sha256": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "heldPreference": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "optionalMetadata": false,
+        "optionalMetadataIntervention": null,
+        "preserveVariant": null,
+        "problemDetail": "contextual",
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "semanticBindings": false,
+        "semanticBoundary": "conservative",
+        "semanticFacts": "minimal",
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5,
+        "trustedDefaultPolicy": "strict"
+      },
+      "source": "semantic-finalboundary-search-laya-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "853d5931b248cdefc0c4f570e4b273d2d6e35910b6eeda9c5f8804fe81d66a01",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": false,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "a052a891cae18263b202121525eb9c819cbe510e13faf1ba1c08138341460828",
+        "diagnose.mjs": "f27434ea169c0d473149f9518207ef42976fdebfc251e892ece58fa8b2af67de",
+        "diagnose.py": "872050110fe1824f4e8b5465a21375966e87dea4d01caa06509e9279bb975a2c",
+        "run.py": "b1ca4a97a63495d7db22c5747abf2a6c762d3d6487b189284e6b14cd4d2ae0b9"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "8e37f856d759d3d8b55eb679eca4f9507725496d195c85b55bd0765225388452",
+        "model_executable_sha256": null,
+        "packaged_runtime_sha256": null,
+        "plugin_sha256": null,
+        "resolver_sha256": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "heldPreference": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "optionalMetadata": false,
+        "optionalMetadataIntervention": null,
+        "preserveVariant": null,
+        "problemDetail": "contextual",
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "semanticBindings": false,
+        "semanticFacts": "minimal",
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5,
+        "trustedDefaultPolicy": "strict"
+      },
+      "source": "semantic-repeated-progress-on-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "853d5931b248cdefc0c4f570e4b273d2d6e35910b6eeda9c5f8804fe81d66a01",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": false,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "a052a891cae18263b202121525eb9c819cbe510e13faf1ba1c08138341460828",
+        "diagnose.mjs": "f27434ea169c0d473149f9518207ef42976fdebfc251e892ece58fa8b2af67de",
+        "diagnose.py": "872050110fe1824f4e8b5465a21375966e87dea4d01caa06509e9279bb975a2c",
+        "run.py": "b1ca4a97a63495d7db22c5747abf2a6c762d3d6487b189284e6b14cd4d2ae0b9"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "8e37f856d759d3d8b55eb679eca4f9507725496d195c85b55bd0765225388452",
+        "model_executable_sha256": null,
+        "packaged_runtime_sha256": null,
+        "plugin_sha256": null,
+        "resolver_sha256": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "heldPreference": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "optionalMetadata": false,
+        "optionalMetadataIntervention": null,
+        "preserveVariant": null,
+        "problemDetail": "contextual",
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": false,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "semanticBindings": false,
+        "semanticFacts": "minimal",
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5,
+        "trustedDefaultPolicy": "strict"
+      },
+      "source": "semantic-repeated-progress-off-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": false,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "b875a39574e63f352e8ed99f26eb44ca59046e4aa08d9fc39d30b8bb9b926b61",
+        "diagnose.mjs": "02e7fdc517bbe4c079fb213d6e1005fe00ac9625d872de17e4b8a01bf81f3ec2",
+        "diagnose.py": "41162e964606470625b1bfede52b579033266c72efc32e7083ea3521e3b71d89",
+        "run.py": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "a41f9b4baf78c80929aa8829f59744a6414d4a1fa65b4376ab2c91a8d86b9d21",
+        "model_executable_sha256": null,
+        "packaged_runtime_sha256": null,
+        "plugin_sha256": null,
+        "resolver_sha256": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "heldPreference": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "optionalMetadata": true,
+        "optionalMetadataIntervention": "fixture-only Request label: required=false, implicit text input normalized to type=text",
+        "preserveVariant": null,
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "semanticBindings": false,
+        "semanticFacts": "minimal",
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5,
+        "trustedDefaultPolicy": "benign"
+      },
+      "source": "semantic-patch-optional-benign-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": false,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "b875a39574e63f352e8ed99f26eb44ca59046e4aa08d9fc39d30b8bb9b926b61",
+        "diagnose.mjs": "02e7fdc517bbe4c079fb213d6e1005fe00ac9625d872de17e4b8a01bf81f3ec2",
+        "diagnose.py": "41162e964606470625b1bfede52b579033266c72efc32e7083ea3521e3b71d89",
+        "run.py": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "a41f9b4baf78c80929aa8829f59744a6414d4a1fa65b4376ab2c91a8d86b9d21",
+        "model_executable_sha256": null,
+        "packaged_runtime_sha256": null,
+        "plugin_sha256": null,
+        "resolver_sha256": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "heldPreference": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "optionalMetadata": true,
+        "optionalMetadataIntervention": "fixture-only Request label: required=false, implicit text input normalized to type=text",
+        "preserveVariant": null,
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "semanticBindings": false,
+        "semanticFacts": "minimal",
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5,
+        "trustedDefaultPolicy": "strict"
+      },
+      "source": "semantic-patch-optional-strict-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    }
+  ],
+  "recorded_prompt_hashes": [
+    "2f0981dd2886a70c92d5c6a371baeed71213573408ee3a23b579f0dae233ad72"
+  ],
+  "same_recorded_prompt": true,
+  "schema_version": 1,
+  "selection": "Explicit operator-selected synthetic evidence; not an independent or exhaustive suite.",
+  "study": "semantic-h12"
+}

@@ -23,6 +23,7 @@ let
           "bridge.mjs"
           "plugin.mjs"
           "camofox.mjs"
+          "resolver.mjs"
         ]
       );
   };
@@ -38,6 +39,13 @@ let
     representation = "current";
     history = 0;
     stopPolicy = "success";
+    contractMode = "semantic";
+    semanticProblemDetail = "contextual";
+    resolverOptions = {
+      useAliases = true;
+      useContext = true;
+      trackProgress = true;
+    };
   };
   executorDefaultsJson = builtins.toJSON executorDefaults;
   inherit (camofox-browser-source) version;
@@ -98,7 +106,12 @@ stdenvNoCC.mkDerivation {
                 applyPrepared: {type: "boolean", default: $defaults.applyPrepared},
                 representation: {type: "string", enum: ["full", "current"], default: $defaults.representation},
                 history: {type: "integer", enum: [0, 2], default: $defaults.history},
-                stopPolicy: {type: "string", enum: ["checkpoint", "success"], default: $defaults.stopPolicy}}
+                stopPolicy: {type: "string", enum: ["checkpoint", "success"], default: $defaults.stopPolicy},
+                contractMode: {type: "string", enum: ["procedural", "semantic"], default: $defaults.contractMode},
+                semanticProblemDetail: {type: "string", enum: ["compact", "contextual"], default: $defaults.semanticProblemDetail},
+                resolverOptions: {type: "object", additionalProperties: false, properties: {
+                  useAliases: {type: "boolean", default: true}, useContext: {type: "boolean", default: true},
+                  trackProgress: {type: "boolean", default: true}}}}
             }' \
           '${camofox-browser-source}/openclaw.plugin.json' > "$out/openclaw.plugin.json"
         cat > "$out/plugin.js" <<'EOF'
@@ -289,7 +302,9 @@ stdenvNoCC.mkDerivation {
       ${lib.optionalString executorEnabled ''
         if (api.pluginConfig?.browserExecutor?.enabled === true) {
            const cfg = {...executorDefaults, ...api.pluginConfig.browserExecutor};
-           if (!(["kev", "laya"].includes(cfg.backend) &&
+           if (!(!Object.hasOwn(api.pluginConfig.browserExecutor, "defaultPolicy") &&
+                  !Object.hasOwn(api.pluginConfig.browserExecutor, "semanticBoundary") &&
+                  ["kev", "laya"].includes(cfg.backend) &&
                   Number.isInteger(cfg.maxSteps) && cfg.maxSteps >= 1 && cfg.maxSteps <= 24 &&
                   Number.isInteger(cfg.timeoutMs) && cfg.timeoutMs >= 1000 && cfg.timeoutMs <= 120000 &&
                   typeof cfg.threshold === "number" && Number.isFinite(cfg.threshold) && cfg.threshold >= 0 && cfg.threshold <= 1 &&
@@ -297,7 +312,12 @@ stdenvNoCC.mkDerivation {
                   ["legacy", "strictBindings"].includes(cfg.candidateMode) &&
                   typeof cfg.applyPrepared === "boolean" && (!cfg.applyPrepared || cfg.candidateMode === "strictBindings") &&
                   ["full", "current"].includes(cfg.representation) && [0, 2].includes(cfg.history) &&
-                  ["checkpoint", "success"].includes(cfg.stopPolicy)))
+                  ["checkpoint", "success"].includes(cfg.stopPolicy) &&
+                  ["procedural", "semantic"].includes(cfg.contractMode) &&
+                  ["compact", "contextual"].includes(cfg.semanticProblemDetail) &&
+                  cfg.resolverOptions && typeof cfg.resolverOptions === "object" && !Array.isArray(cfg.resolverOptions) &&
+                  Object.keys(cfg.resolverOptions).every(k => ["useAliases", "useContext", "trackProgress"].includes(k)) &&
+                  Object.values(cfg.resolverOptions).every(v => typeof v === "boolean")))
             throw new Error("Invalid browser executor configuration");
           const telemetry = createValueFreeMetricSink(process.env.WAVE_HYBRID_METRICS_PATH);
           registerHybridBrowserExecutor({
@@ -313,6 +333,9 @@ stdenvNoCC.mkDerivation {
               threshold: cfg.threshold, margin: cfg.margin,
               candidateMode: cfg.candidateMode, applyPrepared: cfg.applyPrepared,
               representation: cfg.representation, history: cfg.history, stopPolicy: cfg.stopPolicy,
+              contractMode: cfg.contractMode, defaultPolicy: "strict", resolverOptions: cfg.resolverOptions,
+              semanticProblemDetail: cfg.semanticProblemDetail,
+              semanticBoundary: "conservative",
               telemetry, onMetric: telemetry,
           });
         }

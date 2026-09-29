@@ -6,7 +6,8 @@ import { constants } from 'node:fs';
 import { lstatSync } from 'node:fs';
 import process from 'node:process';
 
-const metricEvents = new Set(['action', 'decision', 'failure', 'model_call', 'result', 'snapshot']);
+const metricEvents = new Set(['action', 'decision', 'failure', 'model_call', 'result', 'snapshot', 'mapping']);
+const evidenceClasses = new Set(['exactLabel', 'exactName', 'alias', 'type', 'options', 'context']);
 const actionKinds = new Set(['CLICK', 'TYPE', 'SELECT', 'SCROLL', 'NAVIGATE', 'STOP', 'ESCALATE']);
 const backends = new Set(['kev', 'laya']);
 const snapshotPurposes = new Set(['initial', 'pre_action', 'post_action']);
@@ -22,6 +23,8 @@ const resultReasons = new Set([
   'invalid_model_output', 'uncertain', 'timeout_or_cancelled', 'preserved_field_conflict',
   'scope_conflict', 'backend_or_model_error',
   'requested_action_observed', 'ambiguous_stop_after',
+  'submission_observed',
+  'missing_fact', 'ambiguous_mapping', 'unsupported_choice',
 ]);
 const fieldSelectorSchema = { oneOf: [
   { type: 'string', minLength: 1, maxLength: 120 },
@@ -55,10 +58,13 @@ export function createValueFreeMetricSink(path) {
         safe.exposed_to_large_model = event.exposed_to_large_model === true;
       }
       if (event.event === 'result') {
-        if (['completed', 'checkpoint', 'escalated'].includes(event.status)) safe.status = event.status;
+        if (['completed', 'checkpoint', 'escalated', 'needs_decision', 'needs_mapping'].includes(event.status)) safe.status = event.status;
         if (Number.isSafeInteger(event.steps) && event.steps >= 0) safe.steps = event.steps;
         if (resultReasons.has(event.reason)) safe.reason = event.reason;
+        for (const key of ['assignments_verified', 'pages_seen', 'remaining_facts'])
+          if (Number.isSafeInteger(event[key]) && event[key] >= 0) safe[key] = event[key];
       }
+      if (event.event === 'mapping' && evidenceClasses.has(event.evidence)) safe.evidence = event.evidence;
       for (const key of ['latency_ms', 'wall_ms'])
         if (Number.isFinite(event[key]) && event[key] >= 0) safe[key] = event[key];
       let fd;
@@ -83,12 +89,34 @@ export function createValueFreeMetricSink(path) {
  * decide is a configured local bridge; it does not receive credentials or backend config.
  */
 export function registerBrowserExecutor(api, { scope, decide, baseUrl, accessKey, telemetry, maxSteps, timeoutMs, threshold, margin,
-  modelGoal, bindings, candidateMode, applyPrepared, stopPolicy }) {
+  modelGoal, bindings, candidateMode, applyPrepared, stopPolicy, contractMode = 'procedural', resolverOptions, defaultPolicy,
+  semanticProblemDetail = 'contextual', semanticBoundary = 'conservative' }) {
   if (typeof scope !== 'function' || typeof decide !== 'function') throw Error('scope_and_bridge_required');
+  if (!['procedural', 'semantic'].includes(contractMode)) throw Error('invalid_contract_mode');
+  if (!['compact', 'contextual'].includes(semanticProblemDetail)) throw Error('invalid_semantic_problem_detail');
+  if (!['conservative', 'none'].includes(semanticBoundary)) throw Error('invalid_semantic_boundary');
+  const semantic = contractMode === 'semantic';
   api.registerTool(ctx => ({
     name: 'browser_execute',
     description: 'Execute a bounded browser goal in an existing scoped Camofox tab; escalates when uncertain.',
-    parameters: {
+    parameters: semantic ? {
+      type: 'object', additionalProperties: false, required: ['goal', 'tabId', 'facts'],
+      properties: {
+        goal: { type: 'string', minLength: 1, maxLength: 360,
+          description: 'Concise, complete navigation objective; supply field values in facts and enforceable restrictions in constraints.' },
+        tabId: { type: 'string', pattern: '^[A-Za-z0-9_-]{1,128}$' },
+        facts: { type: 'object', maxProperties: 32, propertyNames: { minLength: 1, maxLength: 100 },
+          additionalProperties: { type: 'string', maxLength: 100 } },
+        constraints: { type: 'object', additionalProperties: false, properties: {
+          forbidActions: { type: 'array', maxItems: 24, items: { type: 'string', minLength: 1, maxLength: 100 } },
+          allowedOrigins: { type: 'array', maxItems: 8, items: { type: 'string' } },
+        } },
+        bindings: { type: 'object', maxProperties: 32, additionalProperties: fieldSelectorSchema },
+        fieldPolicies: { type: 'array', maxItems: 16, items: { type: 'object', additionalProperties: false,
+          required: ['field', 'preserve'], properties: { field: fieldSelectorSchema,
+            preserve: { type: 'string', maxLength: 120 } } } },
+      },
+    } : {
       type: 'object', additionalProperties: false,
       properties: {
         goal: { type: 'string', minLength: 1, maxLength: 2000 },
@@ -135,7 +163,8 @@ export function registerBrowserExecutor(api, { scope, decide, baseUrl, accessKey
       const userId = scope(ctx);
       const browser = createCamofoxBrowser({ baseUrl, userId, accessKey });
       const outcome = await executeBrowser(params, { browser, decide, telemetry, maxSteps, timeoutMs, threshold, margin,
-        modelGoal, bindings, candidateMode, applyPrepared, stopPolicy });
+        modelGoal, bindings, candidateMode, applyPrepared, stopPolicy, contractMode, resolverOptions, defaultPolicy,
+        problemDetail: semanticProblemDetail, semanticBoundary });
       return { content: [{ type: 'text', text: JSON.stringify(outcome) }] };
     },
   }), { name: 'browser_execute' });

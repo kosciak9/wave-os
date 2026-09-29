@@ -1,0 +1,4305 @@
+{
+  "sources": [
+    {
+      "catalog_cost_per_million_usd": {
+        "cacheRead": 0.01,
+        "cacheWrite": 0.125,
+        "input": 0.1,
+        "output": 0.5
+      },
+      "executor_configuration": {
+        "applyPrepared": true,
+        "backend": "laya",
+        "candidateMode": "strictBindings",
+        "contractMode": "procedural",
+        "maxSteps": 24,
+        "stopPolicy": "success"
+      },
+      "fixture_sha256": {
+        "challenge.js": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server.js": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks.js": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "manifest_hosted_tool_budget": 60,
+      "model": "openrouter/openai/gpt-6-luna",
+      "model_catalog_sha256": "1518d1bce54aee45765d238d3d5a4152f978283430a824b1de25de3d152d4648",
+      "model_limits": {
+        "contextWindow": 32768,
+        "maxTokens": 2048,
+        "thinking": "low"
+      },
+      "packaged_plugin_sha256": {
+        "manifest": "37395db717ce454cf89d09734537c07153696587ea5e2303b314c3805ace6d51",
+        "wrapper": "74c5ed5949317062c935ecdfc3a8a89598ea262b84614431d880892e567ea3c0"
+      },
+      "recorded_prompt_template_sha256": "2f0981dd2886a70c92d5c6a371baeed71213573408ee3a23b579f0dae233ad72",
+      "runs": [
+        {
+          "assistant_turns": 34,
+          "assistant_usage_entries": 34,
+          "billed_usd": null,
+          "catalog_estimated_usd": 0.00722521,
+          "direct_mutation_calls": {
+            "camofox_click": 4,
+            "camofox_navigate": 0,
+            "camofox_scroll": 0,
+            "camofox_select": 8,
+            "camofox_type": 9
+          },
+          "executor_calls": [
+            {
+              "contract_shape": {
+                "binding_count": 4,
+                "binding_names": [
+                  "destination",
+                  "arrival",
+                  "travel",
+                  "reference"
+                ],
+                "contract_mode": "procedural",
+                "fact_count": null,
+                "fact_names": null,
+                "raw_key_metadata_available": true,
+                "variable_count": 17,
+                "variable_names": [
+                  "destination",
+                  "arrival",
+                  "travel",
+                  "reference",
+                  "attendee",
+                  "seat",
+                  "access",
+                  "ticket",
+                  "meal",
+                  "session",
+                  "venue",
+                  "reminder",
+                  "summary",
+                  "timezone",
+                  "contact",
+                  "confirm",
+                  "target"
+                ],
+                "visible_fixture_binding_names": [
+                  "arrival",
+                  "destination",
+                  "reference",
+                  "travel"
+                ],
+                "visible_fixture_fact_names": [],
+                "visible_fixture_variable_names": [
+                  "access",
+                  "arrival",
+                  "attendee",
+                  "confirm",
+                  "contact",
+                  "destination",
+                  "meal",
+                  "reference",
+                  "reminder",
+                  "seat",
+                  "session",
+                  "summary",
+                  "target",
+                  "ticket",
+                  "timezone",
+                  "travel",
+                  "venue"
+                ]
+              },
+              "next_exposed_heading": "Itinerary stage 1 of 4",
+              "outcome": {
+                "fixture_route": "start",
+                "reason": "model_stop",
+                "relevant_state": "\"Itinerary stage 1 of 4\" [level=1] | Follow the itinerary instructions provided with this task. | Destination | Arrival date | Travel mode | Reference label",
+                "status": "checkpoint",
+                "steps": 4
+              },
+              "request": {
+                "allowed_origins": [
+                  "[fixture-origin]"
+                ],
+                "allowed_origins_count": 1,
+                "binding_count": 4,
+                "binding_names": [
+                  "destination",
+                  "arrival",
+                  "travel",
+                  "reference"
+                ],
+                "bindings": {
+                  "arrival": "Arrival date",
+                  "destination": "Destination",
+                  "reference": "Reference label",
+                  "travel": "Travel mode"
+                },
+                "constraints": null,
+                "contract_mode": "procedural",
+                "executionScope": null,
+                "fact_count": null,
+                "fact_names": null,
+                "facts": null,
+                "fieldPolicies": null,
+                "fixture_variable_values_only": true,
+                "forbid_actions": [
+                  "Do not access oracle",
+                  "Do not navigate away from the fixture origin",
+                  "Do not change values other than supplied itinerary values"
+                ],
+                "forbid_actions_count": 3,
+                "goal": "Complete the four-stage itinerary using the supplied exact values. Fill fields on each observed stage and Continue between stages; stop after final review status is submitted and verify terminal receipt. Stay on fixture origin only.",
+                "modelGoal": "Fill itinerary stages exactly, advance through four stages, submit Reviewed, verify completion.",
+                "present_keys": [
+                  "allowedOrigins",
+                  "bindings",
+                  "forbidActions",
+                  "goal",
+                  "modelGoal",
+                  "tabId",
+                  "variables"
+                ],
+                "stopAfter": null,
+                "success": null,
+                "unknown_key_count": 0,
+                "variable_count": 17,
+                "variable_names": [
+                  "destination",
+                  "arrival",
+                  "travel",
+                  "reference",
+                  "attendee",
+                  "seat",
+                  "access",
+                  "ticket",
+                  "meal",
+                  "session",
+                  "venue",
+                  "reminder",
+                  "summary",
+                  "timezone",
+                  "contact",
+                  "confirm",
+                  "target"
+                ],
+                "variables": {
+                  "access": "None",
+                  "arrival": "2028-04-12",
+                  "attendee": "Guest Delegate",
+                  "confirm": "Reviewed",
+                  "contact": "Office Desk",
+                  "destination": "North Pier",
+                  "meal": "vegetarian",
+                  "reference": "Conference",
+                  "reminder": "Email",
+                  "seat": "window",
+                  "session": "[other]",
+                  "summary": "Conference visit",
+                  "target": "North Pier",
+                  "ticket": "Standard",
+                  "timezone": "UTC",
+                  "travel": "Rail",
+                  "venue": "North"
+                }
+              },
+              "tool_request_json_bytes": 1135,
+              "tool_result_text_bytes": 575
+            }
+          ],
+          "executor_steps_reported": 4,
+          "failure": null,
+          "hosted_tool_budget": 60,
+          "hosted_tool_budget_hit": false,
+          "hosted_tool_calls_observed": 35,
+          "legacy_input_plus_cache_read": 378189,
+          "local_action_telemetry": 4,
+          "local_deterministic_actions": 4,
+          "local_latency_ms": [
+            255.3
+          ],
+          "local_model_actions": 0,
+          "local_model_calls": 1,
+          "local_model_errors": 0,
+          "local_result_reasons": {
+            "reason:model_stop": 1
+          },
+          "local_snapshots_by_purpose": {
+            "initial": 1,
+            "post_action": 4,
+            "pre_action": 4
+          },
+          "local_snapshots_unexposed": 9,
+          "mistakes": 0,
+          "model_visible_camofox_calls": 34,
+          "model_visible_snapshot_result_bytes": 23181,
+          "model_visible_snapshots": 11,
+          "model_visible_tool_errors": 5,
+          "normalized_prompt_tokens": 395658,
+          "observed_prompt_tokens": 395658,
+          "observed_tokens": {
+            "cacheRead": 378087,
+            "cacheWrite": 17469,
+            "input": 102,
+            "output": 2501
+          },
+          "oracle_passed": true,
+          "oracle_unavailable": false,
+          "provider_stop_reason": null,
+          "sanitized_trace_available": true,
+          "status": "ok",
+          "task": "long-07",
+          "usage_complete": true,
+          "wall_seconds": 86.652,
+          "wrong_actions": 0
+        }
+      ],
+      "selected_model_row_sha256": "d18304f10e6f24214d8cbc51604218c1e2a91fc61a0b38bf11e458b590d8965b",
+      "source_directory": "semantic-hypotheses-luna-procedural-long",
+      "source_fingerprint": "25804bebbfe8dbcec8322d52e58e09a76eaf6049fc332939ba6ee5239225567e",
+      "source_sha256": {
+        "bridge": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "browser_skill": "c2e798e58170fb59fa1717fae9f95f24e5e247520cd48c7077ab582e21ffffd8",
+        "browser_transport": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "challenge_fixture": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "core": "a41f9b4baf78c80929aa8829f59744a6414d4a1fa65b4376ab2c91a8d86b9d21",
+        "resolver": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "runner": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b",
+        "server_fixture": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_fixture": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c",
+        "tool_definition": "d5f2d67555a5c231f17dfa27a05077643f84422af688a07e2c712f3431c87e9e"
+      },
+      "suite": "semantic-hypotheses-luna-procedural-long",
+      "tool_contract_schema_sha256": "d6388ce9f67fa14751794dc1acf3c11bbd2d5fef3caf1ef761ebea3aacfe6d75"
+    },
+    {
+      "catalog_cost_per_million_usd": {
+        "cacheRead": 0.01,
+        "cacheWrite": 0.125,
+        "input": 0.1,
+        "output": 0.5
+      },
+      "executor_configuration": {
+        "applyPrepared": true,
+        "backend": "laya",
+        "candidateMode": "strictBindings",
+        "contractMode": "procedural",
+        "maxSteps": 24,
+        "stopPolicy": "success"
+      },
+      "fixture_sha256": {
+        "challenge.js": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server.js": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks.js": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "manifest_hosted_tool_budget": 60,
+      "model": "openrouter/openai/gpt-6-luna",
+      "model_catalog_sha256": "1518d1bce54aee45765d238d3d5a4152f978283430a824b1de25de3d152d4648",
+      "model_limits": {
+        "contextWindow": 32768,
+        "maxTokens": 2048,
+        "thinking": "low"
+      },
+      "packaged_plugin_sha256": {
+        "manifest": "37395db717ce454cf89d09734537c07153696587ea5e2303b314c3805ace6d51",
+        "wrapper": "74c5ed5949317062c935ecdfc3a8a89598ea262b84614431d880892e567ea3c0"
+      },
+      "recorded_prompt_template_sha256": "2f0981dd2886a70c92d5c6a371baeed71213573408ee3a23b579f0dae233ad72",
+      "runs": [
+        {
+          "assistant_turns": 8,
+          "assistant_usage_entries": 8,
+          "billed_usd": null,
+          "catalog_estimated_usd": 0.00145627,
+          "direct_mutation_calls": {
+            "camofox_click": 0,
+            "camofox_navigate": 0,
+            "camofox_scroll": 0,
+            "camofox_select": 0,
+            "camofox_type": 0
+          },
+          "executor_calls": [
+            {
+              "contract_shape": {
+                "binding_count": 1,
+                "binding_names": [
+                  "target"
+                ],
+                "contract_mode": "procedural",
+                "fact_count": null,
+                "fact_names": null,
+                "raw_key_metadata_available": true,
+                "variable_count": 3,
+                "variable_names": [
+                  "target",
+                  "location",
+                  "preference"
+                ],
+                "visible_fixture_binding_names": [
+                  "target"
+                ],
+                "visible_fixture_fact_names": [],
+                "visible_fixture_variable_names": [
+                  "location",
+                  "preference",
+                  "target"
+                ]
+              },
+              "next_exposed_heading": "Receipt verified",
+              "outcome": {
+                "fixture_route": "done",
+                "reason": "no_actionable_controls",
+                "relevant_state": "\"Receipt verified\" [level=1] | Final demo request accepted.",
+                "status": "checkpoint",
+                "steps": 7
+              },
+              "request": {
+                "allowed_origins": [
+                  "[fixture-origin]"
+                ],
+                "allowed_origins_count": 1,
+                "binding_count": 1,
+                "binding_names": [
+                  "target"
+                ],
+                "bindings": {
+                  "target": "Search catalog"
+                },
+                "constraints": null,
+                "contract_mode": "procedural",
+                "executionScope": null,
+                "fact_count": null,
+                "fact_names": null,
+                "facts": null,
+                "fieldPolicies": null,
+                "fixture_variable_values_only": true,
+                "forbid_actions": [
+                  "Do not access any oracle or hidden evaluation data.",
+                  "Do not navigate away from the local fixture origin.",
+                  "Do not submit any action other than the requested demo inquiry."
+                ],
+                "forbid_actions_count": 3,
+                "goal": "Search the catalog for the specified target, open its result, open the inquiry modal, fill the request with the specified location and preference, and send the demo inquiry. Verify a clear sent/confirmation state.",
+                "modelGoal": "Find Harbor Studio, open inquiry, request North Pier with Quiet preference, and send the demo inquiry.",
+                "present_keys": [
+                  "allowedOrigins",
+                  "bindings",
+                  "forbidActions",
+                  "goal",
+                  "modelGoal",
+                  "tabId",
+                  "variables"
+                ],
+                "stopAfter": null,
+                "success": null,
+                "unknown_key_count": 0,
+                "variable_count": 3,
+                "variable_names": [
+                  "target",
+                  "location",
+                  "preference"
+                ],
+                "variables": {
+                  "location": "North Pier",
+                  "preference": "Quiet",
+                  "target": "Harbor Studio"
+                }
+              },
+              "tool_request_json_bytes": 768,
+              "tool_result_text_bytes": 494
+            }
+          ],
+          "executor_steps_reported": 7,
+          "failure": null,
+          "hosted_tool_budget": 60,
+          "hosted_tool_budget_hit": false,
+          "hosted_tool_calls_observed": 5,
+          "legacy_input_plus_cache_read": 36010,
+          "local_action_telemetry": 7,
+          "local_deterministic_actions": 3,
+          "local_latency_ms": [
+            201.54,
+            156.12,
+            194.64,
+            191.53
+          ],
+          "local_model_actions": 4,
+          "local_model_calls": 4,
+          "local_model_errors": 0,
+          "local_result_reasons": {
+            "reason:no_actionable_controls": 1
+          },
+          "local_snapshots_by_purpose": {
+            "initial": 1,
+            "post_action": 7,
+            "pre_action": 7
+          },
+          "local_snapshots_unexposed": 15,
+          "mistakes": 0,
+          "model_visible_camofox_calls": 4,
+          "model_visible_snapshot_result_bytes": 1551,
+          "model_visible_snapshots": 2,
+          "model_visible_tool_errors": 0,
+          "normalized_prompt_tokens": 42654,
+          "observed_prompt_tokens": 42654,
+          "observed_tokens": {
+            "cacheRead": 35986,
+            "cacheWrite": 6644,
+            "input": 24,
+            "output": 527
+          },
+          "oracle_passed": true,
+          "oracle_unavailable": false,
+          "provider_stop_reason": null,
+          "sanitized_trace_available": true,
+          "status": "ok",
+          "task": "challenge-38",
+          "usage_complete": true,
+          "wall_seconds": 45.504,
+          "wrong_actions": 0
+        },
+        {
+          "assistant_turns": 9,
+          "assistant_usage_entries": 9,
+          "billed_usd": null,
+          "catalog_estimated_usd": 0.00177211,
+          "direct_mutation_calls": {
+            "camofox_click": 0,
+            "camofox_navigate": 0,
+            "camofox_scroll": 0,
+            "camofox_select": 0,
+            "camofox_type": 0
+          },
+          "executor_calls": [
+            {
+              "contract_shape": {
+                "binding_count": 2,
+                "binding_names": [
+                  "party",
+                  "preference"
+                ],
+                "contract_mode": "procedural",
+                "fact_count": null,
+                "fact_names": null,
+                "raw_key_metadata_available": true,
+                "variable_count": 2,
+                "variable_names": [
+                  "party",
+                  "preference"
+                ],
+                "visible_fixture_binding_names": [
+                  "party",
+                  "preference"
+                ],
+                "visible_fixture_fact_names": [],
+                "visible_fixture_variable_names": [
+                  "party",
+                  "preference"
+                ]
+              },
+              "next_exposed_heading": "Receipt verified",
+              "outcome": {
+                "fixture_route": "done",
+                "observed_action": {
+                  "click": "Send inquiry",
+                  "context": "Garden Room"
+                },
+                "reason": "requested_action_observed",
+                "relevant_state": "\"Receipt verified\" [level=1] | Final demo request accepted.",
+                "status": "checkpoint",
+                "steps": 3,
+                "verification": "action_and_fresh_observation"
+              },
+              "request": {
+                "allowed_origins": null,
+                "allowed_origins_count": null,
+                "binding_count": 2,
+                "binding_names": [
+                  "party",
+                  "preference"
+                ],
+                "bindings": {
+                  "party": {
+                    "context": "Garden Room",
+                    "field": "Party size"
+                  },
+                  "preference": {
+                    "context": "Garden Room",
+                    "field": "Preference"
+                  }
+                },
+                "constraints": null,
+                "contract_mode": "procedural",
+                "executionScope": {
+                  "context": "Garden Room",
+                  "title": "Booking details"
+                },
+                "fact_count": null,
+                "fact_names": null,
+                "facts": null,
+                "fieldPolicies": null,
+                "fixture_variable_values_only": true,
+                "forbid_actions": [
+                  "Interact with Side Hall",
+                  "Submit Side Hall inquiry",
+                  "Access oracle"
+                ],
+                "forbid_actions_count": 3,
+                "goal": "In the Garden Room card only, set Party size to 2 and Preference to Quiet, then submit Send inquiry. Do not interact with Side Hall. Verify submission using an observed result; stop after submission if receipt is unclear.",
+                "modelGoal": "Submit Garden Room inquiry with party 2 and Quiet; leave Side Hall unchanged.",
+                "present_keys": [
+                  "bindings",
+                  "executionScope",
+                  "forbidActions",
+                  "goal",
+                  "modelGoal",
+                  "stopAfter",
+                  "tabId",
+                  "variables"
+                ],
+                "stopAfter": {
+                  "click": "Send inquiry",
+                  "context": "Garden Room"
+                },
+                "success": null,
+                "unknown_key_count": 0,
+                "variable_count": 2,
+                "variable_names": [
+                  "party",
+                  "preference"
+                ],
+                "variables": {
+                  "party": "2",
+                  "preference": "Quiet"
+                }
+              },
+              "tool_request_json_bytes": 798,
+              "tool_result_text_bytes": 624
+            }
+          ],
+          "executor_steps_reported": 3,
+          "failure": null,
+          "hosted_tool_budget": 60,
+          "hosted_tool_budget_hit": false,
+          "hosted_tool_calls_observed": 5,
+          "legacy_input_plus_cache_read": 46180,
+          "local_action_telemetry": 3,
+          "local_deterministic_actions": 2,
+          "local_latency_ms": [
+            228.14
+          ],
+          "local_model_actions": 1,
+          "local_model_calls": 1,
+          "local_model_errors": 0,
+          "local_result_reasons": {
+            "reason:requested_action_observed": 1
+          },
+          "local_snapshots_by_purpose": {
+            "initial": 1,
+            "post_action": 3,
+            "pre_action": 3
+          },
+          "local_snapshots_unexposed": 7,
+          "mistakes": 0,
+          "model_visible_camofox_calls": 4,
+          "model_visible_snapshot_result_bytes": 2457,
+          "model_visible_snapshots": 2,
+          "model_visible_tool_errors": 0,
+          "normalized_prompt_tokens": 54059,
+          "observed_prompt_tokens": 54059,
+          "observed_tokens": {
+            "cacheRead": 46153,
+            "cacheWrite": 7879,
+            "input": 27,
+            "output": 646
+          },
+          "oracle_passed": true,
+          "oracle_unavailable": false,
+          "provider_stop_reason": null,
+          "sanitized_trace_available": true,
+          "status": "ok",
+          "task": "challenge-40",
+          "usage_complete": true,
+          "wall_seconds": 36.145,
+          "wrong_actions": 0
+        },
+        {
+          "assistant_turns": 14,
+          "assistant_usage_entries": 14,
+          "billed_usd": null,
+          "catalog_estimated_usd": 0.00249042,
+          "direct_mutation_calls": {
+            "camofox_click": 1,
+            "camofox_navigate": 0,
+            "camofox_scroll": 0,
+            "camofox_select": 0,
+            "camofox_type": 1
+          },
+          "executor_calls": [
+            {
+              "contract_shape": {
+                "binding_count": 2,
+                "binding_names": [
+                  "location",
+                  "service"
+                ],
+                "contract_mode": "procedural",
+                "fact_count": null,
+                "fact_names": null,
+                "raw_key_metadata_available": true,
+                "variable_count": 2,
+                "variable_names": [
+                  "location",
+                  "service"
+                ],
+                "visible_fixture_binding_names": [
+                  "location",
+                  "service"
+                ],
+                "visible_fixture_fact_names": [],
+                "visible_fixture_variable_names": [
+                  "location",
+                  "service"
+                ]
+              },
+              "next_exposed_heading": "Request stage 2 of 2",
+              "outcome": {
+                "diagnostic_field": "Request stage 2 of 2 / Location",
+                "diagnostic_reason": "unbound_current_fields",
+                "fixture_route": "review",
+                "reason": "unmapped_fields",
+                "relevant_state": "\"Request stage 2 of 2\" [level=1] | Location | Service",
+                "status": "escalated",
+                "steps": 3
+              },
+              "request": {
+                "allowed_origins": [
+                  "[fixture-origin]"
+                ],
+                "allowed_origins_count": 1,
+                "binding_count": 2,
+                "binding_names": [
+                  "location",
+                  "service"
+                ],
+                "bindings": {
+                  "location": {
+                    "context": "Request stage 1 of 2",
+                    "field": "Location"
+                  },
+                  "service": {
+                    "context": "Request stage 2 of 2",
+                    "field": "Service"
+                  }
+                },
+                "constraints": null,
+                "contract_mode": "procedural",
+                "executionScope": null,
+                "fact_count": null,
+                "fact_names": null,
+                "facts": null,
+                "fieldPolicies": null,
+                "fixture_variable_values_only": true,
+                "forbid_actions": [
+                  "Access oracle or hidden state",
+                  "Navigate away from this fixture"
+                ],
+                "forbid_actions_count": 2,
+                "goal": "On this fixture, complete both request stages. Enter North Pier for the Location on stage 1, continue; then enter North Pier again for the second stage Location, and choose Express for the Service once that field appears. Continue/submit as appropriate and stop only when the page visibly confirms completion. Do not navigate off the fixture or access any oracle.",
+                "modelGoal": "Request North Pier on each of two stages; select Express service; complete and verify terminal confirmation.",
+                "present_keys": [
+                  "allowedOrigins",
+                  "bindings",
+                  "forbidActions",
+                  "goal",
+                  "modelGoal",
+                  "tabId",
+                  "variables"
+                ],
+                "stopAfter": null,
+                "success": null,
+                "unknown_key_count": 0,
+                "variable_count": 2,
+                "variable_names": [
+                  "location",
+                  "service"
+                ],
+                "variables": {
+                  "location": "North Pier",
+                  "service": "Express"
+                }
+              },
+              "tool_request_json_bytes": 897,
+              "tool_result_text_bytes": 588
+            },
+            {
+              "contract_shape": {
+                "binding_count": 2,
+                "binding_names": [
+                  "location",
+                  "service"
+                ],
+                "contract_mode": "procedural",
+                "fact_count": null,
+                "fact_names": null,
+                "raw_key_metadata_available": true,
+                "variable_count": 2,
+                "variable_names": [
+                  "location",
+                  "service"
+                ],
+                "visible_fixture_binding_names": [
+                  "location",
+                  "service"
+                ],
+                "visible_fixture_fact_names": [],
+                "visible_fixture_variable_names": [
+                  "location",
+                  "service"
+                ]
+              },
+              "next_exposed_heading": "Receipt verified",
+              "outcome": {
+                "fixture_route": "review",
+                "reason": "preserved_field_conflict",
+                "relevant_state": "\"Request stage 2 of 2\" [level=1] | Location | Service",
+                "status": "escalated",
+                "steps": 0
+              },
+              "request": {
+                "allowed_origins": [
+                  "[fixture-origin]"
+                ],
+                "allowed_origins_count": 1,
+                "binding_count": 2,
+                "binding_names": [
+                  "location",
+                  "service"
+                ],
+                "bindings": {
+                  "location": {
+                    "context": "Request stage 2 of 2",
+                    "field": "Location"
+                  },
+                  "service": {
+                    "context": "Request stage 2 of 2",
+                    "field": "Service"
+                  }
+                },
+                "constraints": null,
+                "contract_mode": "procedural",
+                "executionScope": null,
+                "fact_count": null,
+                "fact_names": null,
+                "facts": null,
+                "fieldPolicies": [
+                  {
+                    "field": {
+                      "context": "Request stage 2 of 2",
+                      "field": "Service"
+                    },
+                    "preserve": "Express"
+                  }
+                ],
+                "fixture_variable_values_only": true,
+                "forbid_actions": [
+                  "Access oracle or hidden state",
+                  "Navigate away from this fixture"
+                ],
+                "forbid_actions_count": 2,
+                "goal": "Complete stage 2 on this fixture: enter North Pier in its Location field (this is the second North Pier request), retain/select Express in Service, then click Confirm request. Observe the resulting page; do not leave the fixture or access oracle.",
+                "modelGoal": "Stage 2: Location North Pier, Service Express, confirm request.",
+                "present_keys": [
+                  "allowedOrigins",
+                  "bindings",
+                  "fieldPolicies",
+                  "forbidActions",
+                  "goal",
+                  "modelGoal",
+                  "stopAfter",
+                  "tabId",
+                  "variables"
+                ],
+                "stopAfter": {
+                  "click": "Confirm request",
+                  "context": "Request stage 2 of 2"
+                },
+                "success": null,
+                "unknown_key_count": 0,
+                "variable_count": 2,
+                "variable_names": [
+                  "location",
+                  "service"
+                ],
+                "variables": {
+                  "location": "North Pier",
+                  "service": "Express"
+                }
+              },
+              "tool_request_json_bytes": 923,
+              "tool_result_text_bytes": 491
+            }
+          ],
+          "executor_steps_reported": 3,
+          "failure": null,
+          "hosted_tool_budget": 60,
+          "hosted_tool_budget_hit": false,
+          "hosted_tool_calls_observed": 9,
+          "legacy_input_plus_cache_read": 82412,
+          "local_action_telemetry": 3,
+          "local_deterministic_actions": 2,
+          "local_latency_ms": [
+            260.54
+          ],
+          "local_model_actions": 1,
+          "local_model_calls": 1,
+          "local_model_errors": 0,
+          "local_result_reasons": {
+            "reason:preserved_field_conflict": 1,
+            "reason:unmapped_fields": 1
+          },
+          "local_snapshots_by_purpose": {
+            "initial": 2,
+            "post_action": 3,
+            "pre_action": 3
+          },
+          "local_snapshots_unexposed": 8,
+          "mistakes": 0,
+          "model_visible_camofox_calls": 7,
+          "model_visible_snapshot_result_bytes": 2949,
+          "model_visible_snapshots": 3,
+          "model_visible_tool_errors": 0,
+          "normalized_prompt_tokens": 91112,
+          "observed_prompt_tokens": 91112,
+          "observed_tokens": {
+            "cacheRead": 82370,
+            "cacheWrite": 8700,
+            "input": 42,
+            "output": 1150
+          },
+          "oracle_passed": true,
+          "oracle_unavailable": false,
+          "provider_stop_reason": null,
+          "sanitized_trace_available": true,
+          "status": "ok",
+          "task": "challenge-52",
+          "usage_complete": true,
+          "wall_seconds": 51.3,
+          "wrong_actions": 0
+        }
+      ],
+      "selected_model_row_sha256": "d18304f10e6f24214d8cbc51604218c1e2a91fc61a0b38bf11e458b590d8965b",
+      "source_directory": "semantic-hypotheses-luna-procedural-workflow",
+      "source_fingerprint": "25804bebbfe8dbcec8322d52e58e09a76eaf6049fc332939ba6ee5239225567e",
+      "source_sha256": {
+        "bridge": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "browser_skill": "c2e798e58170fb59fa1717fae9f95f24e5e247520cd48c7077ab582e21ffffd8",
+        "browser_transport": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "challenge_fixture": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "core": "a41f9b4baf78c80929aa8829f59744a6414d4a1fa65b4376ab2c91a8d86b9d21",
+        "resolver": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "runner": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b",
+        "server_fixture": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_fixture": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c",
+        "tool_definition": "d5f2d67555a5c231f17dfa27a05077643f84422af688a07e2c712f3431c87e9e"
+      },
+      "suite": "semantic-hypotheses-luna-procedural-workflow",
+      "tool_contract_schema_sha256": "d6388ce9f67fa14751794dc1acf3c11bbd2d5fef3caf1ef761ebea3aacfe6d75"
+    },
+    {
+      "catalog_cost_per_million_usd": {
+        "cacheRead": 0.01,
+        "cacheWrite": 0.125,
+        "input": 0.1,
+        "output": 0.5
+      },
+      "executor_configuration": {
+        "applyPrepared": true,
+        "backend": "laya",
+        "candidateMode": "strictBindings",
+        "contractMode": "semantic",
+        "maxSteps": 24,
+        "stopPolicy": "success"
+      },
+      "fixture_sha256": {
+        "challenge.js": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server.js": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks.js": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "manifest_hosted_tool_budget": 60,
+      "model": "openrouter/openai/gpt-6-luna",
+      "model_catalog_sha256": "1518d1bce54aee45765d238d3d5a4152f978283430a824b1de25de3d152d4648",
+      "model_limits": {
+        "contextWindow": 32768,
+        "maxTokens": 2048,
+        "thinking": "low"
+      },
+      "packaged_plugin_sha256": {
+        "manifest": "37395db717ce454cf89d09734537c07153696587ea5e2303b314c3805ace6d51",
+        "wrapper": "74c5ed5949317062c935ecdfc3a8a89598ea262b84614431d880892e567ea3c0"
+      },
+      "recorded_prompt_template_sha256": "2f0981dd2886a70c92d5c6a371baeed71213573408ee3a23b579f0dae233ad72",
+      "runs": [
+        {
+          "assistant_turns": 9,
+          "assistant_usage_entries": 9,
+          "billed_usd": null,
+          "catalog_estimated_usd": 0.00173885,
+          "direct_mutation_calls": {
+            "camofox_click": 0,
+            "camofox_navigate": 0,
+            "camofox_scroll": 0,
+            "camofox_select": 0,
+            "camofox_type": 0
+          },
+          "executor_calls": [
+            {
+              "contract_shape": {
+                "binding_count": null,
+                "binding_names": null,
+                "contract_mode": "semantic",
+                "fact_count": 16,
+                "fact_names": [
+                  "destination",
+                  "arrival",
+                  "travel",
+                  "reference",
+                  "attendee",
+                  "seat",
+                  "access",
+                  "ticket",
+                  "meal",
+                  "session",
+                  "venue",
+                  "reminder",
+                  "summary",
+                  "timezone",
+                  "contact",
+                  "confirm"
+                ],
+                "raw_key_metadata_available": true,
+                "variable_count": null,
+                "variable_names": null,
+                "visible_fixture_binding_names": [],
+                "visible_fixture_fact_names": [
+                  "access",
+                  "arrival",
+                  "attendee",
+                  "confirm",
+                  "contact",
+                  "destination",
+                  "meal",
+                  "reference",
+                  "reminder",
+                  "seat",
+                  "session",
+                  "summary",
+                  "ticket",
+                  "timezone",
+                  "travel",
+                  "venue"
+                ],
+                "visible_fixture_variable_names": []
+              },
+              "next_exposed_heading": "Request recorded",
+              "outcome": {
+                "fixture_route": "done",
+                "progress": {
+                  "assignments_verified": 16,
+                  "pages_seen": 4,
+                  "remaining_fact_key_count": 0,
+                  "remaining_fact_keys": []
+                },
+                "reason": "no_actionable_controls",
+                "relevant_state": "\"Request recorded\" [level=1] | \"Completed: Complete the four-stage conference itinerary for North Pier, window seat, and vegetarian meal. Enter these values across the four stages: destination North Pier; arrival date 2028-04-12; travel mod",
+                "status": "checkpoint",
+                "steps": 20
+              },
+              "request": {
+                "allowed_origins": null,
+                "allowed_origins_count": null,
+                "binding_count": null,
+                "binding_names": null,
+                "bindings": null,
+                "constraints": {
+                  "allowed_origins": [
+                    "[fixture-origin]"
+                  ],
+                  "allowed_origins_count": 1,
+                  "forbid_actions": [
+                    "Do not access the oracle",
+                    "Do not navigate away from this fixture",
+                    "Do not invent values or submit before all four stages are completed"
+                  ],
+                  "forbid_actions_count": 3,
+                  "present_keys": [
+                    "allowedOrigins",
+                    "forbidActions"
+                  ],
+                  "unknown_key_count": 0
+                },
+                "contract_mode": "semantic",
+                "executionScope": null,
+                "fact_count": 16,
+                "fact_names": [
+                  "destination",
+                  "arrival",
+                  "travel",
+                  "reference",
+                  "attendee",
+                  "seat",
+                  "access",
+                  "ticket",
+                  "meal",
+                  "session",
+                  "venue",
+                  "reminder",
+                  "summary",
+                  "timezone",
+                  "contact",
+                  "confirm"
+                ],
+                "facts": {
+                  "access": "None",
+                  "arrival": "2028-04-12",
+                  "attendee": "Guest Delegate",
+                  "confirm": "Reviewed",
+                  "contact": "Office Desk",
+                  "destination": "North Pier",
+                  "meal": "vegetarian",
+                  "reference": "Conference",
+                  "reminder": "Email",
+                  "seat": "window",
+                  "session": "[redacted]",
+                  "summary": "Conference visit",
+                  "ticket": "Standard",
+                  "timezone": "UTC",
+                  "travel": "Rail",
+                  "venue": "North"
+                },
+                "fieldPolicies": null,
+                "fixture_variable_values_only": true,
+                "forbid_actions": null,
+                "forbid_actions_count": null,
+                "goal": "Complete the four-stage itinerary using all provided values. Fill only observed fields with matching facts, advance through each Continue, then submit final review only if the observed page presents that action. Stop and report the observed terminal result.",
+                "modelGoal": null,
+                "present_keys": [
+                  "constraints",
+                  "facts",
+                  "goal",
+                  "tabId"
+                ],
+                "stopAfter": null,
+                "success": null,
+                "unknown_key_count": 0,
+                "variable_count": null,
+                "variable_names": null,
+                "variables": {}
+              },
+              "tool_request_json_bytes": 917,
+              "tool_result_text_bytes": 804
+            }
+          ],
+          "executor_steps_reported": 20,
+          "failure": null,
+          "hosted_tool_budget": 60,
+          "hosted_tool_budget_hit": false,
+          "hosted_tool_calls_observed": 5,
+          "legacy_input_plus_cache_read": 45078,
+          "local_action_telemetry": 20,
+          "local_deterministic_actions": 16,
+          "local_latency_ms": [
+            174.23,
+            171.33,
+            176.14,
+            166.61
+          ],
+          "local_model_actions": 4,
+          "local_model_calls": 4,
+          "local_model_errors": 0,
+          "local_result_reasons": {
+            "reason:no_actionable_controls": 1
+          },
+          "local_snapshots_by_purpose": {
+            "initial": 1,
+            "post_action": 20,
+            "pre_action": 20
+          },
+          "local_snapshots_unexposed": 41,
+          "mistakes": 0,
+          "model_visible_camofox_calls": 4,
+          "model_visible_snapshot_result_bytes": 3179,
+          "model_visible_snapshots": 2,
+          "model_visible_tool_errors": 0,
+          "normalized_prompt_tokens": 52759,
+          "observed_prompt_tokens": 52759,
+          "observed_tokens": {
+            "cacheRead": 45051,
+            "cacheWrite": 7681,
+            "input": 27,
+            "output": 651
+          },
+          "oracle_passed": true,
+          "oracle_unavailable": false,
+          "provider_stop_reason": null,
+          "sanitized_trace_available": true,
+          "status": "ok",
+          "task": "long-07",
+          "usage_complete": true,
+          "wall_seconds": 50.998,
+          "wrong_actions": 0
+        }
+      ],
+      "selected_model_row_sha256": "d18304f10e6f24214d8cbc51604218c1e2a91fc61a0b38bf11e458b590d8965b",
+      "source_directory": "semantic-hypotheses-luna-semantic-long",
+      "source_fingerprint": "25804bebbfe8dbcec8322d52e58e09a76eaf6049fc332939ba6ee5239225567e",
+      "source_sha256": {
+        "bridge": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "browser_skill": "c2e798e58170fb59fa1717fae9f95f24e5e247520cd48c7077ab582e21ffffd8",
+        "browser_transport": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "challenge_fixture": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "core": "a41f9b4baf78c80929aa8829f59744a6414d4a1fa65b4376ab2c91a8d86b9d21",
+        "resolver": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "runner": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b",
+        "server_fixture": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_fixture": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c",
+        "tool_definition": "d5f2d67555a5c231f17dfa27a05077643f84422af688a07e2c712f3431c87e9e"
+      },
+      "suite": "semantic-hypotheses-luna-semantic-long",
+      "tool_contract_schema_sha256": "587561b0683027b64f05740b948500be63a32187046b1a3552b73e8eb0d15420"
+    },
+    {
+      "catalog_cost_per_million_usd": {
+        "cacheRead": 0.01,
+        "cacheWrite": 0.125,
+        "input": 0.1,
+        "output": 0.5
+      },
+      "executor_configuration": {
+        "applyPrepared": true,
+        "backend": "laya",
+        "candidateMode": "strictBindings",
+        "contractMode": "semantic",
+        "maxSteps": 24,
+        "stopPolicy": "success"
+      },
+      "fixture_sha256": {
+        "challenge.js": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server.js": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks.js": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "manifest_hosted_tool_budget": 60,
+      "model": "openrouter/openai/gpt-6-luna",
+      "model_catalog_sha256": "1518d1bce54aee45765d238d3d5a4152f978283430a824b1de25de3d152d4648",
+      "model_limits": {
+        "contextWindow": 32768,
+        "maxTokens": 2048,
+        "thinking": "low"
+      },
+      "packaged_plugin_sha256": {
+        "manifest": "37395db717ce454cf89d09734537c07153696587ea5e2303b314c3805ace6d51",
+        "wrapper": "74c5ed5949317062c935ecdfc3a8a89598ea262b84614431d880892e567ea3c0"
+      },
+      "recorded_prompt_template_sha256": "2f0981dd2886a70c92d5c6a371baeed71213573408ee3a23b579f0dae233ad72",
+      "runs": [
+        {
+          "assistant_turns": 8,
+          "assistant_usage_entries": 8,
+          "billed_usd": null,
+          "catalog_estimated_usd": 0.00131442,
+          "direct_mutation_calls": {
+            "camofox_click": 0,
+            "camofox_navigate": 0,
+            "camofox_scroll": 0,
+            "camofox_select": 0,
+            "camofox_type": 0
+          },
+          "executor_calls": [
+            {
+              "contract_shape": {
+                "binding_count": null,
+                "binding_names": null,
+                "contract_mode": "semantic",
+                "fact_count": 3,
+                "fact_names": [
+                  "target",
+                  "location",
+                  "preference"
+                ],
+                "raw_key_metadata_available": true,
+                "variable_count": null,
+                "variable_names": null,
+                "visible_fixture_binding_names": [],
+                "visible_fixture_fact_names": [
+                  "location",
+                  "preference",
+                  "target"
+                ],
+                "visible_fixture_variable_names": []
+              },
+              "next_exposed_heading": null,
+              "outcome": {
+                "fixture_route": "done",
+                "progress": {
+                  "assignments_verified": 3,
+                  "pages_seen": 4,
+                  "remaining_fact_key_count": 0,
+                  "remaining_fact_keys": []
+                },
+                "reason": "no_actionable_controls",
+                "relevant_state": "\"Receipt verified\" [level=1] | Final demo request accepted.",
+                "status": "checkpoint",
+                "steps": 7
+              },
+              "request": {
+                "allowed_origins": null,
+                "allowed_origins_count": null,
+                "binding_count": null,
+                "binding_names": null,
+                "bindings": null,
+                "constraints": {
+                  "allowed_origins": [
+                    "[fixture-origin]"
+                  ],
+                  "allowed_origins_count": 1,
+                  "forbid_actions": [
+                    "Do not access any oracle or unrelated origin."
+                  ],
+                  "forbid_actions_count": 1,
+                  "present_keys": [
+                    "allowedOrigins",
+                    "forbidActions"
+                  ],
+                  "unknown_key_count": 0
+                },
+                "contract_mode": "semantic",
+                "executionScope": null,
+                "fact_count": 3,
+                "fact_names": [
+                  "target",
+                  "location",
+                  "preference"
+                ],
+                "facts": {
+                  "location": "North Pier",
+                  "preference": "Quiet",
+                  "target": "Harbor Studio"
+                },
+                "fieldPolicies": null,
+                "fixture_variable_values_only": true,
+                "forbid_actions": null,
+                "forbid_actions_count": null,
+                "goal": "Search for Harbor Studio, open its result and inquiry modal, fill the request for North Pier with Quiet preference, and send the demo inquiry. Verify the resulting confirmation.",
+                "modelGoal": null,
+                "present_keys": [
+                  "constraints",
+                  "facts",
+                  "goal",
+                  "tabId"
+                ],
+                "stopAfter": null,
+                "success": null,
+                "unknown_key_count": 0,
+                "variable_count": null,
+                "variable_names": null,
+                "variables": {}
+              },
+              "tool_request_json_bytes": 456,
+              "tool_result_text_bytes": 580
+            }
+          ],
+          "executor_steps_reported": 7,
+          "failure": null,
+          "hosted_tool_budget": 60,
+          "hosted_tool_budget_hit": false,
+          "hosted_tool_calls_observed": 4,
+          "legacy_input_plus_cache_read": 32202,
+          "local_action_telemetry": 7,
+          "local_deterministic_actions": 3,
+          "local_latency_ms": [
+            163.39,
+            177.4,
+            128.95,
+            162.62
+          ],
+          "local_model_actions": 4,
+          "local_model_calls": 4,
+          "local_model_errors": 0,
+          "local_result_reasons": {
+            "reason:no_actionable_controls": 1
+          },
+          "local_snapshots_by_purpose": {
+            "initial": 1,
+            "post_action": 7,
+            "pre_action": 7
+          },
+          "local_snapshots_unexposed": 15,
+          "mistakes": 0,
+          "model_visible_camofox_calls": 3,
+          "model_visible_snapshot_result_bytes": 938,
+          "model_visible_snapshots": 1,
+          "model_visible_tool_errors": 0,
+          "normalized_prompt_tokens": 38212,
+          "observed_prompt_tokens": 38212,
+          "observed_tokens": {
+            "cacheRead": 32178,
+            "cacheWrite": 6010,
+            "input": 24,
+            "output": 478
+          },
+          "oracle_passed": true,
+          "oracle_unavailable": false,
+          "provider_stop_reason": null,
+          "sanitized_trace_available": true,
+          "status": "ok",
+          "task": "challenge-38",
+          "usage_complete": true,
+          "wall_seconds": 41.768,
+          "wrong_actions": 0
+        },
+        {
+          "assistant_turns": 8,
+          "assistant_usage_entries": 8,
+          "billed_usd": null,
+          "catalog_estimated_usd": 0.00149673,
+          "direct_mutation_calls": {
+            "camofox_click": 0,
+            "camofox_navigate": 0,
+            "camofox_scroll": 0,
+            "camofox_select": 0,
+            "camofox_type": 0
+          },
+          "executor_calls": [
+            {
+              "contract_shape": {
+                "binding_count": 2,
+                "binding_names": [
+                  "party",
+                  "preference"
+                ],
+                "contract_mode": "semantic",
+                "fact_count": 3,
+                "fact_names": [
+                  "party",
+                  "preference",
+                  "[other]"
+                ],
+                "raw_key_metadata_available": true,
+                "variable_count": null,
+                "variable_names": null,
+                "visible_fixture_binding_names": [
+                  "party",
+                  "preference"
+                ],
+                "visible_fixture_fact_names": [
+                  "party",
+                  "preference"
+                ],
+                "visible_fixture_variable_names": []
+              },
+              "next_exposed_heading": null,
+              "outcome": {
+                "diagnostic_reason": "bindings",
+                "reason": "invalid_request",
+                "status": "escalated",
+                "steps": 0
+              },
+              "request": {
+                "allowed_origins": null,
+                "allowed_origins_count": null,
+                "binding_count": 2,
+                "binding_names": [
+                  "party",
+                  "preference"
+                ],
+                "bindings": {
+                  "party": {
+                    "context": "Garden Room card",
+                    "field": "Party size"
+                  },
+                  "preference": {
+                    "context": "Garden Room card",
+                    "field": "Preference"
+                  }
+                },
+                "constraints": {
+                  "allowed_origins": [
+                    "[fixture-origin]"
+                  ],
+                  "allowed_origins_count": 1,
+                  "forbid_actions": [
+                    "modify Side Hall",
+                    "submit Side Hall",
+                    "open oracle"
+                  ],
+                  "forbid_actions_count": 3,
+                  "present_keys": [
+                    "allowedOrigins",
+                    "forbidActions"
+                  ],
+                  "unknown_key_count": 0
+                },
+                "contract_mode": "semantic",
+                "executionScope": null,
+                "fact_count": 3,
+                "fact_names": [
+                  "party",
+                  "preference",
+                  "[other]"
+                ],
+                "facts": {
+                  "party": "2",
+                  "preference": "Quiet"
+                },
+                "fieldPolicies": [
+                  {
+                    "field": {
+                      "context": "Side Hall card",
+                      "field": "any fields in Side Hall"
+                    },
+                    "preserve": "Leave unchanged; do not interact"
+                  }
+                ],
+                "fixture_variable_values_only": true,
+                "forbid_actions": null,
+                "forbid_actions_count": null,
+                "goal": "In the Garden Room card only, set Party size and Preference to the supplied values, then submit that card's Send inquiry and verify its outcome. Do not modify or submit Side Hall.",
+                "modelGoal": null,
+                "present_keys": [
+                  "bindings",
+                  "constraints",
+                  "facts",
+                  "fieldPolicies",
+                  "goal",
+                  "tabId"
+                ],
+                "stopAfter": null,
+                "success": null,
+                "unknown_key_count": 0,
+                "variable_count": null,
+                "variable_names": null,
+                "variables": {}
+              },
+              "tool_request_json_bytes": 742,
+              "tool_result_text_bytes": 379
+            },
+            {
+              "contract_shape": {
+                "binding_count": null,
+                "binding_names": null,
+                "contract_mode": "semantic",
+                "fact_count": 3,
+                "fact_names": [
+                  "party",
+                  "preference",
+                  "target"
+                ],
+                "raw_key_metadata_available": true,
+                "variable_count": null,
+                "variable_names": null,
+                "visible_fixture_binding_names": [],
+                "visible_fixture_fact_names": [
+                  "party",
+                  "preference",
+                  "target"
+                ],
+                "visible_fixture_variable_names": []
+              },
+              "next_exposed_heading": null,
+              "outcome": {
+                "fixture_route": "done",
+                "progress": {
+                  "assignments_verified": 2,
+                  "pages_seen": 2,
+                  "remaining_fact_key_count": 0,
+                  "remaining_fact_keys": []
+                },
+                "reason": "no_actionable_controls",
+                "relevant_state": "\"Receipt verified\" [level=1] | Final demo request accepted.",
+                "status": "checkpoint",
+                "steps": 3
+              },
+              "request": {
+                "allowed_origins": null,
+                "allowed_origins_count": null,
+                "binding_count": null,
+                "binding_names": null,
+                "bindings": null,
+                "constraints": {
+                  "allowed_origins": [
+                    "[fixture-origin]"
+                  ],
+                  "allowed_origins_count": 1,
+                  "forbid_actions": [
+                    "modify Side Hall",
+                    "submit Side Hall",
+                    "open oracle"
+                  ],
+                  "forbid_actions_count": 3,
+                  "present_keys": [
+                    "allowedOrigins",
+                    "forbidActions"
+                  ],
+                  "unknown_key_count": 0
+                },
+                "contract_mode": "semantic",
+                "executionScope": null,
+                "fact_count": 3,
+                "fact_names": [
+                  "party",
+                  "preference",
+                  "target"
+                ],
+                "facts": {
+                  "party": "2",
+                  "preference": "Quiet",
+                  "target": "[redacted]"
+                },
+                "fieldPolicies": null,
+                "fixture_variable_values_only": true,
+                "forbid_actions": null,
+                "forbid_actions_count": null,
+                "goal": "In the Garden Room card only, set Party size to 2 and Preference to Quiet, submit its Send inquiry, and verify the outcome. Do not interact with Side Hall.",
+                "modelGoal": null,
+                "present_keys": [
+                  "constraints",
+                  "facts",
+                  "goal",
+                  "tabId"
+                ],
+                "stopAfter": null,
+                "success": null,
+                "unknown_key_count": 0,
+                "variable_count": null,
+                "variable_names": null,
+                "variables": {}
+              },
+              "tool_request_json_bytes": 426,
+              "tool_result_text_bytes": 580
+            }
+          ],
+          "executor_steps_reported": 3,
+          "failure": null,
+          "hosted_tool_budget": 60,
+          "hosted_tool_budget_hit": false,
+          "hosted_tool_calls_observed": 5,
+          "legacy_input_plus_cache_read": 34032,
+          "local_action_telemetry": 3,
+          "local_deterministic_actions": 2,
+          "local_latency_ms": [
+            265.87
+          ],
+          "local_model_actions": 1,
+          "local_model_calls": 1,
+          "local_model_errors": 0,
+          "local_result_reasons": {
+            "reason:invalid_request": 1,
+            "reason:no_actionable_controls": 1
+          },
+          "local_snapshots_by_purpose": {
+            "initial": 1,
+            "post_action": 3,
+            "pre_action": 3
+          },
+          "local_snapshots_unexposed": 7,
+          "mistakes": 0,
+          "model_visible_camofox_calls": 3,
+          "model_visible_snapshot_result_bytes": 1844,
+          "model_visible_snapshots": 1,
+          "model_visible_tool_errors": 0,
+          "normalized_prompt_tokens": 40394,
+          "observed_prompt_tokens": 40394,
+          "observed_tokens": {
+            "cacheRead": 34008,
+            "cacheWrite": 6362,
+            "input": 24,
+            "output": 718
+          },
+          "oracle_passed": true,
+          "oracle_unavailable": false,
+          "provider_stop_reason": null,
+          "sanitized_trace_available": true,
+          "status": "ok",
+          "task": "challenge-40",
+          "usage_complete": true,
+          "wall_seconds": 40.182,
+          "wrong_actions": 0
+        },
+        {
+          "assistant_turns": 10,
+          "assistant_usage_entries": 10,
+          "billed_usd": null,
+          "catalog_estimated_usd": 0.00164643,
+          "direct_mutation_calls": {
+            "camofox_click": 0,
+            "camofox_navigate": 0,
+            "camofox_scroll": 0,
+            "camofox_select": 0,
+            "camofox_type": 0
+          },
+          "executor_calls": [
+            {
+              "contract_shape": {
+                "binding_count": null,
+                "binding_names": null,
+                "contract_mode": "semantic",
+                "fact_count": 2,
+                "fact_names": [
+                  "location",
+                  "service"
+                ],
+                "raw_key_metadata_available": true,
+                "variable_count": null,
+                "variable_names": null,
+                "visible_fixture_binding_names": [],
+                "visible_fixture_fact_names": [
+                  "location",
+                  "service"
+                ],
+                "visible_fixture_variable_names": []
+              },
+              "next_exposed_heading": "Receipt verified",
+              "outcome": {
+                "fixture_route": "done",
+                "progress": {
+                  "assignments_verified": 2,
+                  "pages_seen": 3,
+                  "remaining_fact_key_count": 0,
+                  "remaining_fact_keys": []
+                },
+                "reason": "no_actionable_controls",
+                "relevant_state": "\"Receipt verified\" [level=1] | Final demo request accepted.",
+                "status": "checkpoint",
+                "steps": 5
+              },
+              "request": {
+                "allowed_origins": null,
+                "allowed_origins_count": null,
+                "binding_count": null,
+                "binding_names": null,
+                "bindings": null,
+                "constraints": {
+                  "allowed_origins": [
+                    "[fixture-origin]"
+                  ],
+                  "allowed_origins_count": 1,
+                  "forbid_actions": [
+                    "access oracle",
+                    "navigate away from fixture"
+                  ],
+                  "forbid_actions_count": 2,
+                  "present_keys": [
+                    "allowedOrigins",
+                    "forbidActions"
+                  ],
+                  "unknown_key_count": 0
+                },
+                "contract_mode": "semantic",
+                "executionScope": null,
+                "fact_count": 2,
+                "fact_names": [
+                  "location",
+                  "service"
+                ],
+                "facts": {
+                  "location": "North Pier",
+                  "service": "Express"
+                },
+                "fieldPolicies": null,
+                "fixture_variable_values_only": true,
+                "forbid_actions": null,
+                "forbid_actions_count": null,
+                "goal": "Inspect this page, complete stage 1 by entering location North Pier and continuing. Then inspect stage 2 and request service Express, submitting/continuing to finish the two-stage request. Verify success from the page.",
+                "modelGoal": null,
+                "present_keys": [
+                  "constraints",
+                  "facts",
+                  "goal",
+                  "tabId"
+                ],
+                "stopAfter": null,
+                "success": null,
+                "unknown_key_count": 0,
+                "variable_count": null,
+                "variable_names": null,
+                "variables": {}
+              },
+              "tool_request_json_bytes": 467,
+              "tool_result_text_bytes": 580
+            }
+          ],
+          "executor_steps_reported": 5,
+          "failure": null,
+          "hosted_tool_budget": 60,
+          "hosted_tool_budget_hit": false,
+          "hosted_tool_calls_observed": 5,
+          "legacy_input_plus_cache_read": 47386,
+          "local_action_telemetry": 5,
+          "local_deterministic_actions": 3,
+          "local_latency_ms": [
+            177.61,
+            241.25
+          ],
+          "local_model_actions": 2,
+          "local_model_calls": 2,
+          "local_model_errors": 0,
+          "local_result_reasons": {
+            "reason:no_actionable_controls": 1
+          },
+          "local_snapshots_by_purpose": {
+            "initial": 1,
+            "post_action": 5,
+            "pre_action": 5
+          },
+          "local_snapshots_unexposed": 11,
+          "mistakes": 0,
+          "model_visible_camofox_calls": 4,
+          "model_visible_snapshot_result_bytes": 1544,
+          "model_visible_snapshots": 2,
+          "model_visible_tool_errors": 0,
+          "normalized_prompt_tokens": 54341,
+          "observed_prompt_tokens": 54341,
+          "observed_tokens": {
+            "cacheRead": 47356,
+            "cacheWrite": 6955,
+            "input": 30,
+            "output": 601
+          },
+          "oracle_passed": true,
+          "oracle_unavailable": false,
+          "provider_stop_reason": null,
+          "sanitized_trace_available": true,
+          "status": "ok",
+          "task": "challenge-52",
+          "usage_complete": true,
+          "wall_seconds": 43.176,
+          "wrong_actions": 0
+        }
+      ],
+      "selected_model_row_sha256": "d18304f10e6f24214d8cbc51604218c1e2a91fc61a0b38bf11e458b590d8965b",
+      "source_directory": "semantic-hypotheses-luna-semantic-workflow",
+      "source_fingerprint": "25804bebbfe8dbcec8322d52e58e09a76eaf6049fc332939ba6ee5239225567e",
+      "source_sha256": {
+        "bridge": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "browser_skill": "c2e798e58170fb59fa1717fae9f95f24e5e247520cd48c7077ab582e21ffffd8",
+        "browser_transport": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "challenge_fixture": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "core": "a41f9b4baf78c80929aa8829f59744a6414d4a1fa65b4376ab2c91a8d86b9d21",
+        "resolver": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "runner": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b",
+        "server_fixture": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_fixture": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c",
+        "tool_definition": "d5f2d67555a5c231f17dfa27a05077643f84422af688a07e2c712f3431c87e9e"
+      },
+      "suite": "semantic-hypotheses-luna-semantic-workflow",
+      "tool_contract_schema_sha256": "587561b0683027b64f05740b948500be63a32187046b1a3552b73e8eb0d15420"
+    },
+    {
+      "catalog_cost_per_million_usd": {
+        "cacheRead": 0.2,
+        "cacheWrite": 2.5,
+        "input": 2,
+        "output": 10
+      },
+      "executor_configuration": {
+        "applyPrepared": true,
+        "backend": "laya",
+        "candidateMode": "strictBindings",
+        "contractMode": "procedural",
+        "maxSteps": 24,
+        "stopPolicy": "success"
+      },
+      "fixture_sha256": {
+        "challenge.js": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server.js": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks.js": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "manifest_hosted_tool_budget": 60,
+      "model": "openrouter/openai/gpt-6-sol",
+      "model_catalog_sha256": "7131403c53f5b84bc0b18052b6375b2bf4891708e85b9d462aa0a5a7d58230ad",
+      "model_limits": {
+        "contextWindow": 32768,
+        "maxTokens": 2048,
+        "thinking": "low"
+      },
+      "packaged_plugin_sha256": {
+        "manifest": "37395db717ce454cf89d09734537c07153696587ea5e2303b314c3805ace6d51",
+        "wrapper": "74c5ed5949317062c935ecdfc3a8a89598ea262b84614431d880892e567ea3c0"
+      },
+      "recorded_prompt_template_sha256": "2f0981dd2886a70c92d5c6a371baeed71213573408ee3a23b579f0dae233ad72",
+      "runs": [
+        {
+          "assistant_turns": 15,
+          "assistant_usage_entries": 15,
+          "billed_usd": null,
+          "catalog_estimated_usd": 0.0602804,
+          "direct_mutation_calls": {
+            "camofox_click": 0,
+            "camofox_navigate": 0,
+            "camofox_scroll": 0,
+            "camofox_select": 0,
+            "camofox_type": 0
+          },
+          "executor_calls": [
+            {
+              "contract_shape": {
+                "binding_count": 4,
+                "binding_names": [
+                  "destination",
+                  "arrival",
+                  "travel",
+                  "reference"
+                ],
+                "contract_mode": "procedural",
+                "fact_count": null,
+                "fact_names": null,
+                "raw_key_metadata_available": true,
+                "variable_count": 4,
+                "variable_names": [
+                  "destination",
+                  "arrival",
+                  "travel",
+                  "reference"
+                ],
+                "visible_fixture_binding_names": [
+                  "arrival",
+                  "destination",
+                  "reference",
+                  "travel"
+                ],
+                "visible_fixture_fact_names": [],
+                "visible_fixture_variable_names": [
+                  "arrival",
+                  "destination",
+                  "reference",
+                  "travel"
+                ]
+              },
+              "next_exposed_heading": "Itinerary stage 2 of 4",
+              "outcome": {
+                "fixture_route": "work",
+                "observed_action": {
+                  "click": "Continue",
+                  "context": "Itinerary stage 1 of 4"
+                },
+                "reason": "requested_action_observed",
+                "relevant_state": "\"Itinerary stage 2 of 4\" [level=1] | Follow the itinerary instructions provided with this task. | Attendee alias | Seat preference | Accessibility note | Ticket tier",
+                "status": "checkpoint",
+                "steps": 5,
+                "verification": "action_and_fresh_observation"
+              },
+              "request": {
+                "allowed_origins": null,
+                "allowed_origins_count": null,
+                "binding_count": 4,
+                "binding_names": [
+                  "destination",
+                  "arrival",
+                  "travel",
+                  "reference"
+                ],
+                "bindings": {
+                  "arrival": "Arrival date",
+                  "destination": "Destination",
+                  "reference": "Reference label",
+                  "travel": "Travel mode"
+                },
+                "constraints": null,
+                "contract_mode": "procedural",
+                "executionScope": null,
+                "fact_count": null,
+                "fact_names": null,
+                "facts": null,
+                "fieldPolicies": null,
+                "fixture_variable_values_only": true,
+                "forbid_actions": [
+                  "Navigate outside the current fixture",
+                  "Submit fields with values other than supplied variables"
+                ],
+                "forbid_actions_count": 2,
+                "goal": "Complete stage 1 of the four-stage itinerary with the supplied values, then click Continue to reach the next stage. Remain on this fixture.",
+                "modelGoal": "Fill exact observed stage-1 fields with bound variables and click Continue; do not leave the fixture or alter other fields.",
+                "present_keys": [
+                  "bindings",
+                  "forbidActions",
+                  "goal",
+                  "modelGoal",
+                  "stopAfter",
+                  "tabId",
+                  "variables"
+                ],
+                "stopAfter": {
+                  "click": "Continue"
+                },
+                "success": null,
+                "unknown_key_count": 0,
+                "variable_count": 4,
+                "variable_names": [
+                  "destination",
+                  "arrival",
+                  "travel",
+                  "reference"
+                ],
+                "variables": {
+                  "arrival": "2028-04-12",
+                  "destination": "North Pier",
+                  "reference": "Conference",
+                  "travel": "Rail"
+                }
+              },
+              "tool_request_json_bytes": 736,
+              "tool_result_text_bytes": 732
+            },
+            {
+              "contract_shape": {
+                "binding_count": 4,
+                "binding_names": [
+                  "attendee",
+                  "seat",
+                  "access",
+                  "ticket"
+                ],
+                "contract_mode": "procedural",
+                "fact_count": null,
+                "fact_names": null,
+                "raw_key_metadata_available": true,
+                "variable_count": 4,
+                "variable_names": [
+                  "attendee",
+                  "seat",
+                  "access",
+                  "ticket"
+                ],
+                "visible_fixture_binding_names": [
+                  "access",
+                  "attendee",
+                  "seat",
+                  "ticket"
+                ],
+                "visible_fixture_fact_names": [],
+                "visible_fixture_variable_names": [
+                  "access",
+                  "attendee",
+                  "seat",
+                  "ticket"
+                ]
+              },
+              "next_exposed_heading": "Itinerary stage 3 of 4",
+              "outcome": {
+                "fixture_route": "work",
+                "observed_action": {
+                  "click": "Continue",
+                  "context": "Itinerary stage 2 of 4"
+                },
+                "reason": "requested_action_observed",
+                "relevant_state": "\"Itinerary stage 3 of 4\" [level=1] | Follow the itinerary instructions provided with this task. | Meal preference | Session track | Venue wing | Reminder",
+                "status": "checkpoint",
+                "steps": 5,
+                "verification": "action_and_fresh_observation"
+              },
+              "request": {
+                "allowed_origins": null,
+                "allowed_origins_count": null,
+                "binding_count": 4,
+                "binding_names": [
+                  "attendee",
+                  "seat",
+                  "access",
+                  "ticket"
+                ],
+                "bindings": {
+                  "access": "Accessibility note",
+                  "attendee": "Attendee alias",
+                  "seat": "Seat preference",
+                  "ticket": "Ticket tier"
+                },
+                "constraints": null,
+                "contract_mode": "procedural",
+                "executionScope": null,
+                "fact_count": null,
+                "fact_names": null,
+                "facts": null,
+                "fieldPolicies": null,
+                "fixture_variable_values_only": true,
+                "forbid_actions": [
+                  "Navigate outside the current fixture",
+                  "Use values other than supplied variables"
+                ],
+                "forbid_actions_count": 2,
+                "goal": "Complete itinerary stage 2 using the supplied attendee, seat, accessibility, and ticket values, then click Continue.",
+                "modelGoal": "Fill bound stage-2 fields and click Continue; remain on fixture and do not alter unrelated fields.",
+                "present_keys": [
+                  "bindings",
+                  "forbidActions",
+                  "goal",
+                  "modelGoal",
+                  "stopAfter",
+                  "tabId",
+                  "variables"
+                ],
+                "stopAfter": {
+                  "click": "Continue"
+                },
+                "success": null,
+                "unknown_key_count": 0,
+                "variable_count": 4,
+                "variable_names": [
+                  "attendee",
+                  "seat",
+                  "access",
+                  "ticket"
+                ],
+                "variables": {
+                  "access": "None",
+                  "attendee": "Guest Delegate",
+                  "seat": "window",
+                  "ticket": "Standard"
+                }
+              },
+              "tool_request_json_bytes": 662,
+              "tool_result_text_bytes": 720
+            },
+            {
+              "contract_shape": {
+                "binding_count": 4,
+                "binding_names": [
+                  "meal",
+                  "session",
+                  "venue",
+                  "reminder"
+                ],
+                "contract_mode": "procedural",
+                "fact_count": null,
+                "fact_names": null,
+                "raw_key_metadata_available": true,
+                "variable_count": 4,
+                "variable_names": [
+                  "meal",
+                  "session",
+                  "venue",
+                  "reminder"
+                ],
+                "visible_fixture_binding_names": [
+                  "meal",
+                  "reminder",
+                  "session",
+                  "venue"
+                ],
+                "visible_fixture_fact_names": [],
+                "visible_fixture_variable_names": [
+                  "meal",
+                  "reminder",
+                  "session",
+                  "venue"
+                ]
+              },
+              "next_exposed_heading": "Itinerary stage 4 of 4",
+              "outcome": {
+                "fixture_route": "work",
+                "observed_action": {
+                  "click": "Continue",
+                  "context": "Itinerary stage 3 of 4"
+                },
+                "reason": "requested_action_observed",
+                "relevant_state": "\"Itinerary stage 4 of 4\" [level=1] | Follow the itinerary instructions provided with this task. | Summary title | Time zone | Contact alias | Review status",
+                "status": "checkpoint",
+                "steps": 5,
+                "verification": "action_and_fresh_observation"
+              },
+              "request": {
+                "allowed_origins": null,
+                "allowed_origins_count": null,
+                "binding_count": 4,
+                "binding_names": [
+                  "meal",
+                  "session",
+                  "venue",
+                  "reminder"
+                ],
+                "bindings": {
+                  "meal": "Meal preference",
+                  "reminder": "Reminder",
+                  "session": "***",
+                  "venue": "Venue wing"
+                },
+                "constraints": null,
+                "contract_mode": "procedural",
+                "executionScope": null,
+                "fact_count": null,
+                "fact_names": null,
+                "facts": null,
+                "fieldPolicies": null,
+                "fixture_variable_values_only": true,
+                "forbid_actions": [
+                  "Navigate outside the current fixture",
+                  "Use values other than supplied variables"
+                ],
+                "forbid_actions_count": 2,
+                "goal": "Complete itinerary stage 3 with meal vegetarian, session Strategy, venue North, reminder Email, then Continue.",
+                "modelGoal": "Fill exact bound stage-3 fields and click Continue; remain on fixture.",
+                "present_keys": [
+                  "bindings",
+                  "forbidActions",
+                  "goal",
+                  "modelGoal",
+                  "stopAfter",
+                  "tabId",
+                  "variables"
+                ],
+                "stopAfter": {
+                  "click": "Continue"
+                },
+                "success": null,
+                "unknown_key_count": 0,
+                "variable_count": 4,
+                "variable_names": [
+                  "meal",
+                  "session",
+                  "venue",
+                  "reminder"
+                ],
+                "variables": {
+                  "meal": "vegetarian",
+                  "reminder": "Email",
+                  "session": "[other]",
+                  "venue": "North"
+                }
+              },
+              "tool_request_json_bytes": 597,
+              "tool_result_text_bytes": 722
+            },
+            {
+              "contract_shape": {
+                "binding_count": 4,
+                "binding_names": [
+                  "summary",
+                  "timezone",
+                  "contact",
+                  "confirm"
+                ],
+                "contract_mode": "procedural",
+                "fact_count": null,
+                "fact_names": null,
+                "raw_key_metadata_available": true,
+                "variable_count": 4,
+                "variable_names": [
+                  "summary",
+                  "timezone",
+                  "contact",
+                  "confirm"
+                ],
+                "visible_fixture_binding_names": [
+                  "confirm",
+                  "contact",
+                  "summary",
+                  "timezone"
+                ],
+                "visible_fixture_fact_names": [],
+                "visible_fixture_variable_names": [
+                  "confirm",
+                  "contact",
+                  "summary",
+                  "timezone"
+                ]
+              },
+              "next_exposed_heading": "Request recorded",
+              "outcome": {
+                "fixture_route": "done",
+                "observed_action": {
+                  "click": "Submit itinerary",
+                  "context": "Itinerary stage 4 of 4"
+                },
+                "reason": "requested_action_observed",
+                "relevant_state": "\"Request recorded\" [level=1] | \"Completed: Complete the four-stage conference itinerary for North Pier, window seat, and vegetarian meal. Enter these values across the four stages: destination North Pier; arrival date 2028-04-12; travel mod",
+                "status": "checkpoint",
+                "steps": 5,
+                "verification": "action_and_fresh_observation"
+              },
+              "request": {
+                "allowed_origins": null,
+                "allowed_origins_count": null,
+                "binding_count": 4,
+                "binding_names": [
+                  "summary",
+                  "timezone",
+                  "contact",
+                  "confirm"
+                ],
+                "bindings": {
+                  "confirm": "Review status",
+                  "contact": "Contact alias",
+                  "summary": "Summary title",
+                  "timezone": "Time zone"
+                },
+                "constraints": null,
+                "contract_mode": "procedural",
+                "executionScope": null,
+                "fact_count": null,
+                "fact_names": null,
+                "facts": null,
+                "fieldPolicies": null,
+                "fixture_variable_values_only": true,
+                "forbid_actions": [
+                  "Navigate outside the current fixture",
+                  "Use values other than supplied variables"
+                ],
+                "forbid_actions_count": 2,
+                "goal": "Complete stage 4 with summary Conference visit, time zone UTC, contact Office Desk, review status Reviewed; click Submit itinerary. Stay on fixture.",
+                "modelGoal": "Fill exact bound final-stage fields and click Submit itinerary; do not leave fixture.",
+                "present_keys": [
+                  "bindings",
+                  "forbidActions",
+                  "goal",
+                  "modelGoal",
+                  "stopAfter",
+                  "tabId",
+                  "variables"
+                ],
+                "stopAfter": {
+                  "click": "Submit itinerary"
+                },
+                "success": null,
+                "unknown_key_count": 0,
+                "variable_count": 4,
+                "variable_names": [
+                  "summary",
+                  "timezone",
+                  "contact",
+                  "confirm"
+                ],
+                "variables": {
+                  "confirm": "Reviewed",
+                  "contact": "Office Desk",
+                  "summary": "Conference visit",
+                  "timezone": "UTC"
+                }
+              },
+              "tool_request_json_bytes": 695,
+              "tool_result_text_bytes": 861
+            }
+          ],
+          "executor_steps_reported": 20,
+          "failure": null,
+          "hosted_tool_budget": 60,
+          "hosted_tool_budget_hit": false,
+          "hosted_tool_calls_observed": 11,
+          "legacy_input_plus_cache_read": 103472,
+          "local_action_telemetry": 20,
+          "local_deterministic_actions": 16,
+          "local_latency_ms": [
+            185.34,
+            232.92,
+            203.18,
+            129.97
+          ],
+          "local_model_actions": 4,
+          "local_model_calls": 4,
+          "local_model_errors": 0,
+          "local_result_reasons": {
+            "reason:requested_action_observed": 4
+          },
+          "local_snapshots_by_purpose": {
+            "initial": 4,
+            "post_action": 20,
+            "pre_action": 20
+          },
+          "local_snapshots_unexposed": 44,
+          "mistakes": 0,
+          "model_visible_camofox_calls": 7,
+          "model_visible_snapshot_result_bytes": 9820,
+          "model_visible_snapshots": 5,
+          "model_visible_tool_errors": 0,
+          "normalized_prompt_tokens": 114386,
+          "observed_prompt_tokens": 114386,
+          "observed_tokens": {
+            "cacheRead": 103427,
+            "cacheWrite": 10914,
+            "input": 45,
+            "output": 1222
+          },
+          "oracle_passed": true,
+          "oracle_unavailable": false,
+          "provider_stop_reason": null,
+          "sanitized_trace_available": true,
+          "status": "ok",
+          "task": "long-07",
+          "usage_complete": true,
+          "wall_seconds": 73.299,
+          "wrong_actions": 0
+        }
+      ],
+      "selected_model_row_sha256": "aef708d8eb30b3866761064b09e813c9a96a111fe21e42b3c640907805251ae1",
+      "source_directory": "semantic-hypotheses-sol-procedural-long",
+      "source_fingerprint": "fdb5273cd8100b9d195f70468fc4749e59d00a5b75ad1bf69c547ff26cf4cebd",
+      "source_sha256": {
+        "bridge": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "browser_skill": "c2e798e58170fb59fa1717fae9f95f24e5e247520cd48c7077ab582e21ffffd8",
+        "browser_transport": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "challenge_fixture": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "core": "a41f9b4baf78c80929aa8829f59744a6414d4a1fa65b4376ab2c91a8d86b9d21",
+        "resolver": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "runner": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b",
+        "server_fixture": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_fixture": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c",
+        "tool_definition": "d5f2d67555a5c231f17dfa27a05077643f84422af688a07e2c712f3431c87e9e"
+      },
+      "suite": "semantic-hypotheses-sol-procedural-long",
+      "tool_contract_schema_sha256": "d6388ce9f67fa14751794dc1acf3c11bbd2d5fef3caf1ef761ebea3aacfe6d75"
+    },
+    {
+      "catalog_cost_per_million_usd": {
+        "cacheRead": 0.2,
+        "cacheWrite": 2.5,
+        "input": 2,
+        "output": 10
+      },
+      "executor_configuration": {
+        "applyPrepared": true,
+        "backend": "laya",
+        "candidateMode": "strictBindings",
+        "contractMode": "procedural",
+        "maxSteps": 24,
+        "stopPolicy": "success"
+      },
+      "fixture_sha256": {
+        "challenge.js": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server.js": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks.js": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "manifest_hosted_tool_budget": 60,
+      "model": "openrouter/openai/gpt-6-sol",
+      "model_catalog_sha256": "7131403c53f5b84bc0b18052b6375b2bf4891708e85b9d462aa0a5a7d58230ad",
+      "model_limits": {
+        "contextWindow": 32768,
+        "maxTokens": 2048,
+        "thinking": "low"
+      },
+      "packaged_plugin_sha256": {
+        "manifest": "37395db717ce454cf89d09734537c07153696587ea5e2303b314c3805ace6d51",
+        "wrapper": "74c5ed5949317062c935ecdfc3a8a89598ea262b84614431d880892e567ea3c0"
+      },
+      "recorded_prompt_template_sha256": "2f0981dd2886a70c92d5c6a371baeed71213573408ee3a23b579f0dae233ad72",
+      "runs": [
+        {
+          "assistant_turns": 13,
+          "assistant_usage_entries": 13,
+          "billed_usd": null,
+          "catalog_estimated_usd": 0.047376,
+          "direct_mutation_calls": {
+            "camofox_click": 0,
+            "camofox_navigate": 0,
+            "camofox_scroll": 0,
+            "camofox_select": 0,
+            "camofox_type": 0
+          },
+          "executor_calls": [
+            {
+              "contract_shape": {
+                "binding_count": 1,
+                "binding_names": [
+                  "target"
+                ],
+                "contract_mode": "procedural",
+                "fact_count": null,
+                "fact_names": null,
+                "raw_key_metadata_available": true,
+                "variable_count": 1,
+                "variable_names": [
+                  "target"
+                ],
+                "visible_fixture_binding_names": [
+                  "target"
+                ],
+                "visible_fixture_fact_names": [],
+                "visible_fixture_variable_names": [
+                  "target"
+                ]
+              },
+              "next_exposed_heading": "Search results",
+              "outcome": {
+                "fixture_route": "results",
+                "observed_action": {
+                  "click": "Search",
+                  "context": "Search catalog"
+                },
+                "reason": "requested_action_observed",
+                "relevant_state": "\"Search results\" [level=1]",
+                "status": "checkpoint",
+                "steps": 2,
+                "verification": "action_and_fresh_observation"
+              },
+              "request": {
+                "allowed_origins": null,
+                "allowed_origins_count": null,
+                "binding_count": 1,
+                "binding_names": [
+                  "target"
+                ],
+                "bindings": {
+                  "target": "Search catalog"
+                },
+                "constraints": null,
+                "contract_mode": "procedural",
+                "executionScope": null,
+                "fact_count": null,
+                "fact_names": null,
+                "facts": null,
+                "fieldPolicies": null,
+                "fixture_variable_values_only": true,
+                "forbid_actions": [
+                  "[omitted]",
+                  "Access any oracle"
+                ],
+                "forbid_actions_count": 2,
+                "goal": "Search the catalog for Harbor Studio using the Search catalog field and Search button. Stop after clicking Search and observing the changed results page. Stay on this fixture only.",
+                "modelGoal": "Enter Harbor Studio into Search catalog, click Search, then checkpoint. Do not leave this fixture.",
+                "present_keys": [
+                  "bindings",
+                  "forbidActions",
+                  "goal",
+                  "modelGoal",
+                  "stopAfter",
+                  "tabId",
+                  "variables"
+                ],
+                "stopAfter": {
+                  "click": "Search"
+                },
+                "success": null,
+                "unknown_key_count": 0,
+                "variable_count": 1,
+                "variable_names": [
+                  "target"
+                ],
+                "variables": {
+                  "target": "Harbor Studio"
+                }
+              },
+              "tool_request_json_bytes": 557,
+              "tool_result_text_bytes": 591
+            },
+            {
+              "contract_shape": {
+                "binding_count": null,
+                "binding_names": null,
+                "contract_mode": "procedural",
+                "fact_count": null,
+                "fact_names": null,
+                "raw_key_metadata_available": true,
+                "variable_count": 0,
+                "variable_names": [],
+                "visible_fixture_binding_names": [],
+                "visible_fixture_fact_names": [],
+                "visible_fixture_variable_names": []
+              },
+              "next_exposed_heading": "Harbor Studio inquiry",
+              "outcome": {
+                "diagnostic_field": "Harbor Studio inquiry / Location; Harbor Studio inquiry / Preference StandardQuiet",
+                "diagnostic_reason": "unbound_current_fields",
+                "fixture_route": "modal",
+                "reason": "unmapped_fields",
+                "relevant_state": "\"Harbor Studio inquiry\" [level=1] | Location | Preference",
+                "status": "escalated",
+                "steps": 2
+              },
+              "request": {
+                "allowed_origins": null,
+                "allowed_origins_count": null,
+                "binding_count": null,
+                "binding_names": null,
+                "bindings": null,
+                "constraints": null,
+                "contract_mode": "procedural",
+                "executionScope": null,
+                "fact_count": null,
+                "fact_names": null,
+                "facts": null,
+                "fieldPolicies": null,
+                "fixture_variable_values_only": true,
+                "forbid_actions": [
+                  "[omitted]",
+                  "Access any oracle"
+                ],
+                "forbid_actions_count": 2,
+                "goal": "Open the Harbor Studio result and then its inquiry modal. Stop after opening the inquiry modal so its fields can be inspected. Stay within this fixture.",
+                "modelGoal": "Click Open Harbor Studio, then open its inquiry modal; checkpoint to inspect fields. Stay on fixture; no oracle.",
+                "present_keys": [
+                  "forbidActions",
+                  "goal",
+                  "modelGoal",
+                  "tabId",
+                  "variables"
+                ],
+                "stopAfter": null,
+                "success": null,
+                "unknown_key_count": 0,
+                "variable_count": 0,
+                "variable_names": [],
+                "variables": {}
+              },
+              "tool_request_json_bytes": 442,
+              "tool_result_text_bytes": 642
+            },
+            {
+              "contract_shape": {
+                "binding_count": 2,
+                "binding_names": [
+                  "location",
+                  "preference"
+                ],
+                "contract_mode": "procedural",
+                "fact_count": null,
+                "fact_names": null,
+                "raw_key_metadata_available": true,
+                "variable_count": 2,
+                "variable_names": [
+                  "location",
+                  "preference"
+                ],
+                "visible_fixture_binding_names": [
+                  "location",
+                  "preference"
+                ],
+                "visible_fixture_fact_names": [],
+                "visible_fixture_variable_names": [
+                  "location",
+                  "preference"
+                ]
+              },
+              "next_exposed_heading": "Receipt verified",
+              "outcome": {
+                "fixture_route": "done",
+                "observed_action": {
+                  "click": "Send inquiry",
+                  "context": "Harbor Studio inquiry"
+                },
+                "reason": "requested_action_observed",
+                "relevant_state": "\"Receipt verified\" [level=1] | Final demo request accepted.",
+                "status": "checkpoint",
+                "steps": 3,
+                "verification": "action_and_fresh_observation"
+              },
+              "request": {
+                "allowed_origins": null,
+                "allowed_origins_count": null,
+                "binding_count": 2,
+                "binding_names": [
+                  "location",
+                  "preference"
+                ],
+                "bindings": {
+                  "location": {
+                    "context": "Harbor Studio inquiry",
+                    "field": "Location"
+                  },
+                  "preference": {
+                    "context": "Harbor Studio inquiry",
+                    "field": "Preference StandardQuiet"
+                  }
+                },
+                "constraints": null,
+                "contract_mode": "procedural",
+                "executionScope": null,
+                "fact_count": null,
+                "fact_names": null,
+                "facts": null,
+                "fieldPolicies": null,
+                "fixture_variable_values_only": true,
+                "forbid_actions": [
+                  "[omitted]",
+                  "Access any oracle"
+                ],
+                "forbid_actions_count": 2,
+                "goal": "In the Harbor Studio inquiry dialog, set Location to North Pier and Preference to Quiet, then click Send inquiry. Stop after that click and fresh observation; do not treat checkpoint as proof of successful submission. Stay within fixture.",
+                "modelGoal": "Set Location=North Pier, Preference=Quiet, click Send inquiry. Stay on fixture; never access oracle.",
+                "present_keys": [
+                  "bindings",
+                  "forbidActions",
+                  "goal",
+                  "modelGoal",
+                  "stopAfter",
+                  "tabId",
+                  "variables"
+                ],
+                "stopAfter": {
+                  "click": "Send inquiry",
+                  "context": "Harbor Studio inquiry"
+                },
+                "success": null,
+                "unknown_key_count": 0,
+                "variable_count": 2,
+                "variable_names": [
+                  "location",
+                  "preference"
+                ],
+                "variables": {
+                  "location": "North Pier",
+                  "preference": "Quiet"
+                }
+              },
+              "tool_request_json_bytes": 813,
+              "tool_result_text_bytes": 634
+            }
+          ],
+          "executor_steps_reported": 7,
+          "failure": null,
+          "hosted_tool_budget": 60,
+          "hosted_tool_budget_hit": false,
+          "hosted_tool_calls_observed": 9,
+          "legacy_input_plus_cache_read": 75679,
+          "local_action_telemetry": 7,
+          "local_deterministic_actions": 3,
+          "local_latency_ms": [
+            276.18,
+            231.56,
+            141.07,
+            167.42
+          ],
+          "local_model_actions": 4,
+          "local_model_calls": 4,
+          "local_model_errors": 0,
+          "local_result_reasons": {
+            "reason:requested_action_observed": 2,
+            "reason:unmapped_fields": 1
+          },
+          "local_snapshots_by_purpose": {
+            "initial": 3,
+            "post_action": 7,
+            "pre_action": 7
+          },
+          "local_snapshots_unexposed": 17,
+          "mistakes": 0,
+          "model_visible_camofox_calls": 6,
+          "model_visible_snapshot_result_bytes": 3815,
+          "model_visible_snapshots": 4,
+          "model_visible_tool_errors": 0,
+          "normalized_prompt_tokens": 84403,
+          "observed_prompt_tokens": 84403,
+          "observed_tokens": {
+            "cacheRead": 75640,
+            "cacheWrite": 8724,
+            "input": 39,
+            "output": 1036
+          },
+          "oracle_passed": true,
+          "oracle_unavailable": false,
+          "provider_stop_reason": null,
+          "sanitized_trace_available": true,
+          "status": "ok",
+          "task": "challenge-38",
+          "usage_complete": true,
+          "wall_seconds": 60.498,
+          "wrong_actions": 0
+        },
+        {
+          "assistant_turns": 12,
+          "assistant_usage_entries": 12,
+          "billed_usd": null,
+          "catalog_estimated_usd": 0.0430489,
+          "direct_mutation_calls": {
+            "camofox_click": 1,
+            "camofox_navigate": 0,
+            "camofox_scroll": 0,
+            "camofox_select": 0,
+            "camofox_type": 0
+          },
+          "executor_calls": [
+            {
+              "contract_shape": {
+                "binding_count": 2,
+                "binding_names": [
+                  "party",
+                  "preference"
+                ],
+                "contract_mode": "procedural",
+                "fact_count": null,
+                "fact_names": null,
+                "raw_key_metadata_available": true,
+                "variable_count": 2,
+                "variable_names": [
+                  "party",
+                  "preference"
+                ],
+                "visible_fixture_binding_names": [
+                  "party",
+                  "preference"
+                ],
+                "visible_fixture_fact_names": [],
+                "visible_fixture_variable_names": [
+                  "party",
+                  "preference"
+                ]
+              },
+              "next_exposed_heading": "Booking details",
+              "outcome": {
+                "diagnostic_field": "Side Hall / Party size",
+                "diagnostic_reason": "unbound_current_fields",
+                "fixture_route": "start",
+                "reason": "unmapped_fields",
+                "relevant_state": "\"Booking details\" [level=1] | \"Side Hall\" [level=2] | Party size | \"Garden Room\" [level=2] | Party size | Preference",
+                "status": "escalated",
+                "steps": 2
+              },
+              "request": {
+                "allowed_origins": null,
+                "allowed_origins_count": null,
+                "binding_count": 2,
+                "binding_names": [
+                  "party",
+                  "preference"
+                ],
+                "bindings": {
+                  "party": {
+                    "context": "Garden Room",
+                    "field": "Party size"
+                  },
+                  "preference": {
+                    "context": "Garden Room",
+                    "field": "Preference"
+                  }
+                },
+                "constraints": null,
+                "contract_mode": "procedural",
+                "executionScope": null,
+                "fact_count": null,
+                "fact_names": null,
+                "facts": null,
+                "fieldPolicies": null,
+                "fixture_variable_values_only": true,
+                "forbid_actions": [
+                  "Interact with Side Hall fields or button",
+                  "Submit Side Hall inquiry"
+                ],
+                "forbid_actions_count": 2,
+                "goal": "In the Garden Room card only, set Party size to 2 and Preference to Quiet, then click its Send inquiry button. Do not interact with Side Hall. Stop after the Garden Room inquiry click and inspect the resulting page.",
+                "modelGoal": "Set Garden Room Party size=2 and Preference=Quiet; click its Send inquiry only. Never touch Side Hall.",
+                "present_keys": [
+                  "bindings",
+                  "forbidActions",
+                  "goal",
+                  "modelGoal",
+                  "stopAfter",
+                  "tabId",
+                  "variables"
+                ],
+                "stopAfter": {
+                  "click": "Send inquiry",
+                  "context": "Garden Room"
+                },
+                "success": null,
+                "unknown_key_count": 0,
+                "variable_count": 2,
+                "variable_names": [
+                  "party",
+                  "preference"
+                ],
+                "variables": {
+                  "party": "2",
+                  "preference": "Quiet"
+                }
+              },
+              "tool_request_json_bytes": 743,
+              "tool_result_text_bytes": 653
+            }
+          ],
+          "executor_steps_reported": 2,
+          "failure": null,
+          "hosted_tool_budget": 60,
+          "hosted_tool_budget_hit": false,
+          "hosted_tool_calls_observed": 7,
+          "legacy_input_plus_cache_read": 68683,
+          "local_action_telemetry": 2,
+          "local_deterministic_actions": 2,
+          "local_latency_ms": [],
+          "local_model_actions": 0,
+          "local_model_calls": 0,
+          "local_model_errors": 0,
+          "local_result_reasons": {
+            "reason:unmapped_fields": 1
+          },
+          "local_snapshots_by_purpose": {
+            "initial": 1,
+            "post_action": 2,
+            "pre_action": 2
+          },
+          "local_snapshots_unexposed": 5,
+          "mistakes": 0,
+          "model_visible_camofox_calls": 6,
+          "model_visible_snapshot_result_bytes": 4310,
+          "model_visible_snapshots": 3,
+          "model_visible_tool_errors": 0,
+          "normalized_prompt_tokens": 77142,
+          "observed_prompt_tokens": 77142,
+          "observed_tokens": {
+            "cacheRead": 68647,
+            "cacheWrite": 8459,
+            "input": 36,
+            "output": 810
+          },
+          "oracle_passed": true,
+          "oracle_unavailable": false,
+          "provider_stop_reason": null,
+          "sanitized_trace_available": true,
+          "status": "ok",
+          "task": "challenge-40",
+          "usage_complete": true,
+          "wall_seconds": 42.288,
+          "wrong_actions": 0
+        },
+        {
+          "assistant_turns": 11,
+          "assistant_usage_entries": 11,
+          "billed_usd": null,
+          "catalog_estimated_usd": 0.0402443,
+          "direct_mutation_calls": {
+            "camofox_click": 0,
+            "camofox_navigate": 0,
+            "camofox_scroll": 0,
+            "camofox_select": 0,
+            "camofox_type": 0
+          },
+          "executor_calls": [
+            {
+              "contract_shape": {
+                "binding_count": 1,
+                "binding_names": [
+                  "location"
+                ],
+                "contract_mode": "procedural",
+                "fact_count": null,
+                "fact_names": null,
+                "raw_key_metadata_available": true,
+                "variable_count": 1,
+                "variable_names": [
+                  "location"
+                ],
+                "visible_fixture_binding_names": [
+                  "location"
+                ],
+                "visible_fixture_fact_names": [],
+                "visible_fixture_variable_names": [
+                  "location"
+                ]
+              },
+              "next_exposed_heading": "Request stage 2 of 2",
+              "outcome": {
+                "fixture_route": "review",
+                "observed_action": {
+                  "click": "Continue",
+                  "context": "Request stage 1 of 2"
+                },
+                "reason": "requested_action_observed",
+                "relevant_state": "\"Request stage 2 of 2\" [level=1] | Location | Service",
+                "status": "checkpoint",
+                "steps": 2,
+                "verification": "action_and_fresh_observation"
+              },
+              "request": {
+                "allowed_origins": null,
+                "allowed_origins_count": null,
+                "binding_count": 1,
+                "binding_names": [
+                  "location"
+                ],
+                "bindings": {
+                  "location": "Location"
+                },
+                "constraints": null,
+                "contract_mode": "procedural",
+                "executionScope": null,
+                "fact_count": null,
+                "fact_names": null,
+                "facts": null,
+                "fieldPolicies": null,
+                "fixture_variable_values_only": true,
+                "forbid_actions": [
+                  "Navigate outside this fixture",
+                  "Access oracle"
+                ],
+                "forbid_actions_count": 2,
+                "goal": "Enter North Pier in the observed Location field on request stage 1 of 2, then click Continue to reveal stage 2. Stop after that click and inspect the changed page; do not guess or fill fields not yet observed.",
+                "modelGoal": "Set Location to North Pier and click Continue; stop at newly revealed stage 2. Do not invent future field bindings.",
+                "present_keys": [
+                  "bindings",
+                  "forbidActions",
+                  "goal",
+                  "modelGoal",
+                  "stopAfter",
+                  "tabId",
+                  "variables"
+                ],
+                "stopAfter": {
+                  "click": "Continue"
+                },
+                "success": null,
+                "unknown_key_count": 0,
+                "variable_count": 1,
+                "variable_names": [
+                  "location"
+                ],
+                "variables": {
+                  "location": "North Pier"
+                }
+              },
+              "tool_request_json_bytes": 586,
+              "tool_result_text_bytes": 625
+            },
+            {
+              "contract_shape": {
+                "binding_count": 2,
+                "binding_names": [
+                  "location",
+                  "service"
+                ],
+                "contract_mode": "procedural",
+                "fact_count": null,
+                "fact_names": null,
+                "raw_key_metadata_available": true,
+                "variable_count": 2,
+                "variable_names": [
+                  "location",
+                  "service"
+                ],
+                "visible_fixture_binding_names": [
+                  "location",
+                  "service"
+                ],
+                "visible_fixture_fact_names": [],
+                "visible_fixture_variable_names": [
+                  "location",
+                  "service"
+                ]
+              },
+              "next_exposed_heading": "Receipt verified",
+              "outcome": {
+                "fixture_route": "done",
+                "observed_action": {
+                  "click": "Confirm request",
+                  "context": "Request stage 2 of 2"
+                },
+                "reason": "requested_action_observed",
+                "relevant_state": "\"Receipt verified\" [level=1] | Final demo request accepted.",
+                "status": "checkpoint",
+                "steps": 3,
+                "verification": "action_and_fresh_observation"
+              },
+              "request": {
+                "allowed_origins": null,
+                "allowed_origins_count": null,
+                "binding_count": 2,
+                "binding_names": [
+                  "location",
+                  "service"
+                ],
+                "bindings": {
+                  "location": "Location",
+                  "service": "Service"
+                },
+                "constraints": null,
+                "contract_mode": "procedural",
+                "executionScope": null,
+                "fact_count": null,
+                "fact_names": null,
+                "facts": null,
+                "fieldPolicies": null,
+                "fixture_variable_values_only": true,
+                "forbid_actions": [
+                  "Navigate outside this fixture",
+                  "Access oracle"
+                ],
+                "forbid_actions_count": 2,
+                "goal": "On request stage 2 of 2, enter North Pier in Location, select Express in Service, and click Confirm request. Stop after confirmation and observe the resulting page.",
+                "modelGoal": "Set Location North Pier and Service Express, then click Confirm request. Stay on fixture; do not access oracle.",
+                "present_keys": [
+                  "bindings",
+                  "forbidActions",
+                  "goal",
+                  "modelGoal",
+                  "stopAfter",
+                  "tabId",
+                  "variables"
+                ],
+                "stopAfter": {
+                  "click": "Confirm request"
+                },
+                "success": null,
+                "unknown_key_count": 0,
+                "variable_count": 2,
+                "variable_names": [
+                  "location",
+                  "service"
+                ],
+                "variables": {
+                  "location": "North Pier",
+                  "service": "Express"
+                }
+              },
+              "tool_request_json_bytes": 588,
+              "tool_result_text_bytes": 636
+            }
+          ],
+          "executor_steps_reported": 5,
+          "failure": null,
+          "hosted_tool_budget": 60,
+          "hosted_tool_budget_hit": false,
+          "hosted_tool_calls_observed": 7,
+          "legacy_input_plus_cache_read": 59212,
+          "local_action_telemetry": 5,
+          "local_deterministic_actions": 3,
+          "local_latency_ms": [
+            244.17,
+            200.94
+          ],
+          "local_model_actions": 2,
+          "local_model_calls": 2,
+          "local_model_errors": 0,
+          "local_result_reasons": {
+            "reason:requested_action_observed": 2
+          },
+          "local_snapshots_by_purpose": {
+            "initial": 2,
+            "post_action": 5,
+            "pre_action": 5
+          },
+          "local_snapshots_unexposed": 12,
+          "mistakes": 0,
+          "model_visible_camofox_calls": 5,
+          "model_visible_snapshot_result_bytes": 2950,
+          "model_visible_snapshots": 3,
+          "model_visible_tool_errors": 0,
+          "normalized_prompt_tokens": 67281,
+          "observed_prompt_tokens": 67281,
+          "observed_tokens": {
+            "cacheRead": 59179,
+            "cacheWrite": 8069,
+            "input": 33,
+            "output": 817
+          },
+          "oracle_passed": true,
+          "oracle_unavailable": false,
+          "provider_stop_reason": null,
+          "sanitized_trace_available": true,
+          "status": "ok",
+          "task": "challenge-52",
+          "usage_complete": true,
+          "wall_seconds": 52.621,
+          "wrong_actions": 0
+        }
+      ],
+      "selected_model_row_sha256": "aef708d8eb30b3866761064b09e813c9a96a111fe21e42b3c640907805251ae1",
+      "source_directory": "semantic-hypotheses-sol-procedural-workflow",
+      "source_fingerprint": "fdb5273cd8100b9d195f70468fc4749e59d00a5b75ad1bf69c547ff26cf4cebd",
+      "source_sha256": {
+        "bridge": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "browser_skill": "c2e798e58170fb59fa1717fae9f95f24e5e247520cd48c7077ab582e21ffffd8",
+        "browser_transport": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "challenge_fixture": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "core": "a41f9b4baf78c80929aa8829f59744a6414d4a1fa65b4376ab2c91a8d86b9d21",
+        "resolver": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "runner": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b",
+        "server_fixture": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_fixture": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c",
+        "tool_definition": "d5f2d67555a5c231f17dfa27a05077643f84422af688a07e2c712f3431c87e9e"
+      },
+      "suite": "semantic-hypotheses-sol-procedural-workflow",
+      "tool_contract_schema_sha256": "d6388ce9f67fa14751794dc1acf3c11bbd2d5fef3caf1ef761ebea3aacfe6d75"
+    },
+    {
+      "catalog_cost_per_million_usd": {
+        "cacheRead": 0.2,
+        "cacheWrite": 2.5,
+        "input": 2,
+        "output": 10
+      },
+      "executor_configuration": {
+        "applyPrepared": true,
+        "backend": "laya",
+        "candidateMode": "strictBindings",
+        "contractMode": "semantic",
+        "maxSteps": 24,
+        "stopPolicy": "success"
+      },
+      "fixture_sha256": {
+        "challenge.js": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server.js": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks.js": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "manifest_hosted_tool_budget": 60,
+      "model": "openrouter/openai/gpt-6-sol",
+      "model_catalog_sha256": "7131403c53f5b84bc0b18052b6375b2bf4891708e85b9d462aa0a5a7d58230ad",
+      "model_limits": {
+        "contextWindow": 32768,
+        "maxTokens": 2048,
+        "thinking": "low"
+      },
+      "packaged_plugin_sha256": {
+        "manifest": "37395db717ce454cf89d09734537c07153696587ea5e2303b314c3805ace6d51",
+        "wrapper": "74c5ed5949317062c935ecdfc3a8a89598ea262b84614431d880892e567ea3c0"
+      },
+      "recorded_prompt_template_sha256": "2f0981dd2886a70c92d5c6a371baeed71213573408ee3a23b579f0dae233ad72",
+      "runs": [
+        {
+          "assistant_turns": 12,
+          "assistant_usage_entries": 12,
+          "billed_usd": null,
+          "catalog_estimated_usd": 0.0462862,
+          "direct_mutation_calls": {
+            "camofox_click": 0,
+            "camofox_navigate": 0,
+            "camofox_scroll": 0,
+            "camofox_select": 0,
+            "camofox_type": 0
+          },
+          "executor_calls": [
+            {
+              "contract_shape": {
+                "binding_count": 4,
+                "binding_names": [
+                  "destination",
+                  "arrival",
+                  "travel",
+                  "reference"
+                ],
+                "contract_mode": "semantic",
+                "fact_count": 16,
+                "fact_names": [
+                  "destination",
+                  "arrival",
+                  "travel",
+                  "reference",
+                  "attendee",
+                  "seat",
+                  "access",
+                  "ticket",
+                  "meal",
+                  "session",
+                  "venue",
+                  "reminder",
+                  "summary",
+                  "timezone",
+                  "contact",
+                  "confirm"
+                ],
+                "raw_key_metadata_available": true,
+                "variable_count": null,
+                "variable_names": null,
+                "visible_fixture_binding_names": [
+                  "arrival",
+                  "destination",
+                  "reference",
+                  "travel"
+                ],
+                "visible_fixture_fact_names": [
+                  "access",
+                  "arrival",
+                  "attendee",
+                  "confirm",
+                  "contact",
+                  "destination",
+                  "meal",
+                  "reference",
+                  "reminder",
+                  "seat",
+                  "session",
+                  "summary",
+                  "ticket",
+                  "timezone",
+                  "travel",
+                  "venue"
+                ],
+                "visible_fixture_variable_names": []
+              },
+              "next_exposed_heading": "Itinerary stage 1 of 4",
+              "outcome": {
+                "fixture_route": "start",
+                "problem": {
+                  "context": "Itinerary stage 1 of 4",
+                  "field": "Travel mode RoadRailFerry",
+                  "kind": "missing_fact",
+                  "options": [
+                    {
+                      "label": "Road",
+                      "value": "Road"
+                    },
+                    {
+                      "label": "Rail",
+                      "value": "Rail"
+                    },
+                    {
+                      "label": "Ferry",
+                      "value": "Ferry"
+                    }
+                  ],
+                  "options_count": 3
+                },
+                "progress": {
+                  "assignments_verified": 3,
+                  "pages_seen": 1,
+                  "remaining_fact_key_count": 13,
+                  "remaining_fact_keys": [
+                    "travel",
+                    "attendee",
+                    "seat",
+                    "access",
+                    "ticket",
+                    "meal",
+                    "session",
+                    "venue",
+                    "reminder",
+                    "summary",
+                    "timezone",
+                    "contact",
+                    "confirm"
+                  ]
+                },
+                "reason": "missing_fact",
+                "relevant_state": "\"Itinerary stage 1 of 4\" [level=1] | Follow the itinerary instructions provided with this task. | Destination | Arrival date | Travel mode | Reference label",
+                "status": "needs_decision",
+                "steps": 3
+              },
+              "request": {
+                "allowed_origins": null,
+                "allowed_origins_count": null,
+                "binding_count": 4,
+                "binding_names": [
+                  "destination",
+                  "arrival",
+                  "travel",
+                  "reference"
+                ],
+                "bindings": {
+                  "arrival": "Arrival date",
+                  "destination": "Destination",
+                  "reference": "Reference label",
+                  "travel": "Travel mode"
+                },
+                "constraints": {
+                  "allowed_origins": [
+                    "[fixture-origin]"
+                  ],
+                  "allowed_origins_count": 1,
+                  "forbid_actions": [
+                    "Access the oracle",
+                    "Navigate outside this fixture"
+                  ],
+                  "forbid_actions_count": 2,
+                  "present_keys": [
+                    "allowedOrigins",
+                    "forbidActions"
+                  ],
+                  "unknown_key_count": 0
+                },
+                "contract_mode": "semantic",
+                "executionScope": null,
+                "fact_count": 16,
+                "fact_names": [
+                  "destination",
+                  "arrival",
+                  "travel",
+                  "reference",
+                  "attendee",
+                  "seat",
+                  "access",
+                  "ticket",
+                  "meal",
+                  "session",
+                  "venue",
+                  "reminder",
+                  "summary",
+                  "timezone",
+                  "contact",
+                  "confirm"
+                ],
+                "facts": {
+                  "access": "None",
+                  "arrival": "2028-04-12",
+                  "attendee": "Guest Delegate",
+                  "confirm": "Reviewed",
+                  "contact": "Office Desk",
+                  "destination": "North Pier",
+                  "meal": "vegetarian",
+                  "reference": "Conference",
+                  "reminder": "Email",
+                  "seat": "window",
+                  "session": "[redacted]",
+                  "summary": "Conference visit",
+                  "ticket": "Standard",
+                  "timezone": "UTC",
+                  "travel": "Rail",
+                  "venue": "North"
+                },
+                "fieldPolicies": null,
+                "fixture_variable_values_only": true,
+                "forbid_actions": null,
+                "forbid_actions_count": null,
+                "goal": "Complete all four itinerary stages using the supplied facts, continuing through each stage and submitting the final review. Verify the resulting terminal confirmation. Stay on this fixture only; do not access an oracle.",
+                "modelGoal": null,
+                "present_keys": [
+                  "bindings",
+                  "constraints",
+                  "facts",
+                  "goal",
+                  "tabId"
+                ],
+                "stopAfter": null,
+                "success": null,
+                "unknown_key_count": 0,
+                "variable_count": null,
+                "variable_names": null,
+                "variables": {}
+              },
+              "tool_request_json_bytes": 920,
+              "tool_result_text_bytes": 1069
+            },
+            {
+              "contract_shape": {
+                "binding_count": 1,
+                "binding_names": [
+                  "travel"
+                ],
+                "contract_mode": "semantic",
+                "fact_count": 13,
+                "fact_names": [
+                  "travel",
+                  "attendee",
+                  "seat",
+                  "access",
+                  "ticket",
+                  "meal",
+                  "session",
+                  "venue",
+                  "reminder",
+                  "summary",
+                  "timezone",
+                  "contact",
+                  "confirm"
+                ],
+                "raw_key_metadata_available": true,
+                "variable_count": null,
+                "variable_names": null,
+                "visible_fixture_binding_names": [
+                  "travel"
+                ],
+                "visible_fixture_fact_names": [
+                  "access",
+                  "attendee",
+                  "confirm",
+                  "contact",
+                  "meal",
+                  "reminder",
+                  "seat",
+                  "session",
+                  "summary",
+                  "ticket",
+                  "timezone",
+                  "travel",
+                  "venue"
+                ],
+                "visible_fixture_variable_names": []
+              },
+              "next_exposed_heading": null,
+              "outcome": {
+                "fixture_route": "start",
+                "problem": {
+                  "context": "Itinerary stage 1 of 4",
+                  "field": "Destination",
+                  "kind": "missing_fact",
+                  "options": [],
+                  "options_count": 0
+                },
+                "progress": {
+                  "assignments_verified": 1,
+                  "pages_seen": 1,
+                  "remaining_fact_key_count": 12,
+                  "remaining_fact_keys": [
+                    "attendee",
+                    "seat",
+                    "access",
+                    "ticket",
+                    "meal",
+                    "session",
+                    "venue",
+                    "reminder",
+                    "summary",
+                    "timezone",
+                    "contact",
+                    "confirm"
+                  ]
+                },
+                "reason": "missing_fact",
+                "relevant_state": "\"Itinerary stage 1 of 4\" [level=1] | Follow the itinerary instructions provided with this task. | Destination | Arrival date | Travel mode | Reference label",
+                "status": "needs_decision",
+                "steps": 1
+              },
+              "request": {
+                "allowed_origins": null,
+                "allowed_origins_count": null,
+                "binding_count": 1,
+                "binding_names": [
+                  "travel"
+                ],
+                "bindings": {
+                  "travel": {
+                    "context": "Itinerary stage 1 of 4",
+                    "field": "Travel mode RoadRailFerry"
+                  }
+                },
+                "constraints": {
+                  "allowed_origins": [
+                    "[fixture-origin]"
+                  ],
+                  "allowed_origins_count": 1,
+                  "forbid_actions": [
+                    "Access the oracle",
+                    "Navigate outside this fixture"
+                  ],
+                  "forbid_actions_count": 2,
+                  "present_keys": [
+                    "allowedOrigins",
+                    "forbidActions"
+                  ],
+                  "unknown_key_count": 0
+                },
+                "contract_mode": "semantic",
+                "executionScope": null,
+                "fact_count": 13,
+                "fact_names": [
+                  "travel",
+                  "attendee",
+                  "seat",
+                  "access",
+                  "ticket",
+                  "meal",
+                  "session",
+                  "venue",
+                  "reminder",
+                  "summary",
+                  "timezone",
+                  "contact",
+                  "confirm"
+                ],
+                "facts": {
+                  "access": "None",
+                  "attendee": "Guest Delegate",
+                  "confirm": "Reviewed",
+                  "contact": "Office Desk",
+                  "meal": "vegetarian",
+                  "reminder": "Email",
+                  "seat": "window",
+                  "session": "[redacted]",
+                  "summary": "Conference visit",
+                  "ticket": "Standard",
+                  "timezone": "UTC",
+                  "travel": "Rail",
+                  "venue": "North"
+                },
+                "fieldPolicies": null,
+                "fixture_variable_values_only": true,
+                "forbid_actions": null,
+                "forbid_actions_count": null,
+                "goal": "Complete all four itinerary stages using supplied facts, continue and submit final review; verify terminal confirmation. Stay on fixture only, never access oracle.",
+                "modelGoal": null,
+                "present_keys": [
+                  "bindings",
+                  "constraints",
+                  "facts",
+                  "goal",
+                  "tabId"
+                ],
+                "stopAfter": null,
+                "success": null,
+                "unknown_key_count": 0,
+                "variable_count": null,
+                "variable_names": null,
+                "variables": {}
+              },
+              "tool_request_json_bytes": 756,
+              "tool_result_text_bytes": 923
+            },
+            {
+              "contract_shape": {
+                "binding_count": 4,
+                "binding_names": [
+                  "destination",
+                  "arrival",
+                  "travel",
+                  "reference"
+                ],
+                "contract_mode": "semantic",
+                "fact_count": 16,
+                "fact_names": [
+                  "destination",
+                  "arrival",
+                  "travel",
+                  "reference",
+                  "attendee",
+                  "seat",
+                  "access",
+                  "ticket",
+                  "meal",
+                  "session",
+                  "venue",
+                  "reminder",
+                  "summary",
+                  "timezone",
+                  "contact",
+                  "confirm"
+                ],
+                "raw_key_metadata_available": true,
+                "variable_count": null,
+                "variable_names": null,
+                "visible_fixture_binding_names": [
+                  "arrival",
+                  "destination",
+                  "reference",
+                  "travel"
+                ],
+                "visible_fixture_fact_names": [
+                  "access",
+                  "arrival",
+                  "attendee",
+                  "confirm",
+                  "contact",
+                  "destination",
+                  "meal",
+                  "reference",
+                  "reminder",
+                  "seat",
+                  "session",
+                  "summary",
+                  "ticket",
+                  "timezone",
+                  "travel",
+                  "venue"
+                ],
+                "visible_fixture_variable_names": []
+              },
+              "next_exposed_heading": "Request recorded",
+              "outcome": {
+                "fixture_route": "done",
+                "progress": {
+                  "assignments_verified": 16,
+                  "pages_seen": 4,
+                  "remaining_fact_key_count": 0,
+                  "remaining_fact_keys": []
+                },
+                "reason": "no_actionable_controls",
+                "relevant_state": "\"Request recorded\" [level=1] | \"Completed: Complete the four-stage conference itinerary for North Pier, window seat, and vegetarian meal. Enter these values across the four stages: destination North Pier; arrival date 2028-04-12; travel mod",
+                "status": "checkpoint",
+                "steps": 16
+              },
+              "request": {
+                "allowed_origins": null,
+                "allowed_origins_count": null,
+                "binding_count": 4,
+                "binding_names": [
+                  "destination",
+                  "arrival",
+                  "travel",
+                  "reference"
+                ],
+                "bindings": {
+                  "arrival": "Arrival date",
+                  "destination": "Destination",
+                  "reference": "Reference label",
+                  "travel": {
+                    "context": "Itinerary stage 1 of 4",
+                    "field": "Travel mode RoadRailFerry"
+                  }
+                },
+                "constraints": {
+                  "allowed_origins": [
+                    "[fixture-origin]"
+                  ],
+                  "allowed_origins_count": 1,
+                  "forbid_actions": [
+                    "Access the oracle",
+                    "Navigate outside this fixture"
+                  ],
+                  "forbid_actions_count": 2,
+                  "present_keys": [
+                    "allowedOrigins",
+                    "forbidActions"
+                  ],
+                  "unknown_key_count": 0
+                },
+                "contract_mode": "semantic",
+                "executionScope": null,
+                "fact_count": 16,
+                "fact_names": [
+                  "destination",
+                  "arrival",
+                  "travel",
+                  "reference",
+                  "attendee",
+                  "seat",
+                  "access",
+                  "ticket",
+                  "meal",
+                  "session",
+                  "venue",
+                  "reminder",
+                  "summary",
+                  "timezone",
+                  "contact",
+                  "confirm"
+                ],
+                "facts": {
+                  "access": "None",
+                  "arrival": "2028-04-12",
+                  "attendee": "Guest Delegate",
+                  "confirm": "Reviewed",
+                  "contact": "Office Desk",
+                  "destination": "North Pier",
+                  "meal": "vegetarian",
+                  "reference": "Conference",
+                  "reminder": "Email",
+                  "seat": "window",
+                  "session": "[redacted]",
+                  "summary": "Conference visit",
+                  "ticket": "Standard",
+                  "timezone": "UTC",
+                  "travel": "Rail",
+                  "venue": "North"
+                },
+                "fieldPolicies": null,
+                "fixture_variable_values_only": true,
+                "forbid_actions": null,
+                "forbid_actions_count": null,
+                "goal": "Complete four itinerary stages with supplied facts; continue and submit final review, verify terminal confirmation. Fixture only, no oracle.",
+                "modelGoal": null,
+                "present_keys": [
+                  "bindings",
+                  "constraints",
+                  "facts",
+                  "goal",
+                  "tabId"
+                ],
+                "stopAfter": null,
+                "success": null,
+                "unknown_key_count": 0,
+                "variable_count": null,
+                "variable_names": null,
+                "variables": {}
+              },
+              "tool_request_json_bytes": 903,
+              "tool_result_text_bytes": 804
+            }
+          ],
+          "executor_steps_reported": 20,
+          "failure": null,
+          "hosted_tool_budget": 60,
+          "hosted_tool_budget_hit": false,
+          "hosted_tool_calls_observed": 8,
+          "legacy_input_plus_cache_read": 66607,
+          "local_action_telemetry": 20,
+          "local_deterministic_actions": 16,
+          "local_latency_ms": [
+            218.3,
+            194.66,
+            175.11,
+            132.91
+          ],
+          "local_model_actions": 4,
+          "local_model_calls": 4,
+          "local_model_errors": 0,
+          "local_result_reasons": {
+            "reason:missing_fact": 2,
+            "reason:no_actionable_controls": 1
+          },
+          "local_snapshots_by_purpose": {
+            "initial": 3,
+            "post_action": 20,
+            "pre_action": 20
+          },
+          "local_snapshots_unexposed": 43,
+          "mistakes": 0,
+          "model_visible_camofox_calls": 5,
+          "model_visible_snapshot_result_bytes": 5259,
+          "model_visible_snapshots": 3,
+          "model_visible_tool_errors": 0,
+          "normalized_prompt_tokens": 75295,
+          "observed_prompt_tokens": 75295,
+          "observed_tokens": {
+            "cacheRead": 66571,
+            "cacheWrite": 8688,
+            "input": 36,
+            "output": 1118
+          },
+          "oracle_passed": true,
+          "oracle_unavailable": false,
+          "provider_stop_reason": null,
+          "sanitized_trace_available": true,
+          "status": "ok",
+          "task": "long-07",
+          "usage_complete": true,
+          "wall_seconds": 67.106,
+          "wrong_actions": 0
+        }
+      ],
+      "selected_model_row_sha256": "aef708d8eb30b3866761064b09e813c9a96a111fe21e42b3c640907805251ae1",
+      "source_directory": "semantic-hypotheses-sol-semantic-long",
+      "source_fingerprint": "fdb5273cd8100b9d195f70468fc4749e59d00a5b75ad1bf69c547ff26cf4cebd",
+      "source_sha256": {
+        "bridge": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "browser_skill": "c2e798e58170fb59fa1717fae9f95f24e5e247520cd48c7077ab582e21ffffd8",
+        "browser_transport": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "challenge_fixture": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "core": "a41f9b4baf78c80929aa8829f59744a6414d4a1fa65b4376ab2c91a8d86b9d21",
+        "resolver": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "runner": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b",
+        "server_fixture": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_fixture": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c",
+        "tool_definition": "d5f2d67555a5c231f17dfa27a05077643f84422af688a07e2c712f3431c87e9e"
+      },
+      "suite": "semantic-hypotheses-sol-semantic-long",
+      "tool_contract_schema_sha256": "587561b0683027b64f05740b948500be63a32187046b1a3552b73e8eb0d15420"
+    },
+    {
+      "catalog_cost_per_million_usd": {
+        "cacheRead": 0.2,
+        "cacheWrite": 2.5,
+        "input": 2,
+        "output": 10
+      },
+      "executor_configuration": {
+        "applyPrepared": true,
+        "backend": "laya",
+        "candidateMode": "strictBindings",
+        "contractMode": "semantic",
+        "maxSteps": 24,
+        "stopPolicy": "success"
+      },
+      "fixture_sha256": {
+        "challenge.js": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server.js": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks.js": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "manifest_hosted_tool_budget": 60,
+      "model": "openrouter/openai/gpt-6-sol",
+      "model_catalog_sha256": "7131403c53f5b84bc0b18052b6375b2bf4891708e85b9d462aa0a5a7d58230ad",
+      "model_limits": {
+        "contextWindow": 32768,
+        "maxTokens": 2048,
+        "thinking": "low"
+      },
+      "packaged_plugin_sha256": {
+        "manifest": "37395db717ce454cf89d09734537c07153696587ea5e2303b314c3805ace6d51",
+        "wrapper": "74c5ed5949317062c935ecdfc3a8a89598ea262b84614431d880892e567ea3c0"
+      },
+      "recorded_prompt_template_sha256": "2f0981dd2886a70c92d5c6a371baeed71213573408ee3a23b579f0dae233ad72",
+      "runs": [
+        {
+          "assistant_turns": 9,
+          "assistant_usage_entries": 9,
+          "billed_usd": null,
+          "catalog_estimated_usd": 0.0304233,
+          "direct_mutation_calls": {
+            "camofox_click": 0,
+            "camofox_navigate": 0,
+            "camofox_scroll": 0,
+            "camofox_select": 0,
+            "camofox_type": 0
+          },
+          "executor_calls": [
+            {
+              "contract_shape": {
+                "binding_count": 1,
+                "binding_names": [
+                  "target"
+                ],
+                "contract_mode": "semantic",
+                "fact_count": 3,
+                "fact_names": [
+                  "target",
+                  "location",
+                  "preference"
+                ],
+                "raw_key_metadata_available": true,
+                "variable_count": null,
+                "variable_names": null,
+                "visible_fixture_binding_names": [
+                  "target"
+                ],
+                "visible_fixture_fact_names": [
+                  "location",
+                  "preference",
+                  "target"
+                ],
+                "visible_fixture_variable_names": []
+              },
+              "next_exposed_heading": "Receipt verified",
+              "outcome": {
+                "fixture_route": "done",
+                "progress": {
+                  "assignments_verified": 3,
+                  "pages_seen": 4,
+                  "remaining_fact_key_count": 0,
+                  "remaining_fact_keys": []
+                },
+                "reason": "no_actionable_controls",
+                "relevant_state": "\"Receipt verified\" [level=1] | Final demo request accepted.",
+                "status": "checkpoint",
+                "steps": 7
+              },
+              "request": {
+                "allowed_origins": null,
+                "allowed_origins_count": null,
+                "binding_count": 1,
+                "binding_names": [
+                  "target"
+                ],
+                "bindings": {
+                  "target": "Search catalog"
+                },
+                "constraints": {
+                  "allowed_origins": [
+                    "[fixture-origin]"
+                  ],
+                  "allowed_origins_count": 1,
+                  "forbid_actions": [
+                    "Access the oracle",
+                    "Navigate outside this fixture"
+                  ],
+                  "forbid_actions_count": 2,
+                  "present_keys": [
+                    "allowedOrigins",
+                    "forbidActions"
+                  ],
+                  "unknown_key_count": 0
+                },
+                "contract_mode": "semantic",
+                "executionScope": null,
+                "fact_count": 3,
+                "fact_names": [
+                  "target",
+                  "location",
+                  "preference"
+                ],
+                "facts": {
+                  "location": "North Pier",
+                  "preference": "Quiet",
+                  "target": "Harbor Studio"
+                },
+                "fieldPolicies": null,
+                "fixture_variable_values_only": true,
+                "forbid_actions": null,
+                "forbid_actions_count": null,
+                "goal": "Search the catalog for Harbor Studio, open that result and its inquiry modal, request North Pier with Quiet preference, then send the demo inquiry. Stay within this fixture and verify the resulting confirmation.",
+                "modelGoal": null,
+                "present_keys": [
+                  "bindings",
+                  "constraints",
+                  "facts",
+                  "goal",
+                  "tabId"
+                ],
+                "stopAfter": null,
+                "success": null,
+                "unknown_key_count": 0,
+                "variable_count": null,
+                "variable_names": null,
+                "variables": {}
+              },
+              "tool_request_json_bytes": 537,
+              "tool_result_text_bytes": 580
+            }
+          ],
+          "executor_steps_reported": 7,
+          "failure": null,
+          "hosted_tool_budget": 60,
+          "hosted_tool_budget_hit": false,
+          "hosted_tool_calls_observed": 5,
+          "legacy_input_plus_cache_read": 40011,
+          "local_action_telemetry": 7,
+          "local_deterministic_actions": 3,
+          "local_latency_ms": [
+            239.22,
+            196.24,
+            117.76,
+            195.42
+          ],
+          "local_model_actions": 4,
+          "local_model_calls": 4,
+          "local_model_errors": 0,
+          "local_result_reasons": {
+            "reason:no_actionable_controls": 1
+          },
+          "local_snapshots_by_purpose": {
+            "initial": 1,
+            "post_action": 7,
+            "pre_action": 7
+          },
+          "local_snapshots_unexposed": 15,
+          "mistakes": 0,
+          "model_visible_camofox_calls": 4,
+          "model_visible_snapshot_result_bytes": 1551,
+          "model_visible_snapshots": 2,
+          "model_visible_tool_errors": 0,
+          "normalized_prompt_tokens": 46564,
+          "observed_prompt_tokens": 46564,
+          "observed_tokens": {
+            "cacheRead": 39984,
+            "cacheWrite": 6553,
+            "input": 27,
+            "output": 599
+          },
+          "oracle_passed": true,
+          "oracle_unavailable": false,
+          "provider_stop_reason": null,
+          "sanitized_trace_available": true,
+          "status": "ok",
+          "task": "challenge-38",
+          "usage_complete": true,
+          "wall_seconds": 53.592,
+          "wrong_actions": 0
+        },
+        {
+          "assistant_turns": 12,
+          "assistant_usage_entries": 12,
+          "billed_usd": null,
+          "catalog_estimated_usd": 0.0394291,
+          "direct_mutation_calls": {
+            "camofox_click": 1,
+            "camofox_navigate": 0,
+            "camofox_scroll": 0,
+            "camofox_select": 0,
+            "camofox_type": 0
+          },
+          "executor_calls": [
+            {
+              "contract_shape": {
+                "binding_count": 2,
+                "binding_names": [
+                  "party",
+                  "preference"
+                ],
+                "contract_mode": "semantic",
+                "fact_count": 2,
+                "fact_names": [
+                  "party",
+                  "preference"
+                ],
+                "raw_key_metadata_available": true,
+                "variable_count": null,
+                "variable_names": null,
+                "visible_fixture_binding_names": [
+                  "party",
+                  "preference"
+                ],
+                "visible_fixture_fact_names": [
+                  "party",
+                  "preference"
+                ],
+                "visible_fixture_variable_names": []
+              },
+              "next_exposed_heading": "Booking details",
+              "outcome": {
+                "fixture_route": "start",
+                "problem": {
+                  "context": "Side Hall",
+                  "field": "Party size",
+                  "kind": "missing_fact",
+                  "options": [],
+                  "options_count": 0
+                },
+                "progress": {
+                  "assignments_verified": 2,
+                  "pages_seen": 1,
+                  "remaining_fact_key_count": 0,
+                  "remaining_fact_keys": []
+                },
+                "reason": "missing_fact",
+                "relevant_state": "\"Booking details\" [level=1] | \"Side Hall\" [level=2] | Party size | \"Garden Room\" [level=2] | Party size | Preference",
+                "status": "needs_decision",
+                "steps": 2
+              },
+              "request": {
+                "allowed_origins": null,
+                "allowed_origins_count": null,
+                "binding_count": 2,
+                "binding_names": [
+                  "party",
+                  "preference"
+                ],
+                "bindings": {
+                  "party": {
+                    "context": "Garden Room",
+                    "field": "Party size"
+                  },
+                  "preference": {
+                    "context": "Garden Room",
+                    "field": "Preference"
+                  }
+                },
+                "constraints": {
+                  "allowed_origins": [
+                    "[fixture-origin]"
+                  ],
+                  "allowed_origins_count": 1,
+                  "forbid_actions": [
+                    "Interact with Side Hall fields or its Send inquiry button",
+                    "Access the oracle"
+                  ],
+                  "forbid_actions_count": 2,
+                  "present_keys": [
+                    "allowedOrigins",
+                    "forbidActions"
+                  ],
+                  "unknown_key_count": 0
+                },
+                "contract_mode": "semantic",
+                "executionScope": null,
+                "fact_count": 2,
+                "fact_names": [
+                  "party",
+                  "preference"
+                ],
+                "facts": {
+                  "party": "2",
+                  "preference": "Quiet"
+                },
+                "fieldPolicies": null,
+                "fixture_variable_values_only": true,
+                "forbid_actions": null,
+                "forbid_actions_count": null,
+                "goal": "In the Garden Room card only, set Party size to 2 and Preference to Quiet, then click its Send inquiry button. Leave Side Hall entirely untouched. Inspect the resulting page for confirmation.",
+                "modelGoal": null,
+                "present_keys": [
+                  "bindings",
+                  "constraints",
+                  "facts",
+                  "goal",
+                  "tabId"
+                ],
+                "stopAfter": null,
+                "success": null,
+                "unknown_key_count": 0,
+                "variable_count": null,
+                "variable_names": null,
+                "variables": {}
+              },
+              "tool_request_json_bytes": 603,
+              "tool_result_text_bytes": 750
+            }
+          ],
+          "executor_steps_reported": 2,
+          "failure": null,
+          "hosted_tool_budget": 60,
+          "hosted_tool_budget_hit": false,
+          "hosted_tool_calls_observed": 7,
+          "legacy_input_plus_cache_read": 63184,
+          "local_action_telemetry": 2,
+          "local_deterministic_actions": 2,
+          "local_latency_ms": [],
+          "local_model_actions": 0,
+          "local_model_calls": 0,
+          "local_model_errors": 0,
+          "local_result_reasons": {
+            "reason:missing_fact": 1
+          },
+          "local_snapshots_by_purpose": {
+            "initial": 1,
+            "post_action": 2,
+            "pre_action": 2
+          },
+          "local_snapshots_unexposed": 5,
+          "mistakes": 0,
+          "model_visible_camofox_calls": 6,
+          "model_visible_snapshot_result_bytes": 4310,
+          "model_visible_snapshots": 3,
+          "model_visible_tool_errors": 0,
+          "normalized_prompt_tokens": 70935,
+          "observed_prompt_tokens": 70935,
+          "observed_tokens": {
+            "cacheRead": 63148,
+            "cacheWrite": 7751,
+            "input": 36,
+            "output": 735
+          },
+          "oracle_passed": true,
+          "oracle_unavailable": false,
+          "provider_stop_reason": null,
+          "sanitized_trace_available": true,
+          "status": "ok",
+          "task": "challenge-40",
+          "usage_complete": true,
+          "wall_seconds": 61.57,
+          "wrong_actions": 0
+        },
+        {
+          "assistant_turns": 10,
+          "assistant_usage_entries": 10,
+          "billed_usd": null,
+          "catalog_estimated_usd": 0.0341105,
+          "direct_mutation_calls": {
+            "camofox_click": 0,
+            "camofox_navigate": 0,
+            "camofox_scroll": 0,
+            "camofox_select": 0,
+            "camofox_type": 0
+          },
+          "executor_calls": [
+            {
+              "contract_shape": {
+                "binding_count": 1,
+                "binding_names": [
+                  "[other]"
+                ],
+                "contract_mode": "semantic",
+                "fact_count": 3,
+                "fact_names": [
+                  "[other]",
+                  "[other]",
+                  "service"
+                ],
+                "raw_key_metadata_available": true,
+                "variable_count": null,
+                "variable_names": null,
+                "visible_fixture_binding_names": [],
+                "visible_fixture_fact_names": [
+                  "service"
+                ],
+                "visible_fixture_variable_names": []
+              },
+              "next_exposed_heading": "Receipt verified",
+              "outcome": {
+                "fixture_route": "done",
+                "progress": {
+                  "assignments_verified": 2,
+                  "pages_seen": 3,
+                  "remaining_fact_key_count": 1,
+                  "remaining_fact_keys": [
+                    "[other]"
+                  ]
+                },
+                "reason": "no_actionable_controls",
+                "relevant_state": "\"Receipt verified\" [level=1] | Final demo request accepted.",
+                "status": "checkpoint",
+                "steps": 5
+              },
+              "request": {
+                "allowed_origins": null,
+                "allowed_origins_count": null,
+                "binding_count": 1,
+                "binding_names": [
+                  "[other]"
+                ],
+                "bindings": {},
+                "constraints": {
+                  "allowed_origins": [
+                    "[fixture-origin]"
+                  ],
+                  "allowed_origins_count": 1,
+                  "forbid_actions": [
+                    "Access the oracle",
+                    "Navigate outside the fixture"
+                  ],
+                  "forbid_actions_count": 2,
+                  "present_keys": [
+                    "allowedOrigins",
+                    "forbidActions"
+                  ],
+                  "unknown_key_count": 0
+                },
+                "contract_mode": "semantic",
+                "executionScope": null,
+                "fact_count": 3,
+                "fact_names": [
+                  "[other]",
+                  "[other]",
+                  "service"
+                ],
+                "facts": {
+                  "service": "Express"
+                },
+                "fieldPolicies": null,
+                "fixture_variable_values_only": true,
+                "forbid_actions": null,
+                "forbid_actions_count": null,
+                "goal": "Complete the two-stage request: enter North Pier as Location in stage 1, continue, then on stage 2 enter North Pier as its location and choose Express as service, and submit. Inspect the resulting page to verify the request outcome.",
+                "modelGoal": null,
+                "present_keys": [
+                  "bindings",
+                  "constraints",
+                  "facts",
+                  "goal",
+                  "tabId"
+                ],
+                "stopAfter": null,
+                "success": null,
+                "unknown_key_count": 0,
+                "variable_count": null,
+                "variable_names": null,
+                "variables": {}
+              },
+              "tool_request_json_bytes": 559,
+              "tool_result_text_bytes": 600
+            }
+          ],
+          "executor_steps_reported": 5,
+          "failure": null,
+          "hosted_tool_budget": 60,
+          "hosted_tool_budget_hit": false,
+          "hosted_tool_calls_observed": 5,
+          "legacy_input_plus_cache_read": 46495,
+          "local_action_telemetry": 5,
+          "local_deterministic_actions": 3,
+          "local_latency_ms": [
+            225.28,
+            141.42
+          ],
+          "local_model_actions": 2,
+          "local_model_calls": 2,
+          "local_model_errors": 0,
+          "local_result_reasons": {
+            "reason:no_actionable_controls": 1
+          },
+          "local_snapshots_by_purpose": {
+            "initial": 1,
+            "post_action": 5,
+            "pre_action": 5
+          },
+          "local_snapshots_unexposed": 11,
+          "mistakes": 0,
+          "model_visible_camofox_calls": 4,
+          "model_visible_snapshot_result_bytes": 1544,
+          "model_visible_snapshots": 2,
+          "model_visible_tool_errors": 0,
+          "normalized_prompt_tokens": 53210,
+          "observed_prompt_tokens": 53210,
+          "observed_tokens": {
+            "cacheRead": 46465,
+            "cacheWrite": 6715,
+            "input": 30,
+            "output": 797
+          },
+          "oracle_passed": true,
+          "oracle_unavailable": false,
+          "provider_stop_reason": null,
+          "sanitized_trace_available": true,
+          "status": "ok",
+          "task": "challenge-52",
+          "usage_complete": true,
+          "wall_seconds": 47.678,
+          "wrong_actions": 0
+        }
+      ],
+      "selected_model_row_sha256": "aef708d8eb30b3866761064b09e813c9a96a111fe21e42b3c640907805251ae1",
+      "source_directory": "semantic-hypotheses-sol-semantic-workflow",
+      "source_fingerprint": "fdb5273cd8100b9d195f70468fc4749e59d00a5b75ad1bf69c547ff26cf4cebd",
+      "source_sha256": {
+        "bridge": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "browser_skill": "c2e798e58170fb59fa1717fae9f95f24e5e247520cd48c7077ab582e21ffffd8",
+        "browser_transport": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "challenge_fixture": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "core": "a41f9b4baf78c80929aa8829f59744a6414d4a1fa65b4376ab2c91a8d86b9d21",
+        "resolver": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "runner": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b",
+        "server_fixture": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_fixture": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c",
+        "tool_definition": "d5f2d67555a5c231f17dfa27a05077643f84422af688a07e2c712f3431c87e9e"
+      },
+      "suite": "semantic-hypotheses-sol-semantic-workflow",
+      "tool_contract_schema_sha256": "587561b0683027b64f05740b948500be63a32187046b1a3552b73e8eb0d15420"
+    }
+  ]
+}

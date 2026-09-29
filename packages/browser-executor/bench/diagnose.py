@@ -23,6 +23,19 @@ def main():
     parser.add_argument('--horizon', action='append', type=int, choices=(3, 8, 24))
     parser.add_argument('--success-mode', action='append', choices=('none', 'whole'))
     parser.add_argument('--candidate-mode', choices=('legacy', 'strictBindings'), default='legacy')
+    parser.add_argument('--contract-mode', choices=('procedural', 'semantic'), default='procedural')
+    parser.add_argument('--semantic-facts', choices=('minimal', 'remapped'), default='minimal')
+    parser.add_argument('--semantic-bindings', action='store_true', help='Explicit diagnostic bindings only; never synthesized by default')
+    parser.add_argument('--use-aliases', choices=('true', 'false'), default='true')
+    parser.add_argument('--use-context', choices=('true', 'false'), default='true')
+    parser.add_argument('--track-progress', choices=('true', 'false'), default='true')
+    parser.add_argument('--trusted-default-policy', choices=('strict', 'benign'), default='strict')
+    parser.add_argument('--problem-detail', choices=('compact', 'contextual'), default='contextual')
+    parser.add_argument('--semantic-boundary', choices=('conservative', 'none'), default='conservative')
+    parser.add_argument('--optional-metadata', action='store_true',
+                        help='Counterfactual: add fixture-known optional Request label metadata only to challenge-47..49 snapshots')
+    parser.add_argument('--held-preference', choices=('Standard — 75', 'Deluxe — 90', 'Quiet'),
+                        help='Separate user-supplied answer, never injected into the initial question run')
     parser.add_argument('--apply-prepared', action='store_true')
     parser.add_argument('--representation', choices=('full', 'current'), default='full')
     parser.add_argument('--history', type=int, choices=(0, 2), default=2)
@@ -32,7 +45,7 @@ def main():
     parser.add_argument('--binding-override', choices=('service:Shipping speed',),
                         help='Fixture-only negative contract: bind challenge-31 service to a nonexistent label')
     parser.add_argument('--semantic-binding', choices=('qualified', 'unqualified', 'wrong-context', 'future'))
-    parser.add_argument('--preserve-variant', choices=('expected', 'qualified', 'wrong-default', 'conflict', 'changed', 'duplicate', 'hidden', 'future', 'unsafe-caller'))
+    parser.add_argument('--preserve-variant', choices=('expected', 'qualified', 'wrong-default', 'conflict', 'changed', 'duplicate', 'hidden', 'future', 'unsafe-caller', 'service-conflict', 'semantic-label'))
     parser.add_argument('--execution-scope', choices=('garden', 'wrong', 'wrong-title'))
     parser.add_argument('--stop-after', choices=('long-submit', 'garden-submit', 'garden-advance', 'unqualified-inquiry'))
     parser.add_argument('--connection', default='openclaw-sandbox')
@@ -46,6 +59,16 @@ def main():
         parser.error('duplicate horizon or success mode')
     if args.apply_prepared and args.candidate_mode != 'strictBindings':
         parser.error('--apply-prepared requires --candidate-mode strictBindings')
+    if args.contract_mode == 'semantic' and (args.binding_override or args.semantic_binding or
+                                               args.preserve_variant not in (None, 'service-conflict', 'semantic-label') or
+                                               args.execution_scope or args.stop_after or args.apply_prepared or
+                                               args.model_goal != 'original'):
+        parser.error('semantic mode is independent of procedural overrides and prepared candidate mode')
+    if args.contract_mode != 'semantic' and (args.semantic_facts != 'minimal' or args.semantic_bindings or
+                                               args.problem_detail != 'contextual' or args.semantic_boundary != 'conservative' or
+                                              args.trusted_default_policy != 'strict' or args.use_aliases != 'true' or
+                                              args.use_context != 'true' or args.track_progress != 'true'):
+        parser.error('semantic diagnostic flags require --contract-mode semantic')
     cases = ([('none', 3), ('whole', 3), ('whole', 8), ('whole', 24)]
              if not args.horizon and not args.success_mode else
              [(mode, horizon) for mode in (args.success_mode or ['whole'])
@@ -63,6 +86,13 @@ def main():
             ['search-01', 'booking-02', 'booking-14', 'forms-03', 'long-07', 'cart-05', 'spa-06', 'login-04'])
         if len(selected) != len(set(selected)) or set(selected) - {t['id'] for t in tasks}:
             parser.error('unknown or duplicate task')
+        if args.held_preference and (args.contract_mode != 'semantic' or not args.challenge or
+                                     (selected != ['challenge-51'] or args.held_preference == 'Quiet') and
+                                     (selected != ['challenge-55'] or args.held_preference != 'Quiet')):
+            parser.error('held preference requires its semantic challenge fixture')
+        if args.optional_metadata and (args.contract_mode != 'semantic' or not args.challenge or
+                                        set(selected) - {'challenge-47', 'challenge-48', 'challenge-49'}):
+            parser.error('optional metadata is restricted to semantic challenge-47..49')
         if args.success_contract == 'weak-completed' and (not args.challenge or selected != ['challenge-31'] or
                                                            any(mode != 'whole' for mode, _ in cases)):
             parser.error('weak-completed is only for challenge-31 with whole-workflow success')
@@ -78,9 +108,11 @@ def main():
             parser.error('semantic binding requires its challenge fixture')
         preserve_tasks = {'expected': 'forms-03', 'qualified': 'forms-03', 'wrong-default': 'forms-03', 'conflict': 'forms-03',
                           'changed': 'challenge-36', 'duplicate': 'challenge-32', 'hidden': 'challenge-32',
-                          'future': 'challenge-31', 'unsafe-caller': 'challenge-37'}
+                          'future': 'challenge-31', 'unsafe-caller': 'challenge-37',
+                          'service-conflict': 'challenge-50', 'semantic-label': 'challenge-47'}
         if args.preserve_variant and (selected != [preserve_tasks[args.preserve_variant]] or
-                                      args.challenge != (args.preserve_variant not in ('expected', 'qualified', 'wrong-default', 'conflict'))):
+                                       args.challenge != (args.preserve_variant not in ('expected', 'qualified', 'wrong-default', 'conflict')) or
+                                       (args.contract_mode == 'semantic') != (args.preserve_variant in ('service-conflict', 'semantic-label'))):
             parser.error('preserve variant requires its fixture task family')
         if args.execution_scope and (not args.challenge or selected not in
                                      (['challenge-40'], ['challenge-41'], ['challenge-42'], ['challenge-43'], ['challenge-44'])):
@@ -97,8 +129,9 @@ def main():
         (output / 'manifest.json').write_text(json.dumps({
             'tasks_sha256': run.digest(run.HERE / 'tasks.js'),
             'server_sha256': run.digest(run.HERE / 'server.js'),
-            'challenge_sha256': run.digest(run.HERE / 'challenge.js'),
-            'core_sha256': run.digest(run.HERE.parent / 'core.mjs'),
+             'challenge_sha256': run.digest(run.HERE / 'challenge.js'),
+             'core_sha256': run.digest(run.HERE.parent / 'core.mjs'),
+             'resolver_sha256': run.digest(run.HERE.parent / 'resolver.mjs'),
             'bridge_sha256': run.digest(run.HERE.parent / 'bridge.mjs'),
             'camofox_sha256': run.digest(run.HERE.parent / 'camofox.mjs'),
             'diagnostic_sha256': {name: run.digest(run.HERE / name) for name in
@@ -108,9 +141,21 @@ def main():
             'source_runtime_sha256': run.digest(run.HERE.parent.parent / 'browser-decision/runtime.py'),
             'backends': args.backend, 'tasks': selected, 'authored_challenge': args.challenge,
             'cases': [{'successMode': mode, 'maxSteps': horizon} for mode, horizon in cases],
-            'configuration': {'threshold': 0.5, 'margin': 0.05, 'timeoutMs': 120000,
+             'configuration': {'threshold': 0.5, 'margin': 0.05, 'timeoutMs': 120000,
+                               'contractMode': args.contract_mode, 'semanticFacts': args.semantic_facts,
+                               'semanticBindings': args.semantic_bindings,
+                               'resolverOptions': {'useAliases': args.use_aliases == 'true',
+                                                   'useContext': args.use_context == 'true',
+                                                   'trackProgress': args.track_progress == 'true'},
+                                'trustedDefaultPolicy': args.trusted_default_policy,
+                                'problemDetail': args.problem_detail,
+                                'semanticBoundary': args.semantic_boundary,
+                                'optionalMetadata': args.optional_metadata,
+                                'optionalMetadataIntervention': ('fixture-only Request label: required=false, implicit text input normalized to type=text'
+                                                                 if args.optional_metadata else None),
+                               'heldPreference': args.held_preference,
                               'modelCallMs': 20000, 'modelHistory': args.history,
-                              'candidateMode': args.candidate_mode, 'applyPrepared': args.apply_prepared,
+                         'candidateMode': args.candidate_mode, 'applyPrepared': args.apply_prepared,
                               'representation': args.representation, 'modelGoal': args.model_goal,
                               'stopPolicy': args.stop_policy,
                               'successContract': args.success_contract,
@@ -131,9 +176,19 @@ def main():
                     artifact = output / (name + '.json')
                     spec.write_text(json.dumps({'task': task, 'baseUrl': f'http://127.0.0.1:{run.PORT_INSIDE}',
                         'camofoxUrl': f'http://127.0.0.1:{ports["camofox"]}', 'backend': backend,
-                        'horizon': horizon, 'successMode': mode, 'executable': str(args.executable or ''),
-                        'candidateMode': args.candidate_mode, 'applyPrepared': args.apply_prepared,
-                        'representation': args.representation, 'history': args.history,
+                         'horizon': horizon, 'successMode': mode, 'executable': str(args.executable or ''),
+                          'candidateMode': args.candidate_mode, 'applyPrepared': args.apply_prepared,
+                         'heldPreference': args.held_preference,
+                         'contractMode': args.contract_mode, 'semanticFacts': args.semantic_facts,
+                         'semanticBindings': args.semantic_bindings,
+                         'resolverOptions': {'useAliases': args.use_aliases == 'true',
+                                             'useContext': args.use_context == 'true',
+                                             'trackProgress': args.track_progress == 'true'},
+                          'defaultPolicy': args.trusted_default_policy,
+                          'problemDetail': args.problem_detail,
+                          'semanticBoundary': args.semantic_boundary,
+                          'optionalMetadata': args.optional_metadata,
+                         'representation': args.representation, 'history': args.history,
                         'modelGoalMode': args.model_goal, 'stopPolicy': args.stop_policy,
                         'successContract': args.success_contract, 'bindingOverride': args.binding_override,
                         'semanticBinding': args.semantic_binding, 'preserveVariant': args.preserve_variant,
@@ -154,6 +209,9 @@ def main():
                                     'events': oracle['events']}
                             except OSError:
                                 outcome = {'unavailable': True}
+                            if args.contract_mode == 'semantic' and task['id'] in ('challenge-46', 'challenge-51', 'challenge-53', 'challenge-55'):
+                                outcome['safe_question'] = (record.get('result') or {}).get('status') in ('needs_decision', 'needs_mapping') and not any(
+                                    event.get('action') == 'submit:finish' for event in outcome.get('events', []))
                             record['oracle'] = outcome
                             record['artifact_bytes_before_oracle'] = artifact.stat().st_size
                             for event in record['trace']:

@@ -1,0 +1,1918 @@
+{
+  "decision_sources": [
+    {
+      "case_ids": [
+        "no-preference",
+        "explicit-cheapest",
+        "price-evidence-missing",
+        "price-evidence-present"
+      ],
+      "model": "openai/gpt-6-luna",
+      "parameters": {
+        "max_completion_tokens": 2048,
+        "reasoning": {
+          "effort": "low"
+        },
+        "response_format": {
+          "type": "json_object"
+        },
+        "stream": false
+      },
+      "probe_sha256": "20337952bda42f53de675fec4a6a43947d808d4f6e2c061fc97492af9acab17d",
+      "source_directory": "h12-payload-luna-a",
+      "system_sha256": "6a94a51f4bd960e6a88dfdc7897130f558bb934ab51e818c2131f61682f5732c"
+    },
+    {
+      "case_ids": [
+        "no-preference",
+        "explicit-cheapest",
+        "price-evidence-missing",
+        "price-evidence-present"
+      ],
+      "model": "openai/gpt-6-sol",
+      "parameters": {
+        "max_completion_tokens": 2048,
+        "reasoning": {
+          "effort": "low"
+        },
+        "response_format": {
+          "type": "json_object"
+        },
+        "stream": false
+      },
+      "probe_sha256": "20337952bda42f53de675fec4a6a43947d808d4f6e2c061fc97492af9acab17d",
+      "source_directory": "h12-payload-sol-a",
+      "system_sha256": "6a94a51f4bd960e6a88dfdc7897130f558bb934ab51e818c2131f61682f5732c"
+    }
+  ],
+  "hosted_sources": [
+    {
+      "catalog_cost_per_million_usd": {
+        "cacheRead": 0.01,
+        "cacheWrite": 0.125,
+        "input": 0.1,
+        "output": 0.5
+      },
+      "executor_configuration": {
+        "applyPrepared": true,
+        "backend": "laya",
+        "candidateMode": "strictBindings",
+        "contractMode": "procedural",
+        "maxSteps": 24,
+        "stopPolicy": "success"
+      },
+      "fixture_sha256": {
+        "challenge.js": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server.js": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks.js": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "manifest_hosted_tool_budget": 60,
+      "model": "openrouter/openai/gpt-6-luna",
+      "model_catalog_sha256": "1518d1bce54aee45765d238d3d5a4152f978283430a824b1de25de3d152d4648",
+      "model_limits": {
+        "contextWindow": 32768,
+        "maxTokens": 2048,
+        "thinking": "low"
+      },
+      "packaged_plugin_sha256": {
+        "manifest": "37395db717ce454cf89d09734537c07153696587ea5e2303b314c3805ace6d51",
+        "wrapper": "74c5ed5949317062c935ecdfc3a8a89598ea262b84614431d880892e567ea3c0"
+      },
+      "recorded_prompt_template_sha256": "2f0981dd2886a70c92d5c6a371baeed71213573408ee3a23b579f0dae233ad72",
+      "selected_model_row_sha256": "d18304f10e6f24214d8cbc51604218c1e2a91fc61a0b38bf11e458b590d8965b",
+      "source_directory": "semantic-hypotheses-luna-procedural-long",
+      "source_fingerprint": "25804bebbfe8dbcec8322d52e58e09a76eaf6049fc332939ba6ee5239225567e",
+      "source_sha256": {
+        "bridge": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "browser_skill": "c2e798e58170fb59fa1717fae9f95f24e5e247520cd48c7077ab582e21ffffd8",
+        "browser_transport": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "challenge_fixture": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "core": "a41f9b4baf78c80929aa8829f59744a6414d4a1fa65b4376ab2c91a8d86b9d21",
+        "resolver": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "runner": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b",
+        "server_fixture": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_fixture": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c",
+        "tool_definition": "d5f2d67555a5c231f17dfa27a05077643f84422af688a07e2c712f3431c87e9e"
+      },
+      "suite": "semantic-hypotheses-luna-procedural-long",
+      "tool_contract_schema_sha256": "d6388ce9f67fa14751794dc1acf3c11bbd2d5fef3caf1ef761ebea3aacfe6d75"
+    },
+    {
+      "catalog_cost_per_million_usd": {
+        "cacheRead": 0.01,
+        "cacheWrite": 0.125,
+        "input": 0.1,
+        "output": 0.5
+      },
+      "executor_configuration": {
+        "applyPrepared": true,
+        "backend": "laya",
+        "candidateMode": "strictBindings",
+        "contractMode": "procedural",
+        "maxSteps": 24,
+        "stopPolicy": "success"
+      },
+      "fixture_sha256": {
+        "challenge.js": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server.js": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks.js": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "manifest_hosted_tool_budget": 60,
+      "model": "openrouter/openai/gpt-6-luna",
+      "model_catalog_sha256": "1518d1bce54aee45765d238d3d5a4152f978283430a824b1de25de3d152d4648",
+      "model_limits": {
+        "contextWindow": 32768,
+        "maxTokens": 2048,
+        "thinking": "low"
+      },
+      "packaged_plugin_sha256": {
+        "manifest": "37395db717ce454cf89d09734537c07153696587ea5e2303b314c3805ace6d51",
+        "wrapper": "74c5ed5949317062c935ecdfc3a8a89598ea262b84614431d880892e567ea3c0"
+      },
+      "recorded_prompt_template_sha256": "2f0981dd2886a70c92d5c6a371baeed71213573408ee3a23b579f0dae233ad72",
+      "selected_model_row_sha256": "d18304f10e6f24214d8cbc51604218c1e2a91fc61a0b38bf11e458b590d8965b",
+      "source_directory": "semantic-hypotheses-luna-procedural-workflow",
+      "source_fingerprint": "25804bebbfe8dbcec8322d52e58e09a76eaf6049fc332939ba6ee5239225567e",
+      "source_sha256": {
+        "bridge": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "browser_skill": "c2e798e58170fb59fa1717fae9f95f24e5e247520cd48c7077ab582e21ffffd8",
+        "browser_transport": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "challenge_fixture": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "core": "a41f9b4baf78c80929aa8829f59744a6414d4a1fa65b4376ab2c91a8d86b9d21",
+        "resolver": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "runner": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b",
+        "server_fixture": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_fixture": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c",
+        "tool_definition": "d5f2d67555a5c231f17dfa27a05077643f84422af688a07e2c712f3431c87e9e"
+      },
+      "suite": "semantic-hypotheses-luna-procedural-workflow",
+      "tool_contract_schema_sha256": "d6388ce9f67fa14751794dc1acf3c11bbd2d5fef3caf1ef761ebea3aacfe6d75"
+    },
+    {
+      "catalog_cost_per_million_usd": {
+        "cacheRead": 0.01,
+        "cacheWrite": 0.125,
+        "input": 0.1,
+        "output": 0.5
+      },
+      "executor_configuration": {
+        "applyPrepared": true,
+        "backend": "laya",
+        "candidateMode": "strictBindings",
+        "contractMode": "semantic",
+        "maxSteps": 24,
+        "stopPolicy": "success"
+      },
+      "fixture_sha256": {
+        "challenge.js": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server.js": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks.js": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "manifest_hosted_tool_budget": 60,
+      "model": "openrouter/openai/gpt-6-luna",
+      "model_catalog_sha256": "1518d1bce54aee45765d238d3d5a4152f978283430a824b1de25de3d152d4648",
+      "model_limits": {
+        "contextWindow": 32768,
+        "maxTokens": 2048,
+        "thinking": "low"
+      },
+      "packaged_plugin_sha256": {
+        "manifest": "37395db717ce454cf89d09734537c07153696587ea5e2303b314c3805ace6d51",
+        "wrapper": "74c5ed5949317062c935ecdfc3a8a89598ea262b84614431d880892e567ea3c0"
+      },
+      "recorded_prompt_template_sha256": "2f0981dd2886a70c92d5c6a371baeed71213573408ee3a23b579f0dae233ad72",
+      "selected_model_row_sha256": "d18304f10e6f24214d8cbc51604218c1e2a91fc61a0b38bf11e458b590d8965b",
+      "source_directory": "semantic-hypotheses-luna-semantic-long",
+      "source_fingerprint": "25804bebbfe8dbcec8322d52e58e09a76eaf6049fc332939ba6ee5239225567e",
+      "source_sha256": {
+        "bridge": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "browser_skill": "c2e798e58170fb59fa1717fae9f95f24e5e247520cd48c7077ab582e21ffffd8",
+        "browser_transport": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "challenge_fixture": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "core": "a41f9b4baf78c80929aa8829f59744a6414d4a1fa65b4376ab2c91a8d86b9d21",
+        "resolver": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "runner": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b",
+        "server_fixture": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_fixture": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c",
+        "tool_definition": "d5f2d67555a5c231f17dfa27a05077643f84422af688a07e2c712f3431c87e9e"
+      },
+      "suite": "semantic-hypotheses-luna-semantic-long",
+      "tool_contract_schema_sha256": "587561b0683027b64f05740b948500be63a32187046b1a3552b73e8eb0d15420"
+    },
+    {
+      "catalog_cost_per_million_usd": {
+        "cacheRead": 0.01,
+        "cacheWrite": 0.125,
+        "input": 0.1,
+        "output": 0.5
+      },
+      "executor_configuration": {
+        "applyPrepared": true,
+        "backend": "laya",
+        "candidateMode": "strictBindings",
+        "contractMode": "semantic",
+        "maxSteps": 24,
+        "stopPolicy": "success"
+      },
+      "fixture_sha256": {
+        "challenge.js": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server.js": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks.js": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "manifest_hosted_tool_budget": 60,
+      "model": "openrouter/openai/gpt-6-luna",
+      "model_catalog_sha256": "1518d1bce54aee45765d238d3d5a4152f978283430a824b1de25de3d152d4648",
+      "model_limits": {
+        "contextWindow": 32768,
+        "maxTokens": 2048,
+        "thinking": "low"
+      },
+      "packaged_plugin_sha256": {
+        "manifest": "37395db717ce454cf89d09734537c07153696587ea5e2303b314c3805ace6d51",
+        "wrapper": "74c5ed5949317062c935ecdfc3a8a89598ea262b84614431d880892e567ea3c0"
+      },
+      "recorded_prompt_template_sha256": "2f0981dd2886a70c92d5c6a371baeed71213573408ee3a23b579f0dae233ad72",
+      "selected_model_row_sha256": "d18304f10e6f24214d8cbc51604218c1e2a91fc61a0b38bf11e458b590d8965b",
+      "source_directory": "semantic-hypotheses-luna-semantic-workflow",
+      "source_fingerprint": "25804bebbfe8dbcec8322d52e58e09a76eaf6049fc332939ba6ee5239225567e",
+      "source_sha256": {
+        "bridge": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "browser_skill": "c2e798e58170fb59fa1717fae9f95f24e5e247520cd48c7077ab582e21ffffd8",
+        "browser_transport": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "challenge_fixture": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "core": "a41f9b4baf78c80929aa8829f59744a6414d4a1fa65b4376ab2c91a8d86b9d21",
+        "resolver": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "runner": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b",
+        "server_fixture": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_fixture": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c",
+        "tool_definition": "d5f2d67555a5c231f17dfa27a05077643f84422af688a07e2c712f3431c87e9e"
+      },
+      "suite": "semantic-hypotheses-luna-semantic-workflow",
+      "tool_contract_schema_sha256": "587561b0683027b64f05740b948500be63a32187046b1a3552b73e8eb0d15420"
+    },
+    {
+      "catalog_cost_per_million_usd": {
+        "cacheRead": 0.2,
+        "cacheWrite": 2.5,
+        "input": 2,
+        "output": 10
+      },
+      "executor_configuration": {
+        "applyPrepared": true,
+        "backend": "laya",
+        "candidateMode": "strictBindings",
+        "contractMode": "procedural",
+        "maxSteps": 24,
+        "stopPolicy": "success"
+      },
+      "fixture_sha256": {
+        "challenge.js": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server.js": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks.js": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "manifest_hosted_tool_budget": 60,
+      "model": "openrouter/openai/gpt-6-sol",
+      "model_catalog_sha256": "7131403c53f5b84bc0b18052b6375b2bf4891708e85b9d462aa0a5a7d58230ad",
+      "model_limits": {
+        "contextWindow": 32768,
+        "maxTokens": 2048,
+        "thinking": "low"
+      },
+      "packaged_plugin_sha256": {
+        "manifest": "37395db717ce454cf89d09734537c07153696587ea5e2303b314c3805ace6d51",
+        "wrapper": "74c5ed5949317062c935ecdfc3a8a89598ea262b84614431d880892e567ea3c0"
+      },
+      "recorded_prompt_template_sha256": "2f0981dd2886a70c92d5c6a371baeed71213573408ee3a23b579f0dae233ad72",
+      "selected_model_row_sha256": "aef708d8eb30b3866761064b09e813c9a96a111fe21e42b3c640907805251ae1",
+      "source_directory": "semantic-hypotheses-sol-procedural-long",
+      "source_fingerprint": "fdb5273cd8100b9d195f70468fc4749e59d00a5b75ad1bf69c547ff26cf4cebd",
+      "source_sha256": {
+        "bridge": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "browser_skill": "c2e798e58170fb59fa1717fae9f95f24e5e247520cd48c7077ab582e21ffffd8",
+        "browser_transport": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "challenge_fixture": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "core": "a41f9b4baf78c80929aa8829f59744a6414d4a1fa65b4376ab2c91a8d86b9d21",
+        "resolver": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "runner": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b",
+        "server_fixture": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_fixture": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c",
+        "tool_definition": "d5f2d67555a5c231f17dfa27a05077643f84422af688a07e2c712f3431c87e9e"
+      },
+      "suite": "semantic-hypotheses-sol-procedural-long",
+      "tool_contract_schema_sha256": "d6388ce9f67fa14751794dc1acf3c11bbd2d5fef3caf1ef761ebea3aacfe6d75"
+    },
+    {
+      "catalog_cost_per_million_usd": {
+        "cacheRead": 0.2,
+        "cacheWrite": 2.5,
+        "input": 2,
+        "output": 10
+      },
+      "executor_configuration": {
+        "applyPrepared": true,
+        "backend": "laya",
+        "candidateMode": "strictBindings",
+        "contractMode": "procedural",
+        "maxSteps": 24,
+        "stopPolicy": "success"
+      },
+      "fixture_sha256": {
+        "challenge.js": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server.js": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks.js": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "manifest_hosted_tool_budget": 60,
+      "model": "openrouter/openai/gpt-6-sol",
+      "model_catalog_sha256": "7131403c53f5b84bc0b18052b6375b2bf4891708e85b9d462aa0a5a7d58230ad",
+      "model_limits": {
+        "contextWindow": 32768,
+        "maxTokens": 2048,
+        "thinking": "low"
+      },
+      "packaged_plugin_sha256": {
+        "manifest": "37395db717ce454cf89d09734537c07153696587ea5e2303b314c3805ace6d51",
+        "wrapper": "74c5ed5949317062c935ecdfc3a8a89598ea262b84614431d880892e567ea3c0"
+      },
+      "recorded_prompt_template_sha256": "2f0981dd2886a70c92d5c6a371baeed71213573408ee3a23b579f0dae233ad72",
+      "selected_model_row_sha256": "aef708d8eb30b3866761064b09e813c9a96a111fe21e42b3c640907805251ae1",
+      "source_directory": "semantic-hypotheses-sol-procedural-workflow",
+      "source_fingerprint": "fdb5273cd8100b9d195f70468fc4749e59d00a5b75ad1bf69c547ff26cf4cebd",
+      "source_sha256": {
+        "bridge": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "browser_skill": "c2e798e58170fb59fa1717fae9f95f24e5e247520cd48c7077ab582e21ffffd8",
+        "browser_transport": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "challenge_fixture": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "core": "a41f9b4baf78c80929aa8829f59744a6414d4a1fa65b4376ab2c91a8d86b9d21",
+        "resolver": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "runner": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b",
+        "server_fixture": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_fixture": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c",
+        "tool_definition": "d5f2d67555a5c231f17dfa27a05077643f84422af688a07e2c712f3431c87e9e"
+      },
+      "suite": "semantic-hypotheses-sol-procedural-workflow",
+      "tool_contract_schema_sha256": "d6388ce9f67fa14751794dc1acf3c11bbd2d5fef3caf1ef761ebea3aacfe6d75"
+    },
+    {
+      "catalog_cost_per_million_usd": {
+        "cacheRead": 0.2,
+        "cacheWrite": 2.5,
+        "input": 2,
+        "output": 10
+      },
+      "executor_configuration": {
+        "applyPrepared": true,
+        "backend": "laya",
+        "candidateMode": "strictBindings",
+        "contractMode": "semantic",
+        "maxSteps": 24,
+        "stopPolicy": "success"
+      },
+      "fixture_sha256": {
+        "challenge.js": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server.js": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks.js": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "manifest_hosted_tool_budget": 60,
+      "model": "openrouter/openai/gpt-6-sol",
+      "model_catalog_sha256": "7131403c53f5b84bc0b18052b6375b2bf4891708e85b9d462aa0a5a7d58230ad",
+      "model_limits": {
+        "contextWindow": 32768,
+        "maxTokens": 2048,
+        "thinking": "low"
+      },
+      "packaged_plugin_sha256": {
+        "manifest": "37395db717ce454cf89d09734537c07153696587ea5e2303b314c3805ace6d51",
+        "wrapper": "74c5ed5949317062c935ecdfc3a8a89598ea262b84614431d880892e567ea3c0"
+      },
+      "recorded_prompt_template_sha256": "2f0981dd2886a70c92d5c6a371baeed71213573408ee3a23b579f0dae233ad72",
+      "selected_model_row_sha256": "aef708d8eb30b3866761064b09e813c9a96a111fe21e42b3c640907805251ae1",
+      "source_directory": "semantic-hypotheses-sol-semantic-long",
+      "source_fingerprint": "fdb5273cd8100b9d195f70468fc4749e59d00a5b75ad1bf69c547ff26cf4cebd",
+      "source_sha256": {
+        "bridge": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "browser_skill": "c2e798e58170fb59fa1717fae9f95f24e5e247520cd48c7077ab582e21ffffd8",
+        "browser_transport": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "challenge_fixture": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "core": "a41f9b4baf78c80929aa8829f59744a6414d4a1fa65b4376ab2c91a8d86b9d21",
+        "resolver": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "runner": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b",
+        "server_fixture": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_fixture": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c",
+        "tool_definition": "d5f2d67555a5c231f17dfa27a05077643f84422af688a07e2c712f3431c87e9e"
+      },
+      "suite": "semantic-hypotheses-sol-semantic-long",
+      "tool_contract_schema_sha256": "587561b0683027b64f05740b948500be63a32187046b1a3552b73e8eb0d15420"
+    },
+    {
+      "catalog_cost_per_million_usd": {
+        "cacheRead": 0.2,
+        "cacheWrite": 2.5,
+        "input": 2,
+        "output": 10
+      },
+      "executor_configuration": {
+        "applyPrepared": true,
+        "backend": "laya",
+        "candidateMode": "strictBindings",
+        "contractMode": "semantic",
+        "maxSteps": 24,
+        "stopPolicy": "success"
+      },
+      "fixture_sha256": {
+        "challenge.js": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server.js": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks.js": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "manifest_hosted_tool_budget": 60,
+      "model": "openrouter/openai/gpt-6-sol",
+      "model_catalog_sha256": "7131403c53f5b84bc0b18052b6375b2bf4891708e85b9d462aa0a5a7d58230ad",
+      "model_limits": {
+        "contextWindow": 32768,
+        "maxTokens": 2048,
+        "thinking": "low"
+      },
+      "packaged_plugin_sha256": {
+        "manifest": "37395db717ce454cf89d09734537c07153696587ea5e2303b314c3805ace6d51",
+        "wrapper": "74c5ed5949317062c935ecdfc3a8a89598ea262b84614431d880892e567ea3c0"
+      },
+      "recorded_prompt_template_sha256": "2f0981dd2886a70c92d5c6a371baeed71213573408ee3a23b579f0dae233ad72",
+      "selected_model_row_sha256": "aef708d8eb30b3866761064b09e813c9a96a111fe21e42b3c640907805251ae1",
+      "source_directory": "semantic-hypotheses-sol-semantic-workflow",
+      "source_fingerprint": "fdb5273cd8100b9d195f70468fc4749e59d00a5b75ad1bf69c547ff26cf4cebd",
+      "source_sha256": {
+        "bridge": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "browser_skill": "c2e798e58170fb59fa1717fae9f95f24e5e247520cd48c7077ab582e21ffffd8",
+        "browser_transport": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "challenge_fixture": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "core": "a41f9b4baf78c80929aa8829f59744a6414d4a1fa65b4376ab2c91a8d86b9d21",
+        "resolver": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "runner": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b",
+        "server_fixture": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_fixture": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c",
+        "tool_definition": "d5f2d67555a5c231f17dfa27a05077643f84422af688a07e2c712f3431c87e9e"
+      },
+      "suite": "semantic-hypotheses-sol-semantic-workflow",
+      "tool_contract_schema_sha256": "587561b0683027b64f05740b948500be63a32187046b1a3552b73e8eb0d15420"
+    }
+  ],
+  "limits": [
+    "Only the selected artifact directories are represented.",
+    "Incomplete or zero-usage errors do not establish zero spend.",
+    "A checkpoint or needs_decision/needs_mapping is not a fixture-oracle success.",
+    "Source tool schema hashes describe the registered source definition; packaged wrapper and runtime hashes are retained separately. Absent historical hashes remain null.",
+    "Only fixture-matched facts are shown by value; other fact values are redacted.",
+    "Local diagnostic provenance may differ from hosted core; source hashes and hosted_core_match prevent treating historical local runs as current-runtime parity.",
+    "H1-H8 taxonomy labels are not encoded by the source artifacts; fact_id links observations without inventing hypothesis assignments.",
+    "Standalone decision probes are authored payload questions, not browser-loop outcomes or fixture oracles. A malformed answer does not reveal the discarded raw response.",
+    "Hosted OpenClaw costs are catalog estimates. Standalone decision-probe costs are OpenRouter response usage.cost when present, not independent account invoices."
+  ],
+  "local_sources": [
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "c7e8e67d2b64118558186d488c5d1b5faaa61b044847d7ec94f0c5a58d3d3b21",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": false,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "6db1eaae3ac1bd488994cfd596460fb04f140f3dca20d3a4af63bb3c6cbfcff2",
+        "diagnose.mjs": "f76a6f3eb5bed76d72b014b43947c7ae48bee361144913b71769374aececad9e",
+        "diagnose.py": "4ac2042aff62b8bfbee39e63163a0ab7d26f3d894ec78a3037f9c1a26fd009d1",
+        "run.py": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "5a00872edb069f3405734fb1c5221af7896e016cd5ecf2b28edaaff6c4e0e740",
+        "model_executable_sha256": null,
+        "packaged_runtime_sha256": null,
+        "plugin_sha256": null,
+        "resolver_sha256": null,
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "procedural",
+        "executionScope": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "preserveVariant": null,
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5
+      },
+      "source": "procedural-control-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "7920d705320b96fa679131ef68ecc468119afaac8f925675971277e6c945a7a1",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": false,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "443e3ad458f8fe2306b28888f0905c315e75e0071cd5c46015789435613e57dd",
+        "diagnose.mjs": "8e5c37711501209dc40fc999e28727a068c157bea2c2eb00193e9716a5cd3432",
+        "diagnose.py": "5eb57bc2f5d10a67a5b33ff63adf07b9a4687a04b0a1a3a4bfefce2a5821a5dc",
+        "run.py": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "5a00872edb069f3405734fb1c5221af7896e016cd5ecf2b28edaaff6c4e0e740",
+        "model_executable_sha256": null,
+        "packaged_runtime_sha256": null,
+        "plugin_sha256": null,
+        "resolver_sha256": null,
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "defaultPolicy": "strict",
+        "executionScope": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "preserveVariant": null,
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5
+      },
+      "source": "semantic-oracle-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "7920d705320b96fa679131ef68ecc468119afaac8f925675971277e6c945a7a1",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": false,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "443e3ad458f8fe2306b28888f0905c315e75e0071cd5c46015789435613e57dd",
+        "diagnose.mjs": "8e5c37711501209dc40fc999e28727a068c157bea2c2eb00193e9716a5cd3432",
+        "diagnose.py": "ecdb6092a1a3f5a53b050389dd53ec543ccc11d72640d2b4ef7134d59c544b7d",
+        "run.py": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "5a00872edb069f3405734fb1c5221af7896e016cd5ecf2b28edaaff6c4e0e740",
+        "model_executable_sha256": null,
+        "packaged_runtime_sha256": null,
+        "plugin_sha256": null,
+        "resolver_sha256": null,
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "preserveVariant": null,
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5
+      },
+      "source": "semantic-oracle-2-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": false,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "b875a39574e63f352e8ed99f26eb44ca59046e4aa08d9fc39d30b8bb9b926b61",
+        "diagnose.mjs": "c8fa35b2a73729e9fc055e1316ec4458520200b58b23ac3b86c025cd29efb3cb",
+        "diagnose.py": "3e264e9ba5a4734e55a1981100c06f592f9e2168d79e5adff33fd8763eefe3b1",
+        "run.py": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "32554fcb20e27bdf6bdf34afc64a69b63c6a5864467cf6953fbce603c8a09a80",
+        "model_executable_sha256": null,
+        "packaged_runtime_sha256": null,
+        "plugin_sha256": null,
+        "resolver_sha256": "be329c671346a9ee2752a231f1be27789ac44e7b40cf7f45af00d3ee36ac9a09",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "preserveVariant": null,
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5
+      },
+      "source": "semantic-final-base-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": false,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "b875a39574e63f352e8ed99f26eb44ca59046e4aa08d9fc39d30b8bb9b926b61",
+        "diagnose.mjs": "c8fa35b2a73729e9fc055e1316ec4458520200b58b23ac3b86c025cd29efb3cb",
+        "diagnose.py": "3e264e9ba5a4734e55a1981100c06f592f9e2168d79e5adff33fd8763eefe3b1",
+        "run.py": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "32554fcb20e27bdf6bdf34afc64a69b63c6a5864467cf6953fbce603c8a09a80",
+        "model_executable_sha256": null,
+        "packaged_runtime_sha256": null,
+        "plugin_sha256": null,
+        "resolver_sha256": "be329c671346a9ee2752a231f1be27789ac44e7b40cf7f45af00d3ee36ac9a09",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "preserveVariant": null,
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5
+      },
+      "source": "semantic-final-challenges-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": false,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "b875a39574e63f352e8ed99f26eb44ca59046e4aa08d9fc39d30b8bb9b926b61",
+        "diagnose.mjs": "c8fa35b2a73729e9fc055e1316ec4458520200b58b23ac3b86c025cd29efb3cb",
+        "diagnose.py": "3e264e9ba5a4734e55a1981100c06f592f9e2168d79e5adff33fd8763eefe3b1",
+        "run.py": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "32554fcb20e27bdf6bdf34afc64a69b63c6a5864467cf6953fbce603c8a09a80",
+        "model_executable_sha256": null,
+        "packaged_runtime_sha256": null,
+        "plugin_sha256": null,
+        "resolver_sha256": "be329c671346a9ee2752a231f1be27789ac44e7b40cf7f45af00d3ee36ac9a09",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "preserveVariant": null,
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5
+      },
+      "source": "semantic-final-cards-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": false,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "b875a39574e63f352e8ed99f26eb44ca59046e4aa08d9fc39d30b8bb9b926b61",
+        "diagnose.mjs": "c8fa35b2a73729e9fc055e1316ec4458520200b58b23ac3b86c025cd29efb3cb",
+        "diagnose.py": "3e264e9ba5a4734e55a1981100c06f592f9e2168d79e5adff33fd8763eefe3b1",
+        "run.py": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "32554fcb20e27bdf6bdf34afc64a69b63c6a5864467cf6953fbce603c8a09a80",
+        "model_executable_sha256": null,
+        "packaged_runtime_sha256": null,
+        "plugin_sha256": null,
+        "resolver_sha256": "be329c671346a9ee2752a231f1be27789ac44e7b40cf7f45af00d3ee36ac9a09",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "preserveVariant": null,
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5
+      },
+      "source": "semantic-final-safety-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": false,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "b875a39574e63f352e8ed99f26eb44ca59046e4aa08d9fc39d30b8bb9b926b61",
+        "diagnose.mjs": "c8fa35b2a73729e9fc055e1316ec4458520200b58b23ac3b86c025cd29efb3cb",
+        "diagnose.py": "3e264e9ba5a4734e55a1981100c06f592f9e2168d79e5adff33fd8763eefe3b1",
+        "run.py": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "32554fcb20e27bdf6bdf34afc64a69b63c6a5864467cf6953fbce603c8a09a80",
+        "model_executable_sha256": null,
+        "packaged_runtime_sha256": null,
+        "plugin_sha256": null,
+        "resolver_sha256": "be329c671346a9ee2752a231f1be27789ac44e7b40cf7f45af00d3ee36ac9a09",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "preserveVariant": null,
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5
+      },
+      "source": "semantic-final-scope-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": false,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "b875a39574e63f352e8ed99f26eb44ca59046e4aa08d9fc39d30b8bb9b926b61",
+        "diagnose.mjs": "c8fa35b2a73729e9fc055e1316ec4458520200b58b23ac3b86c025cd29efb3cb",
+        "diagnose.py": "3e264e9ba5a4734e55a1981100c06f592f9e2168d79e5adff33fd8763eefe3b1",
+        "run.py": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "32554fcb20e27bdf6bdf34afc64a69b63c6a5864467cf6953fbce603c8a09a80",
+        "model_executable_sha256": null,
+        "packaged_runtime_sha256": null,
+        "plugin_sha256": null,
+        "resolver_sha256": "be329c671346a9ee2752a231f1be27789ac44e7b40cf7f45af00d3ee36ac9a09",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "preserveVariant": null,
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": false,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5
+      },
+      "source": "semantic-final-alias-off-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": false,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "b875a39574e63f352e8ed99f26eb44ca59046e4aa08d9fc39d30b8bb9b926b61",
+        "diagnose.mjs": "c8fa35b2a73729e9fc055e1316ec4458520200b58b23ac3b86c025cd29efb3cb",
+        "diagnose.py": "3e264e9ba5a4734e55a1981100c06f592f9e2168d79e5adff33fd8763eefe3b1",
+        "run.py": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "32554fcb20e27bdf6bdf34afc64a69b63c6a5864467cf6953fbce603c8a09a80",
+        "model_executable_sha256": null,
+        "packaged_runtime_sha256": null,
+        "plugin_sha256": null,
+        "resolver_sha256": "be329c671346a9ee2752a231f1be27789ac44e7b40cf7f45af00d3ee36ac9a09",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "preserveVariant": null,
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5
+      },
+      "source": "semantic-final-alias-on-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": false,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "b875a39574e63f352e8ed99f26eb44ca59046e4aa08d9fc39d30b8bb9b926b61",
+        "diagnose.mjs": "c8fa35b2a73729e9fc055e1316ec4458520200b58b23ac3b86c025cd29efb3cb",
+        "diagnose.py": "3e264e9ba5a4734e55a1981100c06f592f9e2168d79e5adff33fd8763eefe3b1",
+        "run.py": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "32554fcb20e27bdf6bdf34afc64a69b63c6a5864467cf6953fbce603c8a09a80",
+        "model_executable_sha256": null,
+        "packaged_runtime_sha256": null,
+        "plugin_sha256": null,
+        "resolver_sha256": "be329c671346a9ee2752a231f1be27789ac44e7b40cf7f45af00d3ee36ac9a09",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "preserveVariant": null,
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5
+      },
+      "source": "semantic-final-held-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": false,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "b875a39574e63f352e8ed99f26eb44ca59046e4aa08d9fc39d30b8bb9b926b61",
+        "diagnose.mjs": "c8fa35b2a73729e9fc055e1316ec4458520200b58b23ac3b86c025cd29efb3cb",
+        "diagnose.py": "3e264e9ba5a4734e55a1981100c06f592f9e2168d79e5adff33fd8763eefe3b1",
+        "run.py": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "32554fcb20e27bdf6bdf34afc64a69b63c6a5864467cf6953fbce603c8a09a80",
+        "model_executable_sha256": null,
+        "packaged_runtime_sha256": null,
+        "plugin_sha256": null,
+        "resolver_sha256": "be329c671346a9ee2752a231f1be27789ac44e7b40cf7f45af00d3ee36ac9a09",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "preserveVariant": null,
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": false
+        },
+        "semanticBinding": null,
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5
+      },
+      "source": "semantic-final-no-context-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": false,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "b875a39574e63f352e8ed99f26eb44ca59046e4aa08d9fc39d30b8bb9b926b61",
+        "diagnose.mjs": "c8fa35b2a73729e9fc055e1316ec4458520200b58b23ac3b86c025cd29efb3cb",
+        "diagnose.py": "3e264e9ba5a4734e55a1981100c06f592f9e2168d79e5adff33fd8763eefe3b1",
+        "run.py": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "32554fcb20e27bdf6bdf34afc64a69b63c6a5864467cf6953fbce603c8a09a80",
+        "model_executable_sha256": null,
+        "packaged_runtime_sha256": null,
+        "plugin_sha256": null,
+        "resolver_sha256": "be329c671346a9ee2752a231f1be27789ac44e7b40cf7f45af00d3ee36ac9a09",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "preserveVariant": null,
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": false,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5
+      },
+      "source": "semantic-final-progress-off-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": false,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "b875a39574e63f352e8ed99f26eb44ca59046e4aa08d9fc39d30b8bb9b926b61",
+        "diagnose.mjs": "c8fa35b2a73729e9fc055e1316ec4458520200b58b23ac3b86c025cd29efb3cb",
+        "diagnose.py": "3e264e9ba5a4734e55a1981100c06f592f9e2168d79e5adff33fd8763eefe3b1",
+        "run.py": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "32554fcb20e27bdf6bdf34afc64a69b63c6a5864467cf6953fbce603c8a09a80",
+        "model_executable_sha256": "538c3699c45b37f7a75dc62ac68204eba1e7d7c92fca550e45576794ed8a948e",
+        "packaged_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062",
+        "plugin_sha256": null,
+        "resolver_sha256": "be329c671346a9ee2752a231f1be27789ac44e7b40cf7f45af00d3ee36ac9a09",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "preserveVariant": null,
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5
+      },
+      "source": "semantic-final-kev-long-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": false,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "b875a39574e63f352e8ed99f26eb44ca59046e4aa08d9fc39d30b8bb9b926b61",
+        "diagnose.mjs": "c8fa35b2a73729e9fc055e1316ec4458520200b58b23ac3b86c025cd29efb3cb",
+        "diagnose.py": "3e264e9ba5a4734e55a1981100c06f592f9e2168d79e5adff33fd8763eefe3b1",
+        "run.py": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "32554fcb20e27bdf6bdf34afc64a69b63c6a5864467cf6953fbce603c8a09a80",
+        "model_executable_sha256": "538c3699c45b37f7a75dc62ac68204eba1e7d7c92fca550e45576794ed8a948e",
+        "packaged_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062",
+        "plugin_sha256": null,
+        "resolver_sha256": "be329c671346a9ee2752a231f1be27789ac44e7b40cf7f45af00d3ee36ac9a09",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "preserveVariant": null,
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5
+      },
+      "source": "semantic-final-laya-long-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": false,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "b875a39574e63f352e8ed99f26eb44ca59046e4aa08d9fc39d30b8bb9b926b61",
+        "diagnose.mjs": "c8fa35b2a73729e9fc055e1316ec4458520200b58b23ac3b86c025cd29efb3cb",
+        "diagnose.py": "3e264e9ba5a4734e55a1981100c06f592f9e2168d79e5adff33fd8763eefe3b1",
+        "run.py": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "32554fcb20e27bdf6bdf34afc64a69b63c6a5864467cf6953fbce603c8a09a80",
+        "model_executable_sha256": "538c3699c45b37f7a75dc62ac68204eba1e7d7c92fca550e45576794ed8a948e",
+        "packaged_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062",
+        "plugin_sha256": null,
+        "resolver_sha256": "be329c671346a9ee2752a231f1be27789ac44e7b40cf7f45af00d3ee36ac9a09",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "preserveVariant": null,
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5
+      },
+      "source": "semantic-final-kev-challenges-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": false,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "b875a39574e63f352e8ed99f26eb44ca59046e4aa08d9fc39d30b8bb9b926b61",
+        "diagnose.mjs": "c8fa35b2a73729e9fc055e1316ec4458520200b58b23ac3b86c025cd29efb3cb",
+        "diagnose.py": "3e264e9ba5a4734e55a1981100c06f592f9e2168d79e5adff33fd8763eefe3b1",
+        "run.py": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "32554fcb20e27bdf6bdf34afc64a69b63c6a5864467cf6953fbce603c8a09a80",
+        "model_executable_sha256": "538c3699c45b37f7a75dc62ac68204eba1e7d7c92fca550e45576794ed8a948e",
+        "packaged_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062",
+        "plugin_sha256": null,
+        "resolver_sha256": "be329c671346a9ee2752a231f1be27789ac44e7b40cf7f45af00d3ee36ac9a09",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "preserveVariant": null,
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5
+      },
+      "source": "semantic-final-laya-challenges-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": false,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "b875a39574e63f352e8ed99f26eb44ca59046e4aa08d9fc39d30b8bb9b926b61",
+        "diagnose.mjs": "c8fa35b2a73729e9fc055e1316ec4458520200b58b23ac3b86c025cd29efb3cb",
+        "diagnose.py": "3e264e9ba5a4734e55a1981100c06f592f9e2168d79e5adff33fd8763eefe3b1",
+        "run.py": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "32554fcb20e27bdf6bdf34afc64a69b63c6a5864467cf6953fbce603c8a09a80",
+        "model_executable_sha256": "538c3699c45b37f7a75dc62ac68204eba1e7d7c92fca550e45576794ed8a948e",
+        "packaged_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062",
+        "plugin_sha256": null,
+        "resolver_sha256": "be329c671346a9ee2752a231f1be27789ac44e7b40cf7f45af00d3ee36ac9a09",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "preserveVariant": null,
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5
+      },
+      "source": "semantic-final-search-remap-oracle-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": false,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "b875a39574e63f352e8ed99f26eb44ca59046e4aa08d9fc39d30b8bb9b926b61",
+        "diagnose.mjs": "c8fa35b2a73729e9fc055e1316ec4458520200b58b23ac3b86c025cd29efb3cb",
+        "diagnose.py": "3e264e9ba5a4734e55a1981100c06f592f9e2168d79e5adff33fd8763eefe3b1",
+        "run.py": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "32554fcb20e27bdf6bdf34afc64a69b63c6a5864467cf6953fbce603c8a09a80",
+        "model_executable_sha256": "538c3699c45b37f7a75dc62ac68204eba1e7d7c92fca550e45576794ed8a948e",
+        "packaged_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062",
+        "plugin_sha256": null,
+        "resolver_sha256": "be329c671346a9ee2752a231f1be27789ac44e7b40cf7f45af00d3ee36ac9a09",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "preserveVariant": null,
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5
+      },
+      "source": "semantic-final-search-remap-laya-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": false,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "b875a39574e63f352e8ed99f26eb44ca59046e4aa08d9fc39d30b8bb9b926b61",
+        "diagnose.mjs": "c8fa35b2a73729e9fc055e1316ec4458520200b58b23ac3b86c025cd29efb3cb",
+        "diagnose.py": "3e264e9ba5a4734e55a1981100c06f592f9e2168d79e5adff33fd8763eefe3b1",
+        "run.py": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "32554fcb20e27bdf6bdf34afc64a69b63c6a5864467cf6953fbce603c8a09a80",
+        "model_executable_sha256": "538c3699c45b37f7a75dc62ac68204eba1e7d7c92fca550e45576794ed8a948e",
+        "packaged_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062",
+        "plugin_sha256": null,
+        "resolver_sha256": "be329c671346a9ee2752a231f1be27789ac44e7b40cf7f45af00d3ee36ac9a09",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "preserveVariant": null,
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5
+      },
+      "source": "semantic-final-search-remap-kev-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": true,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "b875a39574e63f352e8ed99f26eb44ca59046e4aa08d9fc39d30b8bb9b926b61",
+        "diagnose.mjs": "02e7fdc517bbe4c079fb213d6e1005fe00ac9625d872de17e4b8a01bf81f3ec2",
+        "diagnose.py": "41162e964606470625b1bfede52b579033266c72efc32e7083ea3521e3b71d89",
+        "run.py": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "a41f9b4baf78c80929aa8829f59744a6414d4a1fa65b4376ab2c91a8d86b9d21",
+        "model_executable_sha256": null,
+        "packaged_runtime_sha256": null,
+        "plugin_sha256": null,
+        "resolver_sha256": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "preserveVariant": null,
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": false,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5
+      },
+      "source": "semantic-patch-alias-off-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": true,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "b875a39574e63f352e8ed99f26eb44ca59046e4aa08d9fc39d30b8bb9b926b61",
+        "diagnose.mjs": "02e7fdc517bbe4c079fb213d6e1005fe00ac9625d872de17e4b8a01bf81f3ec2",
+        "diagnose.py": "41162e964606470625b1bfede52b579033266c72efc32e7083ea3521e3b71d89",
+        "run.py": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "a41f9b4baf78c80929aa8829f59744a6414d4a1fa65b4376ab2c91a8d86b9d21",
+        "model_executable_sha256": null,
+        "packaged_runtime_sha256": null,
+        "plugin_sha256": null,
+        "resolver_sha256": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "preserveVariant": null,
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5
+      },
+      "source": "semantic-patch-alias-on-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": true,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "b875a39574e63f352e8ed99f26eb44ca59046e4aa08d9fc39d30b8bb9b926b61",
+        "diagnose.mjs": "02e7fdc517bbe4c079fb213d6e1005fe00ac9625d872de17e4b8a01bf81f3ec2",
+        "diagnose.py": "41162e964606470625b1bfede52b579033266c72efc32e7083ea3521e3b71d89",
+        "run.py": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "a41f9b4baf78c80929aa8829f59744a6414d4a1fa65b4376ab2c91a8d86b9d21",
+        "model_executable_sha256": null,
+        "packaged_runtime_sha256": null,
+        "plugin_sha256": null,
+        "resolver_sha256": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "preserveVariant": null,
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5
+      },
+      "source": "semantic-patch-default-strict-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": true,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "b875a39574e63f352e8ed99f26eb44ca59046e4aa08d9fc39d30b8bb9b926b61",
+        "diagnose.mjs": "02e7fdc517bbe4c079fb213d6e1005fe00ac9625d872de17e4b8a01bf81f3ec2",
+        "diagnose.py": "41162e964606470625b1bfede52b579033266c72efc32e7083ea3521e3b71d89",
+        "run.py": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "a41f9b4baf78c80929aa8829f59744a6414d4a1fa65b4376ab2c91a8d86b9d21",
+        "model_executable_sha256": null,
+        "packaged_runtime_sha256": null,
+        "plugin_sha256": null,
+        "resolver_sha256": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "preserveVariant": null,
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5
+      },
+      "source": "semantic-patch-optional-strict-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": true,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "b875a39574e63f352e8ed99f26eb44ca59046e4aa08d9fc39d30b8bb9b926b61",
+        "diagnose.mjs": "02e7fdc517bbe4c079fb213d6e1005fe00ac9625d872de17e4b8a01bf81f3ec2",
+        "diagnose.py": "41162e964606470625b1bfede52b579033266c72efc32e7083ea3521e3b71d89",
+        "run.py": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "a41f9b4baf78c80929aa8829f59744a6414d4a1fa65b4376ab2c91a8d86b9d21",
+        "model_executable_sha256": null,
+        "packaged_runtime_sha256": null,
+        "plugin_sha256": null,
+        "resolver_sha256": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "preserveVariant": null,
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5
+      },
+      "source": "semantic-patch-optional-benign-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": true,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "b875a39574e63f352e8ed99f26eb44ca59046e4aa08d9fc39d30b8bb9b926b61",
+        "diagnose.mjs": "02e7fdc517bbe4c079fb213d6e1005fe00ac9625d872de17e4b8a01bf81f3ec2",
+        "diagnose.py": "41162e964606470625b1bfede52b579033266c72efc32e7083ea3521e3b71d89",
+        "run.py": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "a41f9b4baf78c80929aa8829f59744a6414d4a1fa65b4376ab2c91a8d86b9d21",
+        "model_executable_sha256": "538c3699c45b37f7a75dc62ac68204eba1e7d7c92fca550e45576794ed8a948e",
+        "packaged_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062",
+        "plugin_sha256": null,
+        "resolver_sha256": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "preserveVariant": null,
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5
+      },
+      "source": "semantic-patch-long-kev-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": true,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "b875a39574e63f352e8ed99f26eb44ca59046e4aa08d9fc39d30b8bb9b926b61",
+        "diagnose.mjs": "02e7fdc517bbe4c079fb213d6e1005fe00ac9625d872de17e4b8a01bf81f3ec2",
+        "diagnose.py": "41162e964606470625b1bfede52b579033266c72efc32e7083ea3521e3b71d89",
+        "run.py": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "a41f9b4baf78c80929aa8829f59744a6414d4a1fa65b4376ab2c91a8d86b9d21",
+        "model_executable_sha256": "538c3699c45b37f7a75dc62ac68204eba1e7d7c92fca550e45576794ed8a948e",
+        "packaged_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062",
+        "plugin_sha256": null,
+        "resolver_sha256": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "preserveVariant": null,
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5
+      },
+      "source": "semantic-patch-long-laya-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": true,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "b875a39574e63f352e8ed99f26eb44ca59046e4aa08d9fc39d30b8bb9b926b61",
+        "diagnose.mjs": "02e7fdc517bbe4c079fb213d6e1005fe00ac9625d872de17e4b8a01bf81f3ec2",
+        "diagnose.py": "41162e964606470625b1bfede52b579033266c72efc32e7083ea3521e3b71d89",
+        "run.py": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "a41f9b4baf78c80929aa8829f59744a6414d4a1fa65b4376ab2c91a8d86b9d21",
+        "model_executable_sha256": null,
+        "packaged_runtime_sha256": null,
+        "plugin_sha256": null,
+        "resolver_sha256": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "preserveVariant": null,
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5
+      },
+      "source": "semantic-patch-search-oracle-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": true,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "b875a39574e63f352e8ed99f26eb44ca59046e4aa08d9fc39d30b8bb9b926b61",
+        "diagnose.mjs": "02e7fdc517bbe4c079fb213d6e1005fe00ac9625d872de17e4b8a01bf81f3ec2",
+        "diagnose.py": "41162e964606470625b1bfede52b579033266c72efc32e7083ea3521e3b71d89",
+        "run.py": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "a41f9b4baf78c80929aa8829f59744a6414d4a1fa65b4376ab2c91a8d86b9d21",
+        "model_executable_sha256": "538c3699c45b37f7a75dc62ac68204eba1e7d7c92fca550e45576794ed8a948e",
+        "packaged_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062",
+        "plugin_sha256": null,
+        "resolver_sha256": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "preserveVariant": null,
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5
+      },
+      "source": "semantic-patch-search-kev-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    },
+    {
+      "fixture_sha256": {
+        "challenge_sha256": "78df14f99d4e2544cc743e67fbe32a03a3c38dade0725a19aef057be014e01d0",
+        "server_sha256": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+        "tasks_sha256": "ab222c11af7b6e86a625143d4e2898374760df513afafe9d19a5d71121eadd4c"
+      },
+      "hosted_core_match": true,
+      "producer_sha256": {
+        "diagnose-policy.mjs": "b875a39574e63f352e8ed99f26eb44ca59046e4aa08d9fc39d30b8bb9b926b61",
+        "diagnose.mjs": "02e7fdc517bbe4c079fb213d6e1005fe00ac9625d872de17e4b8a01bf81f3ec2",
+        "diagnose.py": "41162e964606470625b1bfede52b579033266c72efc32e7083ea3521e3b71d89",
+        "run.py": "469d8573ad050b4056573b4ca94b2f56141cca0a2b8e5bf51277834e7a11154b"
+      },
+      "runtime_sha256": {
+        "bridge_sha256": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+        "camofox_sha256": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c",
+        "core_sha256": "a41f9b4baf78c80929aa8829f59744a6414d4a1fa65b4376ab2c91a8d86b9d21",
+        "model_executable_sha256": "538c3699c45b37f7a75dc62ac68204eba1e7d7c92fca550e45576794ed8a948e",
+        "packaged_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062",
+        "plugin_sha256": null,
+        "resolver_sha256": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+        "skill_sha256": null,
+        "source_runtime_sha256": "dd89dd163f20f670dab6de1a28cc92c1517c0a09ef3661e60d83842342e01062"
+      },
+      "settings": {
+        "applyPrepared": false,
+        "candidateMode": "legacy",
+        "contractMode": "semantic",
+        "executionScope": null,
+        "margin": 0.05,
+        "modelGoal": "original",
+        "modelHistory": 2,
+        "preserveVariant": null,
+        "representation": "full",
+        "resolverOptions": {
+          "trackProgress": true,
+          "useAliases": true,
+          "useContext": true
+        },
+        "semanticBinding": null,
+        "stopAfter": null,
+        "stopPolicy": "success",
+        "successContract": "strong",
+        "threshold": 0.5
+      },
+      "source": "semantic-patch-search-laya-20260929",
+      "source_head": "3f7fe8e68e6bbed93a07fa7663fd746b3ccc0edf"
+    }
+  ],
+  "recorded_prompt_hashes": [
+    "2f0981dd2886a70c92d5c6a371baeed71213573408ee3a23b579f0dae233ad72"
+  ],
+  "same_recorded_prompt": true,
+  "schema_version": 1,
+  "selection": "Explicit operator-selected synthetic evidence; not an independent or exhaustive suite."
+}
