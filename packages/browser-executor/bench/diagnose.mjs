@@ -8,9 +8,22 @@ import { intendedAction } from './diagnose-policy.mjs';
 const [inputFile, outputFile] = process.argv.slice(2);
 const spec = JSON.parse(readFileSync(inputFile, 'utf8'));
 const { task, baseUrl, camofoxUrl, backend, horizon, successMode, executable,
-  candidateMode, applyPrepared, representation, history, modelGoalMode, stopPolicy, successContract, bindingOverride } = spec;
+  candidateMode, applyPrepared, representation, history, modelGoalMode, stopPolicy, successContract, bindingOverride,
+  semanticBinding, preserveVariant, executionScope, stopAfter } = spec;
 if (bindingOverride && (task.id !== 'challenge-31' || backend !== 'oracle' || !applyPrepared ||
   candidateMode !== 'strictBindings' || bindingOverride !== 'service:Shipping speed')) throw Error('invalid_diagnostic_override');
+if (semanticBinding && !(semanticBinding === 'future' ? task.id === 'challenge-31' :
+  ['challenge-34', 'challenge-35'].includes(task.id) &&
+  ['qualified', 'unqualified', 'wrong-context'].includes(semanticBinding))) throw Error('invalid_diagnostic_binding');
+if (preserveVariant && !({ expected: ['forms-03'], qualified: ['forms-03'], 'wrong-default': ['forms-03'], conflict: ['forms-03'], future: ['challenge-31'],
+  'unsafe-caller': ['challenge-37'],
+  changed: ['challenge-36'], duplicate: ['challenge-32'], hidden: ['challenge-32'] })[preserveVariant]?.includes(task.id))
+  throw Error('invalid_diagnostic_preserve');
+if (executionScope && (!['challenge-40', 'challenge-41', 'challenge-42', 'challenge-43', 'challenge-44'].includes(task.id) ||
+  !['garden', 'wrong', 'wrong-title'].includes(executionScope))) throw Error('invalid_diagnostic_scope');
+if (stopAfter && (({ 'long-submit': 'long-07', 'garden-submit': 'challenge-40',
+  'garden-advance': 'challenge-44', 'unqualified-inquiry': 'challenge-32' })[stopAfter] !== task.id || successMode !== 'none'))
+  throw Error('invalid_diagnostic_stop_after');
 const started = performance.now();
 const key = process.env.CAMOFOX_ACCESS_KEY;
 const userId = randomUUID();
@@ -18,7 +31,11 @@ const runId = randomUUID();
 const startUrl = `${baseUrl}/run/${runId}/${task.id}/start`;
 const configuration = { threshold: 0.5, margin: 0.05, timeoutMs: 120000,
   modelCallMs: 20000, modelHistory: history, representation, candidateMode, applyPrepared,
-  modelGoalMode, stopPolicy, successContract, bindingOverride: bindingOverride ?? null, successMode, maxSteps: horizon,
+  modelGoalMode, stopPolicy, successContract, bindingOverride: bindingOverride ?? null,
+  semanticBinding: semanticBinding ?? null, successMode, maxSteps: horizon,
+  preserveVariant: preserveVariant ?? null,
+  executionScope: executionScope ?? null,
+  stopAfter: stopAfter ?? null,
   variables: task.category === 'forms' ? 'public-target-as-location' : 'public-manifest' };
 const conciseGoals = {
   search: 'Find the requested listing and save it to the shortlist.',
@@ -41,6 +58,17 @@ const fieldLabels = {
     contact: 'Contact alias', confirm: 'Review status' },
   'challenge-31': { location: 'Location', service: 'Service', date: 'Requested date', summary: 'Confirmation label' },
   'challenge-33': { service: 'Service' },
+  'challenge-34': { quantity: 'Quantity' }, 'challenge-35': { quantity: 'Quantity' },
+  'challenge-36': { location: 'Location' },
+  'challenge-37': { location: 'Location' },
+  'challenge-38': { target: 'Search catalog', location: 'Location', preference: 'Preference' },
+  'challenge-39': { location: 'Location (autocomplete)', service: 'Service' },
+  'challenge-40': { party: { field: 'Party size', context: 'Garden Room' }, preference: 'Preference' },
+  'challenge-41': { party: { field: 'Party size', context: 'Garden Room' }, preference: 'Preference' },
+  'challenge-42': { party: { field: 'Party size', context: 'Garden Room' }, preference: 'Preference' },
+  'challenge-43': { party: { field: 'Party size', context: 'Garden Room' }, preference: 'Preference' },
+  'challenge-44': { party: { field: 'Party size', context: 'Garden Room' }, preference: 'Preference' },
+  'challenge-45': { party: 'Party size' },
 };
 const labelsFor = fieldLabels[task.id] ?? fieldLabels[task.category] ?? {};
 const browser = createCamofoxBrowser({ baseUrl: camofoxUrl, userId, accessKey: key });
@@ -63,7 +91,7 @@ const automaticDiagnostic = action => {
   const fields = mapFields(lastSnapshot.structure, nodes).map(({ field, ref }) => ({
     name: field.name, label: field.label, ref, value: field.value, context: nodes.find(n => n.ref === ref)?.context,
   }));
-  for (const node of nodes.filter(n => n.role === 'spinbutton' && !fields.some(f => f.ref === n.ref)))
+  for (const node of nodes.filter(n => ['spinbutton', 'textbox'].includes(n.role) && !fields.some(f => f.ref === n.ref)))
     fields.push({ name: '', label: node.name, ref: node.ref, value: node.value, context: node.context });
   const state = { url: lastSnapshot.url, title: lastSnapshot.snapshot.match(/^\s*- heading "([^"]+)"/m)?.[1] ?? '',
     text: lastSnapshot.snapshot.includes('Page 2 of 2') ? 'Page 2 of 2' : '', fields };
@@ -103,17 +131,39 @@ try {
     vars.location = vars.target;
     delete vars.target;
   }
+  if (preserveVariant === 'conflict') vars.label = 'Override';
   const bindings = Object.fromEntries(Object.entries(labelsFor)
     .filter(([name]) => Object.hasOwn(vars, name)));
+  if (preserveVariant === 'conflict') bindings.label = 'Request label';
   if (bindingOverride) bindings.service = 'Shipping speed';
+  if (semanticBinding === 'future') bindings.summary = { field: 'Confirmation label', context: 'Dispatch review stage 2 of 2' };
+  else if (semanticBinding) bindings.quantity = semanticBinding === 'unqualified' ? 'Quantity' :
+    { field: 'Quantity', context: semanticBinding === 'qualified' ? 'Coral Workshop' : 'Missing Workshop' };
   const request = { tabId, goal: task.goal, variables: vars,
-    ...(successMode === 'whole' && { success: task.id === 'challenge-31' ?
+    ...(semanticBinding && { bindings }),
+    ...(executionScope && { executionScope: { title: executionScope === 'wrong-title' ? 'Missing details' : 'Booking details',
+      context: executionScope === 'wrong' ? 'Missing Room' : 'Garden Room' } }),
+    ...(stopAfter && { stopAfter: stopAfter === 'long-submit' ? { click: 'Submit itinerary' } :
+      stopAfter === 'garden-submit' ? { click: 'Send inquiry', context: 'Garden Room' } :
+      stopAfter === 'garden-advance' ? { click: 'Continue', context: 'Garden Room' } :
+      { click: 'Send inquiry' } }),
+    ...(task.id === 'challenge-39' && { fieldPolicies: [{ field: 'Confirmation label', preserve: 'Auto-approved' }] }),
+    ...(preserveVariant && { fieldPolicies: [{ field: preserveVariant === 'hidden' ? { field: 'item', context: 'Coral Workshop' } :
+      preserveVariant === 'qualified' ? { field: 'Request label', context: 'Dispatch request' } :
+      preserveVariant === 'future' ? 'Confirmation label' : 'Request label',
+      preserve: preserveVariant === 'wrong-default' ? 'Wrong default' : preserveVariant === 'hidden' ? '1' :
+        preserveVariant === 'future' ? 'Parcel note' : ['forms-03', 'challenge-37'].includes(task.id) ? 'Office delivery' : 'Demo inquiry' }] }),
+    ...(successMode === 'whole' && { success: task.id === 'challenge-44' && successContract === 'scope-review' ?
+      { textIncludes: 'Review label' } : task.id === 'challenge-31' ?
       { textIncludes: successContract === 'weak-completed' ? 'Completed:' : 'Receipt verified' } :
-      task.id === 'challenge-32' || task.id === 'challenge-33' ? { textIncludes: 'Final demo request accepted.' } : task.category === 'cart' ?
+      ['challenge-32', 'challenge-33', 'challenge-34', 'challenge-35', 'challenge-36', 'challenge-37', 'challenge-38', 'challenge-39', 'challenge-40', 'challenge-41', 'challenge-42', 'challenge-43', 'challenge-44', 'challenge-45'].includes(task.id) ? { textIncludes: 'Final demo request accepted.' } : task.category === 'cart' ?
       { textIncludes: `Cart contents: ${vars.target} × ${vars.quantity}` } :
       { textIncludes: 'Completed:' } }) };
   requestSummary = { goal: request.goal, variables: request.variables, success: request.success ?? null,
-    bindings: candidateMode === 'strictBindings' ? bindings : null,
+    bindings: candidateMode === 'strictBindings' || semanticBinding ? bindings : null,
+    executionScope: request.executionScope ?? null,
+    stopAfter: request.stopAfter ?? null,
+    fieldPolicies: request.fieldPolicies ?? null,
     modelGoal: modelGoalMode === 'concise' ? conciseGoals[task.category] : null };
   const policy = async (input, options) => {
     const diagnostic = intendedAction(input, task);

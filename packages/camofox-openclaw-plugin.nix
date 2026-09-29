@@ -105,7 +105,7 @@ stdenvNoCC.mkDerivation {
     import { createHmac } from "node:crypto";
     import registerUpstream from "${camofox-browser-source}/plugin.js";
     ${lib.optionalString executorEnabled ''
-      import { registerHybridBrowserExecutor } from "${executorRuntime}/plugin.mjs";
+      import { createValueFreeMetricSink, registerHybridBrowserExecutor } from "${executorRuntime}/plugin.mjs";
       import { browserTabMutationAllowed } from "${executorRuntime}/core.mjs";
       import { reserveBrowserTabMutation } from "${executorRuntime}/core.mjs";
     ''}
@@ -299,6 +299,7 @@ stdenvNoCC.mkDerivation {
                   ["full", "current"].includes(cfg.representation) && [0, 2].includes(cfg.history) &&
                   ["checkpoint", "success"].includes(cfg.stopPolicy)))
             throw new Error("Invalid browser executor configuration");
+          const telemetry = createValueFreeMetricSink(process.env.WAVE_HYBRID_METRICS_PATH);
           registerHybridBrowserExecutor({
             registerTool(factory, options) {
               return registerTool.call(api, ctx => factory(scopedContext([ctx])[0]), options);
@@ -312,6 +313,7 @@ stdenvNoCC.mkDerivation {
               threshold: cfg.threshold, margin: cfg.margin,
               candidateMode: cfg.candidateMode, applyPrepared: cfg.applyPrepared,
               representation: cfg.representation, history: cfg.history, stopPolicy: cfg.stopPolicy,
+              telemetry, onMetric: telemetry,
           });
         }
       ''}

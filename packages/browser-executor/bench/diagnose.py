@@ -28,9 +28,13 @@ def main():
     parser.add_argument('--history', type=int, choices=(0, 2), default=2)
     parser.add_argument('--model-goal', choices=('original', 'concise'), default='original')
     parser.add_argument('--stop-policy', choices=('success', 'checkpoint'), default='success')
-    parser.add_argument('--success-contract', choices=('strong', 'weak-completed'), default='strong')
+    parser.add_argument('--success-contract', choices=('strong', 'weak-completed', 'scope-review'), default='strong')
     parser.add_argument('--binding-override', choices=('service:Shipping speed',),
                         help='Fixture-only negative contract: bind challenge-31 service to a nonexistent label')
+    parser.add_argument('--semantic-binding', choices=('qualified', 'unqualified', 'wrong-context', 'future'))
+    parser.add_argument('--preserve-variant', choices=('expected', 'qualified', 'wrong-default', 'conflict', 'changed', 'duplicate', 'hidden', 'future', 'unsafe-caller'))
+    parser.add_argument('--execution-scope', choices=('garden', 'wrong', 'wrong-title'))
+    parser.add_argument('--stop-after', choices=('long-submit', 'garden-submit', 'garden-advance', 'unqualified-inquiry'))
     parser.add_argument('--connection', default='openclaw-sandbox')
     args = parser.parse_args()
     output = args.output.resolve()
@@ -62,9 +66,31 @@ def main():
         if args.success_contract == 'weak-completed' and (not args.challenge or selected != ['challenge-31'] or
                                                            any(mode != 'whole' for mode, _ in cases)):
             parser.error('weak-completed is only for challenge-31 with whole-workflow success')
+        if args.success_contract == 'scope-review' and (not args.challenge or selected != ['challenge-44'] or
+                                                         any(mode != 'whole' for mode, _ in cases)):
+            parser.error('scope-review is only for challenge-44 with whole-workflow success')
         if args.binding_override and (not args.challenge or selected != ['challenge-31'] or args.backend != ['oracle'] or
                                       args.candidate_mode != 'strictBindings' or not args.apply_prepared):
             parser.error('binding override is only for prepared strict oracle challenge-31')
+        if args.semantic_binding and (not args.challenge or
+                                      args.semantic_binding == 'future' and selected != ['challenge-31'] or
+                                      args.semantic_binding != 'future' and selected not in (['challenge-34'], ['challenge-35'])):
+            parser.error('semantic binding requires its challenge fixture')
+        preserve_tasks = {'expected': 'forms-03', 'qualified': 'forms-03', 'wrong-default': 'forms-03', 'conflict': 'forms-03',
+                          'changed': 'challenge-36', 'duplicate': 'challenge-32', 'hidden': 'challenge-32',
+                          'future': 'challenge-31', 'unsafe-caller': 'challenge-37'}
+        if args.preserve_variant and (selected != [preserve_tasks[args.preserve_variant]] or
+                                      args.challenge != (args.preserve_variant not in ('expected', 'qualified', 'wrong-default', 'conflict'))):
+            parser.error('preserve variant requires its fixture task family')
+        if args.execution_scope and (not args.challenge or selected not in
+                                     (['challenge-40'], ['challenge-41'], ['challenge-42'], ['challenge-43'], ['challenge-44'])):
+            parser.error('scope variant requires a booking challenge')
+        stop_tasks = {'long-submit': 'long-07', 'garden-submit': 'challenge-40',
+                      'garden-advance': 'challenge-44', 'unqualified-inquiry': 'challenge-32'}
+        if args.stop_after and (selected != [stop_tasks[args.stop_after]] or
+                                args.challenge != (args.stop_after != 'long-submit') or
+                                any(mode != 'none' for mode, _ in cases)):
+            parser.error('stop-after requires its fixture without a success predicate')
         wrapper = args.executable.read_text() if args.executable else ''
         runtime_path = re.search(r'/nix/store/[a-z0-9]+-runtime\.py', wrapper)
         runtime = Path(runtime_path.group()) if runtime_path else None
@@ -89,6 +115,10 @@ def main():
                               'stopPolicy': args.stop_policy,
                               'successContract': args.success_contract,
                               'bindingOverride': args.binding_override,
+                              'semanticBinding': args.semantic_binding,
+                              'preserveVariant': args.preserve_variant,
+                              'executionScope': args.execution_scope,
+                              'stopAfter': args.stop_after,
                               'formsVariables': 'public-target-as-location'},
             'image': run.IMAGE, 'source_head': subprocess.check_output(
                 ['git', 'rev-parse', 'HEAD'], cwd=run.REPO, text=True).strip(),
@@ -105,7 +135,9 @@ def main():
                         'candidateMode': args.candidate_mode, 'applyPrepared': args.apply_prepared,
                         'representation': args.representation, 'history': args.history,
                         'modelGoalMode': args.model_goal, 'stopPolicy': args.stop_policy,
-                        'successContract': args.success_contract, 'bindingOverride': args.binding_override}))
+                        'successContract': args.success_contract, 'bindingOverride': args.binding_override,
+                        'semanticBinding': args.semantic_binding, 'preserveVariant': args.preserve_variant,
+                        'executionScope': args.execution_scope, 'stopAfter': args.stop_after}))
                     try:
                         proc = subprocess.run(['node', str(run.HERE / 'diagnose.mjs'), str(spec), str(artifact)],
                             env={'PATH': os.environ.get('PATH', '/usr/bin:/bin'), 'TMPDIR': str(output),
