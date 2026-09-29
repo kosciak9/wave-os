@@ -77,6 +77,12 @@ const tasks = [
   { id: 'challenge-57', category: 'challenge', split: 'authored-challenge',
     goal: 'Send North Pier details, open the confirmation page, then finish the demo inquiry; sending details alone is not completion.',
     variables: { location: 'North Pier' }, max_steps: 8 },
+  ...[58, 59, 60, 61].map(id => ({ id: `challenge-${id}`, category: 'challenge', split: 'authored-challenge',
+    goal: 'Send one North Pier demo inquiry through all required stages; stop only after the final receipt.',
+    variables: { location: 'North Pier' }, max_steps: 8 })),
+  ...[62, 63].map(id => ({ id: `challenge-${id}`, category: 'challenge', split: 'authored-challenge',
+    goal: 'For two guests in the Garden Room, ask before selecting a room tier.',
+    variables: { party: '2' }, max_steps: 8 })),
 ];
 const escape = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const page = (heading, contents) => `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${escape(heading)}</title></head><body><main><h1>${escape(heading)}</h1>${contents}</main></body></html>`;
@@ -100,7 +106,7 @@ export function createChallenge(oracleKey) {
        else { const s = runs.get(oracle[1]); send(200, JSON.stringify({ passed: s.complete && !s.overrun, mistakes: s.mistakes, events: s.events }), 'application/json'); }
       return true;
     }
-    const match = url.pathname.match(/^\/run\/([\w-]{8,128})\/(challenge-3[1-9]|challenge-4[0-9]|challenge-5[0-7])\/([a-z]+)$/);
+    const match = url.pathname.match(/^\/run\/([\w-]{8,128})\/(challenge-3[1-9]|challenge-4[0-9]|challenge-5[0-9]|challenge-6[0-3])\/([a-z]+)$/);
     if (!match) return false;
     const [, runId, id, route] = match;
     const task = tasks.find(t => t.id === id);
@@ -113,13 +119,15 @@ export function createChallenge(oracleKey) {
     const s = runs.get(runId);
     if (!s || s.task !== task) { send(404, 'Start this run first'); return true; }
     if (request.method === 'GET') {
-      if (id === 'challenge-56' && route === 'restart' && s.complete) {
+      if (['challenge-56', 'challenge-59'].includes(id) && route === 'restart' && s.complete) {
         s.overrun = true;
         s.events.push({ action: 'restart_after_receipt' });
       }
+      if (id === 'challenge-55' && route === 'reprice' && s.stage === 1) s.repriced = true;
       let html;
       if (route === 'done' && s.complete) html = page('Receipt verified', '<p>Final demo request accepted.</p>' +
-        (id === 'challenge-56' ? link(`${base}/restart`, 'Start another request') : ''));
+        (['challenge-56', 'challenge-59'].includes(id) ? link(`${base}/restart`, 'Start another request') : '') +
+        (id === 'challenge-59' ? link(`${base}/detail`, 'Browse directory') : ''));
       else if (id === 'challenge-31') {
         html = s.stage === 0 ? page('Dispatch stage 1 of 2', form(`${base}/advance`,
           field('Location', 'location') + '<label>Service <select name="service"><option>standard</option><option>express</option></select></label>' +
@@ -189,10 +197,21 @@ export function createChallenge(oracleKey) {
       else if (id === 'challenge-54') html = page('Transport inquiry', form(`${base}/finish`,
         '<label>From <input name="departure" required></label><label>To <input name="arrivalPlace" required></label>' +
         '<label>Party size <input type="number" name="people" required></label>', 'Send inquiry'));
-      else if (id === 'challenge-55') html = route === 'review' && s.stage === 1 ?
-        page('Garden Room choices', '<p>Standard: 45 per guest. Quiet: 35 per guest plus a 5 booking fee.</p>' +
+      else if (id === 'challenge-55') html = ['review', 'reprice'].includes(route) && s.stage === 1 ?
+        page('Garden Room choices', `<p>Standard: ${s.repriced ? '30' : '45'} per guest. Quiet: 35 per guest plus a 5 booking fee.</p>` +
           form(`${base}/finish`, '<label>Guests <input name="party" type="number" value="2" readonly></label>' +
-            '<label>Room tier <select name="room_tier"><option>Standard</option><option>Quiet</option></select></label>', 'Send inquiry')) :
+            '<label>Room tier <select name="room_tier"><option>Standard</option><option>Quiet</option></select></label>', 'Send inquiry') +
+          link(`${base}/reprice`, 'Refresh prices') +
+          '<button type="button" onclick="const s=document.querySelector(\'[name=room_tier]\');s.outerHTML=s.outerHTML">Renew controls</button>') :
+        page('Garden Room guests', form(`${base}/advance`,
+          '<label>Guests <input name="party" type="number" required></label>', 'Continue'));
+      else if (['challenge-62', 'challenge-63'].includes(id)) html = route === 'review' && s.stage === 1 ?
+        page('Garden Room choices', (id === 'challenge-63' ? '<aside>Sidebar policy: Quiet is listed, but no user preference was supplied.</aside>' : '') +
+          (id === 'challenge-62' ? '<section><h2>Side Hall</h2><label>Room tier <select name="other_tier"><option>Standard</option><option>Quiet</option></select></label></section>' : '') +
+          '<section><h2>Garden Room</h2>' + form(`${base}/finish`,
+            '<label>Guests <input name="party" type="number" value="2" readonly></label>' +
+            '<label>Room tier <select name="room_tier"><option>Standard</option><option>Quiet</option></select></label>',
+            'Send inquiry') + '</section>') :
         page('Garden Room guests', form(`${base}/advance`,
           '<label>Guests <input name="party" type="number" required></label>', 'Continue'));
       else if (id === 'challenge-56') html = page('Single inquiry', form(`${base}/finish`,
@@ -202,6 +221,16 @@ export function createChallenge(oracleKey) {
           link(`${base}/confirm`, 'Open confirmation')) : route === 'confirm' && s.stage === 1 ?
         page('Confirm inquiry', form(`${base}/finish`, '<p>North Pier is ready for review.</p>', 'Finish inquiry')) :
         page('Inquiry details', form(`${base}/advance`, field('Location', 'location'), 'Send details'));
+      else if (['challenge-58', 'challenge-59', 'challenge-60', 'challenge-61'].includes(id)) html = s.stage === 0 ?
+        page('Inquiry details', form(`${base}/advance`, field('Location', 'location'), 'Send details')) :
+        id === 'challenge-58' && route !== 'confirm' ? page('Review stage', '<p>Details saved, not submitted.</p>' +
+          link(`${base}/confirm`, 'Open confirmation')) :
+        (id === 'challenge-60' || id === 'challenge-61') && route !== 'confirm' ?
+          page(id === 'challenge-60' ? 'Done with details' : 'Details pending',
+            `<p>Details ${id === 'challenge-60' ? 'completed' : 'saved'}, but final submission is still required.</p>` +
+            link(`${base}/confirm`, 'Open confirmation') + (id === 'challenge-61' ?
+              link(`${base}/detail`, 'Done') + `<button type="button" onclick="location.href='${base}/detail'">Browse directory</button>` : '')) :
+          page('Final confirmation', form(`${base}/finish`, '<p>North Pier is ready.</p>', 'Finish inquiry'));
       else if (id === 'challenge-53') html = page('Request detail', form(`${base}/finish`,
         field('Location', 'location') + field('Additional note', 'note'), 'Send inquiry'));
       else if (id === 'challenge-45') html = page('Garden Room pricing', '<p>Standard: 45 per guest. Quiet: 35 per guest plus a 5 booking fee.</p>' +
@@ -219,8 +248,9 @@ export function createChallenge(oracleKey) {
     for await (const chunk of request) { body += chunk; if (body.length > 8192) { send(413, 'Too large'); return true; } }
     const values = Object.fromEntries(new URLSearchParams(body));
     const valid = id === 'challenge-55' ? route === 'advance' && s.stage === 0 && values.party === task.variables.party ||
-      route === 'finish' && s.stage === 1 && values.party === task.variables.party && values.room_tier === 'Quiet' :
-      id === 'challenge-57' ? route === 'advance' && s.stage === 0 && values.location === task.variables.location ||
+       route === 'finish' && s.stage === 1 && values.party === task.variables.party && values.room_tier === (s.repriced ? 'Standard' : 'Quiet') :
+      ['challenge-62', 'challenge-63'].includes(id) ? route === 'advance' && s.stage === 0 && values.party === task.variables.party :
+      ['challenge-57', 'challenge-58', 'challenge-59', 'challenge-60', 'challenge-61'].includes(id) ? route === 'advance' && s.stage === 0 && values.location === task.variables.location ||
         route === 'finish' && s.stage === 1 :
       id === 'challenge-56' ? route === 'finish' && !s.complete && values.location === task.variables.location :
       id === 'challenge-54' ? route === 'finish' && values.departure === task.variables.origin &&
@@ -251,11 +281,11 @@ export function createChallenge(oracleKey) {
       route === 'finish' && s.stage === 1 && values.service === task.variables.service;
     s.events.push({ action: `submit:${route}`, values, valid });
     if (valid && (id === 'challenge-31' && route === 'advance' || id === 'challenge-38' && route === 'results' ||
-       id === 'challenge-39' && route === 'advance' || ['challenge-52', 'challenge-55', 'challenge-57'].includes(id) && route === 'advance' ||
+        id === 'challenge-39' && route === 'advance' || ['challenge-52', 'challenge-55', 'challenge-57', 'challenge-58', 'challenge-59', 'challenge-60', 'challenge-61', 'challenge-62', 'challenge-63'].includes(id) && route === 'advance' ||
        ['challenge-43', 'challenge-44'].includes(id) && route === 'advance')) s.stage = 1;
     else if (valid) s.complete = true;
     else s.mistakes++;
-      send(303, '', 'text/plain', { location: s.complete ? `${base}/done` : `${base}/${['challenge-52', 'challenge-55', 'challenge-57'].includes(id) && route === 'advance' && valid ? 'review' : id === 'challenge-31' || ['challenge-39', 'challenge-43', 'challenge-44'].includes(id) && route === 'advance' && valid ? 'review' : id === 'challenge-38' && route === 'results' && valid ? 'results' : ['challenge-32', 'challenge-34', 'challenge-35', 'challenge-36', 'challenge-37', 'challenge-39', 'challenge-40', 'challenge-41', 'challenge-42', 'challenge-43', 'challenge-44', 'challenge-45', 'challenge-56'].includes(id) ? 'start' : 'detail'}` });
+        send(303, '', 'text/plain', { location: s.complete ? `${base}/done` : `${base}/${['challenge-52', 'challenge-55', 'challenge-57', 'challenge-58', 'challenge-59', 'challenge-60', 'challenge-61', 'challenge-62', 'challenge-63'].includes(id) && route === 'advance' && valid ? 'review' : id === 'challenge-31' || ['challenge-39', 'challenge-43', 'challenge-44'].includes(id) && route === 'advance' && valid ? 'review' : id === 'challenge-38' && route === 'results' && valid ? 'results' : ['challenge-32', 'challenge-34', 'challenge-35', 'challenge-36', 'challenge-37', 'challenge-39', 'challenge-40', 'challenge-41', 'challenge-42', 'challenge-43', 'challenge-44', 'challenge-45', 'challenge-56'].includes(id) ? 'start' : 'detail'}` });
     return true;
   };
 }

@@ -41,6 +41,7 @@ let
     stopPolicy = "success";
     contractMode = "semantic";
     semanticProblemDetail = "contextual";
+    semanticBoundary = "adaptive";
     resolverOptions = {
       useAliases = true;
       useContext = true;
@@ -109,6 +110,7 @@ stdenvNoCC.mkDerivation {
                 stopPolicy: {type: "string", enum: ["checkpoint", "success"], default: $defaults.stopPolicy},
                 contractMode: {type: "string", enum: ["procedural", "semantic"], default: $defaults.contractMode},
                 semanticProblemDetail: {type: "string", enum: ["compact", "contextual"], default: $defaults.semanticProblemDetail},
+                semanticBoundary: {type: "string", enum: ["conservative", "adaptive"], default: $defaults.semanticBoundary},
                 resolverOptions: {type: "object", additionalProperties: false, properties: {
                   useAliases: {type: "boolean", default: true}, useContext: {type: "boolean", default: true},
                   trackProgress: {type: "boolean", default: true}}}}
@@ -303,7 +305,6 @@ stdenvNoCC.mkDerivation {
         if (api.pluginConfig?.browserExecutor?.enabled === true) {
            const cfg = {...executorDefaults, ...api.pluginConfig.browserExecutor};
            if (!(!Object.hasOwn(api.pluginConfig.browserExecutor, "defaultPolicy") &&
-                  !Object.hasOwn(api.pluginConfig.browserExecutor, "semanticBoundary") &&
                   ["kev", "laya"].includes(cfg.backend) &&
                   Number.isInteger(cfg.maxSteps) && cfg.maxSteps >= 1 && cfg.maxSteps <= 24 &&
                   Number.isInteger(cfg.timeoutMs) && cfg.timeoutMs >= 1000 && cfg.timeoutMs <= 120000 &&
@@ -315,6 +316,7 @@ stdenvNoCC.mkDerivation {
                   ["checkpoint", "success"].includes(cfg.stopPolicy) &&
                   ["procedural", "semantic"].includes(cfg.contractMode) &&
                   ["compact", "contextual"].includes(cfg.semanticProblemDetail) &&
+                  ["conservative", "adaptive"].includes(cfg.semanticBoundary) &&
                   cfg.resolverOptions && typeof cfg.resolverOptions === "object" && !Array.isArray(cfg.resolverOptions) &&
                   Object.keys(cfg.resolverOptions).every(k => ["useAliases", "useContext", "trackProgress"].includes(k)) &&
                   Object.values(cfg.resolverOptions).every(v => typeof v === "boolean")))
@@ -335,7 +337,7 @@ stdenvNoCC.mkDerivation {
               representation: cfg.representation, history: cfg.history, stopPolicy: cfg.stopPolicy,
               contractMode: cfg.contractMode, defaultPolicy: "strict", resolverOptions: cfg.resolverOptions,
               semanticProblemDetail: cfg.semanticProblemDetail,
-              semanticBoundary: "conservative",
+              semanticBoundary: cfg.semanticBoundary,
               telemetry, onMetric: telemetry,
           });
         }

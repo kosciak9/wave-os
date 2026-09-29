@@ -1,0 +1,2730 @@
+{
+  "provenance": {
+    "head": "6b72f3e9a570a37e1ab7b3332e7214de78461a53",
+    "sha256": {
+      "challenge.js": "f919014686d31fb34e13a6f2210b13a68012312a7007695dfb26f21c436eabf2",
+      "server.js": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c",
+      "focused-study.mjs": "83dc21c1c5b52d23e2a0747204dcd24e71b3ef2215ef5904d5f752a88770a11e",
+      "focused-study.py": "7e013a0a36034a4a098ec8e6aca5ded2c90c394c01698c96c6df3ebf3965e697"
+    },
+    "core_sha256": "8bd5f0c7e472b9cc3c734fdce3607f36c7a817216b1ff86d2534e44f1a8ef1f2",
+    "resolver_sha256": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+    "executable_sha256": "538c3699c45b37f7a75dc62ac68204eba1e7d7c92fca550e45576794ed8a948e",
+    "hosted_calls": 0
+  },
+  "rows": [
+    {
+      "task": "challenge-31",
+      "backend": "local-oracle-policy",
+      "mode": "semantic",
+      "boundary": "conservative",
+      "variant": "normal",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "submission_observed",
+        "steps": 6,
+        "progress": {
+          "assignments_verified": 4,
+          "pages_seen": 3,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 6,
+      "actionKinds": [
+        "type",
+        "select",
+        "type",
+        "click",
+        "type",
+        "click"
+      ],
+      "decisions": 2,
+      "decisionKinds": [
+        "CLICK",
+        "CLICK"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": true,
+        "mistakes": 0,
+        "final_submits": 1,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-31",
+      "backend": "local-oracle-policy",
+      "mode": "semantic",
+      "boundary": "adaptive",
+      "variant": "normal",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "terminal_observed",
+        "steps": 6,
+        "progress": {
+          "assignments_verified": 4,
+          "pages_seen": 3,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 6,
+      "actionKinds": [
+        "type",
+        "select",
+        "type",
+        "click",
+        "type",
+        "click"
+      ],
+      "decisions": 2,
+      "decisionKinds": [
+        "CLICK",
+        "CLICK"
+      ],
+      "boundaries": [
+        "terminal_observed"
+      ],
+      "oracle": {
+        "passed": true,
+        "mistakes": 0,
+        "final_submits": 1,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-31",
+      "backend": "local-oracle-policy",
+      "mode": "semantic",
+      "boundary": "none",
+      "variant": "normal",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "no_actionable_controls",
+        "steps": 6,
+        "progress": {
+          "assignments_verified": 4,
+          "pages_seen": 3,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 6,
+      "actionKinds": [
+        "type",
+        "select",
+        "type",
+        "click",
+        "type",
+        "click"
+      ],
+      "decisions": 2,
+      "decisionKinds": [
+        "CLICK",
+        "CLICK"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": true,
+        "mistakes": 0,
+        "final_submits": 1,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-56",
+      "backend": "local-oracle-policy",
+      "mode": "semantic",
+      "boundary": "conservative",
+      "variant": "normal",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "submission_observed",
+        "steps": 2,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 2,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 2,
+      "actionKinds": [
+        "type",
+        "click"
+      ],
+      "decisions": 1,
+      "decisionKinds": [
+        "CLICK"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": true,
+        "mistakes": 0,
+        "final_submits": 1,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 0
+      }
+    },
+    {
+      "task": "challenge-56",
+      "backend": "local-oracle-policy",
+      "mode": "semantic",
+      "boundary": "adaptive",
+      "variant": "normal",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "terminal_observed",
+        "steps": 2,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 2,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 2,
+      "actionKinds": [
+        "type",
+        "click"
+      ],
+      "decisions": 1,
+      "decisionKinds": [
+        "CLICK"
+      ],
+      "boundaries": [
+        "terminal_observed"
+      ],
+      "oracle": {
+        "passed": true,
+        "mistakes": 0,
+        "final_submits": 1,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 0
+      }
+    },
+    {
+      "task": "challenge-56",
+      "backend": "local-oracle-policy",
+      "mode": "semantic",
+      "boundary": "none",
+      "variant": "normal",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "escalated",
+        "reason": "model_escalation",
+        "steps": 2,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 2,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 2,
+      "actionKinds": [
+        "type",
+        "click"
+      ],
+      "decisions": 2,
+      "decisionKinds": [
+        "CLICK",
+        "ESCALATE"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": true,
+        "mistakes": 0,
+        "final_submits": 1,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 0
+      }
+    },
+    {
+      "task": "challenge-57",
+      "backend": "local-oracle-policy",
+      "mode": "semantic",
+      "boundary": "conservative",
+      "variant": "normal",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "submission_observed",
+        "steps": 2,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 2,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 2,
+      "actionKinds": [
+        "type",
+        "click"
+      ],
+      "decisions": 1,
+      "decisionKinds": [
+        "CLICK"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": false,
+        "mistakes": 0,
+        "final_submits": 0,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-57",
+      "backend": "local-oracle-policy",
+      "mode": "semantic",
+      "boundary": "adaptive",
+      "variant": "normal",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "terminal_observed",
+        "steps": 4,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 4,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 4,
+      "actionKinds": [
+        "type",
+        "click",
+        "click",
+        "click"
+      ],
+      "decisions": 3,
+      "decisionKinds": [
+        "CLICK",
+        "CLICK",
+        "CLICK"
+      ],
+      "boundaries": [
+        "unique_forward",
+        "unique_forward",
+        "terminal_observed"
+      ],
+      "oracle": {
+        "passed": true,
+        "mistakes": 0,
+        "final_submits": 1,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-57",
+      "backend": "local-oracle-policy",
+      "mode": "semantic",
+      "boundary": "none",
+      "variant": "normal",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "no_actionable_controls",
+        "steps": 4,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 4,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 4,
+      "actionKinds": [
+        "type",
+        "click",
+        "click",
+        "click"
+      ],
+      "decisions": 3,
+      "decisionKinds": [
+        "CLICK",
+        "CLICK",
+        "CLICK"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": true,
+        "mistakes": 0,
+        "final_submits": 1,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-52",
+      "backend": "local-oracle-policy",
+      "mode": "semantic",
+      "boundary": "conservative",
+      "variant": "normal",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "submission_observed",
+        "steps": 5,
+        "progress": {
+          "assignments_verified": 2,
+          "pages_seen": 3,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 5,
+      "actionKinds": [
+        "type",
+        "click",
+        "type",
+        "select",
+        "click"
+      ],
+      "decisions": 2,
+      "decisionKinds": [
+        "CLICK",
+        "CLICK"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": true,
+        "mistakes": 0,
+        "final_submits": 1,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-52",
+      "backend": "local-oracle-policy",
+      "mode": "semantic",
+      "boundary": "adaptive",
+      "variant": "normal",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "terminal_observed",
+        "steps": 5,
+        "progress": {
+          "assignments_verified": 2,
+          "pages_seen": 3,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 5,
+      "actionKinds": [
+        "type",
+        "click",
+        "type",
+        "select",
+        "click"
+      ],
+      "decisions": 2,
+      "decisionKinds": [
+        "CLICK",
+        "CLICK"
+      ],
+      "boundaries": [
+        "terminal_observed"
+      ],
+      "oracle": {
+        "passed": true,
+        "mistakes": 0,
+        "final_submits": 1,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-52",
+      "backend": "local-oracle-policy",
+      "mode": "semantic",
+      "boundary": "none",
+      "variant": "normal",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "no_actionable_controls",
+        "steps": 5,
+        "progress": {
+          "assignments_verified": 2,
+          "pages_seen": 3,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 5,
+      "actionKinds": [
+        "type",
+        "click",
+        "type",
+        "select",
+        "click"
+      ],
+      "decisions": 2,
+      "decisionKinds": [
+        "CLICK",
+        "CLICK"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": true,
+        "mistakes": 0,
+        "final_submits": 1,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-58",
+      "backend": "local-oracle-policy",
+      "mode": "semantic",
+      "boundary": "conservative",
+      "variant": "normal",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "submission_observed",
+        "steps": 2,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 2,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 2,
+      "actionKinds": [
+        "type",
+        "click"
+      ],
+      "decisions": 1,
+      "decisionKinds": [
+        "CLICK"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": false,
+        "mistakes": 0,
+        "final_submits": 0,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-58",
+      "backend": "local-oracle-policy",
+      "mode": "semantic",
+      "boundary": "adaptive",
+      "variant": "normal",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "terminal_observed",
+        "steps": 4,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 4,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 4,
+      "actionKinds": [
+        "type",
+        "click",
+        "click",
+        "click"
+      ],
+      "decisions": 3,
+      "decisionKinds": [
+        "CLICK",
+        "CLICK",
+        "CLICK"
+      ],
+      "boundaries": [
+        "unique_forward",
+        "unique_forward",
+        "terminal_observed"
+      ],
+      "oracle": {
+        "passed": true,
+        "mistakes": 0,
+        "final_submits": 1,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-58",
+      "backend": "local-oracle-policy",
+      "mode": "semantic",
+      "boundary": "none",
+      "variant": "normal",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "no_actionable_controls",
+        "steps": 4,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 4,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 4,
+      "actionKinds": [
+        "type",
+        "click",
+        "click",
+        "click"
+      ],
+      "decisions": 3,
+      "decisionKinds": [
+        "CLICK",
+        "CLICK",
+        "CLICK"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": true,
+        "mistakes": 0,
+        "final_submits": 1,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-59",
+      "backend": "local-oracle-policy",
+      "mode": "semantic",
+      "boundary": "conservative",
+      "variant": "normal",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "submission_observed",
+        "steps": 2,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 2,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 2,
+      "actionKinds": [
+        "type",
+        "click"
+      ],
+      "decisions": 1,
+      "decisionKinds": [
+        "CLICK"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": false,
+        "mistakes": 0,
+        "final_submits": 0,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-59",
+      "backend": "local-oracle-policy",
+      "mode": "semantic",
+      "boundary": "adaptive",
+      "variant": "normal",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "terminal_observed",
+        "steps": 3,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 3,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 3,
+      "actionKinds": [
+        "type",
+        "click",
+        "click"
+      ],
+      "decisions": 2,
+      "decisionKinds": [
+        "CLICK",
+        "CLICK"
+      ],
+      "boundaries": [
+        "unique_forward",
+        "terminal_observed"
+      ],
+      "oracle": {
+        "passed": true,
+        "mistakes": 0,
+        "final_submits": 1,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-59",
+      "backend": "local-oracle-policy",
+      "mode": "semantic",
+      "boundary": "none",
+      "variant": "normal",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "escalated",
+        "reason": "model_escalation",
+        "steps": 3,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 3,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 3,
+      "actionKinds": [
+        "type",
+        "click",
+        "click"
+      ],
+      "decisions": 3,
+      "decisionKinds": [
+        "CLICK",
+        "CLICK",
+        "ESCALATE"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": true,
+        "mistakes": 0,
+        "final_submits": 1,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-60",
+      "backend": "local-oracle-policy",
+      "mode": "semantic",
+      "boundary": "conservative",
+      "variant": "normal",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "submission_observed",
+        "steps": 2,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 2,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 2,
+      "actionKinds": [
+        "type",
+        "click"
+      ],
+      "decisions": 1,
+      "decisionKinds": [
+        "CLICK"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": false,
+        "mistakes": 0,
+        "final_submits": 0,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-60",
+      "backend": "local-oracle-policy",
+      "mode": "semantic",
+      "boundary": "adaptive",
+      "variant": "normal",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "terminal_observed",
+        "steps": 4,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 4,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 4,
+      "actionKinds": [
+        "type",
+        "click",
+        "click",
+        "click"
+      ],
+      "decisions": 3,
+      "decisionKinds": [
+        "CLICK",
+        "CLICK",
+        "CLICK"
+      ],
+      "boundaries": [
+        "unique_forward",
+        "unique_forward",
+        "terminal_observed"
+      ],
+      "oracle": {
+        "passed": true,
+        "mistakes": 0,
+        "final_submits": 1,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-60",
+      "backend": "local-oracle-policy",
+      "mode": "semantic",
+      "boundary": "none",
+      "variant": "normal",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "no_actionable_controls",
+        "steps": 4,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 4,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 4,
+      "actionKinds": [
+        "type",
+        "click",
+        "click",
+        "click"
+      ],
+      "decisions": 3,
+      "decisionKinds": [
+        "CLICK",
+        "CLICK",
+        "CLICK"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": true,
+        "mistakes": 0,
+        "final_submits": 1,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-61",
+      "backend": "local-oracle-policy",
+      "mode": "semantic",
+      "boundary": "conservative",
+      "variant": "normal",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "submission_observed",
+        "steps": 2,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 2,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 2,
+      "actionKinds": [
+        "type",
+        "click"
+      ],
+      "decisions": 1,
+      "decisionKinds": [
+        "CLICK"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": false,
+        "mistakes": 0,
+        "final_submits": 0,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-61",
+      "backend": "local-oracle-policy",
+      "mode": "semantic",
+      "boundary": "adaptive",
+      "variant": "normal",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "boundary_unresolved",
+        "steps": 2,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 2,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 2,
+      "actionKinds": [
+        "type",
+        "click"
+      ],
+      "decisions": 1,
+      "decisionKinds": [
+        "CLICK"
+      ],
+      "boundaries": [
+        "ambiguous_boundary"
+      ],
+      "oracle": {
+        "passed": false,
+        "mistakes": 0,
+        "final_submits": 0,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-61",
+      "backend": "local-oracle-policy",
+      "mode": "semantic",
+      "boundary": "none",
+      "variant": "normal",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "no_actionable_controls",
+        "steps": 4,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 4,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 4,
+      "actionKinds": [
+        "type",
+        "click",
+        "click",
+        "click"
+      ],
+      "decisions": 3,
+      "decisionKinds": [
+        "CLICK",
+        "CLICK",
+        "CLICK"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": true,
+        "mistakes": 0,
+        "final_submits": 1,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-55",
+      "backend": "local-oracle-policy",
+      "mode": "semantic",
+      "boundary": "adaptive",
+      "variant": "no-preference",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "pause": {
+        "status": "needs_decision",
+        "reason": "missing_fact",
+        "steps": 2,
+        "problem": {
+          "kind": "missing_fact",
+          "field": "Room tier StandardQuiet",
+          "context": "Garden Room choices",
+          "candidates": 0,
+          "options": [
+            "Standard",
+            "Quiet"
+          ]
+        },
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 2,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 2,
+      "actionKinds": [
+        "type",
+        "click"
+      ],
+      "decisions": 1,
+      "decisionKinds": [
+        "CLICK"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": false,
+        "mistakes": 0,
+        "final_submits": 0,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-55",
+      "backend": "local-oracle-policy",
+      "mode": "semantic",
+      "boundary": "adaptive",
+      "variant": "resume",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "pause": {
+        "status": "needs_decision",
+        "reason": "missing_fact",
+        "steps": 2,
+        "problem": {
+          "kind": "missing_fact",
+          "field": "Room tier StandardQuiet",
+          "context": "Garden Room choices",
+          "candidates": 0,
+          "options": [
+            "Standard",
+            "Quiet"
+          ]
+        },
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 2,
+          "remaining_facts": 0
+        }
+      },
+      "frozen_payload_sha256": "35ca9745d07b09fd69657747405e9e9a15ec551cbb4ab3585e685ea2fa4dd766",
+      "resume": {
+        "status": "checkpoint",
+        "reason": "terminal_observed",
+        "steps": 2,
+        "progress": {
+          "assignments_verified": 2,
+          "pages_seen": 2,
+          "remaining_facts": 0
+        }
+      },
+      "resume_actions": 2,
+      "actions": 4,
+      "actionKinds": [
+        "type",
+        "click",
+        "select",
+        "click"
+      ],
+      "decisions": 2,
+      "decisionKinds": [
+        "CLICK",
+        "CLICK"
+      ],
+      "boundaries": [
+        "terminal_observed"
+      ],
+      "oracle": {
+        "passed": true,
+        "mistakes": 0,
+        "final_submits": 1,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-55",
+      "backend": "local-oracle-policy",
+      "mode": "semantic",
+      "boundary": "adaptive",
+      "variant": "resume-stale",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "pause": {
+        "status": "needs_decision",
+        "reason": "missing_fact",
+        "steps": 2,
+        "problem": {
+          "kind": "missing_fact",
+          "field": "Room tier StandardQuiet",
+          "context": "Garden Room choices",
+          "candidates": 0,
+          "options": [
+            "Standard",
+            "Quiet"
+          ]
+        },
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 2,
+          "remaining_facts": 0
+        }
+      },
+      "frozen_payload_sha256": "69764c8913b57b536b56f0671324263353326ac058128975d28e593698bfccdf",
+      "external_fixture_change": "refresh_prices",
+      "resume": {
+        "status": "escalated",
+        "reason": "continuation_stale",
+        "steps": 0
+      },
+      "resume_actions": 0,
+      "actions": 2,
+      "actionKinds": [
+        "type",
+        "click"
+      ],
+      "decisions": 1,
+      "decisionKinds": [
+        "CLICK"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": false,
+        "mistakes": 0,
+        "final_submits": 0,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-55",
+      "backend": "local-oracle-policy",
+      "mode": "semantic",
+      "boundary": "adaptive",
+      "variant": "resume-replay",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "pause": {
+        "status": "needs_decision",
+        "reason": "missing_fact",
+        "steps": 2,
+        "problem": {
+          "kind": "missing_fact",
+          "field": "Room tier StandardQuiet",
+          "context": "Garden Room choices",
+          "candidates": 0,
+          "options": [
+            "Standard",
+            "Quiet"
+          ]
+        },
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 2,
+          "remaining_facts": 0
+        }
+      },
+      "frozen_payload_sha256": "cfff3601e7b536bf69da9bfe8d089d319afcf73dce8b760816f1147215451e7f",
+      "resume": {
+        "status": "checkpoint",
+        "reason": "terminal_observed",
+        "steps": 2,
+        "progress": {
+          "assignments_verified": 2,
+          "pages_seen": 2,
+          "remaining_facts": 0
+        }
+      },
+      "resume_actions": 2,
+      "replay": {
+        "status": "escalated",
+        "reason": "invalid_request",
+        "steps": 0
+      },
+      "actions": 4,
+      "actionKinds": [
+        "type",
+        "click",
+        "select",
+        "click"
+      ],
+      "decisions": 2,
+      "decisionKinds": [
+        "CLICK",
+        "CLICK"
+      ],
+      "boundaries": [
+        "terminal_observed"
+      ],
+      "oracle": {
+        "passed": true,
+        "mistakes": 0,
+        "final_submits": 1,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-55",
+      "backend": "local-oracle-policy",
+      "mode": "semantic",
+      "boundary": "adaptive",
+      "variant": "resume-wrong-fact",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "pause": {
+        "status": "needs_decision",
+        "reason": "missing_fact",
+        "steps": 2,
+        "problem": {
+          "kind": "missing_fact",
+          "field": "Room tier StandardQuiet",
+          "context": "Garden Room choices",
+          "candidates": 0,
+          "options": [
+            "Standard",
+            "Quiet"
+          ]
+        },
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 2,
+          "remaining_facts": 0
+        }
+      },
+      "frozen_payload_sha256": "ac38c9e14123b2c405385910e933c677feab04c1b6fd7e85f9c9b63573551788",
+      "resume": {
+        "status": "escalated",
+        "reason": "invalid_request",
+        "steps": 0
+      },
+      "resume_actions": 0,
+      "actions": 2,
+      "actionKinds": [
+        "type",
+        "click"
+      ],
+      "decisions": 1,
+      "decisionKinds": [
+        "CLICK"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": false,
+        "mistakes": 0,
+        "final_submits": 0,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-55",
+      "backend": "local-oracle-policy",
+      "mode": "semantic",
+      "boundary": "adaptive",
+      "variant": "resume-wrong-scope",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "pause": {
+        "status": "needs_decision",
+        "reason": "missing_fact",
+        "steps": 2,
+        "problem": {
+          "kind": "missing_fact",
+          "field": "Room tier StandardQuiet",
+          "context": "Garden Room choices",
+          "candidates": 0,
+          "options": [
+            "Standard",
+            "Quiet"
+          ]
+        },
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 2,
+          "remaining_facts": 0
+        }
+      },
+      "frozen_payload_sha256": "114986ad2ff82eecaa3f87b9d4d44ebad1800f10f07a8ba0a0d5ae08f0de128f",
+      "resume": {
+        "status": "escalated",
+        "reason": "invalid_request",
+        "steps": 0
+      },
+      "resume_actions": 0,
+      "actions": 2,
+      "actionKinds": [
+        "type",
+        "click"
+      ],
+      "decisions": 1,
+      "decisionKinds": [
+        "CLICK"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": false,
+        "mistakes": 0,
+        "final_submits": 0,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-55",
+      "backend": "local-oracle-policy",
+      "mode": "semantic",
+      "boundary": "adaptive",
+      "variant": "resume-refchurn",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "pause": {
+        "status": "needs_decision",
+        "reason": "missing_fact",
+        "steps": 2,
+        "problem": {
+          "kind": "missing_fact",
+          "field": "Room tier StandardQuiet",
+          "context": "Garden Room choices",
+          "candidates": 0,
+          "options": [
+            "Standard",
+            "Quiet"
+          ]
+        },
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 2,
+          "remaining_facts": 0
+        }
+      },
+      "frozen_payload_sha256": "af3877d926bc713b0899679ba3cbfa6f9f48fdd23d6498c18c521609a20cf2c0",
+      "external_fixture_change": "replace_identical_select_dom",
+      "ref_changed": false,
+      "url_changed": false,
+      "resume": {
+        "status": "checkpoint",
+        "reason": "terminal_observed",
+        "steps": 2,
+        "progress": {
+          "assignments_verified": 2,
+          "pages_seen": 2,
+          "remaining_facts": 0
+        }
+      },
+      "resume_actions": 2,
+      "actions": 4,
+      "actionKinds": [
+        "type",
+        "click",
+        "select",
+        "click"
+      ],
+      "decisions": 2,
+      "decisionKinds": [
+        "CLICK",
+        "CLICK"
+      ],
+      "boundaries": [
+        "terminal_observed"
+      ],
+      "oracle": {
+        "passed": true,
+        "mistakes": 0,
+        "final_submits": 1,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-62",
+      "backend": "local-oracle-policy",
+      "mode": "semantic",
+      "boundary": "adaptive",
+      "variant": "no-preference",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "pause": {
+        "status": "needs_mapping",
+        "reason": "ambiguous_mapping",
+        "steps": 2,
+        "problem": {
+          "kind": "ambiguous_mapping",
+          "field": "Room tier StandardQuiet",
+          "context": null,
+          "candidates": 0,
+          "options": []
+        },
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 2,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 2,
+      "actionKinds": [
+        "type",
+        "click"
+      ],
+      "decisions": 1,
+      "decisionKinds": [
+        "CLICK"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": false,
+        "mistakes": 0,
+        "final_submits": 0,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-63",
+      "backend": "local-oracle-policy",
+      "mode": "semantic",
+      "boundary": "adaptive",
+      "variant": "no-preference",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "pause": {
+        "status": "needs_decision",
+        "reason": "missing_fact",
+        "steps": 2,
+        "problem": {
+          "kind": "missing_fact",
+          "field": "Room tier StandardQuiet",
+          "context": "Garden Room",
+          "candidates": 0,
+          "options": [
+            "Standard",
+            "Quiet"
+          ]
+        },
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 2,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 2,
+      "actionKinds": [
+        "type",
+        "click"
+      ],
+      "decisions": 1,
+      "decisionKinds": [
+        "CLICK"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": false,
+        "mistakes": 0,
+        "final_submits": 0,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-31",
+      "backend": "local-oracle-policy",
+      "mode": "semantic-bound",
+      "boundary": "adaptive",
+      "variant": "normal",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "terminal_observed",
+        "steps": 6,
+        "progress": {
+          "assignments_verified": 4,
+          "pages_seen": 3,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 6,
+      "actionKinds": [
+        "type",
+        "select",
+        "type",
+        "click",
+        "type",
+        "click"
+      ],
+      "decisions": 2,
+      "decisionKinds": [
+        "CLICK",
+        "CLICK"
+      ],
+      "boundaries": [
+        "terminal_observed"
+      ],
+      "oracle": {
+        "passed": true,
+        "mistakes": 0,
+        "final_submits": 1,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-31",
+      "backend": "local-oracle-policy",
+      "mode": "procedural",
+      "boundary": "adaptive",
+      "variant": "normal",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "completed",
+        "reason": "matched_conditions_after_action",
+        "steps": 6
+      },
+      "actions": 6,
+      "actionKinds": [
+        "type",
+        "select",
+        "type",
+        "click",
+        "type",
+        "click"
+      ],
+      "decisions": 2,
+      "decisionKinds": [
+        "CLICK",
+        "CLICK"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": true,
+        "mistakes": 0,
+        "final_submits": 1,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-52",
+      "backend": "local-oracle-policy",
+      "mode": "semantic-bound",
+      "boundary": "adaptive",
+      "variant": "normal",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "terminal_observed",
+        "steps": 5,
+        "progress": {
+          "assignments_verified": 2,
+          "pages_seen": 3,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 5,
+      "actionKinds": [
+        "type",
+        "click",
+        "type",
+        "select",
+        "click"
+      ],
+      "decisions": 2,
+      "decisionKinds": [
+        "CLICK",
+        "CLICK"
+      ],
+      "boundaries": [
+        "terminal_observed"
+      ],
+      "oracle": {
+        "passed": true,
+        "mistakes": 0,
+        "final_submits": 1,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-52",
+      "backend": "local-oracle-policy",
+      "mode": "procedural",
+      "boundary": "adaptive",
+      "variant": "normal",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "completed",
+        "reason": "matched_conditions_after_action",
+        "steps": 5
+      },
+      "actions": 5,
+      "actionKinds": [
+        "type",
+        "click",
+        "type",
+        "select",
+        "click"
+      ],
+      "decisions": 2,
+      "decisionKinds": [
+        "CLICK",
+        "CLICK"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": true,
+        "mistakes": 0,
+        "final_submits": 1,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-38",
+      "backend": "local-oracle-policy",
+      "mode": "semantic",
+      "boundary": "adaptive",
+      "variant": "entry38",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "entry": {
+        "route": "start",
+        "title": "Search catalog",
+        "controls": [
+          {
+            "role": "button",
+            "label": "Search"
+          }
+        ],
+        "fields": [
+          "Search catalog"
+        ]
+      },
+      "result": {
+        "status": "checkpoint",
+        "reason": "terminal_observed",
+        "steps": 7,
+        "progress": {
+          "assignments_verified": 3,
+          "pages_seen": 4,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 7,
+      "actionKinds": [
+        "type",
+        "click",
+        "click",
+        "click",
+        "type",
+        "select",
+        "click"
+      ],
+      "decisions": 4,
+      "decisionKinds": [
+        "CLICK",
+        "CLICK",
+        "CLICK",
+        "CLICK"
+      ],
+      "boundaries": [
+        "terminal_observed"
+      ],
+      "stages": [
+        {
+          "route": "start",
+          "title": "Search catalog",
+          "controls": [
+            {
+              "role": "button",
+              "label": "Search"
+            }
+          ],
+          "fields": [
+            "Search catalog"
+          ]
+        },
+        {
+          "route": "results",
+          "title": "Search results",
+          "controls": [
+            {
+              "role": "link",
+              "label": "Open Haven Studio"
+            },
+            {
+              "role": "link",
+              "label": "Open Harbor Studio"
+            }
+          ],
+          "fields": []
+        },
+        {
+          "route": "detail",
+          "title": "Harbor Studio detail",
+          "controls": [
+            {
+              "role": "link",
+              "label": "Open inquiry modal"
+            }
+          ],
+          "fields": []
+        },
+        {
+          "route": "modal",
+          "title": "Harbor Studio inquiry",
+          "controls": [
+            {
+              "role": "button",
+              "label": "Send inquiry"
+            }
+          ],
+          "fields": [
+            "Location",
+            "Preference StandardQuiet"
+          ]
+        },
+        {
+          "route": "done",
+          "title": "Receipt verified",
+          "controls": [],
+          "fields": []
+        }
+      ],
+      "oracle": {
+        "passed": true,
+        "mistakes": 0,
+        "final_submits": 1,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 0
+      }
+    },
+    {
+      "task": "challenge-56",
+      "backend": "local-oracle-policy",
+      "mode": "semantic",
+      "boundary": "adaptive",
+      "variant": "receipt-remaining",
+      "policy": "local-control-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "terminal_observed",
+        "steps": 2,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 2,
+          "remaining_facts": 1
+        }
+      },
+      "actions": 2,
+      "actionKinds": [
+        "type",
+        "click"
+      ],
+      "decisions": 1,
+      "decisionKinds": [
+        "CLICK"
+      ],
+      "boundaries": [
+        "terminal_observed"
+      ],
+      "oracle": {
+        "passed": true,
+        "mistakes": 0,
+        "final_submits": 1,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 0
+      }
+    },
+    {
+      "task": "challenge-56",
+      "backend": "laya",
+      "mode": "semantic",
+      "boundary": "conservative",
+      "variant": "normal",
+      "policy": "native-executable-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "submission_observed",
+        "steps": 2,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 2,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 2,
+      "actionKinds": [
+        "type",
+        "click"
+      ],
+      "decisions": 1,
+      "decisionKinds": [
+        "CLICK"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": true,
+        "mistakes": 0,
+        "final_submits": 1,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 0
+      }
+    },
+    {
+      "task": "challenge-56",
+      "backend": "kev",
+      "mode": "semantic",
+      "boundary": "conservative",
+      "variant": "normal",
+      "policy": "native-executable-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "submission_observed",
+        "steps": 2,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 2,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 2,
+      "actionKinds": [
+        "type",
+        "click"
+      ],
+      "decisions": 1,
+      "decisionKinds": [
+        "CLICK"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": true,
+        "mistakes": 0,
+        "final_submits": 1,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 0
+      }
+    },
+    {
+      "task": "challenge-56",
+      "backend": "laya",
+      "mode": "semantic",
+      "boundary": "adaptive",
+      "variant": "normal",
+      "policy": "native-executable-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "terminal_observed",
+        "steps": 2,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 2,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 2,
+      "actionKinds": [
+        "type",
+        "click"
+      ],
+      "decisions": 1,
+      "decisionKinds": [
+        "CLICK"
+      ],
+      "boundaries": [
+        "terminal_observed"
+      ],
+      "oracle": {
+        "passed": true,
+        "mistakes": 0,
+        "final_submits": 1,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 0
+      }
+    },
+    {
+      "task": "challenge-56",
+      "backend": "kev",
+      "mode": "semantic",
+      "boundary": "adaptive",
+      "variant": "normal",
+      "policy": "native-executable-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "terminal_observed",
+        "steps": 2,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 2,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 2,
+      "actionKinds": [
+        "type",
+        "click"
+      ],
+      "decisions": 1,
+      "decisionKinds": [
+        "CLICK"
+      ],
+      "boundaries": [
+        "terminal_observed"
+      ],
+      "oracle": {
+        "passed": true,
+        "mistakes": 0,
+        "final_submits": 1,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 0
+      }
+    },
+    {
+      "task": "challenge-56",
+      "backend": "laya",
+      "mode": "semantic",
+      "boundary": "none",
+      "variant": "normal",
+      "policy": "native-executable-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "escalated",
+        "reason": "action_loop",
+        "steps": 5,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 3,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 5,
+      "actionKinds": [
+        "type",
+        "click",
+        "click",
+        "type",
+        "click"
+      ],
+      "decisions": 4,
+      "decisionKinds": [
+        "CLICK",
+        "CLICK",
+        "CLICK",
+        "CLICK"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": false,
+        "mistakes": 1,
+        "final_submits": 1,
+        "invalid_submits": 1,
+        "overrun": true,
+        "advances": 0
+      }
+    },
+    {
+      "task": "challenge-56",
+      "backend": "kev",
+      "mode": "semantic",
+      "boundary": "none",
+      "variant": "normal",
+      "policy": "native-executable-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "escalated",
+        "reason": "uncertain",
+        "steps": 2,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 2,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 2,
+      "actionKinds": [
+        "type",
+        "click"
+      ],
+      "decisions": 2,
+      "decisionKinds": [
+        "CLICK",
+        "ESCALATE"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": true,
+        "mistakes": 0,
+        "final_submits": 1,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 0
+      }
+    },
+    {
+      "task": "challenge-57",
+      "backend": "laya",
+      "mode": "semantic",
+      "boundary": "conservative",
+      "variant": "normal",
+      "policy": "native-executable-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "submission_observed",
+        "steps": 2,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 2,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 2,
+      "actionKinds": [
+        "type",
+        "click"
+      ],
+      "decisions": 1,
+      "decisionKinds": [
+        "CLICK"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": false,
+        "mistakes": 0,
+        "final_submits": 0,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-57",
+      "backend": "kev",
+      "mode": "semantic",
+      "boundary": "conservative",
+      "variant": "normal",
+      "policy": "native-executable-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "escalated",
+        "reason": "model_escalation",
+        "steps": 1,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 1,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 1,
+      "actionKinds": [
+        "type"
+      ],
+      "decisions": 1,
+      "decisionKinds": [
+        "ESCALATE"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": false,
+        "mistakes": 0,
+        "final_submits": 0,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 0
+      }
+    },
+    {
+      "task": "challenge-57",
+      "backend": "laya",
+      "mode": "semantic",
+      "boundary": "adaptive",
+      "variant": "normal",
+      "policy": "native-executable-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "terminal_observed",
+        "steps": 4,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 4,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 4,
+      "actionKinds": [
+        "type",
+        "click",
+        "click",
+        "click"
+      ],
+      "decisions": 3,
+      "decisionKinds": [
+        "CLICK",
+        "CLICK",
+        "CLICK"
+      ],
+      "boundaries": [
+        "unique_forward",
+        "unique_forward",
+        "terminal_observed"
+      ],
+      "oracle": {
+        "passed": true,
+        "mistakes": 0,
+        "final_submits": 1,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-57",
+      "backend": "kev",
+      "mode": "semantic",
+      "boundary": "adaptive",
+      "variant": "normal",
+      "policy": "native-executable-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "escalated",
+        "reason": "model_escalation",
+        "steps": 1,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 1,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 1,
+      "actionKinds": [
+        "type"
+      ],
+      "decisions": 1,
+      "decisionKinds": [
+        "ESCALATE"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": false,
+        "mistakes": 0,
+        "final_submits": 0,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 0
+      }
+    },
+    {
+      "task": "challenge-57",
+      "backend": "laya",
+      "mode": "semantic",
+      "boundary": "none",
+      "variant": "normal",
+      "policy": "native-executable-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "no_actionable_controls",
+        "steps": 4,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 4,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 4,
+      "actionKinds": [
+        "type",
+        "click",
+        "click",
+        "click"
+      ],
+      "decisions": 3,
+      "decisionKinds": [
+        "CLICK",
+        "CLICK",
+        "CLICK"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": true,
+        "mistakes": 0,
+        "final_submits": 1,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-57",
+      "backend": "kev",
+      "mode": "semantic",
+      "boundary": "none",
+      "variant": "normal",
+      "policy": "native-executable-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "escalated",
+        "reason": "model_escalation",
+        "steps": 1,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 1,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 1,
+      "actionKinds": [
+        "type"
+      ],
+      "decisions": 1,
+      "decisionKinds": [
+        "ESCALATE"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": false,
+        "mistakes": 0,
+        "final_submits": 0,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 0
+      }
+    },
+    {
+      "task": "challenge-60",
+      "backend": "laya",
+      "mode": "semantic",
+      "boundary": "conservative",
+      "variant": "normal",
+      "policy": "native-executable-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "submission_observed",
+        "steps": 2,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 2,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 2,
+      "actionKinds": [
+        "type",
+        "click"
+      ],
+      "decisions": 1,
+      "decisionKinds": [
+        "CLICK"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": false,
+        "mistakes": 0,
+        "final_submits": 0,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-60",
+      "backend": "kev",
+      "mode": "semantic",
+      "boundary": "conservative",
+      "variant": "normal",
+      "policy": "native-executable-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "escalated",
+        "reason": "model_escalation",
+        "steps": 1,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 1,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 1,
+      "actionKinds": [
+        "type"
+      ],
+      "decisions": 1,
+      "decisionKinds": [
+        "ESCALATE"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": false,
+        "mistakes": 0,
+        "final_submits": 0,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 0
+      }
+    },
+    {
+      "task": "challenge-60",
+      "backend": "laya",
+      "mode": "semantic",
+      "boundary": "adaptive",
+      "variant": "normal",
+      "policy": "native-executable-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "terminal_observed",
+        "steps": 4,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 4,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 4,
+      "actionKinds": [
+        "type",
+        "click",
+        "click",
+        "click"
+      ],
+      "decisions": 3,
+      "decisionKinds": [
+        "CLICK",
+        "CLICK",
+        "CLICK"
+      ],
+      "boundaries": [
+        "unique_forward",
+        "unique_forward",
+        "terminal_observed"
+      ],
+      "oracle": {
+        "passed": true,
+        "mistakes": 0,
+        "final_submits": 1,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-60",
+      "backend": "kev",
+      "mode": "semantic",
+      "boundary": "adaptive",
+      "variant": "normal",
+      "policy": "native-executable-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "escalated",
+        "reason": "model_escalation",
+        "steps": 1,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 1,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 1,
+      "actionKinds": [
+        "type"
+      ],
+      "decisions": 1,
+      "decisionKinds": [
+        "ESCALATE"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": false,
+        "mistakes": 0,
+        "final_submits": 0,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 0
+      }
+    },
+    {
+      "task": "challenge-60",
+      "backend": "laya",
+      "mode": "semantic",
+      "boundary": "none",
+      "variant": "normal",
+      "policy": "native-executable-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "no_actionable_controls",
+        "steps": 4,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 4,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 4,
+      "actionKinds": [
+        "type",
+        "click",
+        "click",
+        "click"
+      ],
+      "decisions": 3,
+      "decisionKinds": [
+        "CLICK",
+        "CLICK",
+        "CLICK"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": true,
+        "mistakes": 0,
+        "final_submits": 1,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-60",
+      "backend": "kev",
+      "mode": "semantic",
+      "boundary": "none",
+      "variant": "normal",
+      "policy": "native-executable-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "escalated",
+        "reason": "uncertain",
+        "steps": 1,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 1,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 1,
+      "actionKinds": [
+        "type"
+      ],
+      "decisions": 1,
+      "decisionKinds": [
+        "ESCALATE"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": false,
+        "mistakes": 0,
+        "final_submits": 0,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 0
+      }
+    },
+    {
+      "task": "challenge-61",
+      "backend": "laya",
+      "mode": "semantic",
+      "boundary": "conservative",
+      "variant": "normal",
+      "policy": "native-executable-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "submission_observed",
+        "steps": 2,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 2,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 2,
+      "actionKinds": [
+        "type",
+        "click"
+      ],
+      "decisions": 1,
+      "decisionKinds": [
+        "CLICK"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": false,
+        "mistakes": 0,
+        "final_submits": 0,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-61",
+      "backend": "kev",
+      "mode": "semantic",
+      "boundary": "conservative",
+      "variant": "normal",
+      "policy": "native-executable-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "escalated",
+        "reason": "uncertain",
+        "steps": 1,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 1,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 1,
+      "actionKinds": [
+        "type"
+      ],
+      "decisions": 1,
+      "decisionKinds": [
+        "ESCALATE"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": false,
+        "mistakes": 0,
+        "final_submits": 0,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 0
+      }
+    },
+    {
+      "task": "challenge-61",
+      "backend": "laya",
+      "mode": "semantic",
+      "boundary": "adaptive",
+      "variant": "normal",
+      "policy": "native-executable-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "checkpoint",
+        "reason": "boundary_unresolved",
+        "steps": 2,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 2,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 2,
+      "actionKinds": [
+        "type",
+        "click"
+      ],
+      "decisions": 1,
+      "decisionKinds": [
+        "CLICK"
+      ],
+      "boundaries": [
+        "ambiguous_boundary"
+      ],
+      "oracle": {
+        "passed": false,
+        "mistakes": 0,
+        "final_submits": 0,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-61",
+      "backend": "kev",
+      "mode": "semantic",
+      "boundary": "adaptive",
+      "variant": "normal",
+      "policy": "native-executable-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "escalated",
+        "reason": "model_escalation",
+        "steps": 1,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 1,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 1,
+      "actionKinds": [
+        "type"
+      ],
+      "decisions": 1,
+      "decisionKinds": [
+        "ESCALATE"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": false,
+        "mistakes": 0,
+        "final_submits": 0,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 0
+      }
+    },
+    {
+      "task": "challenge-61",
+      "backend": "laya",
+      "mode": "semantic",
+      "boundary": "none",
+      "variant": "normal",
+      "policy": "native-executable-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "escalated",
+        "reason": "no_state_change",
+        "steps": 4,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 3,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 4,
+      "actionKinds": [
+        "type",
+        "click",
+        "click",
+        "click"
+      ],
+      "decisions": 3,
+      "decisionKinds": [
+        "CLICK",
+        "CLICK",
+        "CLICK"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": false,
+        "mistakes": 0,
+        "final_submits": 0,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 1
+      }
+    },
+    {
+      "task": "challenge-61",
+      "backend": "kev",
+      "mode": "semantic",
+      "boundary": "none",
+      "variant": "normal",
+      "policy": "native-executable-not-hosted",
+      "hosted": false,
+      "result": {
+        "status": "escalated",
+        "reason": "model_escalation",
+        "steps": 1,
+        "progress": {
+          "assignments_verified": 1,
+          "pages_seen": 1,
+          "remaining_facts": 0
+        }
+      },
+      "actions": 1,
+      "actionKinds": [
+        "type"
+      ],
+      "decisions": 1,
+      "decisionKinds": [
+        "ESCALATE"
+      ],
+      "boundaries": [],
+      "oracle": {
+        "passed": false,
+        "mistakes": 0,
+        "final_submits": 0,
+        "invalid_submits": 0,
+        "overrun": false,
+        "advances": 0
+      }
+    }
+  ]
+}

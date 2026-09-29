@@ -70,6 +70,8 @@ def main():
                         help='Write only local diagnostic facts and manifest when no hosted/decision data exists')
     parser.add_argument('--decision-evidence', action='store_true',
                         help='Include bounded tool choices and selected decision for local-only evidence')
+    parser.add_argument('--hosted-only', action='store_true',
+                        help='Export one hosted-only JSON file; do not create empty diagnostic/decision files')
     args = parser.parse_args()
     if not re.fullmatch(r'[a-z][a-z0-9-]{0,31}', args.study):
         parser.error('--study must be a safe public label')
@@ -77,6 +79,29 @@ def main():
         parser.error('--diagnostics-only requires local --diagnostic sources and no hosted/decision sources')
     if args.decision_evidence and not args.diagnostics_only:
         parser.error('--decision-evidence requires --diagnostics-only')
+    if args.hosted_only and (args.diagnostics_only or args.diagnostic or args.decision or not args.hosted):
+        parser.error('--hosted-only requires hosted sources and no diagnostic/decision sources')
+    if args.hosted_only:
+        hosted = source_names(args.hosted)
+        output = args.results.resolve()
+        target = output / (args.study + '.json')
+        if output != run.HERE / 'results' or target.exists():
+            parser.error('output must be a new hosted-only evidence file in bench/results')
+        sources = hosted_report.hosted_evidence(hosted[0].parent, [path.name for path in hosted])
+        payload = {'schema_version': 1, 'study': args.study,
+                   'selection': 'Explicit operator-selected synthetic hosted runs; not an exhaustive suite.',
+                   'limits': ['The synthetic trace retains only bounded argument metadata; omitted key names,'
+                              ' continuation arguments, new_facts counts and values cannot be reconstructed.'
+                              ' Interpret each recorded call and outcome separately.',
+                              'A checkpoint is not an oracle success; oracle_passed is measured separately.',
+                              'OpenClaw usage is normalized input + cacheRead + cacheWrite; catalog cost'
+                              ' estimates are not billed amounts.'],
+                   'sources': sources}
+        with os.fdopen(os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644), 'w') as stream:
+            json.dump(payload, stream, indent=2, sort_keys=True)
+            stream.write('\n')
+        print(json.dumps({'hosted_runs': sum(len(source['runs']) for source in sources)}))
+        return
     suffixes = (SUFFIXES[0], SUFFIXES[2]) if args.diagnostics_only else SUFFIXES
     names = tuple(args.study + '-' + suffix for suffix in suffixes)
     hosted = source_names(args.hosted)
