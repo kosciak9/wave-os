@@ -6,7 +6,8 @@ import { constants } from 'node:fs';
 import { lstatSync } from 'node:fs';
 import process from 'node:process';
 
-const metricEvents = new Set(['action', 'decision', 'failure', 'model_call', 'result', 'snapshot', 'mapping']);
+const metricEvents = new Set(['action', 'decision', 'failure', 'model_call', 'result', 'snapshot', 'mapping', 'boundary']);
+const boundaryReasons = new Set(['terminal_observed', 'unsafe_controls', 'unique_forward', 'ambiguous_boundary']);
 const evidenceClasses = new Set(['exactLabel', 'exactName', 'alias', 'type', 'options', 'context']);
 const actionKinds = new Set(['CLICK', 'TYPE', 'SELECT', 'SCROLL', 'NAVIGATE', 'STOP', 'ESCALATE']);
 const backends = new Set(['kev', 'laya']);
@@ -25,6 +26,7 @@ const resultReasons = new Set([
   'requested_action_observed', 'ambiguous_stop_after',
   'submission_observed',
   'missing_fact', 'ambiguous_mapping', 'unsupported_choice',
+  'continuation_stale', 'continuation_mismatch', 'terminal_observed', 'boundary_unresolved',
 ]);
 const fieldSelectorSchema = { oneOf: [
   { type: 'string', minLength: 1, maxLength: 120 },
@@ -65,6 +67,7 @@ export function createValueFreeMetricSink(path) {
           if (Number.isSafeInteger(event[key]) && event[key] >= 0) safe[key] = event[key];
       }
       if (event.event === 'mapping' && evidenceClasses.has(event.evidence)) safe.evidence = event.evidence;
+      if (event.event === 'boundary' && boundaryReasons.has(event.reason)) safe.reason = event.reason;
       for (const key of ['latency_ms', 'wall_ms'])
         if (Number.isFinite(event[key]) && event[key] >= 0) safe[key] = event[key];
       let fd;
@@ -94,14 +97,22 @@ export function registerBrowserExecutor(api, { scope, decide, baseUrl, accessKey
   if (typeof scope !== 'function' || typeof decide !== 'function') throw Error('scope_and_bridge_required');
   if (!['procedural', 'semantic'].includes(contractMode)) throw Error('invalid_contract_mode');
   if (!['compact', 'contextual'].includes(semanticProblemDetail)) throw Error('invalid_semantic_problem_detail');
-  if (!['conservative', 'none'].includes(semanticBoundary)) throw Error('invalid_semantic_boundary');
+  if (!['conservative', 'none', 'adaptive'].includes(semanticBoundary)) throw Error('invalid_semantic_boundary');
   const semantic = contractMode === 'semantic';
   api.registerTool(ctx => ({
     name: 'browser_execute',
     description: 'Execute a bounded browser goal in an existing scoped Camofox tab; escalates when uncertain.',
     parameters: semantic ? {
-      type: 'object', additionalProperties: false, required: ['goal', 'tabId', 'facts'],
+      type: 'object', additionalProperties: false, oneOf: [
+        { required: ['goal', 'tabId', 'facts'] },
+        { required: ['continuation_id', 'new_facts'] },
+      ],
       properties: {
+        continuation_id: { type: 'string', pattern: '^[A-Za-z0-9_-]{43}$',
+          description: 'Opaque single-use process-local handoff ID from needs_decision.' },
+        new_facts: { type: 'object', minProperties: 1, maxProperties: 1,
+          propertyNames: { minLength: 1, maxLength: 100 }, additionalProperties: { type: 'string', maxLength: 100 },
+          description: 'One new fact keyed by problem.expected_fact_key for the missing field; original goal and restrictions remain fixed.' },
         goal: { type: 'string', minLength: 1, maxLength: 360,
           description: 'Concise, complete navigation objective; supply field values in facts and enforceable restrictions in constraints.' },
         tabId: { type: 'string', pattern: '^[A-Za-z0-9_-]{1,128}$' },

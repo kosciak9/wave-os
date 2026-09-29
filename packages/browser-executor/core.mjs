@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { resolveSemanticFields } from './resolver.mjs';
 
 const MAX_CHOICES = 40;
@@ -11,6 +11,13 @@ const DANGEROUS_ACTION = /\b(?:pay(?:ment)?(?:\s+(?:now|online))?|submit\s+payme
 const SUBMISSION_BUTTON = /^(?:submit|send|confirm|finish)(?:\b|$)/i;
 const EDITABLE = new Set(['text', 'search', 'email', 'tel', 'url', 'number', 'date', 'time', 'datetime-local', 'month', 'week']);
 const locks = new Map();
+const continuations = new Map();
+const CONTINUATION_TTL = 10 * 60_000;
+const MAX_CONTINUATIONS = 128;
+const FORWARD = /^(?:open confirmation|continue|review|confirm details|finish inquiry)$/i;
+const RESTART = /\b(?:restart|start another|book another|new request|search again|try again)\b/i;
+const RECEIPT = /\b(?:receipt|accepted|completed|finished|success(?:ful)?|thank you)\b/i;
+const NAVIGATION = /^(?:help|about|browse directory|directory|home|back|done)$/i;
 const tabKey = (browser, tabId) => `${browser.scopeId ?? ''}:${tabId}`;
 const scopedTabKey = (scopeId, tabId) => {
   if (typeof scopeId !== 'string' || !scopeId.trim() || scopeId !== scopeId.trim() || scopeId.length > 512 ||
@@ -233,9 +240,13 @@ function view(snapshot, request, origins) {
       .map(n => ({ label: redact(n.name), name: '', ref: n.ref, value: redact(n.value),
         type: n.role === 'spinbutton' ? 'number' : n.role === 'searchbox' ? 'search' : 'text', context: redact(n.context) }))),
   };
-  // Hash includes actual field values and URL, not volatile AX refs or timestamps.
-  const fingerprint = digest([url.href, fields.map(({ field }) => [field.name, field.label, field.value, field.options?.map(o => o.selected)]),
-    nodes.map(({ role, name, context, value }) => [role, name, context, value]), visible.replace(/\[e\d+\]/g, '')]);
+  // Keep full observed text (including prices/sidebar), but omit volatile AX refs
+  // and structure metadata; canonical field properties still detect option changes.
+  const fingerprint = digest([url.href, fields.map(({ field }) => [field.tag, field.type, field.name,
+    field.label, field.value, field.disabled, field.required, field.optionsTruncated,
+    field.options?.map(o => [o.label, o.value, o.selected])]),
+  nodes.map(({ role, name, context, value, disabled }) => [role, name, context, value, disabled]),
+  snapshot.snapshot.replace(/\[e\d+\]/g, '')]);
   return { nodes, fields, axOnly, represented, state, fingerprint, visible, url, redact };
 }
 
@@ -493,12 +504,17 @@ export async function executeBrowser(request, { browser, decide, telemetry, sign
   stopPolicy = 'success', contractMode = 'procedural', resolverOptions = {}, defaultPolicy = 'strict',
   problemDetail = 'contextual', semanticBoundary = 'conservative' } = {}) {
   const semantic = contractMode === 'semantic';
-  const semanticRequest = request;
+  const resume = semantic && record(request) && Object.hasOwn(request, 'continuation_id');
+  const resumeInput = request;
+  const stored = resume ? continuations.get(request.continuation_id) : null;
+  let semanticRequest = resume ? stored?.request : request;
+  if (resume && stored) request = stored.request;
   const input = semantic ? { ...request, variables: request?.facts, allowedOrigins: request?.constraints?.allowedOrigins,
     forbidActions: request?.constraints?.forbidActions } : request;
   if (semantic) request = input;
   let steps = 0, currentUrl = '', relevantState = '', diagnosticField = '', diagnosticReason = '', observedAction;
-  let problem, evidence, progress, redactProblem = value => value;
+  let problem, evidence, progress, redactProblem = value => value, handoffFingerprint, verifiedSeed = [], trustedOrigins;
+  let submissionSeen = resume && stored?.submissionSeen === true;
   const boundedText = (value, limit) => clean(redactProblem(clean(value, limit)), limit);
   const boundedProblem = p => p && ({ kind: p.kind,
     field: boundedText(p.field, 120),
@@ -516,12 +532,25 @@ export async function executeBrowser(request, { browser, decide, telemetry, sign
       ...(semantic && progress && { assignments_verified: progress.assignments_verified,
         pages_seen: progress.pages_seen, remaining_facts: progress.remaining_fact_keys.length }) }); } catch { /* metrics never affect outcomes */ }
     const problemResult = semantic && problem && ['needs_decision', 'needs_mapping'].includes(status);
+    let continuation_id;
+    if (semantic && status === 'needs_decision' && problem?.kind === 'missing_fact' &&
+        problem.field.length <= 100 && handoffFingerprint && trustedOrigins) {
+      const now = Date.now();
+      for (const [id, item] of continuations) if (item.expires <= now) continuations.delete(id);
+      if (continuations.size >= MAX_CONTINUATIONS) continuations.delete(continuations.keys().next().value);
+      continuation_id = randomBytes(32).toString('base64url');
+      continuations.set(continuation_id, { request: structuredClone(semanticRequest), scope: tabKey(browser, request.tabId),
+        fingerprint: handoffFingerprint, expected: { field: problem.field, context: problem.context ?? '' },
+        origins: [...trustedOrigins], verified: [...verifiedSeed], submissionSeen, expires: now + CONTINUATION_TTL });
+    }
     return { status, reason, steps,
+      ...(continuation_id && { continuation_id }),
       ...(!problemResult && { current_url: currentUrl, relevant_state: relevantState.slice(0, 600) }),
       ...(semantic && { progress: problemResult && progress ? {
         assignments_verified: progress.assignments_verified, pages_seen: progress.pages_seen,
         remaining_facts: progress.remaining_fact_keys.length,
-      } : progress, ...(problemResult && { problem: boundedProblem(problem) }) }),
+        } : progress, ...(problemResult && { problem: { ...boundedProblem(problem),
+          ...(continuation_id && { expected_fact_key: boundedText(problem.field, 100) }) } }) }),
       ...(['unmapped_fields', 'unsupported_value', 'field_unverifiable', 'value_not_applied',
         'preserved_field_changed', 'preserved_field_unverifiable'].includes(reason) && diagnosticField &&
         { diagnostic_field: diagnosticField }),
@@ -535,7 +564,19 @@ export async function executeBrowser(request, { browser, decide, telemetry, sign
         { verification: 'action_and_fresh_observation', observed_action: observedAction }) };
   };
   try {
-     validateRequest(semantic ? semanticRequest : request, semantic);
+    if (resume && (!record(resumeInput) || Object.keys(resumeInput).some(k => !['continuation_id', 'new_facts'].includes(k)) ||
+        typeof resumeInput.continuation_id !== 'string' || !/^[\w-]{43}$/.test(resumeInput.continuation_id) ||
+        !record(resumeInput.new_facts) || !Object.keys(resumeInput.new_facts).length || !stored ||
+        stored.expires <= Date.now())) invalidRequest('continuation');
+    validateRequest(semantic ? semanticRequest : request, semantic);
+    if (resume) {
+      const added = Object.keys(resumeInput.new_facts);
+      if (added.length !== 1 || Object.hasOwn(semanticRequest.facts, added[0]) ||
+          normalize(added[0]) !== normalize(stored.expected.field) || !resumeInput.new_facts[added[0]])
+        invalidRequest('continuation_facts');
+      const candidate = { ...semanticRequest, facts: { ...semanticRequest.facts, ...resumeInput.new_facts } };
+      validateRequest(candidate, true);
+    }
     if (!browser || typeof browser.snapshot !== 'function' || typeof decide !== 'function' ||
         !Number.isInteger(maxSteps) || maxSteps < 1 || maxSteps > 24 || !Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 120_000 ||
          !Number.isFinite(threshold) || threshold < 0 || threshold > 1 || !Number.isFinite(margin) || margin < 0 || margin > 1 ||
@@ -543,7 +584,7 @@ export async function executeBrowser(request, { browser, decide, telemetry, sign
           !['legacy', 'strictBindings'].includes(candidateMode) || !['success', 'checkpoint'].includes(stopPolicy) ||
            !['procedural', 'semantic'].includes(contractMode) || !['strict', 'benign'].includes(defaultPolicy) ||
            !['compact', 'contextual'].includes(problemDetail) ||
-           !['conservative', 'none'].includes(semanticBoundary) ||
+           !['conservative', 'none', 'adaptive'].includes(semanticBoundary) ||
           !record(resolverOptions) || Object.keys(resolverOptions).some(k => !['useAliases', 'useContext', 'trackProgress'].includes(k)) ||
           Object.values(resolverOptions).some(v => typeof v !== 'boolean') ||
          typeof applyPrepared !== 'boolean' || applyPrepared && candidateMode !== 'strictBindings' ||
@@ -555,9 +596,14 @@ export async function executeBrowser(request, { browser, decide, telemetry, sign
     return result('escalated', 'invalid_request');
   }
   const key = tabKey(browser, request.tabId);
+  if (resume && stored.scope !== key) {
+    diagnosticReason = 'continuation_scope';
+    return result('escalated', 'invalid_request');
+  }
   if (locks.has(key)) return result('escalated', locks.get(key).poisoned ? 'tab_quarantined' : 'tab_busy');
   const lease = { busy: true, poisoned: false, mutationSettled: true };
   locks.set(key, lease);
+  if (resume) continuations.delete(resumeInput.continuation_id);
   const deadline = AbortSignal.timeout(timeoutMs);
   const combined = signal ? AbortSignal.any([signal, deadline]) : deadline;
   const guard = async promise => {
@@ -581,13 +627,32 @@ export async function executeBrowser(request, { browser, decide, telemetry, sign
     };
     let raw = await snapshot('initial');
     const initial = safeUrl(raw.url);
-    const origins = new Set([initial.origin, ...(request.allowedOrigins ?? [])]);
+    const origins = resume ? new Set(stored.origins) : new Set([initial.origin, ...(request.allowedOrigins ?? [])]);
+    trustedOrigins = origins;
+    if (resume) {
+      const observed = view(raw, request, origins);
+      if (stored.fingerprint !== observed.fingerprint)
+         return result('escalated', 'continuation_stale');
+      const candidate = { ...semanticRequest, facts: { ...semanticRequest.facts, ...resumeInput.new_facts } };
+      const plan = resolveSemanticFields({ fields: actionableFields(observed).fields.filter(f =>
+        f.tag === 'select' || f.tag === 'textarea' || f.tag === 'input' && EDITABLE.has(f.type || 'text')),
+      facts: { [Object.keys(resumeInput.new_facts)[0]]: Object.values(resumeInput.new_facts)[0] }, ...resolverOptions });
+      if (plan.assignments.length !== 1 || plan.assignments[0].field.label !== stored.expected.field ||
+          plan.assignments[0].field.context !== stored.expected.context ||
+          plan.problems.some(p => p.field === stored.expected.field && p.context === stored.expected.context))
+        return result('escalated', 'continuation_mismatch');
+      semanticRequest = candidate;
+      request = { ...candidate, variables: candidate.facts, allowedOrigins: candidate.constraints?.allowedOrigins,
+        forbidActions: candidate.constraints?.forbidActions };
+      verifiedSeed = stored.verified;
+    }
     const seen = new Set();
     let recent = [], pagesSeen = [], decisions = 0, scopeUrl;
-    const verified = new Set(), pinned = [];
+    const verified = new Set(verifiedSeed), pinned = [];
     const task = { ...request, bindings: bindings ?? request.bindings };
     for (;;) {
       const v = view(raw, request, origins);
+      handoffFingerprint = v.fingerprint;
       redactProblem = v.redact;
       currentUrl = v.redact(displayUrl(raw.url));
       relevantState = clean(v.state.text, 600);
@@ -611,7 +676,7 @@ export async function executeBrowser(request, { browser, decide, telemetry, sign
         choicesFor(v, task, preserved.refs, { candidateMode, stopPolicy });
       if (success(v, request.success)) return steps ? result('completed', 'matched_conditions_after_action') :
         result('checkpoint', 'matched_on_entry');
-      if (steps >= maxSteps) break;
+      if (steps >= maxSteps && !(semantic && semanticBoundary === 'adaptive')) break;
       if (++decisions > maxSteps * 3) throw Error('decision_limit');
       const semanticPlan = semantic ? resolveSemanticFields({ fields: actionableFields(v).fields.filter(f =>
         f.tag === 'select' || f.tag === 'textarea' || f.tag === 'input' && EDITABLE.has(f.type || 'text')),
@@ -669,6 +734,33 @@ export async function executeBrowser(request, { browser, decide, telemetry, sign
       const { choices, actions, incompleteForm, unsafeControls, unsupportedValue, diagnosticFields,
         diagnosticReason: unresolvedReason } = choicesFor(v, task, preserved.refs, { candidateMode: semantic ? 'strictBindings' : candidateMode,
         stopPolicy, semanticPlan });
+      if (semantic && semanticBoundary === 'adaptive' &&
+          (submissionSeen || RECEIPT.test(`${v.state.title} ${v.state.text}`) &&
+            v.nodes.some(n => !n.disabled && ['button', 'link'].includes(n.role) && RESTART.test(n.name))) &&
+          !semanticPlan.active.length &&
+          !v.fields.some(({ field }) => !field.disabled && (field.tag === 'select' || field.tag === 'textarea' ||
+            field.tag === 'input' && EDITABLE.has(field.type || 'text'))) &&
+          !v.nodes.some(n => !n.disabled && ['textbox', 'searchbox', 'combobox', 'spinbutton'].includes(n.role))) {
+        const legal = [...actions.values()].filter(a => a.kind === 'CLICK').map(a => v.nodes.find(n => n.ref === a.ref))
+          .filter(n => n && ['button', 'link'].includes(n.role));
+        const forward = legal.filter(n => FORWARD.test(n.name));
+        const restart = v.nodes.some(n => !n.disabled && ['button', 'link'].includes(n.role) && RESTART.test(n.name));
+        const terminal = RECEIPT.test(`${v.state.title} ${v.state.text}`);
+        const distractors = legal.filter(n => n !== forward[0] &&
+          (n.role !== 'link' || !NAVIGATION.test(n.name)) && !RESTART.test(n.name));
+        const boundary = unsafeControls ? 'unsafe_controls' :
+          forward.length === 1 && !restart && !distractors.length ? 'unique_forward' :
+            terminal && !forward.length && !distractors.length ? 'terminal_observed' : 'ambiguous_boundary';
+        try { telemetry?.({ event: 'boundary', reason: boundary }); } catch { /* metadata only */ }
+        if (boundary === 'terminal_observed') return result('checkpoint', 'terminal_observed');
+        if (boundary !== 'unique_forward') return result('checkpoint', 'boundary_unresolved');
+        // Only the uniquely legal, narrowly named forward control is available.
+        for (const [choice, action] of actions) if (action.kind !== 'ESCALATE' &&
+          (action.kind !== 'CLICK' || action.ref !== forward[0].ref)) {
+          actions.delete(choice);
+          choices.splice(choices.indexOf(choice), 1);
+        }
+      }
       if (![...actions.values()].some(action => !['STOP', 'ESCALATE'].includes(action.kind))) {
         diagnosticReason = unresolvedReason;
         diagnosticField = clean(v.redact((diagnosticFields.length ? diagnosticFields : v.state.fields.filter(field => !field.ref))
@@ -678,12 +770,14 @@ export async function executeBrowser(request, { browser, decide, telemetry, sign
           .map(field => field.label).slice(0, 3).join('; ');
         if (semantic && semanticPlan?.problems.length) {
           problem = semanticPlan.problems[0];
+          verifiedSeed = [...verified];
           if (problemDetail === 'contextual') evidence = problemEvidence(v, problem);
           return result(['missing_fact', 'unsupported_choice'].includes(problem.kind) ? 'needs_decision' : 'needs_mapping', problem.kind);
         }
         return unsupportedValue ? result('escalated', 'unsupported_value') : incompleteForm ? result('escalated', 'unmapped_fields') : unsafeControls ?
           result('escalated', 'unsafe_controls') : result('checkpoint', 'no_actionable_controls');
       }
+      if (steps >= maxSteps) break;
       const prepared = (applyPrepared || semantic) ? choices.filter(c => ['TYPE', 'SELECT'].includes(actions.get(c)?.kind)) : [];
       const automatic = prepared[0];
       const answer = automatic ? null : await guard(decide({ state: { ...v.state,
@@ -699,7 +793,7 @@ export async function executeBrowser(request, { browser, decide, telemetry, sign
       }
       const choice = automatic ?? validateDecision(answer, choices, threshold, margin);
       const action = actions.get(choice);
-       if (action.kind === 'STOP') return result('checkpoint', 'model_stop');
+      if (action.kind === 'STOP') return result('checkpoint', 'model_stop');
       if (action.kind === 'ESCALATE') return result('escalated', 'model_escalation');
       const stopMatches = task.stopAfter && action.kind === 'CLICK' ? v.nodes.filter(node =>
         !node.disabled && ['button', 'link'].includes(node.role) && node.name === task.stopAfter.click &&
@@ -714,6 +808,8 @@ export async function executeBrowser(request, { browser, decide, telemetry, sign
       if (combined.aborted) throw Error('timeout_or_cancelled');
       const fresh = await snapshot('pre_action');
       const next = view(fresh, request, origins);
+      if (resume && !mutationStarted && next.fingerprint !== stored.fingerprint)
+        return result('escalated', 'continuation_stale');
       if (next.fingerprint !== v.fingerprint || JSON.stringify(next.nodes) !== JSON.stringify(v.nodes)) {
         raw = fresh; reason = 'state_changed'; continue;
       }
@@ -761,6 +857,7 @@ export async function executeBrowser(request, { browser, decide, telemetry, sign
         return result('checkpoint', 'requested_action_observed');
       }
       const clicked = action.kind === 'CLICK' ? v.nodes.find(node => node.ref === action.ref) : null;
+      if (semantic && clicked?.role === 'button' && SUBMISSION_BUTTON.test(clicked.name)) submissionSeen = true;
       if (semantic && semanticBoundary === 'conservative' && clicked?.role === 'button' &&
           SUBMISSION_BUTTON.test(clicked.name) &&
           !after.fields.some(({ field }) => !field.disabled && (field.tag === 'select' || field.tag === 'textarea' ||

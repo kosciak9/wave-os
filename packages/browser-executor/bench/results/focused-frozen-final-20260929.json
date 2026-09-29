@@ -1,0 +1,505 @@
+{
+  "contract_regenerations": 0,
+  "current_core_sha256": "8bd5f0c7e472b9cc3c734fdce3607f36c7a817216b1ff86d2534e44f1a8ef1f2",
+  "current_fixture_sha256": "f919014686d31fb34e13a6f2210b13a68012312a7007695dfb26f21c436eabf2",
+  "current_harness_sha256": "03ca41a218f6fbadf56663be6a88cd1182cb5150fb7a8272a408236e4ae4ce9c",
+  "current_resolver_sha256": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+  "held_constant": {
+    "backend": "semantic",
+    "max_steps": 8,
+    "policy": "fixed-oracle-navigation",
+    "semantic_boundary": "adaptive"
+  },
+  "hosted_calls": 0,
+  "original_source_sha256": {
+    "challenge.js": "a065fe2f3f7d7a1d886ed036c2d5f07896acd5813a506f062a8dd74cebbfc6fc",
+    "core.mjs": "969e883afcbe953b110757a871d192a0c7f74e29fbbc2aa73397ec024b3ac02a",
+    "decision_probe.py": "20337952bda42f53de675fec4a6a43947d808d4f6e2c061fc97492af9acab17d",
+    "hosted-focused.mjs": "bd5dae9ff821ac26fcceab4e3a11ed67675f709d35115239a102306619d9c7fa",
+    "hosted-focused.py": "0761b985fd4e782fd0c57bbc4979086511f712bd633577110e694ddc92efbcca",
+    "resolver.mjs": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+    "run.py": "eef71f3290fac0739b0cb852ef4b5c63e85197c798406abc73f6c66d6ec697d8",
+    "server.js": "c7735db28f169becd99e4b5d1ff9c9d7879786917b2cd7303e43dc40950bc19c"
+  },
+  "rows": [
+    {
+      "arm": "procedural",
+      "model": "openai/gpt-6-luna",
+      "original_validation": "valid",
+      "repetition": 0,
+      "replays": {
+        "fixed_manual": {
+          "action_count": 7,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        },
+        "local_resolver": {
+          "action_count": 7,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        },
+        "returned": {
+          "action_count": 7,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        }
+      },
+      "task": "challenge-38"
+    },
+    {
+      "arm": "semantic",
+      "model": "openai/gpt-6-luna",
+      "original_validation": "valid",
+      "repetition": 0,
+      "replays": {
+        "fixed_manual": {
+          "action_count": 7,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        },
+        "local_resolver": {
+          "action_count": 7,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        },
+        "returned": {
+          "action_count": 7,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        }
+      },
+      "task": "challenge-38"
+    },
+    {
+      "arm": "procedural",
+      "model": "openai/gpt-6-sol",
+      "original_validation": "valid",
+      "repetition": 0,
+      "replays": {
+        "fixed_manual": {
+          "action_count": 7,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        },
+        "local_resolver": {
+          "action_count": 7,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        },
+        "returned": {
+          "action_count": 7,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        }
+      },
+      "task": "challenge-38"
+    },
+    {
+      "arm": "semantic",
+      "model": "openai/gpt-6-sol",
+      "original_validation": "valid",
+      "repetition": 0,
+      "replays": {
+        "fixed_manual": {
+          "action_count": 7,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        },
+        "local_resolver": {
+          "action_count": 7,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        },
+        "returned": {
+          "action_count": 7,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        }
+      },
+      "task": "challenge-38"
+    },
+    {
+      "arm": "procedural",
+      "model": "openai/gpt-6-luna",
+      "original_validation": "valid",
+      "repetition": 0,
+      "replays": {
+        "fixed_manual": {
+          "action_count": 5,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        },
+        "local_resolver": {
+          "action_count": 5,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        },
+        "returned": {
+          "action_count": 5,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        }
+      },
+      "task": "challenge-52"
+    },
+    {
+      "arm": "semantic",
+      "model": "openai/gpt-6-luna",
+      "original_validation": "invalid_facts_or_shape",
+      "repetition": 0,
+      "replays": {},
+      "task": "challenge-52"
+    },
+    {
+      "arm": "procedural",
+      "model": "openai/gpt-6-sol",
+      "original_validation": "valid",
+      "repetition": 0,
+      "replays": {
+        "fixed_manual": {
+          "action_count": 5,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        },
+        "local_resolver": {
+          "action_count": 5,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        },
+        "returned": {
+          "action_count": 5,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        }
+      },
+      "task": "challenge-52"
+    },
+    {
+      "arm": "semantic",
+      "model": "openai/gpt-6-sol",
+      "original_validation": "valid",
+      "repetition": 0,
+      "replays": {
+        "fixed_manual": {
+          "action_count": 5,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        },
+        "local_resolver": {
+          "action_count": 5,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        },
+        "returned": {
+          "action_count": 5,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        }
+      },
+      "task": "challenge-52"
+    },
+    {
+      "arm": "procedural",
+      "model": "openai/gpt-6-luna",
+      "original_validation": "valid",
+      "repetition": 1,
+      "replays": {
+        "fixed_manual": {
+          "action_count": 7,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        },
+        "local_resolver": {
+          "action_count": 7,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        },
+        "returned": {
+          "action_count": 7,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        }
+      },
+      "task": "challenge-38"
+    },
+    {
+      "arm": "semantic",
+      "model": "openai/gpt-6-luna",
+      "original_validation": "valid",
+      "repetition": 1,
+      "replays": {
+        "fixed_manual": {
+          "action_count": 7,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        },
+        "local_resolver": {
+          "action_count": 7,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        },
+        "returned": {
+          "action_count": 7,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        }
+      },
+      "task": "challenge-38"
+    },
+    {
+      "arm": "procedural",
+      "model": "openai/gpt-6-sol",
+      "original_validation": "valid",
+      "repetition": 1,
+      "replays": {
+        "fixed_manual": {
+          "action_count": 7,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        },
+        "local_resolver": {
+          "action_count": 7,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        },
+        "returned": {
+          "action_count": 7,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        }
+      },
+      "task": "challenge-38"
+    },
+    {
+      "arm": "semantic",
+      "model": "openai/gpt-6-sol",
+      "original_validation": "valid",
+      "repetition": 1,
+      "replays": {
+        "fixed_manual": {
+          "action_count": 7,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        },
+        "local_resolver": {
+          "action_count": 7,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        },
+        "returned": {
+          "action_count": 7,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        }
+      },
+      "task": "challenge-38"
+    },
+    {
+      "arm": "procedural",
+      "model": "openai/gpt-6-luna",
+      "original_validation": "valid",
+      "repetition": 1,
+      "replays": {
+        "fixed_manual": {
+          "action_count": 5,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        },
+        "local_resolver": {
+          "action_count": 5,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        },
+        "returned": {
+          "action_count": 5,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        }
+      },
+      "task": "challenge-52"
+    },
+    {
+      "arm": "semantic",
+      "model": "openai/gpt-6-luna",
+      "original_validation": "invalid_facts_or_shape",
+      "repetition": 1,
+      "replays": {},
+      "task": "challenge-52"
+    },
+    {
+      "arm": "procedural",
+      "model": "openai/gpt-6-sol",
+      "original_validation": "valid",
+      "repetition": 1,
+      "replays": {
+        "fixed_manual": {
+          "action_count": 5,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        },
+        "local_resolver": {
+          "action_count": 5,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        },
+        "returned": {
+          "action_count": 5,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        }
+      },
+      "task": "challenge-52"
+    },
+    {
+      "arm": "semantic",
+      "model": "openai/gpt-6-sol",
+      "original_validation": "valid",
+      "repetition": 1,
+      "replays": {
+        "fixed_manual": {
+          "action_count": 5,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        },
+        "local_resolver": {
+          "action_count": 5,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        },
+        "returned": {
+          "action_count": 5,
+          "executor_reason": "terminal_observed",
+          "executor_status": "checkpoint",
+          "local_error": null,
+          "oracle_mistakes": 0,
+          "oracle_passed": true
+        }
+      },
+      "task": "challenge-52"
+    }
+  ],
+  "source_export_sha256": "d6231ef69b707a0c9497ccc893ce73779ad4fa58c0b1d75327c3f13441b1b9a0"
+}

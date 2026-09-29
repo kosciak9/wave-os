@@ -40,13 +40,16 @@ def summarize(directory):
                 continue
             contract = event.get('fixture_contract') or {}
             shape = {'contract_mode': contract.get('contract_mode'),
+                     'present_keys': contract.get('present_keys'),
+                     'unknown_key_count': contract.get('unknown_key_count'),
                      'variable_count': contract.get('variable_count'),
                      'variable_names': contract.get('variable_names'),
                      'fact_count': contract.get('fact_count'),
                      'fact_names': contract.get('fact_names'),
                      'binding_count': contract.get('binding_count'),
                      'binding_names': contract.get('binding_names'),
-                     'raw_key_metadata_available': 'variable_count' in contract or 'fact_count' in contract,
+                     'raw_key_metadata_available': contract.get('variable_count') is not None or
+                     contract.get('fact_count') is not None,
                      'visible_fixture_variable_names': sorted((contract.get('variables') or {}).keys()),
                      'visible_fixture_fact_names': sorted((contract.get('facts') or {}).keys()),
                      'visible_fixture_binding_names': sorted((contract.get('bindings') or {}).keys())}
