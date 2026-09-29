@@ -1,6 +1,6 @@
 import { randomUUID, createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { executeBrowser, extractAx, mapFields } from '../core.mjs';
+import { executeBrowser, executeSemanticBrowser, extractAx, mapFields } from '../core.mjs';
 import { createCamofoxBrowser } from '../camofox.mjs';
 import { createDecisionBridge } from '../bridge.mjs';
 import { intendedAction } from './diagnose-policy.mjs';
@@ -9,7 +9,11 @@ const [inputFile, outputFile] = process.argv.slice(2);
 const spec = JSON.parse(readFileSync(inputFile, 'utf8'));
 const { task, baseUrl, camofoxUrl, backend, horizon, successMode, executable,
   candidateMode, applyPrepared, representation, history, modelGoalMode, stopPolicy, successContract, bindingOverride,
-  semanticBinding, preserveVariant, executionScope, stopAfter } = spec;
+  semanticBinding, preserveVariant, executionScope, stopAfter, contractMode = 'procedural',
+  semanticFacts = 'minimal', semanticBindings = false, resolverOptions = {}, defaultPolicy = 'strict',
+  heldPreference, optionalMetadata = false, problemDetail = 'contextual', semanticBoundary = 'conservative' } = spec;
+if (optionalMetadata && (contractMode !== 'semantic' || !['challenge-47', 'challenge-48', 'challenge-49'].includes(task.id)))
+  throw Error('invalid_optional_metadata_intervention');
 if (bindingOverride && (task.id !== 'challenge-31' || backend !== 'oracle' || !applyPrepared ||
   candidateMode !== 'strictBindings' || bindingOverride !== 'service:Shipping speed')) throw Error('invalid_diagnostic_override');
 if (semanticBinding && !(semanticBinding === 'future' ? task.id === 'challenge-31' :
@@ -17,8 +21,11 @@ if (semanticBinding && !(semanticBinding === 'future' ? task.id === 'challenge-3
   ['qualified', 'unqualified', 'wrong-context'].includes(semanticBinding))) throw Error('invalid_diagnostic_binding');
 if (preserveVariant && !({ expected: ['forms-03'], qualified: ['forms-03'], 'wrong-default': ['forms-03'], conflict: ['forms-03'], future: ['challenge-31'],
   'unsafe-caller': ['challenge-37'],
-  changed: ['challenge-36'], duplicate: ['challenge-32'], hidden: ['challenge-32'] })[preserveVariant]?.includes(task.id))
+  changed: ['challenge-36'], duplicate: ['challenge-32'], hidden: ['challenge-32'],
+  'service-conflict': ['challenge-50'], 'semantic-label': ['challenge-47'] })[preserveVariant]?.includes(task.id))
   throw Error('invalid_diagnostic_preserve');
+if (['service-conflict', 'semantic-label'].includes(preserveVariant) && contractMode !== 'semantic')
+  throw Error('invalid_semantic_preserve_intervention');
 if (executionScope && (!['challenge-40', 'challenge-41', 'challenge-42', 'challenge-43', 'challenge-44'].includes(task.id) ||
   !['garden', 'wrong', 'wrong-title'].includes(executionScope))) throw Error('invalid_diagnostic_scope');
 if (stopAfter && (({ 'long-submit': 'long-07', 'garden-submit': 'challenge-40',
@@ -28,14 +35,15 @@ const started = performance.now();
 const key = process.env.CAMOFOX_ACCESS_KEY;
 const userId = randomUUID();
 const runId = randomUUID();
-const startUrl = `${baseUrl}/run/${runId}/${task.id}/start`;
+const startUrl = `${baseUrl}/run/${runId}/${task.id}/start${heldPreference ? `?held=${encodeURIComponent(heldPreference)}` : ''}`;
 const configuration = { threshold: 0.5, margin: 0.05, timeoutMs: 120000,
   modelCallMs: 20000, modelHistory: history, representation, candidateMode, applyPrepared,
   modelGoalMode, stopPolicy, successContract, bindingOverride: bindingOverride ?? null,
   semanticBinding: semanticBinding ?? null, successMode, maxSteps: horizon,
   preserveVariant: preserveVariant ?? null,
   executionScope: executionScope ?? null,
-  stopAfter: stopAfter ?? null,
+  stopAfter: stopAfter ?? null, contractMode, semanticFacts, semanticBindings, resolverOptions, defaultPolicy,
+  heldPreference: heldPreference ?? null, optionalMetadata, problemDetail, semanticBoundary,
   variables: task.category === 'forms' ? 'public-target-as-location' : 'public-manifest' };
 const conciseGoals = {
   search: 'Find the requested listing and save it to the shortlist.',
@@ -105,7 +113,18 @@ const automaticDiagnostic = action => {
     agrees: Boolean(matches), reason: !observed ? 'ref_not_observed' : matches ? 'matches_intended' : 'different_field_or_value' };
 };
 const observed = { ...browser, async snapshot(...args) {
-  const result = await browser.snapshot(...args);
+  let result = await browser.snapshot(...args);
+  if (optionalMetadata && safePath(result.url) === 'start') {
+    const forms = result.structure?.forms;
+    const matching = forms?.flatMap(form => form.fields ?? []).filter(field =>
+      field.tag === 'input' && field.name === 'label' && field.label === 'Request label');
+    if (forms?.length !== 1 || matching?.length !== 1 || !['', 'text'].includes(matching[0].type) ||
+        matching[0].required !== undefined) throw Error('optional_metadata_fixture_mismatch');
+    result = { ...result, structure: { ...result.structure, forms: forms.map(form => ({ ...form,
+      fields: form.fields.map(field => field === matching[0] ? { ...field, type: 'text', required: false } : field) })) } };
+    trace.push({ intervention: { kind: 'fixture_known_optional_field', field: 'Request label',
+      required: false, normalizedType: 'text' } });
+  }
   lastSnapshot = result;
   trace.push({ snapshot: cleanSnapshot(result), snapshot_bytes: Buffer.byteLength(JSON.stringify(result)) });
   return result;
@@ -127,19 +146,48 @@ try {
   model = backend === 'oracle' ? null : createDecisionBridge({ executable, backend,
     callMs: configuration.modelCallMs, history, representation, onMetric: metric });
   const vars = Object.fromEntries(Object.entries(task.variables).map(([k, v]) => [k, String(v)]));
-  if (task.category === 'forms') {
+  const remappings = [];
+  const goalTransformations = [];
+  let requestGoal = heldPreference ? task.id === 'challenge-55' ?
+    `For two guests in the Garden Room, choose Quiet as explicitly specified in the user's follow-up; send one demo inquiry.` :
+    `Reserve the Garden Room for two guests. User follow-up: choose ${heldPreference}.` : task.goal;
+  if (contractMode === 'semantic') {
+    if (heldPreference) vars[task.id === 'challenge-55' ? 'room_tier' : 'tier'] = heldPreference;
+    if (task.category === 'long') {
+      if (vars.target !== vars.destination) throw Error('long_target_destination_disagree');
+      delete vars.target; // The 16 authored itinerary facts already include destination.
+      remappings.push({ from: 'target', to: 'destination', reason: 'identical authored destination; duplicate fact omitted' });
+      requestGoal = 'Complete and submit the four-stage itinerary using all supplied facts.';
+      goalTransformations.push({ from: task.goal, to: requestGoal, reason: 'semantic goal limit; all 16 authored facts supplied separately' });
+    }
+    if (semanticFacts === 'remapped' && ['challenge-34', 'challenge-35'].includes(task.id)) {
+      vars.target = 'Coral Workshop';
+      remappings.push({ from: 'explicit goal: Coral Workshop card', to: 'target', reason: 'card context, not field value' });
+    }
+    if (semanticFacts === 'remapped' && ['search', 'challenge-38'].includes(task.category === 'search' ? 'search' : task.id)) {
+      vars.query = vars.target; delete vars.target; remappings.push({ from: 'target', to: 'query', reason: 'catalog search input' });
+    }
+  } else if (task.category === 'forms') {
     vars.location = vars.target;
     delete vars.target;
+  }
+  if (contractMode === 'semantic' && task.category === 'forms' && semanticFacts === 'remapped') {
+    vars.location = vars.target; delete vars.target;
+    remappings.push({ from: 'target', to: 'location', reason: 'delivery destination input' });
   }
   if (preserveVariant === 'conflict') vars.label = 'Override';
   const bindings = Object.fromEntries(Object.entries(labelsFor)
     .filter(([name]) => Object.hasOwn(vars, name)));
+  if (semanticBindings && semanticFacts === 'remapped' && Object.hasOwn(vars, 'query')) bindings.query = 'Search catalog';
   if (preserveVariant === 'conflict') bindings.label = 'Request label';
   if (bindingOverride) bindings.service = 'Shipping speed';
   if (semanticBinding === 'future') bindings.summary = { field: 'Confirmation label', context: 'Dispatch review stage 2 of 2' };
   else if (semanticBinding) bindings.quantity = semanticBinding === 'unqualified' ? 'Quantity' :
     { field: 'Quantity', context: semanticBinding === 'qualified' ? 'Coral Workshop' : 'Missing Workshop' };
-  const request = { tabId, goal: task.goal, variables: vars,
+  if (contractMode === 'semantic' && requestGoal.length > 360) throw Error('semantic_goal_over_limit');
+  const request = { tabId, goal: requestGoal,
+    ...(contractMode === 'semantic' ? { facts: vars,
+    ...(semanticBindings && { bindings }) } : { variables: vars }),
     ...(semanticBinding && { bindings }),
     ...(executionScope && { executionScope: { title: executionScope === 'wrong-title' ? 'Missing details' : 'Booking details',
       context: executionScope === 'wrong' ? 'Missing Room' : 'Garden Room' } }),
@@ -147,24 +195,29 @@ try {
       stopAfter === 'garden-submit' ? { click: 'Send inquiry', context: 'Garden Room' } :
       stopAfter === 'garden-advance' ? { click: 'Continue', context: 'Garden Room' } :
       { click: 'Send inquiry' } }),
-    ...(task.id === 'challenge-39' && { fieldPolicies: [{ field: 'Confirmation label', preserve: 'Auto-approved' }] }),
-    ...(preserveVariant && { fieldPolicies: [{ field: preserveVariant === 'hidden' ? { field: 'item', context: 'Coral Workshop' } :
+    ...(contractMode !== 'semantic' && task.id === 'challenge-39' && { fieldPolicies: [{ field: 'Confirmation label', preserve: 'Auto-approved' }] }),
+    ...(preserveVariant && { fieldPolicies: [{ field: preserveVariant === 'service-conflict' ? 'Service' :
+      preserveVariant === 'semantic-label' ? 'Request label' :
+      preserveVariant === 'hidden' ? { field: 'item', context: 'Coral Workshop' } :
       preserveVariant === 'qualified' ? { field: 'Request label', context: 'Dispatch request' } :
       preserveVariant === 'future' ? 'Confirmation label' : 'Request label',
-      preserve: preserveVariant === 'wrong-default' ? 'Wrong default' : preserveVariant === 'hidden' ? '1' :
+       preserve: preserveVariant === 'service-conflict' ? 'Standard' : preserveVariant === 'semantic-label' ? 'Demo inquiry' :
+         preserveVariant === 'wrong-default' ? 'Wrong default' : preserveVariant === 'hidden' ? '1' :
         preserveVariant === 'future' ? 'Parcel note' : ['forms-03', 'challenge-37'].includes(task.id) ? 'Office delivery' : 'Demo inquiry' }] }),
-    ...(successMode === 'whole' && { success: task.id === 'challenge-44' && successContract === 'scope-review' ?
+    ...(contractMode !== 'semantic' && successMode === 'whole' && { success: task.id === 'challenge-44' && successContract === 'scope-review' ?
       { textIncludes: 'Review label' } : task.id === 'challenge-31' ?
       { textIncludes: successContract === 'weak-completed' ? 'Completed:' : 'Receipt verified' } :
-      ['challenge-32', 'challenge-33', 'challenge-34', 'challenge-35', 'challenge-36', 'challenge-37', 'challenge-38', 'challenge-39', 'challenge-40', 'challenge-41', 'challenge-42', 'challenge-43', 'challenge-44', 'challenge-45'].includes(task.id) ? { textIncludes: 'Final demo request accepted.' } : task.category === 'cart' ?
+       task.id.startsWith('challenge-') ? { textIncludes: 'Final demo request accepted.' } : task.category === 'cart' ?
       { textIncludes: `Cart contents: ${vars.target} × ${vars.quantity}` } :
       { textIncludes: 'Completed:' } }) };
-  requestSummary = { goal: request.goal, variables: request.variables, success: request.success ?? null,
-    bindings: candidateMode === 'strictBindings' || semanticBinding ? bindings : null,
+   requestSummary = { goal: request.goal, originalGoal: task.goal, goalTransformations,
+     variables: request.variables ?? null, facts: request.facts ?? null,
+     remappings, heldPreference: heldPreference ?? null, success: request.success ?? null,
+     bindings: contractMode === 'semantic' ? request.bindings ?? null : candidateMode === 'strictBindings' || semanticBinding ? bindings : null,
     executionScope: request.executionScope ?? null,
     stopAfter: request.stopAfter ?? null,
     fieldPolicies: request.fieldPolicies ?? null,
-    modelGoal: modelGoalMode === 'concise' ? conciseGoals[task.category] : null };
+     modelGoal: contractMode !== 'semantic' && modelGoalMode === 'concise' ? conciseGoals[task.category] : null };
   const policy = async (input, options) => {
     const diagnostic = intendedAction(input, task);
     const decision = { state: input.state, choices: input.choices, diagnostic,
@@ -184,12 +237,12 @@ try {
       throw error;
     }
   };
-  result = await executeBrowser(request, { browser: observed, decide: policy, telemetry: metric,
+   result = await (contractMode === 'semantic' ? executeSemanticBrowser : executeBrowser)(request, { browser: observed, decide: policy, telemetry: metric,
     maxSteps: horizon, timeoutMs: configuration.timeoutMs,
     threshold: configuration.threshold, margin: configuration.margin,
-    candidateMode, applyPrepared, stopPolicy,
+      candidateMode, applyPrepared, stopPolicy, resolverOptions, defaultPolicy, problemDetail, semanticBoundary,
     ...(candidateMode === 'strictBindings' && { bindings }),
-    ...(modelGoalMode === 'concise' && { modelGoal: conciseGoals[task.category] }) });
+     ...(contractMode !== 'semantic' && modelGoalMode === 'concise' && { modelGoal: conciseGoals[task.category] }) });
 } catch (error) {
   errorKind = error.message?.slice(0, 80) ?? 'unknown';
 } finally {

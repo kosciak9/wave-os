@@ -16,6 +16,7 @@ export function matchesClickChoice(choice, label, context) {
 
 export function intendedAction({ state, choices }, task) {
   const route = routeOf(state.url);
+  if (route === 'done') return { intended: { operation: 'stop', route }, selected: null, reason: 'terminal_page' };
   const candidates = (description, predicate) => {
     const matching = choices.filter(predicate);
     return { intended: description, selected: matching.length === 1 ? matching[0] : null,
@@ -23,6 +24,8 @@ export function intendedAction({ state, choices }, task) {
   };
   const field = (label, variable, value = task.variables[variable], context) => {
     const desired = String(value);
+    if (task.id === 'challenge-46') return { intended: { operation: 'question', field: label, variable }, selected: null,
+      reason: 'conflicting_name_and_label' };
     const matching = (state.fields ?? []).filter(f =>
       (f.name === label || f.label.toLowerCase().startsWith(label.toLowerCase())) &&
       (!context || f.context?.includes(context)));
@@ -47,6 +50,28 @@ export function intendedAction({ state, choices }, task) {
   };
   const target = task.variables.target;
   if (task.category === 'challenge') {
+    if (task.id === 'challenge-57') return route === 'review' ? click('Open confirmation') :
+      route === 'confirm' ? click('Finish inquiry') : fill([['Location', 'location']], () => click('Send details'));
+    if (task.id === 'challenge-55') return route === 'review' ?
+      Object.hasOwn(state.variables ?? {}, 'room_tier') ?
+        fill([['Room tier', 'room_tier', state.variables.room_tier]], () => click('Send inquiry')) :
+        { intended: { operation: 'question', field: 'Room tier', reason: 'compare_observed_prices' },
+          selected: null, reason: 'price_choice_needs_reasoning' } :
+      fill([['Guests', 'party']], () => click('Continue'));
+    if (task.id === 'challenge-56') return fill([['Location', 'location']], () => click('Send inquiry'));
+    if (task.id === 'challenge-54') return fill([['From', 'origin'], ['To', 'destination'], ['Party size', 'guests']], () => click('Send inquiry'));
+    if (task.id === 'challenge-46') return fill([['From', 'from'], ['To', 'to']], () => click('Send itinerary'));
+    if (['challenge-47', 'challenge-48', 'challenge-49'].includes(task.id)) return fill([['Location', 'location']], () => click('Send inquiry'));
+    if (task.id === 'challenge-50') return fill([['Location', 'location'], ['Service', 'service']], () => click('Send inquiry'));
+    if (task.id === 'challenge-51') return fill([['Party size', 'party']], () =>
+      Object.hasOwn(state.variables ?? {}, 'tier') ? fill([['Room tier', 'tier', state.variables.tier]], () => click('Reserve room')) :
+      ({ intended: { operation: 'question', field: 'Room tier', options: ['Standard — 75', 'Deluxe — 90'] },
+        selected: null, reason: 'preference_not_supplied' }));
+    if (task.id === 'challenge-52') return route === 'review' ?
+      fill([['Location', 'location'], ['Service', 'service']], () => click('Confirm request')) :
+      fill([['Location', 'location']], () => click('Continue'));
+    if (task.id === 'challenge-53') return fill([['Location', 'location']], () =>
+      ({ intended: { operation: 'question', field: 'Additional note' }, selected: null, reason: 'value_not_supplied' }));
     if (task.id === 'challenge-38') return route === 'start' ? fill([['Search catalog', 'target']], () => click('Search')) :
       route === 'results' ? click('Open Harbor Studio') : route === 'detail' ? click('Open inquiry modal') :
       route === 'modal' ? fill([['Location', 'location'], ['Preference', 'preference']], () => click('Send inquiry')) :
@@ -79,7 +104,7 @@ export function intendedAction({ state, choices }, task) {
   if (task.category === 'login') return { intended: { operation: 'stop', reason: 'sensitive_fields' },
     selected: null, reason: 'unsafe_fixture' };
   if (task.category === 'search') {
-    if (route === 'start') return fill([['Search catalog', 'target']], () => click('Search'));
+    if (route === 'start') return fill([['Search catalog', Object.hasOwn(state.variables ?? {}, 'query') ? 'query' : 'target', target]], () => click('Search'));
     if (route === 'results') return click(target);
     if (route === 'detail') return click('Save to shortlist');
   }

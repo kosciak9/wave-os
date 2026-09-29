@@ -35,6 +35,11 @@ TOOLS = ('read', 'web_search', 'web_fetch', 'camofox_create_tab', 'camofox_snaps
          'camofox_click', 'camofox_type', 'camofox_navigate', 'camofox_scroll',
          'camofox_close_tab', 'camofox_list_tabs')
 EXTRA_TOOLS = {'camofox_select', 'browser_execute'}
+SAFE_FACT_NAMES = {'target', 'location', 'service', 'date', 'summary', 'destination', 'arrival',
+                   'travel', 'reference', 'attendee', 'seat', 'access', 'ticket', 'meal',
+                   'session', 'venue', 'reminder', 'timezone', 'contact', 'confirm', 'party',
+                   'preference', 'quantity', 'label', 'search', 'time', 'filter',
+                   'room_tier', 'tier', 'guests', 'origin', 'from', 'to', 'departure', 'arrivalPlace'}
 AUTH_ENV = {'OPENAI_API_KEY', 'OPENROUTER_API_KEY', 'OPENCODE_API_KEY'}
 PROVIDER_ENV = {'openai': 'OPENAI_API_KEY', 'openrouter': 'OPENROUTER_API_KEY',
                 'opencode-go': 'OPENCODE_API_KEY'}
@@ -115,18 +120,13 @@ def provider_block_reason(failure):
     return 'provider_unauthorized' if status == 401 else 'provider_forbidden'
 
 
-def synthetic_contract(arguments, item):
+def synthetic_contract(arguments, item, contract_mode='procedural'):
     """Only bounded fixture text and public fields; omit tab IDs and arbitrary model data."""
     if not isinstance(arguments, dict) or not isinstance(item, dict):
         return {}
     public = {key: str(value) for key, value in item.get('variables', {}).items()}
     if item.get('category') == 'forms' and 'target' in public:
         public['location'] = public['target']
-    safe_names = {'target', 'location', 'service', 'date', 'summary', 'destination', 'arrival',
-                  'travel', 'reference', 'attendee', 'seat', 'access', 'ticket', 'meal',
-                  'session', 'venue', 'reminder', 'timezone', 'contact', 'confirm', 'party',
-                  'preference', 'quantity', 'label', 'search', 'time', 'filter'}
-
     def text(value, limit=200):
         if not isinstance(value, str) or len(value) > limit or re.search(
                 r'(?i)\b(?:bearer|password|passphrase|secret|token|api[_-]?key|sk-[\w-]+)\b|'
@@ -142,22 +142,33 @@ def synthetic_contract(arguments, item):
         return '[omitted]'
 
     variables = arguments.get('variables')
+    facts = arguments.get('facts')
     bindings = arguments.get('bindings')
     policies = arguments.get('fieldPolicies')
     success = arguments.get('success')
-    keys = {'goal', 'modelGoal', 'tabId', 'variables', 'bindings', 'fieldPolicies',
-            'executionScope', 'stopAfter', 'success', 'allowedOrigins', 'forbidActions'}
+    keys = ({'goal', 'tabId', 'facts', 'constraints', 'bindings', 'fieldPolicies'}
+            if contract_mode == 'semantic' else
+            {'goal', 'modelGoal', 'tabId', 'variables', 'bindings', 'fieldPolicies',
+             'executionScope', 'stopAfter', 'success', 'allowedOrigins', 'forbidActions'})
+    constraints = arguments.get('constraints')
     scope = arguments.get('executionScope')
     stop_after = arguments.get('stopAfter')
     origins = arguments.get('allowedOrigins')
     forbidden = arguments.get('forbidActions')
     return {
+        'contract_mode': contract_mode,
         'present_keys': sorted(set(arguments) & keys), 'unknown_key_count': len(set(arguments) - keys),
         'variable_count': len(variables) if isinstance(variables, dict) else None,
-        'variable_names': [key if key in safe_names else '[other]'
+        'variable_names': [key if key in SAFE_FACT_NAMES else '[other]'
                            for key in list(variables)[:32]] if isinstance(variables, dict) else None,
+        'fact_count': len(facts) if isinstance(facts, dict) else None,
+        'fact_names': [key if key in SAFE_FACT_NAMES else '[other]'
+                       for key in list(facts)[:32]] if isinstance(facts, dict) else None,
+        'facts': {key: (public[key] if key in public and value == public[key] else '[redacted]')
+                  for key, value in list(facts.items())[:32] if key in SAFE_FACT_NAMES}
+        if isinstance(facts, dict) else None,
         'binding_count': len(bindings) if isinstance(bindings, dict) else None,
-        'binding_names': [key if key in safe_names else '[other]'
+        'binding_names': [key if key in SAFE_FACT_NAMES else '[other]'
                           for key in list(bindings)[:32]] if isinstance(bindings, dict) else None,
         'fixture_variable_values_only': True,
         'goal': text(arguments.get('goal'), 600), 'modelGoal': text(arguments.get('modelGoal'), 360)
@@ -180,6 +191,19 @@ def synthetic_contract(arguments, item):
         'forbid_actions': [text(action, 100) for action in forbidden[:24]]
         if isinstance(forbidden, list) else None,
         'forbid_actions_count': len(forbidden) if isinstance(forbidden, list) else None,
+        'constraints': {
+            'present_keys': sorted(set(constraints) & {'allowedOrigins', 'forbidActions'}),
+            'unknown_key_count': len(set(constraints) - {'allowedOrigins', 'forbidActions'}),
+            'allowed_origins_count': len(constraints['allowedOrigins'])
+                if isinstance(constraints.get('allowedOrigins'), list) else None,
+            'allowed_origins': [('[fixture-origin]' if origin == 'http://127.0.0.1:%d' % PORT_INSIDE
+                                 else '[other-origin]') for origin in constraints['allowedOrigins'][:8]]
+                if isinstance(constraints.get('allowedOrigins'), list) else None,
+            'forbid_actions_count': len(constraints['forbidActions'])
+                if isinstance(constraints.get('forbidActions'), list) else None,
+            'forbid_actions': [text(value, 100) for value in constraints['forbidActions'][:24]]
+                if isinstance(constraints.get('forbidActions'), list) else None,
+        } if isinstance(constraints, dict) else None,
         'success': {key: (('[fixture-route:%s]' % match[1] if (match := re.fullmatch(
                             r'/run/[\w-]{8,128}/[a-z]+-\d\d/([a-z]+)', value)) else '[path]')
                          if key == 'urlPath' and isinstance(value, str) else
@@ -293,7 +317,7 @@ def hosted_usage(db, session_id, catalog):
     return result
 
 
-def synthetic_trace(db, session_id, item=None):
+def synthetic_trace(db, session_id, item=None, contract_mode='procedural'):
     """Optional compact tool-only evidence: omit typed values, images, URLs and all user/system text."""
     if not db.is_file() or not session_id:
         return []
@@ -334,7 +358,7 @@ def synthetic_trace(db, session_id, item=None):
                     (not isinstance(arguments[key], str) or re.fullmatch(r'[a-zA-Z0-9_-]{1,32}', arguments[key]))},
                     'at': msg.get('timestamp')}
                 if name == 'browser_execute' and item:
-                    entry['fixture_contract'] = synthetic_contract(arguments, item)
+                    entry['fixture_contract'] = synthetic_contract(arguments, item, contract_mode)
                 result.append(entry)
         elif msg.get('role') == 'toolResult':
             name = pending.pop(msg.get('toolCallId'), msg.get('toolName'))
@@ -358,9 +382,19 @@ def synthetic_trace(db, session_id, item=None):
                                 outcome['matched_conditions'] = [value for value in matched[:4] if value in
                                     ('urlPath', 'textIncludes', 'allText', 'fieldValues')]
                             url = body.get('current_url')
-                            if isinstance(url, str) and re.fullmatch(
-                                    r'http://127\.0\.0\.1:%d/run/[\w-]{8,128}/%s/[a-z]+'
-                                    % (PORT_INSIDE, re.escape(item['id'])), url):
+                            fixture_url = isinstance(url, str) and bool(re.fullmatch(
+                                r'http://127\.0\.0\.1:%d/run/[\w-]{8,128}/%s/[a-z]+'
+                                % (PORT_INSIDE, re.escape(item['id'])), url))
+
+                            def fixture_label(value, limit=120):
+                                if not isinstance(value, str) or len(value) > limit or not re.fullmatch(
+                                        r'[\x20-\x7e]*', value) or re.search(
+                                        r'(?i)password|passphrase|secret|token|api[_-]?key|sk-[\w-]+|'
+                                        r'https?://|/(?:run|Users|var|nix|tmp)/|\b[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}\b', value):
+                                    return '[redacted]'
+                                return value
+
+                            if fixture_url:
                                 outcome['fixture_route'] = url.rsplit('/', 1)[-1]
                                 for key in ('relevant_state', 'diagnostic_field'):
                                     if isinstance(body.get(key), str):
@@ -373,6 +407,39 @@ def synthetic_trace(db, session_id, item=None):
                                         if isinstance(value, str) and len(value) <= (120 if key == 'click' else 200)
                                         and re.fullmatch(r'[a-zA-Z0-9 .,;:/_-]+', value) and
                                         not re.search(r'(?i)password|passphrase|secret|token|api[_-]?key|/(?:run|Users|var|nix|tmp)/', value)}
+                            if contract_mode == 'semantic' and (fixture_url or body.get('status') in
+                                    ('needs_decision', 'needs_mapping')):
+                                progress = body.get('progress')
+                                if isinstance(progress, dict):
+                                    remaining = progress.get('remaining_fact_keys')
+                                    outcome['progress'] = {key: progress[key] for key in
+                                        ('assignments_verified', 'pages_seen', 'remaining_facts')
+                                        if type(progress.get(key)) is int and 0 <= progress[key] <= 32}
+                                    if isinstance(remaining, list):
+                                        outcome['progress']['remaining_fact_key_count'] = len(remaining)
+                                        outcome['progress']['remaining_fact_keys'] = [key if key in SAFE_FACT_NAMES
+                                            else '[other]' for key in remaining[:32] if isinstance(key, str)]
+                                problem = body.get('problem')
+                                if isinstance(problem, dict) and problem.get('kind') in (
+                                        'missing_fact', 'ambiguous_mapping', 'unsupported_choice'):
+                                    compact = {'kind': problem['kind'],
+                                               'field': fixture_label(problem.get('field')),
+                                               'context': fixture_label(problem.get('context'), 200)}
+                                    if 'evidence' in problem:
+                                        compact['evidence'] = fixture_label(problem.get('evidence'), 320)
+                                    fact_keys = problem.get('fact_keys')
+                                    if isinstance(fact_keys, list):
+                                        compact['fact_key_count'] = len(fact_keys)
+                                        compact['fact_keys'] = [key if key in SAFE_FACT_NAMES else '[other]'
+                                            for key in fact_keys[:8] if isinstance(key, str)]
+                                    for key in ('options', 'candidates'):
+                                        entries = problem.get(key)
+                                        if isinstance(entries, list):
+                                            compact[key + '_count'] = len(entries)
+                                            compact[key] = [{name: fixture_label(entry[name], 200) for name in
+                                                ('label', 'value', 'field', 'context') if name in entry}
+                                                for entry in entries[:8] if isinstance(entry, dict)]
+                                    outcome['problem'] = compact
                             result.append({'executor_outcome': outcome, 'at': msg.get('timestamp')})
                     except (ValueError, IndexError, KeyError, TypeError, AttributeError):
                         pass
@@ -437,13 +504,18 @@ def hosted_trace(db, session_id):
                     detail['goal_bytes'] = len(str(arguments.get('goal', '')).encode())
                     detail['model_goal_bytes'] = len(str(arguments.get('modelGoal', '')).encode())
                     variables = arguments.get('variables')
+                    facts = arguments.get('facts')
                     bindings = arguments.get('bindings')
                     public_names = {'target', 'location', 'service', 'date', 'summary', 'destination',
                                     'arrival', 'travel', 'reference', 'quantity', 'party', 'time',
                                     'guest', 'seat', 'meal', 'fare', 'name', 'email', 'search', 'venue',
                                     'item', 'entry', 'label', 'notes', 'departure', 'return'}
                     detail['variable_names'] = [key if key in public_names else '[other]'
-                                                for key in list(variables)[:32]] if isinstance(variables, dict) else []
+                                                 for key in list(variables)[:32]] if isinstance(variables, dict) else []
+                    detail['fact_names'] = [key if key in SAFE_FACT_NAMES else '[other]'
+                                            for key in list(facts)[:32]] if isinstance(facts, dict) else None
+                    detail['fact_count'] = len(facts) if isinstance(facts, dict) else None
+                    detail['contract_mode'] = 'semantic' if isinstance(facts, dict) else 'procedural'
                     detail['binding_count'] = len(bindings) if isinstance(bindings, dict) else 0
                     success = arguments.get('success')
                     detail['success_criteria'] = sorted(key for key in success if key in
@@ -561,8 +633,26 @@ def model_config(config_file, model):
     return {'mode': 'merge', 'providers': {provider: provider_config}}
 
 
+def contract_schema_sha256(mode):
+    """Hash the actual registered source tool schema without starting a browser or model."""
+    script = ('import { pathToFileURL } from "node:url"; '
+              'const { registerBrowserExecutor } = await import(pathToFileURL(process.argv[1]).href); '
+              'let factory; registerBrowserExecutor({ registerTool(fn) { factory = fn; } }, '
+              '{ contractMode: process.argv[2], scope: () => "synthetic", decide: async () => ({}) }); '
+              'console.log(JSON.stringify(factory({}).parameters));')
+    result = subprocess.run(['node', '--input-type=module', '-e', script,
+                             str(REPO / 'packages/browser-executor/plugin.mjs'), mode],
+                            cwd=REPO, env={'PATH': os.environ.get('PATH', '/usr/bin:/bin')},
+                            capture_output=True, text=True, timeout=15, check=False)
+    if result.returncode:
+        raise RuntimeError('source browser tool schema unavailable')
+    schema = json.loads(result.stdout)
+    return hashlib.sha256(json.dumps(schema, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+
+
 def agent_config(models, model, plugin_path, port_number, extras, profile, executor_backend=None,
-                 max_steps=8, candidate_mode='legacy', apply_prepared=False, stop_policy='success'):
+                   max_steps=8, candidate_mode='legacy', apply_prepared=False, stop_policy='success',
+                   contract_mode='procedural', semantic_problem_detail='contextual'):
     tools = list(TOOLS) + list(extras)
     return {
         'agents': {'defaults': {'skipBootstrap': True, 'contextInjection': 'never', 'thinkingDefault': 'low',
@@ -584,9 +674,10 @@ def agent_config(models, model, plugin_path, port_number, extras, profile, execu
                     'load': {'paths': [str(plugin_path)]}, 'entries': {'camofox-browser': {'enabled': True,
                         'config': {'autoStart': False, 'url': 'http://127.0.0.1:' + str(port_number),
                                    **({'browserExecutor': {'enabled': True, 'backend': executor_backend,
-                                         'maxSteps': max_steps, 'timeoutMs': 120000, 'threshold': 0.5, 'margin': 0.05,
-                                         'candidateMode': candidate_mode, 'applyPrepared': apply_prepared,
-                                         'stopPolicy': stop_policy}}
+                                          'maxSteps': max_steps, 'timeoutMs': 120000, 'threshold': 0.5, 'margin': 0.05,
+                                          'candidateMode': candidate_mode, 'applyPrepared': apply_prepared,
+                                           'stopPolicy': stop_policy, 'contractMode': contract_mode,
+                                           'semanticProblemDetail': semantic_problem_detail}}
                                        if executor_backend else {})}}}},
         'skills': {'load': {'extraDirs': [str(REPO / 'modules/home/openclaw/skills')]}}
     }
@@ -695,7 +786,8 @@ def run_one(args, item, ports, oracle_key, base_env, catalog, output):
     config_path = directory / 'config.json'
     config_path.write_text(json.dumps(agent_config(catalog, args.model, args.plugin_path,
                              ports['camofox'], args.extra_tool, bool(args.auth_profile_file), args.executor_backend,
-                             args.max_steps, args.candidate_mode, args.apply_prepared, args.stop_policy)))
+                             args.max_steps, args.candidate_mode, args.apply_prepared, args.stop_policy,
+                             args.contract_mode, args.semantic_problem_detail)))
     config_path.chmod(0o600)
     env = dict(base_env, HOME=str(home), OPENCLAW_STATE_DIR=str(state),
                OPENCLAW_CONFIG_PATH=str(config_path), CAMOFOX_ACCESS_KEY=base_env['CAMOFOX_ACCESS_KEY'])
@@ -801,7 +893,8 @@ def run_one(args, item, ports, oracle_key, base_env, catalog, output):
                                     and all(row['estimated_usd'] is not None
                                     for row in summary['hosted_usage']) else None)
         if args.trace_synthetic:
-            (directory / 'synthetic-tool-trace.json').write_text(json.dumps(synthetic_trace(db, session_id, item)))
+            (directory / 'synthetic-tool-trace.json').write_text(json.dumps(synthetic_trace(
+                db, session_id, item, args.contract_mode)))
         if args.hosted_trace:
             (directory / 'hosted-trace.json').write_text(json.dumps(hosted_trace(db, session_id), indent=2))
         metrics_file = directory / 'local-metrics.jsonl'
@@ -919,6 +1012,10 @@ def parse_args(argv=None):
     parser.add_argument('--candidate-mode', choices=('legacy', 'strictBindings'), default='legacy')
     parser.add_argument('--apply-prepared', action='store_true')
     parser.add_argument('--stop-policy', choices=('success', 'checkpoint'), default='success')
+    parser.add_argument('--contract-mode', choices=('procedural', 'semantic'), default='procedural',
+                        help='Trusted executor tool schema; semantic requires browser_execute')
+    parser.add_argument('--semantic-problem-detail', choices=('compact', 'contextual'), default='contextual',
+                        help='Semantic needs_decision/mapping evidence mode; contextual default')
     parser.add_argument('--hosted-trace', action='store_true', help='Keep value-free tool and usage metrics by turn')
     parser.add_argument('--prompt-template-file', type=Path)
     parser.add_argument('--trace-synthetic', action='store_true',
@@ -943,6 +1040,10 @@ def parse_args(argv=None):
         parser.error('--model-executable requires --extra-tool browser_execute')
     if args.executor_backend and 'browser_execute' not in args.extra_tool:
         parser.error('--executor-backend requires --extra-tool browser_execute')
+    if args.contract_mode == 'semantic' and not args.executor_backend:
+        parser.error('--contract-mode semantic requires --executor-backend')
+    if args.contract_mode != 'semantic' and args.semantic_problem_detail != 'contextual':
+        parser.error('--semantic-problem-detail compact requires --contract-mode semantic')
     if args.max_steps not in range(1, 25) or args.apply_prepared and args.candidate_mode != 'strictBindings':
         parser.error('invalid executor bounds or prepared mode')
     if args.hosted_tool_budget is not None and not 1 <= args.hosted_tool_budget <= 200:
@@ -994,16 +1095,36 @@ def main(argv=None):
             tasks = select_fixture_tasks(frozen, challenge, args.task)
             fingerprint = hashlib.sha256(''.join(digest(path) for path in
                 (Path(__file__), HERE / 'server.js', HERE / 'tasks.js', args.config,
-                 args.plugin_path / 'plugin.js')).encode()).hexdigest()
+                  args.plugin_path / 'plugin.js')).encode()).hexdigest()
+            model_row = next(iter(next(iter(catalog['providers'].values()))['models']))
+            source_files = {'core': REPO / 'packages/browser-executor/core.mjs',
+                            'resolver': REPO / 'packages/browser-executor/resolver.mjs',
+                            'bridge': REPO / 'packages/browser-executor/bridge.mjs',
+                            'browser_transport': REPO / 'packages/browser-executor/camofox.mjs',
+                            'tool_definition': REPO / 'packages/browser-executor/plugin.mjs',
+                            'runner': Path(__file__), 'tasks_fixture': HERE / 'tasks.js',
+                            'server_fixture': HERE / 'server.js', 'challenge_fixture': HERE / 'challenge.js',
+                            'browser_skill': REPO / 'modules/home/openclaw/skills/browser-research/SKILL.md'}
             manifest = {
                 'suite': args.suite, 'model': args.model, 'image': args.image,
                  'fixture_sha256': {'tasks.js': digest(HERE / 'tasks.js'), 'server.js': digest(HERE / 'server.js'),
                                     'challenge.js': digest(HERE / 'challenge.js')},
                 'code_fingerprint_sha256': fingerprint, 'task_count': len(tasks),
+                 'source_sha256': {name: digest(path) for name, path in source_files.items()},
+                 'packaged_plugin_sha256': {'wrapper': digest(args.plugin_path / 'plugin.js'),
+                                            'manifest': digest(args.plugin_path / 'openclaw.plugin.json')},
+                 'tool_contract_schema_sha256': contract_schema_sha256(args.contract_mode),
+                 'model_catalog_sha256': digest(args.config),
+                 'selected_model_row_sha256': hashlib.sha256(json.dumps(
+                     model_row, sort_keys=True, separators=(',', ':')).encode()).hexdigest(),
+                 'catalog_cost_per_million_usd': model_row.get('cost'),
+                 'model_limits': {'maxTokens': model_row.get('maxTokens'),
+                                  'contextWindow': model_row.get('contextWindow'), 'thinking': 'low'},
                  'prompt_template_sha256': hashlib.sha256(args.prompt_template.encode()).hexdigest(),
-                 'executor_configuration': {'backend': args.executor_backend, 'maxSteps': args.max_steps,
-                     'candidateMode': args.candidate_mode, 'applyPrepared': args.apply_prepared,
-                     'stopPolicy': args.stop_policy},
+                   'executor_configuration': {'backend': args.executor_backend, 'maxSteps': args.max_steps,
+                       'candidateMode': args.candidate_mode, 'applyPrepared': args.apply_prepared,
+                       'stopPolicy': args.stop_policy, 'contractMode': args.contract_mode,
+                       'semanticProblemDetail': args.semantic_problem_detail},
                  'hosted_tool_budget': args.hosted_tool_budget or (60 if args.challenge else 'fixture'),
                 'credential_mode': 'explicit-access-only-oauth' if args.auth_profile_file else 'allowlisted-provider-environment',
                  'note': 'Agent exec uses pinned config and isolated HOME/state; --auth-env-only conflicts with --config in OpenClaw 2026.9.4. Usage costs are catalog estimates, not billed OpenRouter cost. Never route this to a live Camofox service.'

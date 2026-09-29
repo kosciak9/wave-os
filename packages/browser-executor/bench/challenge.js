@@ -46,6 +46,37 @@ const tasks = [
   { id: 'challenge-45', category: 'challenge', split: 'authored-challenge',
     goal: 'For two guests choose the lower total: Standard at 45 per guest or Quiet at 35 per guest plus a 5 booking fee. Submit the Garden Room inquiry.',
     variables: { party: '2' }, max_steps: 8 },
+  { id: 'challenge-46', category: 'challenge', split: 'authored-challenge',
+    goal: 'Send the itinerary from East Cove to North Pier; the input names and labels disagree.',
+    variables: { from: 'East Cove', to: 'North Pier' }, max_steps: 8 },
+  ...['benign', 'misleading', 'changed'].map((variant, offset) => ({
+    id: `challenge-${47 + offset}`, category: 'challenge', split: 'authored-challenge',
+    goal: 'Send the demo request to North Pier without changing unrelated defaults.',
+    variables: { location: 'North Pier' }, variant, max_steps: 8 })),
+  { id: 'challenge-50', category: 'challenge', split: 'authored-challenge',
+    goal: 'Request North Pier with the Express service.',
+    variables: { location: 'North Pier', service: 'Express' }, max_steps: 8 },
+  { id: 'challenge-51', category: 'challenge', split: 'authored-challenge',
+    goal: 'Reserve the Garden Room for two guests. No room tier is specified; ask me before choosing.',
+    variables: { party: '2' }, max_steps: 8 },
+  { id: 'challenge-52', category: 'challenge', split: 'authored-challenge',
+    goal: 'Request North Pier twice across the two stages; the service appears only after entering the first location.',
+    variables: { location: 'North Pier', service: 'Express' }, max_steps: 8 },
+  { id: 'challenge-53', category: 'challenge', split: 'authored-challenge',
+    goal: 'Submit a North Pier request; the additional note is not supplied.',
+    variables: { location: 'North Pier' }, max_steps: 8 },
+  { id: 'challenge-54', category: 'challenge', split: 'authored-challenge',
+    goal: 'Request transport for two guests from Oslo to Stockholm.',
+    variables: { origin: 'Oslo', destination: 'Stockholm', guests: '2' }, max_steps: 8 },
+  { id: 'challenge-55', category: 'challenge', split: 'authored-challenge',
+    goal: 'For two guests in the Garden Room choose the lower total once prices are shown, then send one demo inquiry.',
+    variables: { party: '2' }, max_steps: 8 },
+  { id: 'challenge-56', category: 'challenge', split: 'authored-challenge',
+    goal: 'Send exactly one demo inquiry for North Pier; do not start another request after the receipt.',
+    variables: { location: 'North Pier' }, max_steps: 8 },
+  { id: 'challenge-57', category: 'challenge', split: 'authored-challenge',
+    goal: 'Send North Pier details, open the confirmation page, then finish the demo inquiry; sending details alone is not completion.',
+    variables: { location: 'North Pier' }, max_steps: 8 },
 ];
 const escape = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const page = (heading, contents) => `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${escape(heading)}</title></head><body><main><h1>${escape(heading)}</h1>${contents}</main></body></html>`;
@@ -66,21 +97,29 @@ export function createChallenge(oracleKey) {
     if (oracle) {
       if (request.headers['x-fixture-key'] !== oracleKey) send(403, 'Forbidden');
       else if (!runs.has(oracle[1])) send(404, 'Unknown run');
-      else { const s = runs.get(oracle[1]); send(200, JSON.stringify({ passed: s.complete, mistakes: s.mistakes, events: s.events }), 'application/json'); }
+       else { const s = runs.get(oracle[1]); send(200, JSON.stringify({ passed: s.complete && !s.overrun, mistakes: s.mistakes, events: s.events }), 'application/json'); }
       return true;
     }
-    const match = url.pathname.match(/^\/run\/([\w-]{8,128})\/(challenge-3[1-9]|challenge-4[0-5])\/([a-z]+)$/);
+    const match = url.pathname.match(/^\/run\/([\w-]{8,128})\/(challenge-3[1-9]|challenge-4[0-9]|challenge-5[0-7])\/([a-z]+)$/);
     if (!match) return false;
     const [, runId, id, route] = match;
     const task = tasks.find(t => t.id === id);
     const base = `/run/${runId}/${id}`;
     if (request.method === 'GET' && route === 'start' && !runs.has(runId))
-      runs.set(runId, { task, stage: 0, complete: false, mistakes: 0, events: [{ action: 'start' }] });
+       runs.set(runId, { task, stage: 0, complete: false, mistakes: 0,
+         held: (id === 'challenge-51' && ['Standard — 75', 'Deluxe — 90'].includes(url.searchParams.get('held')) ||
+           id === 'challenge-55' && url.searchParams.get('held') === 'Quiet') ? url.searchParams.get('held') : null,
+         events: [{ action: 'start' }] });
     const s = runs.get(runId);
     if (!s || s.task !== task) { send(404, 'Start this run first'); return true; }
     if (request.method === 'GET') {
+      if (id === 'challenge-56' && route === 'restart' && s.complete) {
+        s.overrun = true;
+        s.events.push({ action: 'restart_after_receipt' });
+      }
       let html;
-      if (route === 'done' && s.complete) html = page('Receipt verified', '<p>Final demo request accepted.</p>');
+      if (route === 'done' && s.complete) html = page('Receipt verified', '<p>Final demo request accepted.</p>' +
+        (id === 'challenge-56' ? link(`${base}/restart`, 'Start another request') : ''));
       else if (id === 'challenge-31') {
         html = s.stage === 0 ? page('Dispatch stage 1 of 2', form(`${base}/advance`,
           field('Location', 'location') + '<label>Service <select name="service"><option>standard</option><option>express</option></select></label>' +
@@ -133,6 +172,38 @@ export function createChallenge(oracleKey) {
             '<label>Party size <input type="number" name="party" required></label>' +
             '<label>Preference <select name="preference"><option>Standard</option><option>Quiet</option></select></label>',
             'Continue')}</section>`);
+      else if (id === 'challenge-46') html = page('Itinerary', form(`${base}/finish`,
+        '<label>From <input name="to" required></label><label>To <input name="from" required></label>', 'Send itinerary'));
+      else if (['challenge-47', 'challenge-48', 'challenge-49'].includes(id)) html = page('Delivery request',
+        form(`${base}/finish`, field('Location', 'location') +
+          `<label>Request label <input name="label" value="${id === 'challenge-48' ? 'Different destination' : 'Demo inquiry'}"></label>`, 'Send inquiry') +
+        (id === 'challenge-49' ? `<script>document.querySelector('[name="location"]').addEventListener('input', () => {
+          document.querySelector('[name="label"]').value = 'Altered'; });</script>` : ''));
+      else if (id === 'challenge-50') html = page('Service request', form(`${base}/finish`,
+        field('Location', 'location') + '<label>Service <select name="service"><option>Standard</option><option>Priority</option></select></label>', 'Send inquiry'));
+      else if (id === 'challenge-51') html = page('Garden Room tiers', form(`${base}/finish`,
+        '<label>Party size <input type="number" name="party" required></label><label>Room tier <select name="tier"><option>Standard — 75</option><option>Deluxe — 90</option></select></label>', 'Reserve room'));
+      else if (id === 'challenge-52') html = s.stage === 1 ? page('Request stage 2 of 2', form(`${base}/finish`,
+        field('Location', 'location') + '<label>Service <select name="service"><option>Standard</option><option>Express</option></select></label>', 'Confirm request')) :
+        page('Request stage 1 of 2', form(`${base}/advance`, field('Location', 'location'), 'Continue'));
+      else if (id === 'challenge-54') html = page('Transport inquiry', form(`${base}/finish`,
+        '<label>From <input name="departure" required></label><label>To <input name="arrivalPlace" required></label>' +
+        '<label>Party size <input type="number" name="people" required></label>', 'Send inquiry'));
+      else if (id === 'challenge-55') html = route === 'review' && s.stage === 1 ?
+        page('Garden Room choices', '<p>Standard: 45 per guest. Quiet: 35 per guest plus a 5 booking fee.</p>' +
+          form(`${base}/finish`, '<label>Guests <input name="party" type="number" value="2" readonly></label>' +
+            '<label>Room tier <select name="room_tier"><option>Standard</option><option>Quiet</option></select></label>', 'Send inquiry')) :
+        page('Garden Room guests', form(`${base}/advance`,
+          '<label>Guests <input name="party" type="number" required></label>', 'Continue'));
+      else if (id === 'challenge-56') html = page('Single inquiry', form(`${base}/finish`,
+        field('Location', 'location'), 'Send inquiry'));
+      else if (id === 'challenge-57') html = route === 'review' && s.stage === 1 ?
+        page('Details received', '<p>Details sent; final confirmation still required.</p>' +
+          link(`${base}/confirm`, 'Open confirmation')) : route === 'confirm' && s.stage === 1 ?
+        page('Confirm inquiry', form(`${base}/finish`, '<p>North Pier is ready for review.</p>', 'Finish inquiry')) :
+        page('Inquiry details', form(`${base}/advance`, field('Location', 'location'), 'Send details'));
+      else if (id === 'challenge-53') html = page('Request detail', form(`${base}/finish`,
+        field('Location', 'location') + field('Additional note', 'note'), 'Send inquiry'));
       else if (id === 'challenge-45') html = page('Garden Room pricing', '<p>Standard: 45 per guest. Quiet: 35 per guest plus a 5 booking fee.</p>' +
         form(`${base}/finish`, '<label>Party size <input type="number" name="party" required></label>' +
           '<label>Preference <select name="preference"><option>Standard</option><option>Quiet</option></select></label>',
@@ -147,7 +218,22 @@ export function createChallenge(oracleKey) {
     let body = '';
     for await (const chunk of request) { body += chunk; if (body.length > 8192) { send(413, 'Too large'); return true; } }
     const values = Object.fromEntries(new URLSearchParams(body));
-    const valid = id === 'challenge-45' ? route === 'finish' && values.party === task.variables.party &&
+    const valid = id === 'challenge-55' ? route === 'advance' && s.stage === 0 && values.party === task.variables.party ||
+      route === 'finish' && s.stage === 1 && values.party === task.variables.party && values.room_tier === 'Quiet' :
+      id === 'challenge-57' ? route === 'advance' && s.stage === 0 && values.location === task.variables.location ||
+        route === 'finish' && s.stage === 1 :
+      id === 'challenge-56' ? route === 'finish' && !s.complete && values.location === task.variables.location :
+      id === 'challenge-54' ? route === 'finish' && values.departure === task.variables.origin &&
+      values.arrivalPlace === task.variables.destination && values.people === task.variables.guests :
+      id === 'challenge-46' ? route === 'finish' && values.from === task.variables.from && values.to === task.variables.to :
+      id === 'challenge-47' || id === 'challenge-49' ? route === 'finish' && values.location === task.variables.location && values.label === 'Demo inquiry' :
+      id === 'challenge-48' ? route === 'finish' && values.location === task.variables.location && values.label === 'Demo inquiry' :
+      id === 'challenge-50' ? route === 'finish' && values.location === task.variables.location && values.service === task.variables.service :
+      id === 'challenge-51' ? Boolean(s.held) && route === 'finish' && values.party === task.variables.party && values.tier === s.held :
+      id === 'challenge-52' ? route === 'advance' && s.stage === 0 && values.location === task.variables.location ||
+        route === 'finish' && s.stage === 1 && values.location === task.variables.location && values.service === task.variables.service :
+      id === 'challenge-53' ? false : // No additional note was requested.
+      id === 'challenge-45' ? route === 'finish' && values.party === task.variables.party &&
       values.preference === 'Quiet' : id === 'challenge-38' ? route === 'results' && values.query === task.variables.target ||
       route === 'finish' && s.stage === 1 && values.location === task.variables.location && values.preference === task.variables.preference :
       ['challenge-43', 'challenge-44'].includes(id) ? route === 'advance' && s.stage === 0 && values.party === task.variables.party &&
@@ -165,10 +251,11 @@ export function createChallenge(oracleKey) {
       route === 'finish' && s.stage === 1 && values.service === task.variables.service;
     s.events.push({ action: `submit:${route}`, values, valid });
     if (valid && (id === 'challenge-31' && route === 'advance' || id === 'challenge-38' && route === 'results' ||
-      id === 'challenge-39' && route === 'advance' || ['challenge-43', 'challenge-44'].includes(id) && route === 'advance')) s.stage = 1;
+       id === 'challenge-39' && route === 'advance' || ['challenge-52', 'challenge-55', 'challenge-57'].includes(id) && route === 'advance' ||
+       ['challenge-43', 'challenge-44'].includes(id) && route === 'advance')) s.stage = 1;
     else if (valid) s.complete = true;
     else s.mistakes++;
-    send(303, '', 'text/plain', { location: s.complete ? `${base}/done` : `${base}/${id === 'challenge-31' || ['challenge-39', 'challenge-43', 'challenge-44'].includes(id) && route === 'advance' && valid ? 'review' : id === 'challenge-38' && route === 'results' && valid ? 'results' : ['challenge-32', 'challenge-34', 'challenge-35', 'challenge-36', 'challenge-37', 'challenge-39', 'challenge-40', 'challenge-41', 'challenge-42', 'challenge-43', 'challenge-44', 'challenge-45'].includes(id) ? 'start' : 'detail'}` });
+      send(303, '', 'text/plain', { location: s.complete ? `${base}/done` : `${base}/${['challenge-52', 'challenge-55', 'challenge-57'].includes(id) && route === 'advance' && valid ? 'review' : id === 'challenge-31' || ['challenge-39', 'challenge-43', 'challenge-44'].includes(id) && route === 'advance' && valid ? 'review' : id === 'challenge-38' && route === 'results' && valid ? 'results' : ['challenge-32', 'challenge-34', 'challenge-35', 'challenge-36', 'challenge-37', 'challenge-39', 'challenge-40', 'challenge-41', 'challenge-42', 'challenge-43', 'challenge-44', 'challenge-45', 'challenge-56'].includes(id) ? 'start' : 'detail'}` });
     return true;
   };
 }

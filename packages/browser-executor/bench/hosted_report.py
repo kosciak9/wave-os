@@ -39,12 +39,16 @@ def summarize(directory):
             if event.get('tool') != 'browser_execute':
                 continue
             contract = event.get('fixture_contract') or {}
-            shape = {'variable_count': contract.get('variable_count'),
+            shape = {'contract_mode': contract.get('contract_mode'),
+                     'variable_count': contract.get('variable_count'),
                      'variable_names': contract.get('variable_names'),
+                     'fact_count': contract.get('fact_count'),
+                     'fact_names': contract.get('fact_names'),
                      'binding_count': contract.get('binding_count'),
                      'binding_names': contract.get('binding_names'),
-                     'raw_key_metadata_available': 'variable_count' in contract,
+                     'raw_key_metadata_available': 'variable_count' in contract or 'fact_count' in contract,
                      'visible_fixture_variable_names': sorted((contract.get('variables') or {}).keys()),
+                     'visible_fixture_fact_names': sorted((contract.get('facts') or {}).keys()),
                      'visible_fixture_binding_names': sorted((contract.get('bindings') or {}).keys())}
             following = []
             for candidate in trace[index + 1:]:
@@ -57,8 +61,16 @@ def summarize(directory):
                                   if 'snapshot_excerpt' in candidate), None)
             heading = re.search(r'heading "([^"\n]{1,80})"', next_snapshot or '')
             contracts.append({'request': event.get('fixture_contract'), 'contract_shape': shape,
-                              'outcome': outcome,
-                              'next_exposed_heading': heading[1] if heading else None})
+                               'outcome': outcome,
+                               'post_problem_snapshot_calls_before_next_contract':
+                               sum(candidate.get('tool') == 'camofox_snapshot' for candidate in following)
+                               if isinstance(outcome, dict) and outcome.get('status') in
+                               ('needs_decision', 'needs_mapping') else None,
+                               'direct_mutation_calls_before_next_contract':
+                               {name: sum(candidate.get('tool') == name for candidate in following) for name in
+                                ('camofox_type', 'camofox_select', 'camofox_click',
+                                 'camofox_navigate', 'camofox_scroll')},
+                               'next_exposed_heading': heading[1] if heading else None})
         calls = [call for entry in timeline for call in entry.get('calls', [])
                  if call.get('tool') == 'browser_execute']
         results = [entry for entry in timeline if entry.get('role') == 'result' and
@@ -115,6 +127,13 @@ def summarize(directory):
     return {'source_directory': directory.name, 'model': manifest.get('model'),
             'suite': manifest.get('suite'), 'source_fingerprint': manifest.get('code_fingerprint_sha256'),
             'fixture_sha256': manifest.get('fixture_sha256'),
+            'source_sha256': manifest.get('source_sha256'),
+            'packaged_plugin_sha256': manifest.get('packaged_plugin_sha256'),
+            'tool_contract_schema_sha256': manifest.get('tool_contract_schema_sha256'),
+            'model_catalog_sha256': manifest.get('model_catalog_sha256'),
+            'selected_model_row_sha256': manifest.get('selected_model_row_sha256'),
+            'catalog_cost_per_million_usd': manifest.get('catalog_cost_per_million_usd'),
+            'model_limits': manifest.get('model_limits'),
             'executor_configuration': manifest.get('executor_configuration'),
             'recorded_prompt_template_sha256': manifest.get('prompt_template_sha256'),
             'manifest_hosted_tool_budget': manifest.get('hosted_tool_budget'), 'runs': records}
@@ -144,6 +163,21 @@ def public_value(value, limit=240):
                 for key, item in list(value.items())[:32]
                 if isinstance(key, str) and re.fullmatch(r'[a-zA-Z][a-zA-Z0-9_]{0,47}', key)}
     return None
+
+
+def safe_decision_choice(value):
+    if not isinstance(value, str):
+        return None
+    if value == 'ESCALATE cannot proceed safely':
+        return value
+    if value == 'STOP request human checkpoint':
+        return value
+    click = re.fullmatch(r'CLICK (button|link) "([^"\n]{1,120})" \(([^()\n]{1,160})\) \[e\d{1,6}\]', value)
+    if click:
+        return 'CLICK %s "%s" (%s) [ref]' % (click[1], public_text(click[2], 120),
+                                                public_text(click[3], 160))
+    kind = value.split(' ', 1)[0]
+    return kind + ' [redacted]' if kind in ('CLICK', 'TYPE', 'SELECT', 'SCROLL', 'NAVIGATE') else '[redacted]'
 
 
 LOCAL_SOURCES = (
@@ -186,18 +220,22 @@ HOSTED_SOURCES = (
 )
 
 
-def local_evidence(root):
+def local_evidence(root, names=LOCAL_SOURCES, include_decision_evidence=False):
     facts, provenance = [], []
     settings = ('threshold', 'margin', 'candidateMode', 'applyPrepared', 'representation',
                  'modelHistory', 'modelGoal', 'stopPolicy', 'successContract', 'semanticBinding',
-                'preserveVariant', 'executionScope', 'stopAfter', 'successMode', 'maxSteps')
-    for name in LOCAL_SOURCES:
+                 'preserveVariant', 'executionScope', 'stopAfter', 'successMode', 'maxSteps',
+                'contractMode', 'defaultPolicy', 'trustedDefaultPolicy', 'resolverOptions',
+                'semanticFacts', 'semanticBindings', 'problemDetail', 'semanticBoundary',
+                'optionalMetadata', 'optionalMetadataIntervention', 'heldPreference')
+    for name in names:
         directory = root / name
         manifest = json.loads((directory / 'manifest.json').read_text())
         provenance.append({'source': name, 'fixture_sha256': {key: manifest.get(key) for key in
                            ('tasks_sha256', 'server_sha256', 'challenge_sha256')},
                            'runtime_sha256': {key: manifest.get(key) for key in
-                           ('core_sha256', 'bridge_sha256', 'camofox_sha256', 'source_runtime_sha256',
+                           ('core_sha256', 'bridge_sha256', 'resolver_sha256', 'plugin_sha256',
+                            'skill_sha256', 'camofox_sha256', 'source_runtime_sha256',
                             'packaged_runtime_sha256', 'model_executable_sha256')},
                            'producer_sha256': manifest.get('diagnostic_sha256'),
                            'source_head': manifest.get('source_head'),
@@ -214,12 +252,31 @@ def local_evidence(root):
                 r'http://127\.0\.0\.1:38891/run/[\w-]{8,128}/[a-z]+-\d\d/[a-z]+', url) else None
             events = oracle.get('events') or []
             trace = data.get('trace') or []
+            interventions = []
+            for entry in trace:
+                value = entry.get('intervention')
+                if isinstance(value, dict):
+                    sanitized = {key: public_value(value[key]) for key in
+                                 ('kind', 'field', 'required', 'normalizedType') if key in value}
+                    if sanitized and sanitized not in interventions:
+                        interventions.append(sanitized)
+            decisions = [entry['decision'] for entry in trace if isinstance(entry.get('decision'), dict)]
+            decision_evidence = [{'choice_count': len(entry.get('choices', [])),
+                                  'choices': [safe_decision_choice(choice) for choice in entry.get('choices', [])[:40]],
+                                  'chosen': safe_decision_choice(entry.get('choice')),
+                                  'click_candidate_available': any(isinstance(choice, str) and choice.startswith('CLICK ')
+                                                                   for choice in entry.get('choices', [])),
+                                  'escalate_candidate_available': 'ESCALATE cannot proceed safely' in
+                                                                  entry.get('choices', [])}
+                                 for entry in decisions[:24]] if include_decision_evidence else None
             facts.append({'source': name, 'task': data.get('task'), 'backend': data.get('backend'),
                           'artifact_sha256': hashlib.sha256(artifact.read_bytes()).hexdigest(),
                           'executed_core_sha256': data.get('source'),
                           'error_kind': public_text(data.get('errorKind'), 80),
                           'status': result.get('status'), 'reason': result.get('reason'),
                           'verification': result.get('verification'),
+                          'progress': public_value(result.get('progress')),
+                          'problem': public_value(result.get('problem')),
                           'observed_action': public_value(result.get('observed_action'))
                           if result.get('verification') == 'action_and_fresh_observation' and route else None,
                           'diagnostic_reason': result.get('diagnostic_reason'),
@@ -234,19 +291,28 @@ def local_evidence(root):
                           'oracle_invalid_submissions': sum(e.get('valid') is False for e in events),
                           'model_calls': data.get('model_calls'), 'local_actions': data.get('local_actions'),
                           'hidden_snapshots': data.get('hidden_snapshots'),
+                          'fixture_only_interventions': interventions[:8],
+                          **({'decision_evidence': decision_evidence,
+                              'decision_count': len(decisions)} if include_decision_evidence else {}),
                           'local_deterministic_actions': sum(e.get('metric', {}).get('event') == 'action' and
                               e['metric'].get('deterministic') is True for e in trace
                               if isinstance(e.get('metric'), dict)),
                            'request': {'success': public_value((data.get('request') or {}).get('success')),
                                        'stop_after': public_value((data.get('request') or {}).get('stopAfter')),
+                                       'fact_count': len((data.get('request') or {}).get('facts'))
+                                           if isinstance((data.get('request') or {}).get('facts'), dict) else None,
+                                       'fact_names': [key if key in run.SAFE_FACT_NAMES else '[other]'
+                                           for key in list(((data.get('request') or {}).get('facts') or {}))[:32]]
+                                           if isinstance((data.get('request') or {}).get('facts'), dict) else None,
+                                       'constraints': public_value((data.get('request') or {}).get('constraints')),
                                        'bindings': public_value((data.get('request') or {}).get('bindings')),
                                       'field_policies': public_value((data.get('request') or {}).get('fieldPolicies')),
                                       'model_goal': public_text((data.get('request') or {}).get('modelGoal'), 300)}})
     return facts, provenance
 
 
-def hosted_evidence(root):
-    sources = [summarize(root / name) for name in HOSTED_SOURCES]
+def hosted_evidence(root, names=HOSTED_SOURCES):
+    sources = [summarize(root / name) for name in names]
     for source in sources:
         for row in source['runs']:
             for call in row.get('executor_calls') or []:
