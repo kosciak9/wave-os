@@ -1,6 +1,8 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "lsp": true,
+  "model": "openai/gpt-6.1-sol",
+  "small_model": "openai/gpt-6-luna",
   "plugin": [
     "./plugin/notify/index.js",
     [
@@ -72,53 +74,75 @@
     "linear_*": "deny",
   },
   "agent": {
+    "title": {
+      "model": "openai/gpt-6-luna",
+      "variant": "low",
+      "options": {
+        "reasoningEffort": "low",
+      },
+    },
+    "summary": {
+      "model": "openai/gpt-6.1-sol",
+      "variant": "medium",
+    },
+    "compaction": {
+      "model": "openai/gpt-6.1-sol",
+      "variant": "medium",
+    },
     "brainstorm-planner": {
-      "model": "openai/gpt-6-sol-fast",
-      "variant": "xhigh",
+      "model": "openai/gpt-6.1-sol",
+      "variant": "high",
       "permission": {},
     },
     "build-orchiestrator": {
-      "model": "openai/gpt-6-sol-fast",
-      "variant": "xhigh",
+      "model": "openai/gpt-6.1-sol",
+      "variant": "medium",
       "permission": {},
     },
     "plain-coder": {
-      "model": "openai/gpt-6-sol-fast",
+      "model": "openai/gpt-6.1-sol",
+      "variant": "medium",
       "permission": {
         "edit": "allow",
       },
     },
     "builder": {
-      "model": "openai/gpt-6-luna-fast",
+      "model": "openai/gpt-6-luna",
+      "variant": "low",
       "permission": {
         "edit": "allow",
       },
     },
     "explorer": {
-      "model": "openai/gpt-6-luna-fast",
+      "model": "openai/gpt-6-luna",
+      "variant": "low",
       "permission": {},
     },
     "manual-tester": {
-      "model": "openai/gpt-6-luna-fast",
+      "model": "openai/gpt-6-luna",
+      "variant": "medium",
       "permission": {
         "context7_*": "deny",
       },
     },
     "linear": {
-      "model": "openai/gpt-6-luna-fast",
+      "model": "openai/gpt-6-luna",
+      "variant": "low",
       "permission": {
         "linear_*": "allow",
       },
     },
     "code-review-orchestrator": {
-      "model": "openai/gpt-6-sol-fast",
+      "model": "openai/gpt-6.1-sol",
+      "variant": "medium",
       "permission": {
         "readGuideline": "allow",
         "listGuidelines": "allow",
       },
     },
     "file-level-code-reviewer": {
-      "model": "openai/gpt-6-sol-fast",
+      "model": "openai/gpt-6.1-sol",
+      "variant": "high",
       "permission": {
         "readGuideline": "allow",
         "listGuidelines": "allow",
@@ -143,33 +167,18 @@
         "gpt-6-luna": {
           "options": {
             "websearch": "always",
+            "serviceTier": "default",
           },
         },
-      },
-    },
-    "llamacpp": {
-      "npm": "@ai-sdk/openai-compatible",
-      "name": "llamacpp",
-      "options": {
-        "baseURL": "http://127.0.0.1:8080/v1",
-      },
-      "models": {
-        "gemma-4-26b": {
-          "name": "Gemma 4 26B MoE",
-          "family": "gemma4",
-          "attachment": true,
-          "reasoning": true,
-          "tool_call": true,
-          "interleaved": {
-            "field": "reasoning_content",
+        "gpt-6.1-sol": {
+          "options": {
+            "serviceTier": "default",
+            "reasoningEffort": "medium",
           },
-          "limit": {
-            "context": 131072,
-            "output": 4096,
-          },
-          "modalities": {
-            "input": ["text", "image"],
-            "output": ["text"],
+        },
+        "gpt-6-astra": {
+          "options": {
+            "serviceTier": "default",
           },
         },
       },

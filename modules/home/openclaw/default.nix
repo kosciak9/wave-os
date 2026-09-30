@@ -1150,7 +1150,7 @@ in
           model = {
             # Keep expensive frontier models opt-in; route routine work through
             # the efficient GPT-6 tier before OpenCode Go fallbacks.
-            primary = "openai/gpt-6-sol";
+            primary = "openai/gpt-6.1-sol";
             fallbacks = [
               "openai/gpt-6-luna"
               "opencode-go/deepseek-v4-flash"
@@ -1160,10 +1160,10 @@ in
               "openrouter/openrouter/free"
             ];
           };
-          utilityModel = "opencode-go/deepseek-v4-flash";
+          utilityModel = "openai/gpt-6-luna";
           modelSelectionScope = "session";
           thinkingDefault = "medium";
-          fastModeDefault = "auto";
+          fastModeDefault = false;
           maxConcurrent = 2;
           compaction = {
             enabled = true;
@@ -1177,7 +1177,7 @@ in
             memoryFlush = {
               enabled = true;
               softThresholdTokens = 4000;
-              model = "opencode-go/deepseek-v4-flash";
+              model = "openai/gpt-6-luna";
             };
             notifyUser = false;
             thinkingLevel = "inherit";
@@ -1190,11 +1190,11 @@ in
             };
           };
           imageModel = {
-            primary = "openai/gpt-6-sol";
+            primary = "openai/gpt-6.1-sol";
             fallbacks = [ "opencode-go/qwen3.8-max" ];
           };
           pdfModel = {
-            primary = "openai/gpt-6-sol";
+            primary = "openai/gpt-6.1-sol";
             fallbacks = [ "opencode-go/qwen3.8-max" ];
           };
           pdfMaxMb = 20;
@@ -1205,7 +1205,7 @@ in
               agentRuntime.id = "openclaw";
               codeMode = false;
             };
-            "openai/gpt-6-sol" = {
+            "openai/gpt-6.1-sol" = {
               alias = "sol";
               agentRuntime.id = "openclaw";
               codeMode = false;
@@ -1248,7 +1248,7 @@ in
           };
           modelPolicy.allow = [
             "openai/gpt-6-astra"
-            "openai/gpt-6-sol"
+            "openai/gpt-6.1-sol"
             "openai/gpt-6-luna"
             "opencode-go/qwen3.8-max"
             "opencode-go/deepseek-v4-pro"
@@ -1296,6 +1296,7 @@ in
         };
         entries.main = {
           inherit workspace;
+          fastModeDefault = "auto";
           identity = {
             name = "Alfred";
             theme = "Zwięzły, bezpośredni i dyskretny — technicznie dociekliwy, bez zbędnego hałasu i bez fluffu.";
@@ -1339,6 +1340,7 @@ in
           };
           modelPolicy.allow = [
             "openai/gpt-6-luna"
+            "openai/gpt-6.1-sol"
             "opencode-go/deepseek-v4-flash"
             "opencode-go/deepseek-v4-pro"
             "openrouter/deepseek/deepseek-v4-flash-0731"
@@ -1385,13 +1387,12 @@ in
               contextWindow = 872000;
               contextTokens = 700000;
             }
-            # Client 0.153.4 omits these names; tested 0.155.1 advertises them.
-            # Explicit rows use the verified OAuth ChatGPT route and account max context 872000.
+            # Explicit GPT-6 rows use the OAuth subscription route and conservative input budgets.
+            # GPT-6.1 Sol context is deliberately not raised based on the larger API reference.
             # Prices are API-reference estimates, not subscription billing.
-            # Keep primary and fallback at the same verified subscription input budget.
             {
-              id = "gpt-6-sol";
-              name = "GPT-6 Sol";
+              id = "gpt-6.1-sol";
+              name = "GPT-6.1 Sol";
               api = "openai-chatgpt-responses";
               reasoning = true;
               input = [
@@ -1404,7 +1405,7 @@ in
               cost = {
                 input = 2;
                 output = 10;
-                cacheRead = 0.2;
+                cacheRead = 0.1;
                 cacheWrite = 2.5;
                 tieredPricing = [
                   {
@@ -1414,20 +1415,20 @@ in
                     ];
                     input = 2;
                     output = 10;
-                    cacheRead = 0.2;
+                    cacheRead = 0.1;
                     cacheWrite = 2.5;
                   }
                   {
                     range = [ 272001 ];
                     input = 4;
                     output = 15;
-                    cacheRead = 0.4;
+                    cacheRead = 0.2;
                     cacheWrite = 5;
                   }
                 ];
               };
               thinkingLevelMap = {
-                off = "none";
+                off = "low";
                 xhigh = "xhigh";
                 max = "max";
               };
@@ -1435,7 +1436,6 @@ in
                 supportsReasoningEffort = true;
                 supportsTemperature = false;
                 supportedReasoningEfforts = [
-                  "none"
                   "low"
                   "medium"
                   "high"
@@ -1710,7 +1710,7 @@ in
                 allowedChatTypes = [ "direct" ];
                 model = "openai/gpt-6-luna";
                 thinking = "off";
-                fastMode = "auto";
+                fastMode = false;
                 queryMode = "recent";
                 promptStyle = "balanced";
                 timeoutMs = 15000;
