@@ -1,0 +1,3 @@
+# Unified diffs retain upstream whitespace in context and removal lines.
+packages/patches/camofox-click-outcome.patch whitespace=-blank-at-eol,-space-before-tab
+packages/patches/openclaw-browser-delegation.patch whitespace=-blank-at-eol,-space-before-tab

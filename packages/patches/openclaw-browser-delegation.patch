@@ -1,0 +1,64 @@
+--- sessions-spawn-tool-2GiVSHqU.mjs
++++ sessions-spawn-tool-2GiVSHqU.mjs
+@@ -2573,7 +2573,26 @@ function sanitizeMountPathHint(value) {
+ 	if (!/^[A-Za-z0-9._\-/:]+$/.test(trimmed)) return;
+ 	return trimmed;
+ }
++// Only the validated main -> browser native spawn may add the browser role's reviewed tools.
++function resolveBrowserDelegationAllowlist(cfg, requesterAgentId, targetAgentId, inheritedAllowlist) {
++	if (requesterAgentId !== "main" || targetAgentId !== "browser" || !Array.isArray(inheritedAllowlist) || inheritedAllowlist.length === 0) return inheritedAllowlist;
++	const main = resolveAgentConfig(cfg, "main");
++	const browser = resolveAgentConfig(cfg, "browser");
++	if (!main?.subagents?.allowAgents?.includes("browser") || !browser) return inheritedAllowlist;
++	const browserAllow = browser.tools?.allow;
++	const browserSandboxAllow = browser.tools?.sandbox?.tools?.allow;
++	if (!Array.isArray(browserAllow) || !Array.isArray(browserSandboxAllow)) return inheritedAllowlist;
++	const grant = [
++		"camofox_create_tab",
++		"camofox_snapshot",
++		"camofox_list_tabs",
++		"camofox_close_tab",
++		"browser_execute",
++		"browser_resolve"
++	].filter((name) => browserAllow.includes(name) && browserSandboxAllow.includes(name) && cfg.tools?.alsoAllow?.includes(name));
++	return [...new Set([...inheritedAllowlist, ...grant])];
++}
+ async function spawnSubagentDirect(params, ctx) {
+ 	const assertActive = ctx.assertActive;
+ 	const promptedAt = Date.now();
+ 	const task = params.task;
+@@ -2602,8 +2620,9 @@ async function spawnSubagentDirect(params, ctx) {
+ 			requesterSandboxed: ctx.sandboxed
+ 		});
+ 		if (!childPlan.ok) return childPlan.result;
+ 		const { spawnedCwd, toolSpawnMetadata, spawnedWorkspaceDir, requesterOrigin, incognito, childSessionKey, childRuntimeSandboxed, creationPolicy, targetAgentDir, modelPlan: plan, launchAuthorization, resolvedModelMetadata } = childPlan.resolved;
++		const effectiveInheritedToolAllowlist = resolveBrowserDelegationAllowlist(cfg, requesterAgentId, targetAgentId, ctx.inheritedToolAllowlist);
+ 		let { childSessionOrigin } = childPlan.resolved;
+ 		const spawnedByKey = requesterInternalKey;
+ 		const { resolvedModel, thinkingOverride } = plan;
+ 		const initialSession = await createInitialSubagentSession({
+@@ -2619,11 +2638,11 @@ async function spawnSubagentDirect(params, ctx) {
+ 			spawnedWorkspaceDir,
+ 			spawnedCwd,
+ 			sessionPermissionPolicy: ctx.sessionPermissionPolicy,
+ 			admissionPatch: admission.childSessionPatch,
+-			inheritedToolAllowlist: ctx.inheritedToolAllowlist,
++			inheritedToolAllowlist: effectiveInheritedToolAllowlist,
+ 			inheritedToolDenylist: ctx.inheritedToolDenylist,
+ 			modelPatch: plan.initialSessionPatch,
+ 			swarmGroupId,
+ 			collect: params.collect === true,
+ 			outputSchema: params.outputSchema
+ 		});
+@@ -2787,10 +2806,10 @@ async function spawnSubagentDirect(params, ctx) {
+ 				depth: childDepth,
+ 				maxDepth: maxSpawnDepth,
+ 				targetAgentId,
+ 				sandbox: sandboxMode,
+-				inheritedToolAllowlist: ctx.inheritedToolAllowlist,
++				inheritedToolAllowlist: effectiveInheritedToolAllowlist,
+ 				inheritedToolDenylist: ctx.inheritedToolDenylist
+ 			}),
+ 			parentExecutionIdentityToken: readParentExecutionIdentity(ctx)
+ 		}), childLaunch.authorization, gatewayContextResolver);
+ 		const emitSpawnLifecycleHooks = createSubagentSpawnLifecycleEmitter({

@@ -85,8 +85,6 @@
     let
       system = "x86_64-linux";
       darwinSystem = "aarch64-darwin";
-      # Experiment opt-in only: Laya native .5/.05, max 8 steps / 120s has not matched strong control reliability.
-      localBrowserExecutorEnabled = false;
       packageOverlay =
         final: prev:
         {
@@ -109,15 +107,7 @@
           anytype-mcp = final.callPackage ./packages/anytype-mcp.nix { };
           substack-mcp = final.callPackage ./packages/substack-mcp.nix { };
           camofox-browser-source = final.callPackage ./packages/camofox-browser-source.nix { };
-          camofox-openclaw-plugin = final.callPackage ./packages/camofox-openclaw-plugin.nix { };
           camofox-browser-cli = final.callPackage ./packages/camofox-browser-cli.nix { };
-          openclawRuntimePlugins = (prev.openclawRuntimePlugins or { }) // {
-            "camofox-browser" =
-              if prev.stdenv.hostPlatform.system == darwinSystem && localBrowserExecutorEnabled then
-                final.camofox-openclaw-plugin-executor
-              else
-                final.camofox-openclaw-plugin;
-          };
         }
         // prev.lib.optionalAttrs prev.stdenv.hostPlatform.isLinux {
           wave-hyprland = prev.hyprland.overrideAttrs (old: {
@@ -131,9 +121,9 @@
         }
         // prev.lib.optionalAttrs prev.stdenv.hostPlatform.isDarwin {
           browser-decision = final.callPackage ./packages/browser-decision.nix { };
-          camofox-openclaw-plugin-executor = final.camofox-openclaw-plugin.override {
-            enableExecutor = true;
-            inherit (final) browser-decision;
+          camofox-openclaw-plugin = final.callPackage ./packages/camofox-openclaw-plugin.nix { };
+          openclawRuntimePlugins = (prev.openclawRuntimePlugins or { }) // {
+            "camofox-browser" = final.camofox-openclaw-plugin;
           };
           mac-apps-mcp-host = final.callPackage ./packages/mac-apps-mcp-host.nix { };
           mac-apps-mcp-server = final.callPackage ./packages/mac-apps-mcp-server.nix { };
@@ -247,7 +237,6 @@
           substack-mcp
           camofox-browser-source
           camofox-openclaw-plugin
-          camofox-openclaw-plugin-executor
           browser-decision
           camofox-browser-cli
           ;
