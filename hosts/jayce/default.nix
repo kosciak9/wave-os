@@ -77,6 +77,7 @@ in
     openssh = {
       enable = true;
       openFirewall = false;
+      settings.KexAlgorithms = [ "+ecdh-sha2-nistp256" ];
     };
     avahi = {
       enable = true;
