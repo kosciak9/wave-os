@@ -10,8 +10,6 @@ let
   home = config.home.homeDirectory;
   state = "${home}/.openclaw";
   workspace = "${state}/workspace";
-  localBrowserExecutorEnabled =
-    pkgs.openclawRuntimePlugins."camofox-browser".executorEnabled or false;
   browserWorkspace = "${state}/workspace-browser";
   telegramOwnerIdFile = "${home}/.config/secrets/openclaw/telegram-owner-id";
   telegramGroupIdFile = "${home}/.config/secrets/openclaw/telegram-group-id";
@@ -38,12 +36,14 @@ let
   ownerRestrictedTools = [
     "automations"
     "gateway"
+    "browser_observations"
     "openclaw"
     "sessions_send"
     "sessions_spawn"
     "subagents"
   ];
   approvedTools = [
+    "browser_observations"
     "read"
     "write"
     "edit"
@@ -77,24 +77,20 @@ let
   camofoxTools = [
     "camofox_create_tab"
     "camofox_snapshot"
-    "camofox_select"
-    "camofox_click"
-    "camofox_type"
-    "camofox_navigate"
-    "camofox_scroll"
-    "camofox_screenshot"
     "camofox_close_tab"
     "camofox_list_tabs"
   ];
-  executorTools = lib.optional localBrowserExecutorEnabled "browser_execute";
-  camofoxTextTools = lib.filter (tool: tool != "camofox_screenshot") camofoxTools;
+  executorTools = [
+    "browser_execute"
+    "browser_resolve"
+  ];
   # Read is only exposed so the embedded browser runtime can load browser-research skill instructions.
   browserTools = [
     "read"
     "web_search"
     "web_fetch"
   ]
-  ++ camofoxTextTools
+  ++ camofoxTools
   ++ executorTools;
   macAppsMcpReadTools = [
     "mail_list_accounts"
@@ -522,6 +518,29 @@ let
       substituteInPlace "$controlUiChunk" \
         --replace-fail "$controlUiAgentListAnchor" 'agents(){return Ne(this.read().context?.agents.state.agentsList?.agents??[]).filter(e=>e.id!==`browser`)}'
       rm -f -- "$controlUiChunk.br" "$controlUiChunk.gz"
+
+      spawnChunkDir="$out/lib/openclaw/dist"
+      spawnChunkCount=$(find "$spawnChunkDir" -maxdepth 1 -type f -name 'sessions-spawn-tool-*.mjs' -print | wc -l | tr -d '[:space:]')
+      if [ "$spawnChunkCount" -ne 1 ] || [ ! -f "$spawnChunkDir/sessions-spawn-tool-2GiVSHqU.mjs" ]; then
+        printf '%s\n' "refusing to build OpenClaw Gateway: expected exactly the pinned sessions-spawn-tool-2GiVSHqU.mjs bundle in $spawnChunkDir" >&2
+        exit 1
+      fi
+      spawnChunk="$spawnChunkDir/sessions-spawn-tool-2GiVSHqU.mjs"
+      spawnAnchorCount=$(awk -v needle='async function spawnSubagentDirect(params, ctx) {' '
+        {
+          remaining = $0
+          while ((position = index(remaining, needle)) != 0) {
+            count++
+            remaining = substr(remaining, position + length(needle))
+          }
+        }
+        END { print count + 0 }
+      ' "$spawnChunk")
+      if [ "$spawnAnchorCount" -ne 1 ]; then
+        printf '%s\n' "refusing to build OpenClaw Gateway: expected exactly one native subagent spawn anchor in $spawnChunk, found $spawnAnchorCount" >&2
+        exit 1
+      fi
+      patch --batch --forward --fuzz=0 -p0 -d "$spawnChunkDir" < ${../../../packages/patches/openclaw-browser-delegation.patch}
     '';
   });
   openclawPackageSet = openclawPackageSetBase // {
@@ -1326,7 +1345,6 @@ in
             requireAgentId = true;
             delegationMode = "prefer";
           };
-          tools.deny = camofoxTools ++ executorTools;
         };
         entries.browser = {
           name = "Browser";
@@ -1334,22 +1352,11 @@ in
           workspace = browserWorkspace;
           model = {
             primary = "openai/gpt-6-luna";
-            fallbacks = [
-              "opencode-go/deepseek-v4-flash"
-              "opencode-go/deepseek-v4-pro"
-              "openrouter/deepseek/deepseek-v4-flash-0731"
-              "openrouter/z-ai/glm-5.3-flash"
-              "openrouter/openrouter/free"
-            ];
+            fallbacks = [ ];
           };
           modelPolicy.allow = [
             "openai/gpt-6-luna"
             "openai/gpt-6.1-sol"
-            "opencode-go/deepseek-v4-flash"
-            "opencode-go/deepseek-v4-pro"
-            "openrouter/deepseek/deepseek-v4-flash-0731"
-            "openrouter/z-ai/glm-5.3-flash"
-            "openrouter/openrouter/free"
           ];
           utilityModel = "";
           thinkingDefault = "low";
@@ -1611,7 +1618,7 @@ in
           "view_image"
           "pdf"
         ]
-        ++ camofoxTextTools
+        ++ camofoxTools
         ++ executorTools;
         swarm = false;
         updatePlan = true;
@@ -1739,9 +1746,6 @@ in
               config = {
                 url = "http://127.0.0.1:9377";
                 autoStart = false;
-                browserExecutor = pkgs.openclawRuntimePlugins."camofox-browser".executorDefaults // {
-                  enabled = localBrowserExecutorEnabled;
-                };
               };
             };
           };

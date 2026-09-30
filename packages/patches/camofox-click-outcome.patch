@@ -1,0 +1,320 @@
+diff --git a/server.js b/server.js
+--- a/server.js
++++ b/server.js
+@@ -563,4 +563,5 @@
+ const tabLocks = new Map(); // tabId -> TabLock
++const tabOperations = new Map(); // tabId -> operations still running, even after a lock timeout
+ 
+ function getTabLock(tabId) {
+   if (!tabLocks.has(tabId)) tabLocks.set(tabId, new TabLock());
+@@ -570,10 +571,21 @@
+ // Timeout is INSIDE the lock so each operation gets its full budget
+ // regardless of how long it waited in the queue.
+-async function withTabLock(tabId, operation, timeoutMs = HANDLER_TIMEOUT_MS, onTimeout) {
++async function withTabLock(tabId, operation, timeoutMs = HANDLER_TIMEOUT_MS, onTimeout, trackOperation = true) {
+   const lock = getTabLock(tabId);
+   await lock.acquire(TAB_LOCK_TIMEOUT_MS);
+   try {
+-    return await withTimeout(operation(), timeoutMs, 'action');
++    const activeOperation = Promise.resolve().then(operation);
++    if (trackOperation) {
++      let pending = tabOperations.get(tabId);
++      if (!pending) tabOperations.set(tabId, pending = new Set());
++      pending.add(activeOperation);
++      const remove = () => {
++        pending.delete(activeOperation);
++        if (pending.size === 0 && tabOperations.get(tabId) === pending) tabOperations.delete(tabId);
++      };
++      activeOperation.then(remove, remove);
++    }
++    return await withTimeout(activeOperation, timeoutMs, 'action');
+   } catch (err) {
+     if (onTimeout && isTimeoutError(err)) {
+       await onTimeout();
+@@ -3790,6 +3802,6 @@
+  *               $ref: '#/components/schemas/Error'
+  *       409:
+- *         description: Page changed during the click; caller should take a fresh snapshot and retry with current refs.
++ *         description: Pointer dispatch may have occurred; take a fresh snapshot without retrying automatically.
+  *         content:
+  *           application/json:
+  *             schema:
+@@ -3797,5 +3809,6 @@
+  */
+ app.post('/tabs/:tabId/click', async (req, res) => {
+   const tabId = req.params.tabId;
++  let pointerOutcome = 'not_dispatched';
+   
+   try {
+@@ -3818,43 +3831,5 @@
+     const result = await withUserLimit(userId, () => withTabLock(tabId, async () => {
+       const clickStart = Date.now();
+       const remainingBudget = () => Math.max(0, HANDLER_TIMEOUT_MS - 2000 - (Date.now() - clickStart));
+-      // Full mouse event sequence for stubborn JS click handlers (mirrors Swift WebView.swift)
+-      // Dispatches: mouseover -> mouseenter -> mousedown -> mouseup -> click
+-      const dispatchMouseSequence = async (locator) => {
+-        // boundingBox() with no timeout inherits Playwright's 30s default, which
+-        // silently eats the entire handler budget when the element detached after
+-        // the failed click attempt (the page changed under us). Bound it to the
+-        // remaining budget (capped at 3s) so the route fails fast with an
+-        // actionable 422 instead of blowing HANDLER_TIMEOUT_MS into a 500.
+-        // NOTE: the message deliberately avoids the 'timed out after' phrase so
+-        // isTimeoutError() doesn't classify a detached element as a navigation
+-        // timeout and destroy the whole session in handleRouteError().
+-        const bboxTimeout = Math.max(500, Math.min(3000, remainingBudget()));
+-        let box;
+-        try {
+-          box = await locator.boundingBox({ timeout: bboxTimeout });
+-        } catch (e) {
+-          const detachedErr = new Error(`Element not actionable: no bounding box within ${bboxTimeout}ms (element likely detached after page change). Call snapshot to refresh refs and retry.`);
+-          detachedErr.statusCode = 422;
+-          throw detachedErr;
+-        }
+-        if (!box) throw new Error('Element not visible (no bounding box)');
+-        
+-        const x = box.x + box.width / 2;
+-        const y = box.y + box.height / 2;
+-        
+-        // Move mouse to element (triggers mouseover/mouseenter)
+-        await withTimeout(tabState.page.mouse.move(x, y), Math.max(1, remainingBudget()), 'native mouse move');
+-        await tabState.page.waitForTimeout(50);
+-        
+-        // Full click sequence
+-        await withTimeout(tabState.page.mouse.down(), Math.max(1, remainingBudget()), 'native mouse down');
+-        await tabState.page.waitForTimeout(50);
+-        await withTimeout(tabState.page.mouse.up(), Math.max(1, remainingBudget()), 'native mouse up');
+-        
+-        log('info', 'mouse sequence dispatched', { x: x.toFixed(0), y: y.toFixed(0) });
+-      };
+       
+-      // On Google SERPs, skip the normal click attempt (always intercepted by overlays)
+-      // and go directly to force click -- saves 5s timeout per click
+       const onGoogleSerp = isGoogleSerp(tabState.page.url());
+@@ -3873,38 +3848,12 @@
+             log('info', 'click constrained selector to visible match', { selector: locatorOrSelector });
+           }
+         }
+-        const click = async (options) => clickWithDownloadGuard(tabState, () => locator.click(options));
+-        
+-        if (onGoogleSerp) {
+-          try {
+-            await click({ timeout: 3000, force: true });
+-          } catch (forceErr) {
+-            log('warn', 'google force click failed, trying mouse sequence');
+-            await dispatchMouseSequence(locator);
+-          }
+-          return;
+-        }
+-        
+-        try {
+-          // First try normal click (respects visibility, enabled, not-obscured)
+-          await click({ timeout: 3000 });
+-        } catch (err) {
+-          // Fallback 1: If intercepted by overlay, retry with force
+-          if (err.message.includes('intercepts pointer events')) {
+-            log('warn', 'click intercepted, retrying with force');
+-            try {
+-              await click({ timeout: 3000, force: true });
+-            } catch (forceErr) {
+-              // Fallback 2: Full mouse event sequence for stubborn JS handlers
+-              log('warn', 'force click failed, trying mouse sequence');
+-              await dispatchMouseSequence(locator);
+-            }
+-          } else if (err.message.includes('not visible') || err.message.toLowerCase().includes('timeout')) {
+-            // Fallback 2: Element not responding to click, try mouse sequence
+-            log('warn', 'click timeout, trying mouse sequence');
+-            await dispatchMouseSequence(locator);
+-          } else {
+-            throw err;
+-          }
+-        }
++        // Native click checks the hit target and scrolls into view. An error
++        // after starting it cannot establish whether input was sent.
++        pointerOutcome = 'unknown';
++        await clickWithDownloadGuard(tabState, async () => {
++          await locator.click({ noWaitAfter: true, timeout: 3000 });
++          pointerOutcome = 'dispatched';
++        });
++        if (pointerOutcome !== 'dispatched') throw new Error('Pointer dispatch not acknowledged');
+       };
+@@ -3947,5 +3896,5 @@
+         tabState.refs = new Map();
+         const newUrl = tabState.page.url();
+         tabState.visitedUrls.add(newUrl);
+-        return { ok: true, url: newUrl, refsAvailable: false };
++        return { ok: true, outcome: 'dispatched', url: newUrl, refsAvailable: false };
+       } else {
+@@ -3958,15 +3907,12 @@
+       try {
+         tabState.refs = await refreshTabRefs(tabState, { reason: 'post_click', timeoutMs: postClickBudget });
+       } catch (e) {
+-        if (e.message === 'post_click_refs_timeout' || e.message === 'buildRefs_timeout') {
+-          log('warn', 'post-click buildRefs timed out, returning without refs', { budget: postClickBudget, elapsed: Date.now() - clickStart });
+-          tabState.refs = new Map();
+-        } else {
+-          throw e;
+-        }
++        // Refresh is observation, not part of the already acknowledged input.
++        log('warn', 'post-click buildRefs failed, returning without refs', { error: e.message, elapsed: Date.now() - clickStart });
++        tabState.refs = new Map();
+       }
+       
+-      const newUrl = tabState.page.url();
+-      tabState.visitedUrls.add(newUrl);
+-      return { ok: true, url: newUrl, refsAvailable: tabState.refs.size > 0 };
++      const newUrl = safePageUrl(tabState.page);
++      if (newUrl) tabState.visitedUrls.add(newUrl);
++      return { ok: true, outcome: 'dispatched', url: newUrl, refsAvailable: tabState.refs.size > 0 };
+     }, HANDLER_TIMEOUT_MS, () => destroyTimedOutTab(session, tabId, 'operation_timeout', userId)));
+@@ -3976,4 +3922,30 @@
+     res.json(result);
+   } catch (err) {
+     log('error', 'click failed', { reqId: req.reqId, tabId, error: err.message });
++    if (pointerOutcome === 'dispatched') {
++      const session = sessions.get(normalizeUserId(req.body.userId));
++      const found = session && findTab(session, tabId);
++      if (found) {
++        found.tabState.refs = new Map();
++        found.tabState.lastSnapshot = null;
++      }
++      return res.json({ ok: true, outcome: 'dispatched', url: safePageUrl(found?.tabState?.page), refsAvailable: false });
++    }
++    if (pointerOutcome === 'unknown') {
++      const session = sessions.get(normalizeUserId(req.body.userId));
++      const found = session && findTab(session, tabId);
++      if (found) {
++        found.tabState.refs = new Map();
++        found.tabState.lastSnapshot = null;
++      }
++      return res.status(409).json({
++        error: 'Pointer dispatch may have occurred. Take a fresh snapshot; do not retry this click automatically.',
++        code: 'click_outcome_unknown',
++        outcome: 'unknown',
++        dispatched: null,
++        retryable: false,
++        recovery: 'snapshot_only',
++        url: safePageUrl(found?.tabState?.page),
++      });
++    }
+     if (err.code !== 'tab_timeout' && err.message?.includes('timed out')) {
+@@ -3983,12 +3955,13 @@
+         if (found?.tabState?.page && !found.tabState.page.isClosed()) {
+           found.tabState.refs = await refreshTabRefs(found.tabState, { reason: 'click_timeout' });
+           found.tabState.lastSnapshot = null;
+           return res.status(409).json({
+-            error: 'Page changed during click. Call snapshot to see the current state and retry with current refs.',
+-            code: 'page_changed',
+-            retryable: true,
+-            recovery: 'snapshot_then_retry',
+-            hint: 'The page may have changed. Call snapshot to see the current state and retry.',
++            error: 'Click was not dispatched. Call snapshot to see the current state.',
++            code: 'click_not_dispatched',
++            outcome: 'not_dispatched',
++            dispatched: false,
++            retryable: false,
++            recovery: 'snapshot_only',
+             url: safePageUrl(found.tabState.page),
+             refsCount: found.tabState.refs.size,
+           });
+@@ -3998,5 +3971,5 @@
+       }
+     }
+-    handleRouteError(err, req, res);
++    handleRouteError(err, req, res, { outcome: 'not_dispatched', dispatched: false });
+   }
+ });
+@@ -4003,2 +3976,36 @@
+ 
++// Operator-only barrier. A lock timeout can release the lock while its original
++// promise is still running, so the lock alone cannot establish settlement.
++app.get('/tabs/:tabId/settlement', (req, res, next) => {
++  if (!CONFIG.apiKey && !CONFIG.accessKey) return res.status(403).json({ error: 'Settlement requires API authentication' });
++  next();
++}, authMiddleware(), async (req, res) => {
++  const { tabId } = req.params;
++  const { userId } = req.query;
++  if (typeof userId !== 'string' || !userId) return res.status(400).json({ error: 'userId required' });
++  const key = normalizeUserId(userId);
++  const hasPending = () => {
++    const user = userConcurrency.get(key);
++    return (tabOperations.get(tabId)?.size || 0) > 0 || Boolean(user && (user.active > 0 || user.queue.length > 0));
++  };
++  const session = sessions.get(key);
++  if (!session || !findTab(session, tabId)) {
++    const state = hasPending() ? 'pending' : 'closed';
++    return res.status(state === 'pending' ? 409 : 200).json({ ok: true, state });
++  }
++  try {
++    const state = await withTabLock(tabId, () => {
++      // Recheck ownership after waiting for the queue; destruction drains locks.
++      if (hasPending()) return 'pending';
++      if (sessions.get(key) !== session) return 'closed';
++      const found = findTab(session, tabId);
++      if (!found) return 'closed';
++      return found.tabState.page.isClosed() ? 'closed' : 'settled';
++    }, HANDLER_TIMEOUT_MS, undefined, false);
++    return res.status(state === 'pending' ? 409 : 200).json({ ok: true, state });
++  } catch (err) {
++    return res.status(409).json({ ok: false, state: 'pending' });
++  }
++});
++
+ // --- /tabs/:tabId/upload timeouts (ms) ---
+@@ -4421,7 +4428,8 @@
+ // Select a native form option by its visible label or HTML value.
+ app.post('/tabs/:tabId/select', async (req, res) => {
+   const tabId = req.params.tabId;
++  let selectionOutcome = 'not_dispatched';
+   try {
+     const { userId, ref, selector, option } = req.body;
+     const session = sessions.get(normalizeUserId(userId));
+     const found = session && findTab(session, tabId);
+@@ -4447,11 +4455,14 @@
+         throw error;
+       }
++      selectionOutcome = 'unknown';
+       await selectOption(locator, option);
++      selectionOutcome = 'dispatched';
+     });
+     pluginEvents.emit('tab:select', { userId, tabId, ref, option });
+-    res.json({ ok: true });
++    res.json({ ok: true, outcome: 'dispatched' });
+   } catch (err) {
+     log('error', 'select failed', { reqId: req.reqId, error: err.message });
+-    handleRouteError(err, req, res);
++    const outcome = err.mutationOutcome || selectionOutcome;
++    handleRouteError(err, req, res, { outcome, dispatched: outcome === 'not_dispatched' ? false : outcome === 'dispatched' ? true : null });
+   }
+ });
+diff --git a/lib/select-option.js b/lib/select-option.js
+--- a/lib/select-option.js
++++ b/lib/select-option.js
+@@ -1,12 +1,20 @@
+-/** Select an option by its accessible label, then by its HTML value. */
++/** Resolve label or value without attempting a mutation. */
+ export async function selectOption(locator, option) {
++  const match = await locator.evaluate((element, requested) => {
++    if (element.tagName !== 'SELECT') return null;
++    const matches = Array.from(element.options).filter(item => item.value === requested || item.label === requested);
++    return matches.length === 1 ? { value: matches[0].value } : null;
++  }, option, { timeout: 3000 });
++  if (!match) {
++    const error = new Error('Option must uniquely match one native select label or value. Call snapshot to inspect the current options.');
++    error.statusCode = 422;
++    error.mutationOutcome = 'not_dispatched';
++    throw error;
++  }
+   try {
+-    return await locator.selectOption({ label: option });
+-  } catch (labelError) {
+-    try {
+-      return await locator.selectOption({ value: option });
+-    } catch {
+-      throw labelError;
+-    }
++    return await locator.selectOption({ value: match.value }, { timeout: 5000 });
++  } catch (error) {
++    error.mutationOutcome = 'unknown';
++    throw error;
+   }
+ }
