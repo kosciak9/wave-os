@@ -358,6 +358,7 @@ let
     "ha_set_zone"
   ];
   homeAssistantMcpPolicyIds = map (tool: "home-assistant__${tool}") homeAssistantMcpTools;
+  twentyMcpPolicyIds = [ "twenty__*" ];
   macAppsMcpHostApp = "${home}/Applications/Home Manager Apps/Mac Apps MCP Host.app";
   deniedTools = [
     "conversations_send"
@@ -808,7 +809,26 @@ let
       printf '%s\n' "refusing to start OpenClaw Gateway: could not validate HOME_ASSISTANT_MCP_URL metadata" >&2
       exit 1
     fi
+    if ! twenty_metadata_status=$(printf '%s' "$metadata" | "$jq" -er '
+      if type != "array" then error("invalid metadata") else . end |
+      [ .[] | select(.name == "TWENTY_MCP_URL") ] as $urls |
+      [ .[] | select(.name == "TWENTY_API_KEY") ] as $keys |
+      if ($urls | length) == 0 and ($keys | length) == 0 then "absent"
+      elif ($urls | length) == 1 and ($keys | length) == 1 and
+        all([$urls[0], $keys[0]][]; .kind == "env" and
+          ((has("allowedHosts") | not) or .allowedHosts == [])) then "valid"
+      else "invalid" end
+    ' 2>/dev/null); then
+      unset metadata twenty_metadata_status
+      printf '%s\n' "refusing to start OpenClaw Gateway: Twenty MCP metadata is invalid" >&2
+      exit 1
+    fi
     unset metadata
+    if [ "$twenty_metadata_status" = invalid ]; then
+      unset twenty_metadata_status
+      printf '%s\n' "refusing to start OpenClaw Gateway: Twenty MCP metadata is invalid" >&2
+      exit 1
+    fi
     if [ "$home_assistant_metadata_status" != valid ]; then
       unset home_assistant_metadata_status
       printf '%s\n' "refusing to start OpenClaw Gateway: HOME_ASSISTANT_MCP_URL metadata is absent or invalid" >&2
@@ -826,20 +846,52 @@ let
       exit 1
     fi
 
-    if ! printf '%s' "$home_assistant_url" |
+    twenty_url=
+    twenty_key=
+    if [ "$twenty_metadata_status" = valid ]; then
+      if ! twenty_url_json=$("$openclaw" secrets store get TWENTY_MCP_URL --json 2>/dev/null) ||
+        ! twenty_key_json=$("$openclaw" secrets store get TWENTY_API_KEY --json 2>/dev/null); then
+        printf '%s\n' "refusing to start OpenClaw Gateway: Twenty MCP store value is invalid" >&2
+        exit 1
+      fi
+      # Validate stored JSON values before raw extraction can trim trailing newlines.
+      if ! twenty_url=$(printf '%s' "$twenty_url_json" | "$jq" -e -r -s '
+        def valid_url:
+          test("^https://[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*(:[1-9][0-9]{0,4})?/mcp/?\\z") and
+          (split("/")[2] | split(":") | (length == 1 or (.[1] | tonumber <= 65535)));
+        if length != 1 or (.[0] | type != "object" or .name != "TWENTY_MCP_URL" or .kind != "env" or (.value | type) != "string" or (.value | valid_url | not)) then error("invalid URL") else .[0].value end
+      ' 2>/dev/null) || ! twenty_key=$(printf '%s' "$twenty_key_json" | "$jq" -e -r -s '
+        if length != 1 or (.[0] | type != "object" or .name != "TWENTY_API_KEY" or .kind != "env" or (.value | type) != "string" or (.value | test("^[-A-Za-z0-9._~+/]+=*\\z") | not)) then error("invalid API key") else .[0].value end
+      ' 2>/dev/null); then
+        printf '%s\n' "refusing to start OpenClaw Gateway: Twenty MCP store value is invalid" >&2
+        exit 1
+      fi
+      unset twenty_url_json twenty_key_json
+    fi
+    unset twenty_metadata_status
+
+    if ! printf '%s\0%s\0%s\0' "$home_assistant_url" "$twenty_url" "$twenty_key" |
       "$jq" -e -s --arg owner_id "$telegram_owner_id" \
         --arg group_id "$telegram_group_id" \
         --argjson group_allow_from "$telegram_group_allow_from" \
         --argjson owner_restricted_tools ${lib.escapeShellArg (builtins.toJSON ownerRestrictedTools)} \
-        --rawfile home_assistant_url /dev/stdin '
+        --rawfile mcp_secret_values /dev/stdin '
       if (length != 1 or (.[0] | type != "object")) then error("invalid config") else .[0] end |
+      ($mcp_secret_values | split("\u0000")) as $secrets |
+      if ($secrets | length) != 4 or $secrets[3] != "" then error("invalid secrets") else . end |
       .commands.ownerAllowFrom = ["telegram:" + $owner_id] |
       .commands.allowFrom.telegram = [$owner_id] |
       .channels.telegram.direct[$owner_id] = {tools: {}} |
       .channels.telegram.groups = {($group_id): {requireMention: false, toolsBySender: {"*": {deny: $owner_restricted_tools}, ("id:" + $owner_id): {}}}} |
       .channels.telegram.groupPolicy = "allowlist" |
       .channels.telegram.groupAllowFrom = $group_allow_from |
-      .mcp.servers["home-assistant"].url = $home_assistant_url
+      .mcp.servers["home-assistant"].url = $secrets[0] |
+      .mcp.servers.twenty |= (del(.headers) | .enabled = false) |
+      if $secrets[1] != "" then
+        .mcp.servers.twenty.url = $secrets[1] |
+        .mcp.servers.twenty.headers.Authorization = ("Bearer " + $secrets[2]) |
+        .mcp.servers.twenty.enabled = true
+      else . end
     ' "$OPENCLAW_CONFIG_GENERATION" >"$tmp_config" 2>/dev/null || \
       ! "$jq" -e 'type == "object"' "$tmp_config" >/dev/null 2>&1 || \
       ! "$chmod" 600 -- "$tmp_config" 2>/dev/null || \
@@ -848,7 +900,7 @@ let
       exit 1
     fi
     tmp_config=
-    unset telegram_owner_id telegram_group_id telegram_group_allow_from home_assistant_url
+    unset telegram_owner_id telegram_group_id telegram_group_allow_from home_assistant_url twenty_url twenty_key
     export OPENCLAW_CONFIG_PATH="$runtime_config"
 
     if ! camofox_key=$(
@@ -1495,7 +1547,8 @@ in
           ++ anytypeMcpPolicyIds
           ++ substackMcpPolicyIds
           ++ languagetoolMcpPolicyIds
-          ++ homeAssistantMcpPolicyIds;
+          ++ homeAssistantMcpPolicyIds
+          ++ twentyMcpPolicyIds;
         deny = deniedTools;
         fs.workspaceOnly = true;
         exec = {
@@ -1535,7 +1588,8 @@ in
           ++ anytypeMcpPolicyIds
           ++ substackMcpPolicyIds
           ++ languagetoolMcpPolicyIds
-          ++ homeAssistantMcpPolicyIds;
+          ++ homeAssistantMcpPolicyIds
+          ++ twentyMcpPolicyIds;
         subagents.tools.allow = [
           "session_status"
           "read"
@@ -1830,6 +1884,14 @@ in
               include = homeAssistantMcpTools;
               exclude = homeAssistantMcpDeniedTools;
             };
+          };
+          twenty = {
+            enabled = false;
+            url = "https://twenty-mcp.invalid/mcp";
+            transport = "streamable-http";
+            connectionTimeoutMs = 10000;
+            requestTimeoutMs = 300000;
+            supportsParallelToolCalls = false;
           };
         };
         apps.enabled = false;
