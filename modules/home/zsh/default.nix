@@ -58,11 +58,12 @@
         gcwip = "git commit --no-verify -m wip";
         l = "eza --git -h -g -H -l";
         n = "nvim";
-        nvimrc = "$EDITOR ~/projects/personal/wave-os/modules/home/neovim/config/init.lua";
+        nvimrc = "$EDITOR ~/Developer/personal/wave-os/modules/home/neovim/config/init.lua";
+        oc = "opencode";
         sudo = "sudo ";
         vim = "nvim";
-        vimrc = "$EDITOR ~/projects/personal/wave-os/modules/home/neovim/config/init.lua";
-        zshrc = "$EDITOR ~/projects/personal/wave-os/modules/home/zsh/default.nix";
+        vimrc = "$EDITOR ~/Developer/personal/wave-os/modules/home/neovim/config/init.lua";
+        zshrc = "$EDITOR ~/Developer/personal/wave-os/modules/home/zsh/default.nix";
       };
       initContent = lib.mkMerge [
         (lib.mkOrder 850 ''
@@ -89,7 +90,6 @@
             --color=fg+:#dcd7ba,bg+:#2a2a37,hl+:#7fb4ca
             --color=info:#a3aab0,prompt:#d27e99,pointer:#957fb8
             --color=marker:#98bb6c,spinner:#957fb8,header:#7e9cd8'
-          export OPENCODE_ATTACH_TARGET="''${OPENCODE_ATTACH_TARGET:-localhost:51199}"
 
           zstyle ':fzf-tab:complete:cd:*' disabled-on any
 
@@ -106,17 +106,6 @@
           }
           export MIX_OS_DEPS_COMPILE_PARTITION_COUNT=$(( $(cpu_count) / 2 ))
 
-          oc() {
-            export OPENCODE_SERVER_USERNAME="''${OPENCODE_SERVER_USERNAME:-opencode}"
-            export OPENCODE_SERVER_PASSWORD="''${OPENCODE_SERVER_PASSWORD:-$(pass show opencode.localhost/opencode)}"
-            command opencode attach "$OPENCODE_ATTACH_TARGET" --dir "$PWD" "$@"
-          }
-
-          oc2() {
-            export OPENCODE_SERVER_USERNAME="''${OPENCODE_SERVER_USERNAME:-opencode}"
-            export OPENCODE_SERVER_PASSWORD="''${OPENCODE_SERVER_PASSWORD:-$(pass show opencode.localhost/opencode)}"
-            command opencode2 --server http://127.0.0.1:51200 "$PWD" "$@"
-          }
         '')
       ];
     };

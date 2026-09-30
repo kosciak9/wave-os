@@ -116,9 +116,9 @@ in
           preferences = {
             autoIndexing = true;
             indexingPaths = [
-              "${config.home.homeDirectory}/documents"
-              "${config.home.homeDirectory}/downloads"
-              "${config.home.homeDirectory}/media"
+              (lib.replaceStrings [ "$HOME" ] [ config.home.homeDirectory ] config.xdg.userDirs.documents)
+              (lib.replaceStrings [ "$HOME" ] [ config.home.homeDirectory ] config.xdg.userDirs.download)
+              (lib.replaceStrings [ "$HOME" ] [ config.home.homeDirectory ] config.xdg.userDirs.music)
             ];
             excludedIndexingPaths = [ ];
           };

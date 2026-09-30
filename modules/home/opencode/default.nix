@@ -1,18 +1,10 @@
-{ pkgs, ... }:
+{ inputs, pkgs, ... }:
 
 {
   home.packages = [
     pkgs.opencode
-    pkgs.opencode2
     pkgs.camofox-browser-cli
   ];
-
-  # Keep the v2 installation completely separate from the v1 XDG config.
-  home.file.".config/opencode-v2/opencode" = {
-    source = ./config-v2;
-    force = true;
-    recursive = true;
-  };
 
   xdg.configFile = {
     "opencode/agent" = {
@@ -44,6 +36,10 @@
       force = true;
       recursive = true;
     };
+    "opencode/plugins/herdr-agent-state.js".source =
+      inputs.herdr + "/src/integration/assets/opencode/herdr-agent-state.js";
+    "opencode/herdr-tui-session.js".source =
+      inputs.herdr + "/src/integration/assets/opencode/herdr-tui-session.js";
     "opencode/tui.jsonc" = {
       source = ./config/tui.jsonc;
       force = true;

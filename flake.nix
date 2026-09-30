@@ -3,6 +3,11 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    herdr.url = "github:herdrdev/herdr/v0.9.3";
+    herdr-worktrunk = {
+      url = "github:devashish2203/herdr-worktrunk/8ceca541de8fb0d6006727e172534e1e2af17224";
+      flake = false;
+    };
     deploy-rs.url = "github:serokell/deploy-rs/e760371d631165e7d8de5b0dcf148e21ec4c16f0";
     devenv-nixpkgs.url = "github:NixOS/nixpkgs/34ab99075ac4f7e40cf037eef32cb1c360bb85e9";
     # Vicinae intentionally keeps its release-tested Nixpkgs pin; following repository Nixpkgs triggers the known qtkeychain Darwin ld64 crash.
@@ -85,7 +90,6 @@
         {
           plannotator = final.callPackage ./packages/plannotator.nix { };
           opencode = final.callPackage ./packages/opencode-darwin.nix { };
-          opencode2 = final.callPackage ./packages/opencode2.nix { };
           kanagawa-gtk-theme = final.callPackage ./packages/kanagawa-gtk-theme.nix { };
           openclaw-sandbox-machine-check =
             final.callPackage ./packages/openclaw-sandbox-machine-check.nix
