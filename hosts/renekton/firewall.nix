@@ -19,7 +19,6 @@ let
     pass in quick inet6 proto icmp6 icmp6-type { 1, 2, 3, 4, 130, 131, 132, 134, 135, 136, 143 } keep state label "wave ipv6 control"
 
     # UDP 41641 is Tailscale's direct WireGuard path.
-    pass in quick proto tcp to any port 22 flags S/SA keep state label "wave ssh"
     pass in quick proto udp to any port 41641 keep state label "wave tailscale wireguard"
 
     # Keep non-quick so Apple's later dynamic AirDrop anchor can override this deny.

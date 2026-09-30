@@ -40,6 +40,7 @@ in
 
   networking = {
     hostName = "jayce";
+    firewall.interfaces.tailscale0.allowedTCPPorts = [ 22 ];
     networkmanager = {
       enable = true;
       wifi.powersave = false;
@@ -73,6 +74,10 @@ in
   };
 
   services = {
+    openssh = {
+      enable = true;
+      openFirewall = false;
+    };
     avahi = {
       enable = true;
       nssmdns4 = true;

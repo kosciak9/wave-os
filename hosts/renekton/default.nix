@@ -90,6 +90,7 @@
   ];
 
   services.tailscale.enable = true;
+  services.openssh.enable = true;
   # Tailscale 1.98+ manages /etc/resolver/ts.net itself and rejects nix-darwin's
   # symlink because it escapes os.Root("/etc/resolver").
   environment.etc."resolver/ts.net".enable = lib.mkForce false;
