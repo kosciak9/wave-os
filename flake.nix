@@ -3,7 +3,10 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    herdr.url = "github:herdrdev/herdr/v0.9.3";
+    herdr = {
+      url = "github:jerryfane/herdr/e377528fba6f08905f3db57c5572828c9a3c0356";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     herdr-worktrunk = {
       url = "github:devashish2203/herdr-worktrunk/8ceca541de8fb0d6006727e172534e1e2af17224";
       flake = false;
