@@ -1,0 +1,1333 @@
+{
+  "schema_version": 1,
+  "backend": "kev-browser",
+  "representations": [
+    "decision_specific"
+  ],
+  "requested": 20,
+  "attempted": 20,
+  "errors": 0,
+  "rows": [
+    {
+      "case": "first_form",
+      "question_type": "page_has_more_relevant_work",
+      "representation": "decision_specific",
+      "repetition": 0,
+      "backend": "kev-browser",
+      "outcome_source": "frozen_synthetic_observation",
+      "expected": "YES",
+      "payload": {
+        "question": "Are there still goal-relevant actions available on this page to advance the overall goal, including starting another requested inquiry?",
+        "choices": {
+          "YES": "Yes, the stated claim is supported by observed evidence.",
+          "NO": "No, the stated claim is contradicted by observed evidence.",
+          "INSUFFICIENT": "The available evidence does not establish yes or no."
+        },
+        "evidence": {
+          "goal": "Complete the 12-stage synthetic archive itinerary and stop after the final receipt. Use the supplied facts at every stage.",
+          "title": "Archive inquiry stage 1 of 12",
+          "text": "\"Archive inquiry stage 1 of 12\" [level=1] | Enter the facts from the task for this stage. This is a synthetic inquiry only. | location | service | Requested date | summary | destination",
+          "fields": [
+            {
+              "ref": "f1",
+              "role": "text",
+              "name": "location",
+              "label": "location",
+              "context": "Archive inquiry stage 1 of 12",
+              "value": "North Pier"
+            },
+            {
+              "ref": "f2",
+              "role": "text",
+              "name": "service",
+              "label": "service",
+              "context": "Archive inquiry stage 1 of 12",
+              "value": "Express"
+            },
+            {
+              "ref": "f3",
+              "role": "text",
+              "name": "date",
+              "label": "Requested date",
+              "context": "Archive inquiry stage 1 of 12",
+              "value": "2028-06-14"
+            },
+            {
+              "ref": "f4",
+              "role": "text",
+              "name": "summary",
+              "label": "summary",
+              "context": "Archive inquiry stage 1 of 12",
+              "value": "Archive visit"
+            },
+            {
+              "ref": "f5",
+              "role": "text",
+              "name": "destination",
+              "label": "destination",
+              "context": "Archive inquiry stage 1 of 12",
+              "value": "East Cove"
+            }
+          ],
+          "controls": [
+            {
+              "ref": "c1",
+              "role": "button",
+              "text": "Submit stage details",
+              "context": "Archive inquiry stage 1 of 12"
+            }
+          ],
+          "required_facts": {
+            "date": "2028-06-14",
+            "destination": "East Cove",
+            "location": "North Pier",
+            "service": "Express",
+            "summary": "Archive visit"
+          }
+        }
+      },
+      "payload_sha256": "578ef8c5f27736a371f3fbfd497c66ace5b18f7bf849d859832c1feac1b40617",
+      "evidence_keys": [
+        "controls",
+        "fields",
+        "goal",
+        "required_facts",
+        "text",
+        "title"
+      ],
+      "evidence_chars": 1268,
+      "full_evidence_sha256": "d5e071f46618af755d314b864f6aa7df97c007c59b1f472cd866e321193dc9b4",
+      "budget_truncated": false,
+      "probabilities": {
+        "YES": 0.5813689058981664,
+        "NO": 0.11507657055828732,
+        "INSUFFICIENT": 0.3035545235435464
+      },
+      "choice": "YES",
+      "top1": 0.5813689058981664,
+      "top2": 0.3035545235435464,
+      "margin": 0.27781438235461997,
+      "entropy_nats": 0.9260264891712648,
+      "accepted": true,
+      "latency_ms": 360.27,
+      "wall_ms": 390.35
+    },
+    {
+      "case": "first_form",
+      "question_type": "full_goal_complete",
+      "representation": "decision_specific",
+      "repetition": 0,
+      "backend": "kev-browser",
+      "outcome_source": "frozen_synthetic_observation",
+      "expected": "NO",
+      "payload": {
+        "question": "Is the entire requested goal visibly complete now?",
+        "choices": {
+          "YES": "Yes, the stated claim is supported by observed evidence.",
+          "NO": "No, the stated claim is contradicted by observed evidence.",
+          "INSUFFICIENT": "The available evidence does not establish yes or no."
+        },
+        "evidence": {
+          "goal": "Complete the 12-stage synthetic archive itinerary and stop after the final receipt. Use the supplied facts at every stage.",
+          "title": "Archive inquiry stage 1 of 12",
+          "text": "\"Archive inquiry stage 1 of 12\" [level=1] | Enter the facts from the task for this stage. This is a synthetic inquiry only. | location | service | Requested date | summary | destination",
+          "fields": [
+            {
+              "ref": "f1",
+              "role": "text",
+              "name": "location",
+              "label": "location",
+              "context": "Archive inquiry stage 1 of 12",
+              "value": "North Pier"
+            },
+            {
+              "ref": "f2",
+              "role": "text",
+              "name": "service",
+              "label": "service",
+              "context": "Archive inquiry stage 1 of 12",
+              "value": "Express"
+            },
+            {
+              "ref": "f3",
+              "role": "text",
+              "name": "date",
+              "label": "Requested date",
+              "context": "Archive inquiry stage 1 of 12",
+              "value": "2028-06-14"
+            },
+            {
+              "ref": "f4",
+              "role": "text",
+              "name": "summary",
+              "label": "summary",
+              "context": "Archive inquiry stage 1 of 12",
+              "value": "Archive visit"
+            },
+            {
+              "ref": "f5",
+              "role": "text",
+              "name": "destination",
+              "label": "destination",
+              "context": "Archive inquiry stage 1 of 12",
+              "value": "East Cove"
+            }
+          ],
+          "controls": [
+            {
+              "ref": "c1",
+              "role": "button",
+              "text": "Submit stage details",
+              "context": "Archive inquiry stage 1 of 12"
+            }
+          ],
+          "required_facts": {
+            "date": "2028-06-14",
+            "destination": "East Cove",
+            "location": "North Pier",
+            "service": "Express",
+            "summary": "Archive visit"
+          }
+        }
+      },
+      "payload_sha256": "b50eeafbdcbd61573b319aa2e236e2e918fd65b1888224b5430ebef706310ead",
+      "evidence_keys": [
+        "controls",
+        "fields",
+        "goal",
+        "required_facts",
+        "text",
+        "title"
+      ],
+      "evidence_chars": 1268,
+      "full_evidence_sha256": "d5e071f46618af755d314b864f6aa7df97c007c59b1f472cd866e321193dc9b4",
+      "budget_truncated": false,
+      "probabilities": {
+        "YES": 0.5813689058981664,
+        "NO": 0.11507657055828732,
+        "INSUFFICIENT": 0.3035545235435464
+      },
+      "choice": "YES",
+      "top1": 0.5813689058981664,
+      "top2": 0.3035545235435464,
+      "margin": 0.27781438235461997,
+      "entropy_nats": 0.9260264891712648,
+      "accepted": true,
+      "latency_ms": 241.37,
+      "wall_ms": 293.5
+    },
+    {
+      "case": "first_form",
+      "question_type": "candidate_continues_goal",
+      "representation": "decision_specific",
+      "repetition": 0,
+      "backend": "kev-browser",
+      "outcome_source": "frozen_synthetic_observation",
+      "expected": "YES",
+      "payload": {
+        "question": "Does the candidate action safely advance the current goal?",
+        "choices": {
+          "YES": "Yes, the stated claim is supported by observed evidence.",
+          "NO": "No, the stated claim is contradicted by observed evidence.",
+          "INSUFFICIENT": "The available evidence does not establish yes or no."
+        },
+        "evidence": {
+          "goal": "Complete the 12-stage synthetic archive itinerary and stop after the final receipt. Use the supplied facts at every stage.",
+          "title": "Archive inquiry stage 1 of 12",
+          "text": "\"Archive inquiry stage 1 of 12\" [level=1] | Enter the facts from the task for this stage. This is a synthetic inquiry only. | location | service | Requested date | summary | destination",
+          "fields": [
+            {
+              "ref": "f1",
+              "role": "text",
+              "name": "location",
+              "label": "location",
+              "context": "Archive inquiry stage 1 of 12",
+              "value": "North Pier"
+            },
+            {
+              "ref": "f2",
+              "role": "text",
+              "name": "service",
+              "label": "service",
+              "context": "Archive inquiry stage 1 of 12",
+              "value": "Express"
+            },
+            {
+              "ref": "f3",
+              "role": "text",
+              "name": "date",
+              "label": "Requested date",
+              "context": "Archive inquiry stage 1 of 12",
+              "value": "2028-06-14"
+            },
+            {
+              "ref": "f4",
+              "role": "text",
+              "name": "summary",
+              "label": "summary",
+              "context": "Archive inquiry stage 1 of 12",
+              "value": "Archive visit"
+            },
+            {
+              "ref": "f5",
+              "role": "text",
+              "name": "destination",
+              "label": "destination",
+              "context": "Archive inquiry stage 1 of 12",
+              "value": "East Cove"
+            }
+          ],
+          "required_facts": {
+            "date": "2028-06-14",
+            "destination": "East Cove",
+            "location": "North Pier",
+            "service": "Express",
+            "summary": "Archive visit"
+          },
+          "candidate": {
+            "ref": "c1",
+            "role": "button",
+            "text": "Submit stage details",
+            "context": "Archive inquiry stage 1 of 12"
+          }
+        }
+      },
+      "payload_sha256": "45baf66a26ebf79105ae61023b4eda00b9a0df13ea81dc62cefa7abff88f3f94",
+      "evidence_keys": [
+        "candidate",
+        "fields",
+        "goal",
+        "required_facts",
+        "text",
+        "title"
+      ],
+      "evidence_chars": 1267,
+      "full_evidence_sha256": "d5e071f46618af755d314b864f6aa7df97c007c59b1f472cd866e321193dc9b4",
+      "budget_truncated": false,
+      "probabilities": {
+        "YES": 0.5938865446143573,
+        "NO": 0.11027108107095297,
+        "INSUFFICIENT": 0.29584237431468985
+      },
+      "choice": "YES",
+      "top1": 0.5938865446143573,
+      "top2": 0.29584237431468985,
+      "margin": 0.29804417029966745,
+      "entropy_nats": 0.9128966994159127,
+      "accepted": true,
+      "latency_ms": 224.24,
+      "wall_ms": 231.6
+    },
+    {
+      "case": "first_form",
+      "question_type": "candidate_starts_new_workflow",
+      "representation": "decision_specific",
+      "repetition": 0,
+      "backend": "kev-browser",
+      "outcome_source": "frozen_synthetic_observation",
+      "expected": "NO",
+      "payload": {
+        "question": "Does the candidate action start a separate new inquiry/workflow, whether or not that new workflow is part of the overall goal?",
+        "choices": {
+          "YES": "Yes, the stated claim is supported by observed evidence.",
+          "NO": "No, the stated claim is contradicted by observed evidence.",
+          "INSUFFICIENT": "The available evidence does not establish yes or no."
+        },
+        "evidence": {
+          "goal": "Complete the 12-stage synthetic archive itinerary and stop after the final receipt. Use the supplied facts at every stage.",
+          "title": "Archive inquiry stage 1 of 12",
+          "text": "\"Archive inquiry stage 1 of 12\" [level=1] | Enter the facts from the task for this stage. This is a synthetic inquiry only. | location | service | Requested date | summary | destination",
+          "fields": [
+            {
+              "ref": "f1",
+              "role": "text",
+              "name": "location",
+              "label": "location",
+              "context": "Archive inquiry stage 1 of 12",
+              "value": "North Pier"
+            },
+            {
+              "ref": "f2",
+              "role": "text",
+              "name": "service",
+              "label": "service",
+              "context": "Archive inquiry stage 1 of 12",
+              "value": "Express"
+            },
+            {
+              "ref": "f3",
+              "role": "text",
+              "name": "date",
+              "label": "Requested date",
+              "context": "Archive inquiry stage 1 of 12",
+              "value": "2028-06-14"
+            },
+            {
+              "ref": "f4",
+              "role": "text",
+              "name": "summary",
+              "label": "summary",
+              "context": "Archive inquiry stage 1 of 12",
+              "value": "Archive visit"
+            },
+            {
+              "ref": "f5",
+              "role": "text",
+              "name": "destination",
+              "label": "destination",
+              "context": "Archive inquiry stage 1 of 12",
+              "value": "East Cove"
+            }
+          ],
+          "required_facts": {
+            "date": "2028-06-14",
+            "destination": "East Cove",
+            "location": "North Pier",
+            "service": "Express",
+            "summary": "Archive visit"
+          },
+          "candidate": {
+            "ref": "c1",
+            "role": "button",
+            "text": "Submit stage details",
+            "context": "Archive inquiry stage 1 of 12"
+          }
+        }
+      },
+      "payload_sha256": "fcc9b3b47129c3232d52284eb14e0523cc298852a23254b1801d8dde0b662b78",
+      "evidence_keys": [
+        "candidate",
+        "fields",
+        "goal",
+        "required_facts",
+        "text",
+        "title"
+      ],
+      "evidence_chars": 1267,
+      "full_evidence_sha256": "d5e071f46618af755d314b864f6aa7df97c007c59b1f472cd866e321193dc9b4",
+      "budget_truncated": false,
+      "probabilities": {
+        "YES": 0.5938865446143573,
+        "NO": 0.11027108107095297,
+        "INSUFFICIENT": 0.29584237431468985
+      },
+      "choice": "YES",
+      "top1": 0.5938865446143573,
+      "top2": 0.29584237431468985,
+      "margin": 0.29804417029966745,
+      "entropy_nats": 0.9128966994159127,
+      "accepted": true,
+      "latency_ms": 210.14,
+      "wall_ms": 217.58
+    },
+    {
+      "case": "first_receipt",
+      "question_type": "page_has_more_relevant_work",
+      "representation": "decision_specific",
+      "repetition": 0,
+      "backend": "kev-browser",
+      "outcome_source": "frozen_synthetic_observation",
+      "expected": "YES",
+      "payload": {
+        "question": "Are there still goal-relevant actions available on this page to advance the overall goal, including starting another requested inquiry?",
+        "choices": {
+          "YES": "Yes, the stated claim is supported by observed evidence.",
+          "NO": "No, the stated claim is contradicted by observed evidence.",
+          "INSUFFICIENT": "The available evidence does not establish yes or no."
+        },
+        "evidence": {
+          "goal": "Complete the 12-stage synthetic archive itinerary and stop after the final receipt. Use the supplied facts at every stage.",
+          "title": "Details receipt 1 of 12",
+          "text": "\"Details receipt 1 of 12\" [level=1] | Stage 1 details saved; this is not the final inquiry receipt. Continue to the next stage.",
+          "fields": [],
+          "controls": [
+            {
+              "ref": "c1",
+              "role": "link",
+              "text": "Continue inquiry",
+              "context": "Details receipt 1 of 12"
+            }
+          ],
+          "required_facts": {}
+        }
+      },
+      "payload_sha256": "6f46d21b2f9492d10b51db65d80754218d23a1a8a20be284faf693c0b999d53a",
+      "evidence_keys": [
+        "controls",
+        "fields",
+        "goal",
+        "required_facts",
+        "text",
+        "title"
+      ],
+      "evidence_chars": 440,
+      "full_evidence_sha256": "fd6c8fa0bd2cada0cba68c9d3f337e83cb4edda791ca9e8442d23d48a9afba4f",
+      "budget_truncated": false,
+      "probabilities": {
+        "YES": 0.19409430692965118,
+        "NO": 0.5258035587371626,
+        "INSUFFICIENT": 0.2801021343331862
+      },
+      "choice": "NO",
+      "top1": 0.5258035587371626,
+      "top2": 0.2801021343331862,
+      "margin": 0.24570142440397635,
+      "entropy_nats": 1.0126596537811234,
+      "accepted": true,
+      "latency_ms": 119.45,
+      "wall_ms": 125.41
+    },
+    {
+      "case": "first_receipt",
+      "question_type": "full_goal_complete",
+      "representation": "decision_specific",
+      "repetition": 0,
+      "backend": "kev-browser",
+      "outcome_source": "frozen_synthetic_observation",
+      "expected": "NO",
+      "payload": {
+        "question": "Is the entire requested goal visibly complete now?",
+        "choices": {
+          "YES": "Yes, the stated claim is supported by observed evidence.",
+          "NO": "No, the stated claim is contradicted by observed evidence.",
+          "INSUFFICIENT": "The available evidence does not establish yes or no."
+        },
+        "evidence": {
+          "goal": "Complete the 12-stage synthetic archive itinerary and stop after the final receipt. Use the supplied facts at every stage.",
+          "title": "Details receipt 1 of 12",
+          "text": "\"Details receipt 1 of 12\" [level=1] | Stage 1 details saved; this is not the final inquiry receipt. Continue to the next stage.",
+          "fields": [],
+          "controls": [
+            {
+              "ref": "c1",
+              "role": "link",
+              "text": "Continue inquiry",
+              "context": "Details receipt 1 of 12"
+            }
+          ],
+          "required_facts": {}
+        }
+      },
+      "payload_sha256": "bffda81c71aa98abe00b4c9d58fd68014b62eadb248788add9f2d40687694eec",
+      "evidence_keys": [
+        "controls",
+        "fields",
+        "goal",
+        "required_facts",
+        "text",
+        "title"
+      ],
+      "evidence_chars": 440,
+      "full_evidence_sha256": "fd6c8fa0bd2cada0cba68c9d3f337e83cb4edda791ca9e8442d23d48a9afba4f",
+      "budget_truncated": false,
+      "probabilities": {
+        "YES": 0.19409430692965118,
+        "NO": 0.5258035587371626,
+        "INSUFFICIENT": 0.2801021343331862
+      },
+      "choice": "NO",
+      "top1": 0.5258035587371626,
+      "top2": 0.2801021343331862,
+      "margin": 0.24570142440397635,
+      "entropy_nats": 1.0126596537811234,
+      "accepted": true,
+      "latency_ms": 110.1,
+      "wall_ms": 120.49
+    },
+    {
+      "case": "first_receipt",
+      "question_type": "candidate_continues_goal",
+      "representation": "decision_specific",
+      "repetition": 0,
+      "backend": "kev-browser",
+      "outcome_source": "frozen_synthetic_observation",
+      "expected": "YES",
+      "payload": {
+        "question": "Does the candidate action safely advance the current goal?",
+        "choices": {
+          "YES": "Yes, the stated claim is supported by observed evidence.",
+          "NO": "No, the stated claim is contradicted by observed evidence.",
+          "INSUFFICIENT": "The available evidence does not establish yes or no."
+        },
+        "evidence": {
+          "goal": "Complete the 12-stage synthetic archive itinerary and stop after the final receipt. Use the supplied facts at every stage.",
+          "title": "Details receipt 1 of 12",
+          "text": "\"Details receipt 1 of 12\" [level=1] | Stage 1 details saved; this is not the final inquiry receipt. Continue to the next stage.",
+          "fields": [],
+          "required_facts": {},
+          "candidate": {
+            "ref": "c1",
+            "role": "link",
+            "text": "Continue inquiry",
+            "context": "Details receipt 1 of 12"
+          }
+        }
+      },
+      "payload_sha256": "effb8057731efee80617b0a86c049831bc46ea9c1f412e3bc7ca57f187e6c4a8",
+      "evidence_keys": [
+        "candidate",
+        "fields",
+        "goal",
+        "required_facts",
+        "text",
+        "title"
+      ],
+      "evidence_chars": 439,
+      "full_evidence_sha256": "fd6c8fa0bd2cada0cba68c9d3f337e83cb4edda791ca9e8442d23d48a9afba4f",
+      "budget_truncated": false,
+      "probabilities": {
+        "YES": 0.2190231500263693,
+        "NO": 0.49167009756442903,
+        "INSUFFICIENT": 0.2893067524092018
+      },
+      "choice": "NO",
+      "top1": 0.49167009756442903,
+      "top2": 0.2893067524092018,
+      "margin": 0.20236334515522725,
+      "entropy_nats": 1.0404814002145881,
+      "accepted": false,
+      "latency_ms": 120.79,
+      "wall_ms": 134.79
+    },
+    {
+      "case": "first_receipt",
+      "question_type": "candidate_starts_new_workflow",
+      "representation": "decision_specific",
+      "repetition": 0,
+      "backend": "kev-browser",
+      "outcome_source": "frozen_synthetic_observation",
+      "expected": "NO",
+      "payload": {
+        "question": "Does the candidate action start a separate new inquiry/workflow, whether or not that new workflow is part of the overall goal?",
+        "choices": {
+          "YES": "Yes, the stated claim is supported by observed evidence.",
+          "NO": "No, the stated claim is contradicted by observed evidence.",
+          "INSUFFICIENT": "The available evidence does not establish yes or no."
+        },
+        "evidence": {
+          "goal": "Complete the 12-stage synthetic archive itinerary and stop after the final receipt. Use the supplied facts at every stage.",
+          "title": "Details receipt 1 of 12",
+          "text": "\"Details receipt 1 of 12\" [level=1] | Stage 1 details saved; this is not the final inquiry receipt. Continue to the next stage.",
+          "fields": [],
+          "required_facts": {},
+          "candidate": {
+            "ref": "c1",
+            "role": "link",
+            "text": "Continue inquiry",
+            "context": "Details receipt 1 of 12"
+          }
+        }
+      },
+      "payload_sha256": "0891d41c856493d06af1853a1f10081f4562b37cfcb8c10fad046b2f6b41345e",
+      "evidence_keys": [
+        "candidate",
+        "fields",
+        "goal",
+        "required_facts",
+        "text",
+        "title"
+      ],
+      "evidence_chars": 439,
+      "full_evidence_sha256": "fd6c8fa0bd2cada0cba68c9d3f337e83cb4edda791ca9e8442d23d48a9afba4f",
+      "budget_truncated": false,
+      "probabilities": {
+        "YES": 0.2190231500263693,
+        "NO": 0.49167009756442903,
+        "INSUFFICIENT": 0.2893067524092018
+      },
+      "choice": "NO",
+      "top1": 0.49167009756442903,
+      "top2": 0.2893067524092018,
+      "margin": 0.20236334515522725,
+      "entropy_nats": 1.0404814002145881,
+      "accepted": false,
+      "latency_ms": 118.95,
+      "wall_ms": 135.49
+    },
+    {
+      "case": "intermediate_receipt",
+      "question_type": "page_has_more_relevant_work",
+      "representation": "decision_specific",
+      "repetition": 0,
+      "backend": "kev-browser",
+      "outcome_source": "frozen_synthetic_observation",
+      "expected": "YES",
+      "payload": {
+        "question": "Are there still goal-relevant actions available on this page to advance the overall goal, including starting another requested inquiry?",
+        "choices": {
+          "YES": "Yes, the stated claim is supported by observed evidence.",
+          "NO": "No, the stated claim is contradicted by observed evidence.",
+          "INSUFFICIENT": "The available evidence does not establish yes or no."
+        },
+        "evidence": {
+          "goal": "Complete the 12-stage synthetic archive itinerary and stop after the final receipt. Use the supplied facts at every stage.",
+          "title": "Details receipt 5 of 12",
+          "text": "\"Details receipt 5 of 12\" [level=1] | Stage 5 details saved; this is not the final inquiry receipt. Continue to the next stage.",
+          "fields": [],
+          "controls": [
+            {
+              "ref": "c1",
+              "role": "link",
+              "text": "Continue inquiry",
+              "context": "Details receipt 5 of 12"
+            }
+          ],
+          "required_facts": {}
+        }
+      },
+      "payload_sha256": "18b9d18cf6b5efbf5cd99b9b8d18d15ba296d04e1aa6da26c31cb24b6e4491ce",
+      "evidence_keys": [
+        "controls",
+        "fields",
+        "goal",
+        "required_facts",
+        "text",
+        "title"
+      ],
+      "evidence_chars": 440,
+      "full_evidence_sha256": "85f0227b8fe151a843cb767d5561f1af4b6658b8595de102331ad66192488ff3",
+      "budget_truncated": false,
+      "probabilities": {
+        "YES": 0.1860643662788172,
+        "NO": 0.47948044904189785,
+        "INSUFFICIENT": 0.33445518467928487
+      },
+      "choice": "NO",
+      "top1": 0.47948044904189785,
+      "top2": 0.33445518467928487,
+      "margin": 0.14502526436261298,
+      "entropy_nats": 1.0316534659668655,
+      "accepted": false,
+      "latency_ms": 122.33,
+      "wall_ms": 132.67
+    },
+    {
+      "case": "intermediate_receipt",
+      "question_type": "full_goal_complete",
+      "representation": "decision_specific",
+      "repetition": 0,
+      "backend": "kev-browser",
+      "outcome_source": "frozen_synthetic_observation",
+      "expected": "NO",
+      "payload": {
+        "question": "Is the entire requested goal visibly complete now?",
+        "choices": {
+          "YES": "Yes, the stated claim is supported by observed evidence.",
+          "NO": "No, the stated claim is contradicted by observed evidence.",
+          "INSUFFICIENT": "The available evidence does not establish yes or no."
+        },
+        "evidence": {
+          "goal": "Complete the 12-stage synthetic archive itinerary and stop after the final receipt. Use the supplied facts at every stage.",
+          "title": "Details receipt 5 of 12",
+          "text": "\"Details receipt 5 of 12\" [level=1] | Stage 5 details saved; this is not the final inquiry receipt. Continue to the next stage.",
+          "fields": [],
+          "controls": [
+            {
+              "ref": "c1",
+              "role": "link",
+              "text": "Continue inquiry",
+              "context": "Details receipt 5 of 12"
+            }
+          ],
+          "required_facts": {}
+        }
+      },
+      "payload_sha256": "c5793d6c6745a98f47d4fa74d49457c5dfb8c3625cccee7b0fe256a9b118e53e",
+      "evidence_keys": [
+        "controls",
+        "fields",
+        "goal",
+        "required_facts",
+        "text",
+        "title"
+      ],
+      "evidence_chars": 440,
+      "full_evidence_sha256": "85f0227b8fe151a843cb767d5561f1af4b6658b8595de102331ad66192488ff3",
+      "budget_truncated": false,
+      "probabilities": {
+        "YES": 0.1860643662788172,
+        "NO": 0.47948044904189785,
+        "INSUFFICIENT": 0.33445518467928487
+      },
+      "choice": "NO",
+      "top1": 0.47948044904189785,
+      "top2": 0.33445518467928487,
+      "margin": 0.14502526436261298,
+      "entropy_nats": 1.0316534659668655,
+      "accepted": false,
+      "latency_ms": 117.15,
+      "wall_ms": 124.55
+    },
+    {
+      "case": "intermediate_receipt",
+      "question_type": "candidate_continues_goal",
+      "representation": "decision_specific",
+      "repetition": 0,
+      "backend": "kev-browser",
+      "outcome_source": "frozen_synthetic_observation",
+      "expected": "YES",
+      "payload": {
+        "question": "Does the candidate action safely advance the current goal?",
+        "choices": {
+          "YES": "Yes, the stated claim is supported by observed evidence.",
+          "NO": "No, the stated claim is contradicted by observed evidence.",
+          "INSUFFICIENT": "The available evidence does not establish yes or no."
+        },
+        "evidence": {
+          "goal": "Complete the 12-stage synthetic archive itinerary and stop after the final receipt. Use the supplied facts at every stage.",
+          "title": "Details receipt 5 of 12",
+          "text": "\"Details receipt 5 of 12\" [level=1] | Stage 5 details saved; this is not the final inquiry receipt. Continue to the next stage.",
+          "fields": [],
+          "required_facts": {},
+          "candidate": {
+            "ref": "c1",
+            "role": "link",
+            "text": "Continue inquiry",
+            "context": "Details receipt 5 of 12"
+          }
+        }
+      },
+      "payload_sha256": "f918e604fe89ea0b3e673372f982d4bc614f6beafd4fd78dd8a5047744234eae",
+      "evidence_keys": [
+        "candidate",
+        "fields",
+        "goal",
+        "required_facts",
+        "text",
+        "title"
+      ],
+      "evidence_chars": 439,
+      "full_evidence_sha256": "85f0227b8fe151a843cb767d5561f1af4b6658b8595de102331ad66192488ff3",
+      "budget_truncated": false,
+      "probabilities": {
+        "YES": 0.18986438849814805,
+        "NO": 0.4692914642914639,
+        "INSUFFICIENT": 0.3408441472103881
+      },
+      "choice": "NO",
+      "top1": 0.4692914642914639,
+      "top2": 0.3408441472103881,
+      "margin": 0.12844731708107582,
+      "entropy_nats": 1.0373436984294127,
+      "accepted": false,
+      "latency_ms": 115.49,
+      "wall_ms": 123.46
+    },
+    {
+      "case": "intermediate_receipt",
+      "question_type": "candidate_starts_new_workflow",
+      "representation": "decision_specific",
+      "repetition": 0,
+      "backend": "kev-browser",
+      "outcome_source": "frozen_synthetic_observation",
+      "expected": "NO",
+      "payload": {
+        "question": "Does the candidate action start a separate new inquiry/workflow, whether or not that new workflow is part of the overall goal?",
+        "choices": {
+          "YES": "Yes, the stated claim is supported by observed evidence.",
+          "NO": "No, the stated claim is contradicted by observed evidence.",
+          "INSUFFICIENT": "The available evidence does not establish yes or no."
+        },
+        "evidence": {
+          "goal": "Complete the 12-stage synthetic archive itinerary and stop after the final receipt. Use the supplied facts at every stage.",
+          "title": "Details receipt 5 of 12",
+          "text": "\"Details receipt 5 of 12\" [level=1] | Stage 5 details saved; this is not the final inquiry receipt. Continue to the next stage.",
+          "fields": [],
+          "required_facts": {},
+          "candidate": {
+            "ref": "c1",
+            "role": "link",
+            "text": "Continue inquiry",
+            "context": "Details receipt 5 of 12"
+          }
+        }
+      },
+      "payload_sha256": "b963fc6695281fa666715a945c9f4a4bc73f2c12f21c16ec0296d43ddb25815a",
+      "evidence_keys": [
+        "candidate",
+        "fields",
+        "goal",
+        "required_facts",
+        "text",
+        "title"
+      ],
+      "evidence_chars": 439,
+      "full_evidence_sha256": "85f0227b8fe151a843cb767d5561f1af4b6658b8595de102331ad66192488ff3",
+      "budget_truncated": false,
+      "probabilities": {
+        "YES": 0.18986438849814805,
+        "NO": 0.4692914642914639,
+        "INSUFFICIENT": 0.3408441472103881
+      },
+      "choice": "NO",
+      "top1": 0.4692914642914639,
+      "top2": 0.3408441472103881,
+      "margin": 0.12844731708107582,
+      "entropy_nats": 1.0373436984294127,
+      "accepted": false,
+      "latency_ms": 117.74,
+      "wall_ms": 124.75
+    },
+    {
+      "case": "final_receipt",
+      "question_type": "page_has_more_relevant_work",
+      "representation": "decision_specific",
+      "repetition": 0,
+      "backend": "kev-browser",
+      "outcome_source": "frozen_synthetic_observation",
+      "expected": "NO",
+      "payload": {
+        "question": "Are there still goal-relevant actions available on this page to advance the overall goal, including starting another requested inquiry?",
+        "choices": {
+          "YES": "Yes, the stated claim is supported by observed evidence.",
+          "NO": "No, the stated claim is contradicted by observed evidence.",
+          "INSUFFICIENT": "The available evidence does not establish yes or no."
+        },
+        "evidence": {
+          "goal": "Complete the 12-stage synthetic archive itinerary and stop after the final receipt. Use the supplied facts at every stage.",
+          "title": "Final receipt",
+          "text": "\"Final receipt\" [level=1] | Final synthetic inquiry receipt recorded. No external action was taken.",
+          "fields": [],
+          "controls": [
+            {
+              "ref": "c1",
+              "role": "link",
+              "text": "Start another request",
+              "context": "Final receipt"
+            }
+          ],
+          "required_facts": {}
+        }
+      },
+      "payload_sha256": "8b97f8709054cb882e6a3d4145ef4d7b08d970461f4822c4998ac5ef10beb1bd",
+      "evidence_keys": [
+        "controls",
+        "fields",
+        "goal",
+        "required_facts",
+        "text",
+        "title"
+      ],
+      "evidence_chars": 397,
+      "full_evidence_sha256": "afff963dfb0583b0073c9a638b33b467c3e8304eabec9eb11929b30298f2f967",
+      "budget_truncated": false,
+      "probabilities": {
+        "YES": 0.2356036896855118,
+        "NO": 0.3275315315896836,
+        "INSUFFICIENT": 0.43686477872480467
+      },
+      "choice": "INSUFFICIENT",
+      "top1": 0.43686477872480467,
+      "top2": 0.3275315315896836,
+      "margin": 0.10933324713512105,
+      "entropy_nats": 1.0679523677123894,
+      "accepted": false,
+      "latency_ms": 104.22,
+      "wall_ms": 110.64
+    },
+    {
+      "case": "final_receipt",
+      "question_type": "full_goal_complete",
+      "representation": "decision_specific",
+      "repetition": 0,
+      "backend": "kev-browser",
+      "outcome_source": "frozen_synthetic_observation",
+      "expected": "YES",
+      "payload": {
+        "question": "Is the entire requested goal visibly complete now?",
+        "choices": {
+          "YES": "Yes, the stated claim is supported by observed evidence.",
+          "NO": "No, the stated claim is contradicted by observed evidence.",
+          "INSUFFICIENT": "The available evidence does not establish yes or no."
+        },
+        "evidence": {
+          "goal": "Complete the 12-stage synthetic archive itinerary and stop after the final receipt. Use the supplied facts at every stage.",
+          "title": "Final receipt",
+          "text": "\"Final receipt\" [level=1] | Final synthetic inquiry receipt recorded. No external action was taken.",
+          "fields": [],
+          "controls": [
+            {
+              "ref": "c1",
+              "role": "link",
+              "text": "Start another request",
+              "context": "Final receipt"
+            }
+          ],
+          "required_facts": {}
+        }
+      },
+      "payload_sha256": "49e93251aa351d62bd5fde5b514eeb907f054728bbb5fa7c9dca30b6a05f886a",
+      "evidence_keys": [
+        "controls",
+        "fields",
+        "goal",
+        "required_facts",
+        "text",
+        "title"
+      ],
+      "evidence_chars": 397,
+      "full_evidence_sha256": "afff963dfb0583b0073c9a638b33b467c3e8304eabec9eb11929b30298f2f967",
+      "budget_truncated": false,
+      "probabilities": {
+        "YES": 0.2356036896855118,
+        "NO": 0.3275315315896836,
+        "INSUFFICIENT": 0.43686477872480467
+      },
+      "choice": "INSUFFICIENT",
+      "top1": 0.43686477872480467,
+      "top2": 0.3275315315896836,
+      "margin": 0.10933324713512105,
+      "entropy_nats": 1.0679523677123894,
+      "accepted": false,
+      "latency_ms": 98.55,
+      "wall_ms": 102.98
+    },
+    {
+      "case": "final_receipt",
+      "question_type": "candidate_continues_goal",
+      "representation": "decision_specific",
+      "repetition": 0,
+      "backend": "kev-browser",
+      "outcome_source": "frozen_synthetic_observation",
+      "expected": "NO",
+      "payload": {
+        "question": "Does the candidate action safely advance the current goal?",
+        "choices": {
+          "YES": "Yes, the stated claim is supported by observed evidence.",
+          "NO": "No, the stated claim is contradicted by observed evidence.",
+          "INSUFFICIENT": "The available evidence does not establish yes or no."
+        },
+        "evidence": {
+          "goal": "Complete the 12-stage synthetic archive itinerary and stop after the final receipt. Use the supplied facts at every stage.",
+          "title": "Final receipt",
+          "text": "\"Final receipt\" [level=1] | Final synthetic inquiry receipt recorded. No external action was taken.",
+          "fields": [],
+          "required_facts": {},
+          "candidate": {
+            "ref": "c1",
+            "role": "link",
+            "text": "Start another request",
+            "context": "Final receipt"
+          }
+        }
+      },
+      "payload_sha256": "3cfe65821fe7d8d259afc51b6ab5c40ccbdba6d6671eef32ba668e49ab60523b",
+      "evidence_keys": [
+        "candidate",
+        "fields",
+        "goal",
+        "required_facts",
+        "text",
+        "title"
+      ],
+      "evidence_chars": 396,
+      "full_evidence_sha256": "afff963dfb0583b0073c9a638b33b467c3e8304eabec9eb11929b30298f2f967",
+      "budget_truncated": false,
+      "probabilities": {
+        "YES": 0.210121063969121,
+        "NO": 0.34727970657200957,
+        "INSUFFICIENT": 0.4425992294588695
+      },
+      "choice": "INSUFFICIENT",
+      "top1": 0.4425992294588695,
+      "top2": 0.34727970657200957,
+      "margin": 0.09531952288685991,
+      "entropy_nats": 1.0558539484412361,
+      "accepted": false,
+      "latency_ms": 99.15,
+      "wall_ms": 104.86
+    },
+    {
+      "case": "final_receipt",
+      "question_type": "candidate_starts_new_workflow",
+      "representation": "decision_specific",
+      "repetition": 0,
+      "backend": "kev-browser",
+      "outcome_source": "frozen_synthetic_observation",
+      "expected": "YES",
+      "payload": {
+        "question": "Does the candidate action start a separate new inquiry/workflow, whether or not that new workflow is part of the overall goal?",
+        "choices": {
+          "YES": "Yes, the stated claim is supported by observed evidence.",
+          "NO": "No, the stated claim is contradicted by observed evidence.",
+          "INSUFFICIENT": "The available evidence does not establish yes or no."
+        },
+        "evidence": {
+          "goal": "Complete the 12-stage synthetic archive itinerary and stop after the final receipt. Use the supplied facts at every stage.",
+          "title": "Final receipt",
+          "text": "\"Final receipt\" [level=1] | Final synthetic inquiry receipt recorded. No external action was taken.",
+          "fields": [],
+          "required_facts": {},
+          "candidate": {
+            "ref": "c1",
+            "role": "link",
+            "text": "Start another request",
+            "context": "Final receipt"
+          }
+        }
+      },
+      "payload_sha256": "a1835a219643f376e8a069eef3e42e04a6d60baab5ac2e1a640dccfaf3f0de03",
+      "evidence_keys": [
+        "candidate",
+        "fields",
+        "goal",
+        "required_facts",
+        "text",
+        "title"
+      ],
+      "evidence_chars": 396,
+      "full_evidence_sha256": "afff963dfb0583b0073c9a638b33b467c3e8304eabec9eb11929b30298f2f967",
+      "budget_truncated": false,
+      "probabilities": {
+        "YES": 0.210121063969121,
+        "NO": 0.34727970657200957,
+        "INSUFFICIENT": 0.4425992294588695
+      },
+      "choice": "INSUFFICIENT",
+      "top1": 0.4425992294588695,
+      "top2": 0.34727970657200957,
+      "margin": 0.09531952288685991,
+      "entropy_nats": 1.0558539484412361,
+      "accepted": false,
+      "latency_ms": 109.86,
+      "wall_ms": 116.34
+    },
+    {
+      "case": "branch_choice",
+      "question_type": "page_has_more_relevant_work",
+      "representation": "decision_specific",
+      "repetition": 0,
+      "backend": "kev-browser",
+      "outcome_source": "frozen_synthetic_observation",
+      "expected": "YES",
+      "payload": {
+        "question": "Are there still goal-relevant actions available on this page to advance the overall goal, including starting another requested inquiry?",
+        "choices": {
+          "YES": "Yes, the stated claim is supported by observed evidence.",
+          "NO": "No, the stated claim is contradicted by observed evidence.",
+          "INSUFFICIENT": "The available evidence does not establish yes or no."
+        },
+        "evidence": {
+          "goal": "Complete the 12-stage North Pier archive itinerary. At the directory choice select the North Pier archive, not the similarly named South Pier archive. Stop after the final receipt.",
+          "title": "Choose archive directory",
+          "text": "\"Choose archive directory\" [level=1] | The requested archive is North Pier.",
+          "fields": [],
+          "controls": [
+            {
+              "ref": "c1",
+              "role": "link",
+              "text": "South Pier archive",
+              "context": "Choose archive directory"
+            },
+            {
+              "ref": "c2",
+              "role": "link",
+              "text": "North Pier archive",
+              "context": "Choose archive directory"
+            }
+          ],
+          "required_facts": {}
+        }
+      },
+      "payload_sha256": "e1fcfc35a8e8c949fd1709efe68e7f9d02d74aa1b990b0fbaeeddae220c7e912",
+      "evidence_keys": [
+        "controls",
+        "fields",
+        "goal",
+        "required_facts",
+        "text",
+        "title"
+      ],
+      "evidence_chars": 542,
+      "full_evidence_sha256": "ee772c7f8cafe435802769de60b64e4260804d401732dd4d011883b4127efa24",
+      "budget_truncated": false,
+      "probabilities": {
+        "YES": 0.5997167356769804,
+        "NO": 0.23187688727141462,
+        "INSUFFICIENT": 0.16840637705160497
+      },
+      "choice": "YES",
+      "top1": 0.5997167356769804,
+      "top2": 0.23187688727141462,
+      "margin": 0.3678398484055657,
+      "entropy_nats": 0.9455281997131264,
+      "accepted": true,
+      "latency_ms": 114.8,
+      "wall_ms": 125.55
+    },
+    {
+      "case": "branch_choice",
+      "question_type": "full_goal_complete",
+      "representation": "decision_specific",
+      "repetition": 0,
+      "backend": "kev-browser",
+      "outcome_source": "frozen_synthetic_observation",
+      "expected": "NO",
+      "payload": {
+        "question": "Is the entire requested goal visibly complete now?",
+        "choices": {
+          "YES": "Yes, the stated claim is supported by observed evidence.",
+          "NO": "No, the stated claim is contradicted by observed evidence.",
+          "INSUFFICIENT": "The available evidence does not establish yes or no."
+        },
+        "evidence": {
+          "goal": "Complete the 12-stage North Pier archive itinerary. At the directory choice select the North Pier archive, not the similarly named South Pier archive. Stop after the final receipt.",
+          "title": "Choose archive directory",
+          "text": "\"Choose archive directory\" [level=1] | The requested archive is North Pier.",
+          "fields": [],
+          "controls": [
+            {
+              "ref": "c1",
+              "role": "link",
+              "text": "South Pier archive",
+              "context": "Choose archive directory"
+            },
+            {
+              "ref": "c2",
+              "role": "link",
+              "text": "North Pier archive",
+              "context": "Choose archive directory"
+            }
+          ],
+          "required_facts": {}
+        }
+      },
+      "payload_sha256": "54120ea424906ddcdb09b554b1a1caa88dfb1601bd96efea25acda55a6fa6c93",
+      "evidence_keys": [
+        "controls",
+        "fields",
+        "goal",
+        "required_facts",
+        "text",
+        "title"
+      ],
+      "evidence_chars": 542,
+      "full_evidence_sha256": "ee772c7f8cafe435802769de60b64e4260804d401732dd4d011883b4127efa24",
+      "budget_truncated": false,
+      "probabilities": {
+        "YES": 0.5997167356769804,
+        "NO": 0.23187688727141462,
+        "INSUFFICIENT": 0.16840637705160497
+      },
+      "choice": "YES",
+      "top1": 0.5997167356769804,
+      "top2": 0.23187688727141462,
+      "margin": 0.3678398484055657,
+      "entropy_nats": 0.9455281997131264,
+      "accepted": true,
+      "latency_ms": 111.77,
+      "wall_ms": 116.89
+    },
+    {
+      "case": "branch_choice",
+      "question_type": "candidate_continues_goal",
+      "representation": "decision_specific",
+      "repetition": 0,
+      "backend": "kev-browser",
+      "outcome_source": "frozen_synthetic_observation",
+      "expected": "YES",
+      "payload": {
+        "question": "Does the candidate action safely advance the current goal?",
+        "choices": {
+          "YES": "Yes, the stated claim is supported by observed evidence.",
+          "NO": "No, the stated claim is contradicted by observed evidence.",
+          "INSUFFICIENT": "The available evidence does not establish yes or no."
+        },
+        "evidence": {
+          "goal": "Complete the 12-stage North Pier archive itinerary. At the directory choice select the North Pier archive, not the similarly named South Pier archive. Stop after the final receipt.",
+          "title": "Choose archive directory",
+          "text": "\"Choose archive directory\" [level=1] | The requested archive is North Pier.",
+          "fields": [],
+          "required_facts": {},
+          "candidate": {
+            "ref": "c2",
+            "role": "link",
+            "text": "North Pier archive",
+            "context": "Choose archive directory"
+          }
+        }
+      },
+      "payload_sha256": "e8b86dea5957170eca0adbb1d6d519438495f29203add9b0f726d479b5541e78",
+      "evidence_keys": [
+        "candidate",
+        "fields",
+        "goal",
+        "required_facts",
+        "text",
+        "title"
+      ],
+      "evidence_chars": 449,
+      "full_evidence_sha256": "ee772c7f8cafe435802769de60b64e4260804d401732dd4d011883b4127efa24",
+      "budget_truncated": false,
+      "probabilities": {
+        "YES": 0.7829834683986725,
+        "NO": 0.08604752871044119,
+        "INSUFFICIENT": 0.13096900289088625
+      },
+      "choice": "YES",
+      "top1": 0.7829834683986725,
+      "top2": 0.13096900289088625,
+      "margin": 0.6520144655077862,
+      "entropy_nats": 0.6688472041247994,
+      "accepted": true,
+      "latency_ms": 117.03,
+      "wall_ms": 124.8
+    },
+    {
+      "case": "branch_choice",
+      "question_type": "candidate_starts_new_workflow",
+      "representation": "decision_specific",
+      "repetition": 0,
+      "backend": "kev-browser",
+      "outcome_source": "frozen_synthetic_observation",
+      "expected": "NO",
+      "payload": {
+        "question": "Does the candidate action start a separate new inquiry/workflow, whether or not that new workflow is part of the overall goal?",
+        "choices": {
+          "YES": "Yes, the stated claim is supported by observed evidence.",
+          "NO": "No, the stated claim is contradicted by observed evidence.",
+          "INSUFFICIENT": "The available evidence does not establish yes or no."
+        },
+        "evidence": {
+          "goal": "Complete the 12-stage North Pier archive itinerary. At the directory choice select the North Pier archive, not the similarly named South Pier archive. Stop after the final receipt.",
+          "title": "Choose archive directory",
+          "text": "\"Choose archive directory\" [level=1] | The requested archive is North Pier.",
+          "fields": [],
+          "required_facts": {},
+          "candidate": {
+            "ref": "c2",
+            "role": "link",
+            "text": "North Pier archive",
+            "context": "Choose archive directory"
+          }
+        }
+      },
+      "payload_sha256": "bd170f0b4dc24fba24361274e6c10c9bcdd79688a4072c3a7853c2d74fe5e5bd",
+      "evidence_keys": [
+        "candidate",
+        "fields",
+        "goal",
+        "required_facts",
+        "text",
+        "title"
+      ],
+      "evidence_chars": 449,
+      "full_evidence_sha256": "ee772c7f8cafe435802769de60b64e4260804d401732dd4d011883b4127efa24",
+      "budget_truncated": false,
+      "probabilities": {
+        "YES": 0.7829834683986725,
+        "NO": 0.08604752871044119,
+        "INSUFFICIENT": 0.13096900289088625
+      },
+      "choice": "YES",
+      "top1": 0.7829834683986725,
+      "top2": 0.13096900289088625,
+      "margin": 0.6520144655077862,
+      "entropy_nats": 0.6688472041247994,
+      "accepted": true,
+      "latency_ms": 108.08,
+      "wall_ms": 112.78
+    }
+  ],
+  "notes": "Synthetic public evidence only; hosted answers have no probability gate. Kev-browser retains the installed browser-action instruction."
+}

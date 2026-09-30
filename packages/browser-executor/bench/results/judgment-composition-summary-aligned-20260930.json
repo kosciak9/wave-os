@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "note": "Luna MONOLITHIC is hosted categorical only; Luna file COMPOSED reuses Laya's three local judgments. No Luna three-question composition was measured or inferred. Offline source hashes are not measurement-time hashes.",
+  "arms": {
+    "laya": {
+      "monolithic_backend": "laya",
+      "composed_source_backend": "laya",
+      "groups": 21,
+      "composed_source_calls_replayed": 63,
+      "monolithic_attempted": 21,
+      "monolithic_errors": 0,
+      "counts": {
+        "composed": {
+          "correct_behavior": {
+            "false": 21
+          },
+          "premature_checkpoint": {
+            "false": 21
+          },
+          "unwanted_continue": {
+            "false": 21
+          },
+          "unnecessary_escalation": {
+            "true": 21
+          }
+        },
+        "monolithic": {
+          "correct_behavior": {
+            "true": 16,
+            "false": 5
+          },
+          "premature_checkpoint": {
+            "false": 21
+          },
+          "unwanted_continue": {
+            "false": 18,
+            "true": 3
+          },
+          "unnecessary_escalation": {
+            "false": 19,
+            "true": 2
+          }
+        }
+      }
+    },
+    "kev": {
+      "monolithic_backend": "kev",
+      "composed_source_backend": "kev",
+      "groups": 21,
+      "composed_source_calls_replayed": 63,
+      "monolithic_attempted": 21,
+      "monolithic_errors": 2,
+      "counts": {
+        "composed": {
+          "correct_behavior": {
+            "false": 21
+          },
+          "premature_checkpoint": {
+            "false": 21
+          },
+          "unwanted_continue": {
+            "false": 21
+          },
+          "unnecessary_escalation": {
+            "true": 21
+          }
+        },
+        "monolithic": {
+          "correct_behavior": {
+            "false": 6,
+            "true": 15
+          },
+          "premature_checkpoint": {
+            "false": 21
+          },
+          "unwanted_continue": {
+            "false": 21
+          },
+          "unnecessary_escalation": {
+            "true": 6,
+            "false": 15
+          }
+        }
+      }
+    },
+    "luna": {
+      "monolithic_backend": "luna",
+      "composed_source_backend": "laya",
+      "groups": 21,
+      "composed_source_calls_replayed": 63,
+      "monolithic_attempted": 21,
+      "monolithic_errors": 0,
+      "counts": {
+        "composed": {
+          "correct_behavior": {
+            "false": 21
+          },
+          "premature_checkpoint": {
+            "false": 21
+          },
+          "unwanted_continue": {
+            "false": 21
+          },
+          "unnecessary_escalation": {
+            "true": 21
+          }
+        },
+        "monolithic": {
+          "correct_behavior": {
+            "true": 21
+          },
+          "premature_checkpoint": {
+            "false": 21
+          },
+          "unwanted_continue": {
+            "false": 21
+          },
+          "unnecessary_escalation": {
+            "false": 21
+          }
+        }
+      }
+    }
+  },
+  "ordered_visible_payload_hashes_matched": 135,
+  "aligned_laya_state_truncations": 2,
+  "effective_native_encoder_content_verified_equal": false,
+  "effective_content_note": "Ordered request payload hashes match for 135 triples. The aligned Laya offline token audit finds two truncated states; equal ordered payload hashes do not establish equal effective model content, and hosted/native instruction channels differ.",
+  "source_sha256": {
+    "judgment-composition-kev-20260930.json": "3736e9b9244b2577f6a69a091297ee14da7132e7e4fce6bf467a3711b7905061",
+    "judgment-composition-laya-20260930.json": "b144e12a103f5254f79140ec6041a881d7dcea76a0a0837976bf0d65dc553a60",
+    "judgment-composition-luna-20260930.json": "d1d0fa3bcb7c4a38264d4886c948fc520bc9c107133ea3a451e6b775329e3fbb",
+    "judgment-matrix-kev-aligned-20260930.json": "74d26945a54286c2862c9edd871d6ff6848fc76a08fd9434d097c22af27c45a1",
+    "judgment-matrix-laya-aligned-20260930.json": "e8907c1812cdb26b1a7a671b849f3c54d2bc8e12385a01a04161289c8d3fc569",
+    "judgment-matrix-luna-aligned-20260930.json": "249d098cc923efb4e684060df4669a6cc9a8854e64fdf0b2574b2a6931be526d",
+    "judgment-token-audit-aligned-20260930.json": "c448dc3349171ca24b60302274bc728cf89636f2efa1922ed90f0c179c598e33"
+  }
+}

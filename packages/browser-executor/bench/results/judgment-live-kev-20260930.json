@@ -1,0 +1,535 @@
+{
+  "schema_version": 1,
+  "capture_type": "measured_local_synthetic_runs",
+  "source_files": [
+    "judgment-live-kev-negative-branch-compact.json",
+    "judgment-live-kev-pre-normal.json",
+    "judgment-live-kev-post-normal.json"
+  ],
+  "captures": [
+    {
+      "provenance": {
+        "head": "b95bcc941acd9a3be54b42c54bb8800aca5c79ee",
+        "source_sha256_before": {
+          "packages/browser-executor/core.mjs": "6ebbb81a1b894f8f463ecbb3a64baa593eea16e5d6ffa1fcad59cc69cdfabd3b",
+          "packages/browser-executor/bench/space-fixtures.js": "b409daf0b142a6a6c1b02e6d2c16c532dc96341bf94714526762d58a2f2343e7",
+          "packages/browser-executor/bench/server.js": "2f68c94a3547e541bae3f54851eb7b4653ad0ce43d01ecd3633ce3102230fc31",
+          "packages/browser-executor/bench/run.py": "1dfc486f92f31c7f65793a10c18786cb0bfa6a860b1972df4c956f6e3f2e5a51",
+          "packages/browser-executor/bench/space-study.py": "8aa043cd288c7cff9dc720cbdbe6125705ccac2ec11a36db226ab144bc3b89e1",
+          "packages/browser-executor/bench/judgment-live.mjs": "1caf3e4a8da71d2c560ce6cfa3515cfa14c641eedd174cea481e4d0cd96238c7",
+          "packages/browser-executor/bench/judgment-live.py": "8d75e085603bc961638235eca643b7e08a9db20b79d971f1e786fcc6783cc87a",
+          "packages/browser-executor/bench/judgment-engine.py": "6ee1cf3a5196d7494ce8dd3260057f3defc9bc311c75da429e6cab0e899b6669",
+          "packages/browser-executor/bench/judgment-worker.py": "e9d4ca87a9566c739d7f31f86815b6977635c004eb8bf6911ce408365dc6acae",
+          "packages/browser-executor/bridge.mjs": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+          "packages/browser-executor/resolver.mjs": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+          "packages/browser-executor/camofox.mjs": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c"
+        },
+        "source_sha256_after": {
+          "packages/browser-executor/core.mjs": "6ebbb81a1b894f8f463ecbb3a64baa593eea16e5d6ffa1fcad59cc69cdfabd3b",
+          "packages/browser-executor/bench/space-fixtures.js": "b409daf0b142a6a6c1b02e6d2c16c532dc96341bf94714526762d58a2f2343e7",
+          "packages/browser-executor/bench/server.js": "2f68c94a3547e541bae3f54851eb7b4653ad0ce43d01ecd3633ce3102230fc31",
+          "packages/browser-executor/bench/run.py": "1dfc486f92f31c7f65793a10c18786cb0bfa6a860b1972df4c956f6e3f2e5a51",
+          "packages/browser-executor/bench/space-study.py": "8aa043cd288c7cff9dc720cbdbe6125705ccac2ec11a36db226ab144bc3b89e1",
+          "packages/browser-executor/bench/judgment-live.mjs": "1caf3e4a8da71d2c560ce6cfa3515cfa14c641eedd174cea481e4d0cd96238c7",
+          "packages/browser-executor/bench/judgment-live.py": "8d75e085603bc961638235eca643b7e08a9db20b79d971f1e786fcc6783cc87a",
+          "packages/browser-executor/bench/judgment-engine.py": "6ee1cf3a5196d7494ce8dd3260057f3defc9bc311c75da429e6cab0e899b6669",
+          "packages/browser-executor/bench/judgment-worker.py": "e9d4ca87a9566c739d7f31f86815b6977635c004eb8bf6911ce408365dc6acae",
+          "packages/browser-executor/bridge.mjs": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+          "packages/browser-executor/resolver.mjs": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+          "packages/browser-executor/camofox.mjs": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c"
+        },
+        "core_copy": {
+          "original_sha256": "6ebbb81a1b894f8f463ecbb3a64baa593eea16e5d6ffa1fcad59cc69cdfabd3b",
+          "derived_sha256": "e56c322309498cafd9dda0d197e6690771fce168c0988aca894e3372daca8ae6",
+          "config": {
+            "variant": "aggressive-continue",
+            "cap": 128,
+            "timeout_ms": 240000,
+            "semantic_stop_offered": false,
+            "manual_fields": false
+          },
+          "config_sha256": "76add5ae1b5f9752dd0cca0c05909b84cf089f0ecb3ae97597ab644cb5fcce57",
+          "transforms_sha256": "3078ffd8827421f510881c91a814a6ded5e0693529e6bc27ded6fc1a2b9dde88",
+          "anchors": [
+            "resolver_import",
+            "cap",
+            "timeout"
+          ]
+        },
+        "native_sha256": "538c3699c45b37f7a75dc62ac68204eba1e7d7c92fca550e45576794ed8a948e",
+        "hosted_calls": 0
+      },
+      "backend": "kev",
+      "rows": [
+        {
+          "task": "space-02",
+          "mode": "post",
+          "intervention": "wrong_branch",
+          "core_sha256": "e56c322309498cafd9dda0d197e6690771fce168c0988aca894e3372daca8ae6",
+          "calls": {
+            "pre": 0,
+            "post": 1
+          },
+          "rows": [
+            {
+              "kind": "pre",
+              "candidate": {
+                "role": "button",
+                "text": "Submit stage details",
+                "context": "Archive inquiry stage 1 of 12"
+              },
+              "before": {
+                "title": "Archive inquiry stage 1 of 12",
+                "text": "- main:\n  - heading \"Archive inquiry stage 1 of 12\" [level=1]\n  - paragraph: Enter the facts from the task for this stage. This is a synthetic inquiry only.\n  - text: location\n  - textbox \"location\" [control]: North Pier\n  - text: service\n  - textbox \"service\" [control]: Express\n  - text: Requested date\n  - textbox \"Requested date\" [control]: 2028-06-14\n  - text: summary\n  - textbox \"summary\" [control]: Archive visit\n  - text: destination\n  - textbox \"destination\" [control]: East Cove\n  - button \"Submit stage details\" [control]",
+                "fields": [
+                  {
+                    "name": "location",
+                    "label": "location",
+                    "value": "North Pier"
+                  },
+                  {
+                    "name": "service",
+                    "label": "service",
+                    "value": "Express"
+                  },
+                  {
+                    "name": "date",
+                    "label": "Requested date",
+                    "value": "2028-06-14"
+                  },
+                  {
+                    "name": "summary",
+                    "label": "summary",
+                    "value": "Archive visit"
+                  },
+                  {
+                    "name": "destination",
+                    "label": "destination",
+                    "value": "East Cove"
+                  }
+                ]
+              },
+              "proposed": "policy"
+            },
+            {
+              "kind": "post",
+              "candidate": {
+                "role": "button",
+                "text": "Submit stage details",
+                "context": "Archive inquiry stage 1 of 12"
+              },
+              "before": {
+                "title": "Archive inquiry stage 1 of 12",
+                "text": "- main:\n  - heading \"Archive inquiry stage 1 of 12\" [level=1]\n  - paragraph: Enter the facts from the task for this stage. This is a synthetic inquiry only.\n  - text: location\n  - textbox \"location\" [control]: North Pier\n  - text: service\n  - textbox \"service\" [control]: Express\n  - text: Requested date\n  - textbox \"Requested date\" [control]: 2028-06-14\n  - text: summary\n  - textbox \"summary\" [control]: Archive visit\n  - text: destination\n  - textbox \"destination\" [control]: East Cove\n  - button \"Submit stage details\" [control]",
+                "fields": [
+                  {
+                    "name": "location",
+                    "label": "location",
+                    "value": "North Pier"
+                  },
+                  {
+                    "name": "service",
+                    "label": "service",
+                    "value": "Express"
+                  },
+                  {
+                    "name": "date",
+                    "label": "Requested date",
+                    "value": "2028-06-14"
+                  },
+                  {
+                    "name": "summary",
+                    "label": "summary",
+                    "value": "Archive visit"
+                  },
+                  {
+                    "name": "destination",
+                    "label": "destination",
+                    "value": "East Cove"
+                  }
+                ]
+              },
+              "after": {
+                "title": "Details receipt 1 of 12",
+                "text": "- main:\n  - heading \"Details receipt 1 of 12\" [level=1]\n  - paragraph: Stage 1 details saved; this is not the final inquiry receipt. Continue to the next stage.\n  - link \"Continue inquiry\" [control]:",
+                "fields": []
+              },
+              "intended_local_effect": "Submit the current completed stage using Submit stage details; observe the resulting stage receipt or final receipt.",
+              "technical_state_changed": true,
+              "answer": {
+                "probabilities": {
+                  "YES": 0.2762153568126375,
+                  "NO": 0.22210674389390797,
+                  "INSUFFICIENT": 0.5016778992934545
+                },
+                "choice": "INSUFFICIENT",
+                "top1": 0.5016778992934545,
+                "top2": 0.2762153568126375,
+                "margin": 0.22546254248081704,
+                "entropy_nats": 1.0356087092245856,
+                "accepted": true,
+                "latency_ms": 691.08
+              }
+            }
+          ],
+          "hosted_calls": 0,
+          "result": {
+            "status": "escalated",
+            "reason": "action_outcome_unknown",
+            "steps": 6
+          },
+          "clicks": 1,
+          "semantic_stop": {
+            "kind": "post",
+            "choice": "INSUFFICIENT",
+            "reason": "effect_not_established"
+          },
+          "mutations_after_semantic_stop": 0,
+          "oracle": {
+            "passed": false,
+            "failure": "incomplete_other",
+            "mistakes": 0,
+            "first_error_server_step": null,
+            "success_server_step": null,
+            "post_success_overrun": false,
+            "server_action_steps": 1
+          }
+        }
+      ]
+    },
+    {
+      "provenance": {
+        "head": "b95bcc941acd9a3be54b42c54bb8800aca5c79ee",
+        "source_sha256_before": {
+          "packages/browser-executor/core.mjs": "6ebbb81a1b894f8f463ecbb3a64baa593eea16e5d6ffa1fcad59cc69cdfabd3b",
+          "packages/browser-executor/bench/space-fixtures.js": "b409daf0b142a6a6c1b02e6d2c16c532dc96341bf94714526762d58a2f2343e7",
+          "packages/browser-executor/bench/server.js": "2f68c94a3547e541bae3f54851eb7b4653ad0ce43d01ecd3633ce3102230fc31",
+          "packages/browser-executor/bench/run.py": "1dfc486f92f31c7f65793a10c18786cb0bfa6a860b1972df4c956f6e3f2e5a51",
+          "packages/browser-executor/bench/space-study.py": "8aa043cd288c7cff9dc720cbdbe6125705ccac2ec11a36db226ab144bc3b89e1",
+          "packages/browser-executor/bench/judgment-live.mjs": "1caf3e4a8da71d2c560ce6cfa3515cfa14c641eedd174cea481e4d0cd96238c7",
+          "packages/browser-executor/bench/judgment-live.py": "8d75e085603bc961638235eca643b7e08a9db20b79d971f1e786fcc6783cc87a",
+          "packages/browser-executor/bench/judgment-engine.py": "6ee1cf3a5196d7494ce8dd3260057f3defc9bc311c75da429e6cab0e899b6669",
+          "packages/browser-executor/bench/judgment-worker.py": "e9d4ca87a9566c739d7f31f86815b6977635c004eb8bf6911ce408365dc6acae",
+          "packages/browser-executor/bridge.mjs": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+          "packages/browser-executor/resolver.mjs": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+          "packages/browser-executor/camofox.mjs": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c"
+        },
+        "source_sha256_after": {
+          "packages/browser-executor/core.mjs": "6ebbb81a1b894f8f463ecbb3a64baa593eea16e5d6ffa1fcad59cc69cdfabd3b",
+          "packages/browser-executor/bench/space-fixtures.js": "b409daf0b142a6a6c1b02e6d2c16c532dc96341bf94714526762d58a2f2343e7",
+          "packages/browser-executor/bench/server.js": "2f68c94a3547e541bae3f54851eb7b4653ad0ce43d01ecd3633ce3102230fc31",
+          "packages/browser-executor/bench/run.py": "1dfc486f92f31c7f65793a10c18786cb0bfa6a860b1972df4c956f6e3f2e5a51",
+          "packages/browser-executor/bench/space-study.py": "8aa043cd288c7cff9dc720cbdbe6125705ccac2ec11a36db226ab144bc3b89e1",
+          "packages/browser-executor/bench/judgment-live.mjs": "1caf3e4a8da71d2c560ce6cfa3515cfa14c641eedd174cea481e4d0cd96238c7",
+          "packages/browser-executor/bench/judgment-live.py": "8d75e085603bc961638235eca643b7e08a9db20b79d971f1e786fcc6783cc87a",
+          "packages/browser-executor/bench/judgment-engine.py": "6ee1cf3a5196d7494ce8dd3260057f3defc9bc311c75da429e6cab0e899b6669",
+          "packages/browser-executor/bench/judgment-worker.py": "e9d4ca87a9566c739d7f31f86815b6977635c004eb8bf6911ce408365dc6acae",
+          "packages/browser-executor/bridge.mjs": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+          "packages/browser-executor/resolver.mjs": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+          "packages/browser-executor/camofox.mjs": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c"
+        },
+        "core_copy": {
+          "original_sha256": "6ebbb81a1b894f8f463ecbb3a64baa593eea16e5d6ffa1fcad59cc69cdfabd3b",
+          "derived_sha256": "e56c322309498cafd9dda0d197e6690771fce168c0988aca894e3372daca8ae6",
+          "config": {
+            "variant": "aggressive-continue",
+            "cap": 128,
+            "timeout_ms": 240000,
+            "semantic_stop_offered": false,
+            "manual_fields": false
+          },
+          "config_sha256": "76add5ae1b5f9752dd0cca0c05909b84cf089f0ecb3ae97597ab644cb5fcce57",
+          "transforms_sha256": "3078ffd8827421f510881c91a814a6ded5e0693529e6bc27ded6fc1a2b9dde88",
+          "anchors": [
+            "resolver_import",
+            "cap",
+            "timeout"
+          ]
+        },
+        "native_sha256": "538c3699c45b37f7a75dc62ac68204eba1e7d7c92fca550e45576794ed8a948e",
+        "hosted_calls": 0
+      },
+      "backend": "kev",
+      "rows": [
+        {
+          "task": "space-01",
+          "mode": "pre",
+          "intervention": "none",
+          "core_sha256": "e56c322309498cafd9dda0d197e6690771fce168c0988aca894e3372daca8ae6",
+          "calls": {
+            "pre": 1,
+            "post": 0
+          },
+          "rows": [
+            {
+              "kind": "pre",
+              "candidate": {
+                "role": "button",
+                "text": "Submit stage details",
+                "context": "Archive inquiry stage 1 of 12"
+              },
+              "before": {
+                "title": "Archive inquiry stage 1 of 12",
+                "text": "- main:\n  - heading \"Archive inquiry stage 1 of 12\" [level=1]\n  - paragraph: Enter the facts from the task for this stage. This is a synthetic inquiry only.\n  - text: location\n  - textbox \"location\" [control]: North Pier\n  - text: service\n  - textbox \"service\" [control]: Express\n  - text: Requested date\n  - textbox \"Requested date\" [control]: 2028-06-14\n  - text: summary\n  - textbox \"summary\" [control]: Archive visit\n  - text: destination\n  - textbox \"destination\" [control]: East Cove\n  - button \"Submit stage details\" [control]",
+                "fields": [
+                  {
+                    "name": "location",
+                    "label": "location",
+                    "value": "North Pier"
+                  },
+                  {
+                    "name": "service",
+                    "label": "service",
+                    "value": "Express"
+                  },
+                  {
+                    "name": "date",
+                    "label": "Requested date",
+                    "value": "2028-06-14"
+                  },
+                  {
+                    "name": "summary",
+                    "label": "summary",
+                    "value": "Archive visit"
+                  },
+                  {
+                    "name": "destination",
+                    "label": "destination",
+                    "value": "East Cove"
+                  }
+                ]
+              },
+              "proposed": "policy",
+              "answer": {
+                "probabilities": {
+                  "YES": 0.31334011291653247,
+                  "NO": 0.261526582609326,
+                  "INSUFFICIENT": 0.42513330447414166
+                },
+                "choice": "INSUFFICIENT",
+                "top1": 0.42513330447414166,
+                "top2": 0.31334011291653247,
+                "margin": 0.1117931915576092,
+                "entropy_nats": 1.0780239126003126,
+                "accepted": false,
+                "latency_ms": 735.54
+              }
+            }
+          ],
+          "hosted_calls": 0,
+          "result": {
+            "status": "escalated",
+            "reason": "model_escalation",
+            "steps": 5
+          },
+          "clicks": 0,
+          "semantic_stop": {
+            "kind": "pre",
+            "choice": "INSUFFICIENT",
+            "reason": "candidate_not_supported"
+          },
+          "oracle": {
+            "passed": false,
+            "failure": "incomplete_other",
+            "mistakes": 0,
+            "first_error_server_step": null,
+            "success_server_step": null,
+            "post_success_overrun": false,
+            "server_action_steps": 0
+          }
+        }
+      ]
+    },
+    {
+      "provenance": {
+        "head": "b95bcc941acd9a3be54b42c54bb8800aca5c79ee",
+        "source_sha256_before": {
+          "packages/browser-executor/core.mjs": "6ebbb81a1b894f8f463ecbb3a64baa593eea16e5d6ffa1fcad59cc69cdfabd3b",
+          "packages/browser-executor/bench/space-fixtures.js": "b409daf0b142a6a6c1b02e6d2c16c532dc96341bf94714526762d58a2f2343e7",
+          "packages/browser-executor/bench/server.js": "2f68c94a3547e541bae3f54851eb7b4653ad0ce43d01ecd3633ce3102230fc31",
+          "packages/browser-executor/bench/run.py": "1dfc486f92f31c7f65793a10c18786cb0bfa6a860b1972df4c956f6e3f2e5a51",
+          "packages/browser-executor/bench/space-study.py": "8aa043cd288c7cff9dc720cbdbe6125705ccac2ec11a36db226ab144bc3b89e1",
+          "packages/browser-executor/bench/judgment-live.mjs": "1caf3e4a8da71d2c560ce6cfa3515cfa14c641eedd174cea481e4d0cd96238c7",
+          "packages/browser-executor/bench/judgment-live.py": "8d75e085603bc961638235eca643b7e08a9db20b79d971f1e786fcc6783cc87a",
+          "packages/browser-executor/bench/judgment-engine.py": "6ee1cf3a5196d7494ce8dd3260057f3defc9bc311c75da429e6cab0e899b6669",
+          "packages/browser-executor/bench/judgment-worker.py": "e9d4ca87a9566c739d7f31f86815b6977635c004eb8bf6911ce408365dc6acae",
+          "packages/browser-executor/bridge.mjs": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+          "packages/browser-executor/resolver.mjs": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+          "packages/browser-executor/camofox.mjs": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c"
+        },
+        "source_sha256_after": {
+          "packages/browser-executor/core.mjs": "6ebbb81a1b894f8f463ecbb3a64baa593eea16e5d6ffa1fcad59cc69cdfabd3b",
+          "packages/browser-executor/bench/space-fixtures.js": "b409daf0b142a6a6c1b02e6d2c16c532dc96341bf94714526762d58a2f2343e7",
+          "packages/browser-executor/bench/server.js": "2f68c94a3547e541bae3f54851eb7b4653ad0ce43d01ecd3633ce3102230fc31",
+          "packages/browser-executor/bench/run.py": "1dfc486f92f31c7f65793a10c18786cb0bfa6a860b1972df4c956f6e3f2e5a51",
+          "packages/browser-executor/bench/space-study.py": "8aa043cd288c7cff9dc720cbdbe6125705ccac2ec11a36db226ab144bc3b89e1",
+          "packages/browser-executor/bench/judgment-live.mjs": "1caf3e4a8da71d2c560ce6cfa3515cfa14c641eedd174cea481e4d0cd96238c7",
+          "packages/browser-executor/bench/judgment-live.py": "8d75e085603bc961638235eca643b7e08a9db20b79d971f1e786fcc6783cc87a",
+          "packages/browser-executor/bench/judgment-engine.py": "6ee1cf3a5196d7494ce8dd3260057f3defc9bc311c75da429e6cab0e899b6669",
+          "packages/browser-executor/bench/judgment-worker.py": "e9d4ca87a9566c739d7f31f86815b6977635c004eb8bf6911ce408365dc6acae",
+          "packages/browser-executor/bridge.mjs": "75fc45884abfe79ca923e359fc5bc0c350f4bc5291211ce798558cd904d27de1",
+          "packages/browser-executor/resolver.mjs": "2fcc36fd5b508c25e7bbb57d79d1a363912f6d6a88c81473c7a7b9274a2b18b0",
+          "packages/browser-executor/camofox.mjs": "262bfb0600a7cf8c909f00723d0f0461aadb206cc23ce13d2903d90b7a4c922c"
+        },
+        "core_copy": {
+          "original_sha256": "6ebbb81a1b894f8f463ecbb3a64baa593eea16e5d6ffa1fcad59cc69cdfabd3b",
+          "derived_sha256": "e56c322309498cafd9dda0d197e6690771fce168c0988aca894e3372daca8ae6",
+          "config": {
+            "variant": "aggressive-continue",
+            "cap": 128,
+            "timeout_ms": 240000,
+            "semantic_stop_offered": false,
+            "manual_fields": false
+          },
+          "config_sha256": "76add5ae1b5f9752dd0cca0c05909b84cf089f0ecb3ae97597ab644cb5fcce57",
+          "transforms_sha256": "3078ffd8827421f510881c91a814a6ded5e0693529e6bc27ded6fc1a2b9dde88",
+          "anchors": [
+            "resolver_import",
+            "cap",
+            "timeout"
+          ]
+        },
+        "native_sha256": "538c3699c45b37f7a75dc62ac68204eba1e7d7c92fca550e45576794ed8a948e",
+        "hosted_calls": 0
+      },
+      "backend": "kev",
+      "rows": [
+        {
+          "task": "space-01",
+          "mode": "post",
+          "intervention": "none",
+          "core_sha256": "e56c322309498cafd9dda0d197e6690771fce168c0988aca894e3372daca8ae6",
+          "calls": {
+            "pre": 0,
+            "post": 1
+          },
+          "rows": [
+            {
+              "kind": "pre",
+              "candidate": {
+                "role": "button",
+                "text": "Submit stage details",
+                "context": "Archive inquiry stage 1 of 12"
+              },
+              "before": {
+                "title": "Archive inquiry stage 1 of 12",
+                "text": "- main:\n  - heading \"Archive inquiry stage 1 of 12\" [level=1]\n  - paragraph: Enter the facts from the task for this stage. This is a synthetic inquiry only.\n  - text: location\n  - textbox \"location\" [control]: North Pier\n  - text: service\n  - textbox \"service\" [control]: Express\n  - text: Requested date\n  - textbox \"Requested date\" [control]: 2028-06-14\n  - text: summary\n  - textbox \"summary\" [control]: Archive visit\n  - text: destination\n  - textbox \"destination\" [control]: East Cove\n  - button \"Submit stage details\" [control]",
+                "fields": [
+                  {
+                    "name": "location",
+                    "label": "location",
+                    "value": "North Pier"
+                  },
+                  {
+                    "name": "service",
+                    "label": "service",
+                    "value": "Express"
+                  },
+                  {
+                    "name": "date",
+                    "label": "Requested date",
+                    "value": "2028-06-14"
+                  },
+                  {
+                    "name": "summary",
+                    "label": "summary",
+                    "value": "Archive visit"
+                  },
+                  {
+                    "name": "destination",
+                    "label": "destination",
+                    "value": "East Cove"
+                  }
+                ]
+              },
+              "proposed": "policy"
+            },
+            {
+              "kind": "post",
+              "candidate": {
+                "role": "button",
+                "text": "Submit stage details",
+                "context": "Archive inquiry stage 1 of 12"
+              },
+              "before": {
+                "title": "Archive inquiry stage 1 of 12",
+                "text": "- main:\n  - heading \"Archive inquiry stage 1 of 12\" [level=1]\n  - paragraph: Enter the facts from the task for this stage. This is a synthetic inquiry only.\n  - text: location\n  - textbox \"location\" [control]: North Pier\n  - text: service\n  - textbox \"service\" [control]: Express\n  - text: Requested date\n  - textbox \"Requested date\" [control]: 2028-06-14\n  - text: summary\n  - textbox \"summary\" [control]: Archive visit\n  - text: destination\n  - textbox \"destination\" [control]: East Cove\n  - button \"Submit stage details\" [control]",
+                "fields": [
+                  {
+                    "name": "location",
+                    "label": "location",
+                    "value": "North Pier"
+                  },
+                  {
+                    "name": "service",
+                    "label": "service",
+                    "value": "Express"
+                  },
+                  {
+                    "name": "date",
+                    "label": "Requested date",
+                    "value": "2028-06-14"
+                  },
+                  {
+                    "name": "summary",
+                    "label": "summary",
+                    "value": "Archive visit"
+                  },
+                  {
+                    "name": "destination",
+                    "label": "destination",
+                    "value": "East Cove"
+                  }
+                ]
+              },
+              "after": {
+                "title": "Details receipt 1 of 12",
+                "text": "- main:\n  - heading \"Details receipt 1 of 12\" [level=1]\n  - paragraph: Stage 1 details saved; this is not the final inquiry receipt. Continue to the next stage.\n  - link \"Continue inquiry\" [control]:",
+                "fields": []
+              },
+              "intended_local_effect": "Submit the current completed stage using Submit stage details; observe the resulting stage receipt or final receipt.",
+              "technical_state_changed": true,
+              "answer": {
+                "probabilities": {
+                  "YES": 0.23776169829221308,
+                  "NO": 0.2478085512492409,
+                  "INSUFFICIENT": 0.514429750458546
+                },
+                "choice": "INSUFFICIENT",
+                "top1": 0.514429750458546,
+                "top2": 0.2478085512492409,
+                "margin": 0.2666211992093051,
+                "entropy_nats": 1.0291983904753965,
+                "accepted": true,
+                "latency_ms": 689.39
+              }
+            }
+          ],
+          "hosted_calls": 0,
+          "result": {
+            "status": "escalated",
+            "reason": "action_outcome_unknown",
+            "steps": 6
+          },
+          "clicks": 1,
+          "semantic_stop": {
+            "kind": "post",
+            "choice": "INSUFFICIENT",
+            "reason": "effect_not_established"
+          },
+          "mutations_after_semantic_stop": 0,
+          "oracle": {
+            "passed": false,
+            "failure": "incomplete_other",
+            "mistakes": 0,
+            "first_error_server_step": null,
+            "success_server_step": null,
+            "post_success_overrun": false,
+            "server_action_steps": 1
+          }
+        }
+      ]
+    }
+  ],
+  "notes": "Independent runs; each has its own source hash and oracle verdict. No hosted calls."
+}
