@@ -1,0 +1,2448 @@
+{
+  "schema_version": 1,
+  "fixture_sha256": "ebacea9a672c23d2d5f6cceef005d6813d327b8c8fe3c85576d697ddf08814cd",
+  "backend": "luna",
+  "choice_order": "aligned",
+  "source_sha256_start": {
+    "judgment-coarse.py": "4762dadc17ccb2cf79a9d864a85e511a1bb04189f21882f980429870d94c42fb",
+    "judgment-engine.py": "4be8ad89693837d7c154c41c0da7c93aa54491fb77c4deddb6cb730035c72e12",
+    "judgment-worker.py": "e9d4ca87a9566c739d7f31f86815b6977635c004eb8bf6911ce408365dc6acae"
+  },
+  "source_sha256_end": {
+    "judgment-coarse.py": "4762dadc17ccb2cf79a9d864a85e511a1bb04189f21882f980429870d94c42fb",
+    "judgment-engine.py": "4be8ad89693837d7c154c41c0da7c93aa54491fb77c4deddb6cb730035c72e12",
+    "judgment-worker.py": "e9d4ca87a9566c739d7f31f86815b6977635c004eb8bf6911ce408365dc6acae"
+  },
+  "source_unchanged_during_run": true,
+  "notes": "Inert authored evidence, not a live browser state. Historical Laya sorted criteria on the wire; aligned preserves the offered choice order. Returned wire_order and wire_sha256 describe the actual request sent. Native routed stage 2 uses only the accepted model-selected region; native routed pre_gate is before the final gate but after the stage-1 gate. Luna has categorical answers without probabilities or threshold gates; stage 2 follows any valid selected region, not the ground-truth region. A wrong region followed by INSUFFICIENT does not rescue the route on an ambiguous case. Stage-2 Brier is conditional on being asked with its true label in the choices; no Brier is computed for Luna. Selected-path product is not a normalized 20-way distribution.",
+  "gate": null,
+  "admission_rule": "valid_categorical_answer_no_probability_gate",
+  "rows": [
+    {
+      "case": "literal",
+      "permutation": "identity",
+      "goal": "Open North Pier Details in the North Pier archive.",
+      "expected": "c02",
+      "correct_flat_position": 1,
+      "correct_region_position": 0,
+      "correct_region_control_position": 1,
+      "correct_stage2_wire_position": 1,
+      "evidence": {
+        "goal": "Open North Pier Details in the North Pier archive.",
+        "page": "Archive and billing directory",
+        "regions": [
+          {
+            "name": "North Pier archive",
+            "description": "Northern pier preserved collection."
+          },
+          {
+            "name": "North Pier billing",
+            "description": "Northern pier active billing."
+          },
+          {
+            "name": "South Pier archive",
+            "description": "Southern pier preserved collection."
+          },
+          {
+            "name": "East Cove archive",
+            "description": "Eastern cove preserved collection."
+          }
+        ],
+        "controls": [
+          "c01: Open details | North Pier archive / Collection overview",
+          "c02: Open details | North Pier archive / North Pier Details",
+          "c03: Open details | North Pier archive / Visitor arrivals log",
+          "c04: Open details | North Pier archive / North Pier invoice (archived copy)",
+          "c05: Open details | North Pier archive / Annual report",
+          "c06: Open details | North Pier billing / Account overview",
+          "c07: Open details | North Pier billing / Payment history",
+          "c08: Open details | North Pier billing / North Pier invoice",
+          "c09: Open details | North Pier billing / Annual report",
+          "c10: Open details | North Pier billing / Credit note",
+          "c11: Open details | South Pier archive / Collection overview",
+          "c12: Open details | South Pier archive / South Pier Details",
+          "c13: Open details | South Pier archive / Visitor arrivals log",
+          "c14: Open details | South Pier archive / Invoice copy",
+          "c15: Open details | South Pier archive / Annual report",
+          "c16: Open details | East Cove archive / Collection overview",
+          "c17: Open details | East Cove archive / East Cove Details",
+          "c18: Open details | East Cove archive / Visitor arrivals log",
+          "c19: Open details | East Cove archive / Invoice copy",
+          "c20: Open details | East Cove archive / Annual report"
+        ]
+      },
+      "evidence_sha256": "8f0de221f391f76b83d4a04ff29eed18080a1460cb8b320b646dc066ff801dfb",
+      "region_order": [
+        "North Pier archive",
+        "North Pier billing",
+        "South Pier archive",
+        "East Cove archive"
+      ],
+      "flat_order": [
+        "c01",
+        "c02",
+        "c03",
+        "c04",
+        "c05",
+        "c06",
+        "c07",
+        "c08",
+        "c09",
+        "c10",
+        "c11",
+        "c12",
+        "c13",
+        "c14",
+        "c15",
+        "c16",
+        "c17",
+        "c18",
+        "c19",
+        "c20"
+      ],
+      "flat": {
+        "answer": {
+          "wire_order": [
+            "c01",
+            "c02",
+            "c03",
+            "c04",
+            "c05",
+            "c06",
+            "c07",
+            "c08",
+            "c09",
+            "c10",
+            "c11",
+            "c12",
+            "c13",
+            "c14",
+            "c15",
+            "c16",
+            "c17",
+            "c18",
+            "c19",
+            "c20",
+            "INSUFFICIENT"
+          ],
+          "wire_sha256": "0791b1e82dc580d01a6000efbb3da7db19d8ada3060f6721a7543304e6287fbe",
+          "wire_bytes": 4572,
+          "model_payload_ordered_hash": "6a86e65541b72cfd1abe3ed82df2c65d485546b3182676d8a76e220629dba668",
+          "hosted_request_form": "ordered_choices_list",
+          "choice": "c02",
+          "usage": {
+            "prompt_tokens": 867,
+            "completion_tokens": 13,
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost_usd": 9.32e-05
+          },
+          "accepted": null,
+          "probabilities": null,
+          "top1": null,
+          "top2": null,
+          "margin": null,
+          "entropy_nats": null
+        },
+        "pre_gate": null,
+        "final": "c02",
+        "pre_gate_correct": null,
+        "correct": true,
+        "brier": null,
+        "native_calls": null,
+        "admission_rule": "valid_categorical_answer_no_probability_gate"
+      },
+      "routed": {
+        "stage1": {
+          "wire_order": [
+            "North Pier archive",
+            "North Pier billing",
+            "South Pier archive",
+            "East Cove archive",
+            "INSUFFICIENT"
+          ],
+          "wire_sha256": "f5eb910986d2725743c3b06e0cf1cf6a701024bcc02f1710558f6e2e493b2500",
+          "wire_bytes": 2976,
+          "model_payload_ordered_hash": "29aeccead08d67ede6ac07662743c6d4bc06f140b80324a27ac2fed2ac5c1883",
+          "hosted_request_form": "ordered_choices_list",
+          "choice": "North Pier archive",
+          "usage": {
+            "prompt_tokens": 538,
+            "completion_tokens": 14,
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost_usd": 6.08e-05
+          },
+          "accepted": null,
+          "probabilities": null,
+          "top1": null,
+          "top2": null,
+          "margin": null,
+          "entropy_nats": null
+        },
+        "stage2": {
+          "wire_order": [
+            "c01",
+            "c02",
+            "c03",
+            "c04",
+            "c05",
+            "INSUFFICIENT"
+          ],
+          "wire_sha256": "9500b2f3b6f30cb9657fbff49fc01aee8dcff9de210a4f53e5eb4fbd57f6a1de",
+          "wire_bytes": 2991,
+          "model_payload_ordered_hash": "c162104a5bdac1f03546100b9fa68116441da5fa7f88ea74d98dec72abe6c509",
+          "hosted_request_form": "ordered_choices_list",
+          "choice": "c02",
+          "usage": {
+            "prompt_tokens": 562,
+            "completion_tokens": 32,
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost_usd": 7.22e-05
+          },
+          "accepted": null,
+          "probabilities": null,
+          "top1": null,
+          "top2": null,
+          "margin": null,
+          "entropy_nats": null
+        },
+        "selected_region": "North Pier archive",
+        "pre_gate": null,
+        "final": "c02",
+        "pre_gate_correct": null,
+        "correct": true,
+        "native_calls": null,
+        "admission_rule": "valid_categorical_answer_no_probability_gate",
+        "stage1_brier": null,
+        "stage2_brier": null,
+        "selected_path_confidence": null,
+        "confidence_category": "categorical_no_confidence",
+        "full_20_way_top2_margin": null
+      },
+      "baseline": {
+        "final": "c02",
+        "correct": true
+      }
+    },
+    {
+      "case": "literal",
+      "permutation": "reverse",
+      "goal": "Open North Pier Details in the North Pier archive.",
+      "expected": "c02",
+      "correct_flat_position": 18,
+      "correct_region_position": 3,
+      "correct_region_control_position": 3,
+      "correct_stage2_wire_position": 3,
+      "evidence": {
+        "goal": "Open North Pier Details in the North Pier archive.",
+        "page": "Archive and billing directory",
+        "regions": [
+          {
+            "name": "East Cove archive",
+            "description": "Eastern cove preserved collection."
+          },
+          {
+            "name": "South Pier archive",
+            "description": "Southern pier preserved collection."
+          },
+          {
+            "name": "North Pier billing",
+            "description": "Northern pier active billing."
+          },
+          {
+            "name": "North Pier archive",
+            "description": "Northern pier preserved collection."
+          }
+        ],
+        "controls": [
+          "c20: Open details | East Cove archive / Annual report",
+          "c19: Open details | East Cove archive / Invoice copy",
+          "c18: Open details | East Cove archive / Visitor arrivals log",
+          "c17: Open details | East Cove archive / East Cove Details",
+          "c16: Open details | East Cove archive / Collection overview",
+          "c15: Open details | South Pier archive / Annual report",
+          "c14: Open details | South Pier archive / Invoice copy",
+          "c13: Open details | South Pier archive / Visitor arrivals log",
+          "c12: Open details | South Pier archive / South Pier Details",
+          "c11: Open details | South Pier archive / Collection overview",
+          "c10: Open details | North Pier billing / Credit note",
+          "c09: Open details | North Pier billing / Annual report",
+          "c08: Open details | North Pier billing / North Pier invoice",
+          "c07: Open details | North Pier billing / Payment history",
+          "c06: Open details | North Pier billing / Account overview",
+          "c05: Open details | North Pier archive / Annual report",
+          "c04: Open details | North Pier archive / North Pier invoice (archived copy)",
+          "c03: Open details | North Pier archive / Visitor arrivals log",
+          "c02: Open details | North Pier archive / North Pier Details",
+          "c01: Open details | North Pier archive / Collection overview"
+        ]
+      },
+      "evidence_sha256": "cba6db30a2edf1c175ce0834c471dec066d876b032e400664dde8b09c656a482",
+      "region_order": [
+        "East Cove archive",
+        "South Pier archive",
+        "North Pier billing",
+        "North Pier archive"
+      ],
+      "flat_order": [
+        "c20",
+        "c19",
+        "c18",
+        "c17",
+        "c16",
+        "c15",
+        "c14",
+        "c13",
+        "c12",
+        "c11",
+        "c10",
+        "c09",
+        "c08",
+        "c07",
+        "c06",
+        "c05",
+        "c04",
+        "c03",
+        "c02",
+        "c01"
+      ],
+      "flat": {
+        "answer": {
+          "wire_order": [
+            "c20",
+            "c19",
+            "c18",
+            "c17",
+            "c16",
+            "c15",
+            "c14",
+            "c13",
+            "c12",
+            "c11",
+            "c10",
+            "c09",
+            "c08",
+            "c07",
+            "c06",
+            "c05",
+            "c04",
+            "c03",
+            "c02",
+            "c01",
+            "INSUFFICIENT"
+          ],
+          "wire_sha256": "4ed27ce2c29bf81683da7d31c18eb606e1bc8e0a5ac8e9e44333730edde3852e",
+          "wire_bytes": 4572,
+          "model_payload_ordered_hash": "c4938aab8989142a4e844e90271d26649b43f0078957241560ba154c5f19ed15",
+          "hosted_request_form": "ordered_choices_list",
+          "choice": "c02",
+          "usage": {
+            "prompt_tokens": 867,
+            "completion_tokens": 13,
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost_usd": 9.32e-05
+          },
+          "accepted": null,
+          "probabilities": null,
+          "top1": null,
+          "top2": null,
+          "margin": null,
+          "entropy_nats": null
+        },
+        "pre_gate": null,
+        "final": "c02",
+        "pre_gate_correct": null,
+        "correct": true,
+        "brier": null,
+        "native_calls": null,
+        "admission_rule": "valid_categorical_answer_no_probability_gate"
+      },
+      "routed": {
+        "stage1": {
+          "wire_order": [
+            "East Cove archive",
+            "South Pier archive",
+            "North Pier billing",
+            "North Pier archive",
+            "INSUFFICIENT"
+          ],
+          "wire_sha256": "de2f8149d68f5fb183a763ee87e9afd610ecdae5afce179d41296778c6bfb93c",
+          "wire_bytes": 2976,
+          "model_payload_ordered_hash": "05d26548ffd27b1007a16d6ffca947b001f7fa88c7a727e63e256956c72ecf35",
+          "hosted_request_form": "ordered_choices_list",
+          "choice": "North Pier archive",
+          "usage": {
+            "prompt_tokens": 538,
+            "completion_tokens": 14,
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost_usd": 6.08e-05
+          },
+          "accepted": null,
+          "probabilities": null,
+          "top1": null,
+          "top2": null,
+          "margin": null,
+          "entropy_nats": null
+        },
+        "stage2": {
+          "wire_order": [
+            "c05",
+            "c04",
+            "c03",
+            "c02",
+            "c01",
+            "INSUFFICIENT"
+          ],
+          "wire_sha256": "8ba7f8b02c661a52a2f58a997536576f56d2345bdf426678ca150931d13f0462",
+          "wire_bytes": 2991,
+          "model_payload_ordered_hash": "b55e465e7250d3d7c938ea45fa7d81a169e1c57976e3a3df442405747b418984",
+          "hosted_request_form": "ordered_choices_list",
+          "choice": "c02",
+          "usage": {
+            "prompt_tokens": 562,
+            "completion_tokens": 13,
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost_usd": 6.27e-05
+          },
+          "accepted": null,
+          "probabilities": null,
+          "top1": null,
+          "top2": null,
+          "margin": null,
+          "entropy_nats": null
+        },
+        "selected_region": "North Pier archive",
+        "pre_gate": null,
+        "final": "c02",
+        "pre_gate_correct": null,
+        "correct": true,
+        "native_calls": null,
+        "admission_rule": "valid_categorical_answer_no_probability_gate",
+        "stage1_brier": null,
+        "stage2_brier": null,
+        "selected_path_confidence": null,
+        "confidence_category": "categorical_no_confidence",
+        "full_20_way_top2_margin": null
+      },
+      "baseline": {
+        "final": "c02",
+        "correct": true
+      }
+    },
+    {
+      "case": "literal",
+      "permutation": "seeded_29",
+      "goal": "Open North Pier Details in the North Pier archive.",
+      "expected": "c02",
+      "correct_flat_position": 9,
+      "correct_region_position": 2,
+      "correct_region_control_position": 2,
+      "correct_stage2_wire_position": 2,
+      "evidence": {
+        "goal": "Open North Pier Details in the North Pier archive.",
+        "page": "Archive and billing directory",
+        "regions": [
+          {
+            "name": "South Pier archive",
+            "description": "Southern pier preserved collection."
+          },
+          {
+            "name": "East Cove archive",
+            "description": "Eastern cove preserved collection."
+          },
+          {
+            "name": "North Pier archive",
+            "description": "Northern pier preserved collection."
+          },
+          {
+            "name": "North Pier billing",
+            "description": "Northern pier active billing."
+          }
+        ],
+        "controls": [
+          "c11: Open details | South Pier archive / Collection overview",
+          "c19: Open details | East Cove archive / Invoice copy",
+          "c20: Open details | East Cove archive / Annual report",
+          "c14: Open details | South Pier archive / Invoice copy",
+          "c12: Open details | South Pier archive / South Pier Details",
+          "c16: Open details | East Cove archive / Collection overview",
+          "c03: Open details | North Pier archive / Visitor arrivals log",
+          "c01: Open details | North Pier archive / Collection overview",
+          "c09: Open details | North Pier billing / Annual report",
+          "c02: Open details | North Pier archive / North Pier Details",
+          "c08: Open details | North Pier billing / North Pier invoice",
+          "c06: Open details | North Pier billing / Account overview",
+          "c18: Open details | East Cove archive / Visitor arrivals log",
+          "c04: Open details | North Pier archive / North Pier invoice (archived copy)",
+          "c07: Open details | North Pier billing / Payment history",
+          "c05: Open details | North Pier archive / Annual report",
+          "c15: Open details | South Pier archive / Annual report",
+          "c10: Open details | North Pier billing / Credit note",
+          "c17: Open details | East Cove archive / East Cove Details",
+          "c13: Open details | South Pier archive / Visitor arrivals log"
+        ]
+      },
+      "evidence_sha256": "78fedcd219f8b2a471d71784efe03b9df714e05b6c9d110a445c34f63c5409f6",
+      "region_order": [
+        "South Pier archive",
+        "East Cove archive",
+        "North Pier archive",
+        "North Pier billing"
+      ],
+      "flat_order": [
+        "c11",
+        "c19",
+        "c20",
+        "c14",
+        "c12",
+        "c16",
+        "c03",
+        "c01",
+        "c09",
+        "c02",
+        "c08",
+        "c06",
+        "c18",
+        "c04",
+        "c07",
+        "c05",
+        "c15",
+        "c10",
+        "c17",
+        "c13"
+      ],
+      "flat": {
+        "answer": {
+          "wire_order": [
+            "c11",
+            "c19",
+            "c20",
+            "c14",
+            "c12",
+            "c16",
+            "c03",
+            "c01",
+            "c09",
+            "c02",
+            "c08",
+            "c06",
+            "c18",
+            "c04",
+            "c07",
+            "c05",
+            "c15",
+            "c10",
+            "c17",
+            "c13",
+            "INSUFFICIENT"
+          ],
+          "wire_sha256": "c76270eb2c1d9870701d4438b0806b17a6b619f3faa8e26ab25bf73a6bf1c7a0",
+          "wire_bytes": 4572,
+          "model_payload_ordered_hash": "a0f902842fe2a170ce96a25737e1898ec48bef68326685b71d8d42c9cfb1a6b3",
+          "hosted_request_form": "ordered_choices_list",
+          "choice": "c02",
+          "usage": {
+            "prompt_tokens": 867,
+            "completion_tokens": 13,
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost_usd": 9.32e-05
+          },
+          "accepted": null,
+          "probabilities": null,
+          "top1": null,
+          "top2": null,
+          "margin": null,
+          "entropy_nats": null
+        },
+        "pre_gate": null,
+        "final": "c02",
+        "pre_gate_correct": null,
+        "correct": true,
+        "brier": null,
+        "native_calls": null,
+        "admission_rule": "valid_categorical_answer_no_probability_gate"
+      },
+      "routed": {
+        "stage1": {
+          "wire_order": [
+            "South Pier archive",
+            "East Cove archive",
+            "North Pier archive",
+            "North Pier billing",
+            "INSUFFICIENT"
+          ],
+          "wire_sha256": "b4ab638591e8d115fda8abe511e3edf33f6b0ec428031c9304f60b0fdee7fb76",
+          "wire_bytes": 2976,
+          "model_payload_ordered_hash": "a984a9f084acef175b3684a203b3464fbd96a6e365ce7730d5928189f5020124",
+          "hosted_request_form": "ordered_choices_list",
+          "choice": "North Pier archive",
+          "usage": {
+            "prompt_tokens": 538,
+            "completion_tokens": 14,
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost_usd": 6.08e-05
+          },
+          "accepted": null,
+          "probabilities": null,
+          "top1": null,
+          "top2": null,
+          "margin": null,
+          "entropy_nats": null
+        },
+        "stage2": {
+          "wire_order": [
+            "c03",
+            "c01",
+            "c02",
+            "c04",
+            "c05",
+            "INSUFFICIENT"
+          ],
+          "wire_sha256": "d2f17b3dbcc281ae3301c02da26008642152b81de416e2740b652fa6925f5fe6",
+          "wire_bytes": 2991,
+          "model_payload_ordered_hash": "7ab6f5fb075562ddd8db60e3b0e9949b64ceb1f59225269bc5f27576c808df96",
+          "hosted_request_form": "ordered_choices_list",
+          "choice": "c02",
+          "usage": {
+            "prompt_tokens": 562,
+            "completion_tokens": 13,
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost_usd": 6.27e-05
+          },
+          "accepted": null,
+          "probabilities": null,
+          "top1": null,
+          "top2": null,
+          "margin": null,
+          "entropy_nats": null
+        },
+        "selected_region": "North Pier archive",
+        "pre_gate": null,
+        "final": "c02",
+        "pre_gate_correct": null,
+        "correct": true,
+        "native_calls": null,
+        "admission_rule": "valid_categorical_answer_no_probability_gate",
+        "stage1_brier": null,
+        "stage2_brier": null,
+        "selected_path_confidence": null,
+        "confidence_category": "categorical_no_confidence",
+        "full_20_way_top2_margin": null
+      },
+      "baseline": {
+        "final": "c02",
+        "correct": true
+      }
+    },
+    {
+      "case": "paraphrase",
+      "permutation": "identity",
+      "goal": "Open the record of visitors arriving at the northern pier's preserved collection.",
+      "expected": "c03",
+      "correct_flat_position": 2,
+      "correct_region_position": 0,
+      "correct_region_control_position": 2,
+      "correct_stage2_wire_position": 2,
+      "evidence": {
+        "goal": "Open the record of visitors arriving at the northern pier's preserved collection.",
+        "page": "Archive and billing directory",
+        "regions": [
+          {
+            "name": "North Pier archive",
+            "description": "Northern pier preserved collection."
+          },
+          {
+            "name": "North Pier billing",
+            "description": "Northern pier active billing."
+          },
+          {
+            "name": "South Pier archive",
+            "description": "Southern pier preserved collection."
+          },
+          {
+            "name": "East Cove archive",
+            "description": "Eastern cove preserved collection."
+          }
+        ],
+        "controls": [
+          "c01: Open details | North Pier archive / Collection overview",
+          "c02: Open details | North Pier archive / North Pier Details",
+          "c03: Open details | North Pier archive / Visitor arrivals log",
+          "c04: Open details | North Pier archive / North Pier invoice (archived copy)",
+          "c05: Open details | North Pier archive / Annual report",
+          "c06: Open details | North Pier billing / Account overview",
+          "c07: Open details | North Pier billing / Payment history",
+          "c08: Open details | North Pier billing / North Pier invoice",
+          "c09: Open details | North Pier billing / Annual report",
+          "c10: Open details | North Pier billing / Credit note",
+          "c11: Open details | South Pier archive / Collection overview",
+          "c12: Open details | South Pier archive / South Pier Details",
+          "c13: Open details | South Pier archive / Visitor arrivals log",
+          "c14: Open details | South Pier archive / Invoice copy",
+          "c15: Open details | South Pier archive / Annual report",
+          "c16: Open details | East Cove archive / Collection overview",
+          "c17: Open details | East Cove archive / East Cove Details",
+          "c18: Open details | East Cove archive / Visitor arrivals log",
+          "c19: Open details | East Cove archive / Invoice copy",
+          "c20: Open details | East Cove archive / Annual report"
+        ]
+      },
+      "evidence_sha256": "58923785a8501a7b5aa15122a77664def100295ca97b196301f26a3dd9d72108",
+      "region_order": [
+        "North Pier archive",
+        "North Pier billing",
+        "South Pier archive",
+        "East Cove archive"
+      ],
+      "flat_order": [
+        "c01",
+        "c02",
+        "c03",
+        "c04",
+        "c05",
+        "c06",
+        "c07",
+        "c08",
+        "c09",
+        "c10",
+        "c11",
+        "c12",
+        "c13",
+        "c14",
+        "c15",
+        "c16",
+        "c17",
+        "c18",
+        "c19",
+        "c20"
+      ],
+      "flat": {
+        "answer": {
+          "wire_order": [
+            "c01",
+            "c02",
+            "c03",
+            "c04",
+            "c05",
+            "c06",
+            "c07",
+            "c08",
+            "c09",
+            "c10",
+            "c11",
+            "c12",
+            "c13",
+            "c14",
+            "c15",
+            "c16",
+            "c17",
+            "c18",
+            "c19",
+            "c20",
+            "INSUFFICIENT"
+          ],
+          "wire_sha256": "19235487e0aae08a74ab76f61e0de99e64a21c12542584e99f6db4ac9128f771",
+          "wire_bytes": 4603,
+          "model_payload_ordered_hash": "600ec909884cd7c706ef3b8bb958a77993c06f652c3e40d8cbfecee5d41e5e75",
+          "hosted_request_form": "ordered_choices_list",
+          "choice": "c03",
+          "usage": {
+            "prompt_tokens": 871,
+            "completion_tokens": 34,
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost_usd": 0.0001041
+          },
+          "accepted": null,
+          "probabilities": null,
+          "top1": null,
+          "top2": null,
+          "margin": null,
+          "entropy_nats": null
+        },
+        "pre_gate": null,
+        "final": "c03",
+        "pre_gate_correct": null,
+        "correct": true,
+        "brier": null,
+        "native_calls": null,
+        "admission_rule": "valid_categorical_answer_no_probability_gate"
+      },
+      "routed": {
+        "stage1": {
+          "wire_order": [
+            "North Pier archive",
+            "North Pier billing",
+            "South Pier archive",
+            "East Cove archive",
+            "INSUFFICIENT"
+          ],
+          "wire_sha256": "85a1712f3e354aaace2ec8a15a218f3892a89e4c383736cd9edb9110e4faa879",
+          "wire_bytes": 3007,
+          "model_payload_ordered_hash": "257b378b5283188c51aff5e4cd669eb91a45243d0625778a0d24b3d55ab89363",
+          "hosted_request_form": "ordered_choices_list",
+          "choice": "North Pier archive",
+          "usage": {
+            "prompt_tokens": 542,
+            "completion_tokens": 59,
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost_usd": 8.37e-05
+          },
+          "accepted": null,
+          "probabilities": null,
+          "top1": null,
+          "top2": null,
+          "margin": null,
+          "entropy_nats": null
+        },
+        "stage2": {
+          "wire_order": [
+            "c01",
+            "c02",
+            "c03",
+            "c04",
+            "c05",
+            "INSUFFICIENT"
+          ],
+          "wire_sha256": "e608bad8fa7c4f8e447c127300af8ddeaa020b2dd0bec783a4f7e096c7f139fe",
+          "wire_bytes": 3022,
+          "model_payload_ordered_hash": "d0f75d11d41841cd42b93db4c65123f2219fe3e4936c386df6ab48b845586733",
+          "hosted_request_form": "ordered_choices_list",
+          "choice": "c03",
+          "usage": {
+            "prompt_tokens": 566,
+            "completion_tokens": 51,
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost_usd": 8.21e-05
+          },
+          "accepted": null,
+          "probabilities": null,
+          "top1": null,
+          "top2": null,
+          "margin": null,
+          "entropy_nats": null
+        },
+        "selected_region": "North Pier archive",
+        "pre_gate": null,
+        "final": "c03",
+        "pre_gate_correct": null,
+        "correct": true,
+        "native_calls": null,
+        "admission_rule": "valid_categorical_answer_no_probability_gate",
+        "stage1_brier": null,
+        "stage2_brier": null,
+        "selected_path_confidence": null,
+        "confidence_category": "categorical_no_confidence",
+        "full_20_way_top2_margin": null
+      },
+      "baseline": {
+        "final": "INSUFFICIENT",
+        "correct": false
+      }
+    },
+    {
+      "case": "paraphrase",
+      "permutation": "reverse",
+      "goal": "Open the record of visitors arriving at the northern pier's preserved collection.",
+      "expected": "c03",
+      "correct_flat_position": 17,
+      "correct_region_position": 3,
+      "correct_region_control_position": 2,
+      "correct_stage2_wire_position": 2,
+      "evidence": {
+        "goal": "Open the record of visitors arriving at the northern pier's preserved collection.",
+        "page": "Archive and billing directory",
+        "regions": [
+          {
+            "name": "East Cove archive",
+            "description": "Eastern cove preserved collection."
+          },
+          {
+            "name": "South Pier archive",
+            "description": "Southern pier preserved collection."
+          },
+          {
+            "name": "North Pier billing",
+            "description": "Northern pier active billing."
+          },
+          {
+            "name": "North Pier archive",
+            "description": "Northern pier preserved collection."
+          }
+        ],
+        "controls": [
+          "c20: Open details | East Cove archive / Annual report",
+          "c19: Open details | East Cove archive / Invoice copy",
+          "c18: Open details | East Cove archive / Visitor arrivals log",
+          "c17: Open details | East Cove archive / East Cove Details",
+          "c16: Open details | East Cove archive / Collection overview",
+          "c15: Open details | South Pier archive / Annual report",
+          "c14: Open details | South Pier archive / Invoice copy",
+          "c13: Open details | South Pier archive / Visitor arrivals log",
+          "c12: Open details | South Pier archive / South Pier Details",
+          "c11: Open details | South Pier archive / Collection overview",
+          "c10: Open details | North Pier billing / Credit note",
+          "c09: Open details | North Pier billing / Annual report",
+          "c08: Open details | North Pier billing / North Pier invoice",
+          "c07: Open details | North Pier billing / Payment history",
+          "c06: Open details | North Pier billing / Account overview",
+          "c05: Open details | North Pier archive / Annual report",
+          "c04: Open details | North Pier archive / North Pier invoice (archived copy)",
+          "c03: Open details | North Pier archive / Visitor arrivals log",
+          "c02: Open details | North Pier archive / North Pier Details",
+          "c01: Open details | North Pier archive / Collection overview"
+        ]
+      },
+      "evidence_sha256": "453389f744b88158684be5393303e2d188608892b47d698a58ad8a101fd9ed33",
+      "region_order": [
+        "East Cove archive",
+        "South Pier archive",
+        "North Pier billing",
+        "North Pier archive"
+      ],
+      "flat_order": [
+        "c20",
+        "c19",
+        "c18",
+        "c17",
+        "c16",
+        "c15",
+        "c14",
+        "c13",
+        "c12",
+        "c11",
+        "c10",
+        "c09",
+        "c08",
+        "c07",
+        "c06",
+        "c05",
+        "c04",
+        "c03",
+        "c02",
+        "c01"
+      ],
+      "flat": {
+        "answer": {
+          "wire_order": [
+            "c20",
+            "c19",
+            "c18",
+            "c17",
+            "c16",
+            "c15",
+            "c14",
+            "c13",
+            "c12",
+            "c11",
+            "c10",
+            "c09",
+            "c08",
+            "c07",
+            "c06",
+            "c05",
+            "c04",
+            "c03",
+            "c02",
+            "c01",
+            "INSUFFICIENT"
+          ],
+          "wire_sha256": "c561bb33d1423fdff028009c56f9b09450a4572347b3e8fc4d8d7c776c413517",
+          "wire_bytes": 4603,
+          "model_payload_ordered_hash": "13fc9177d924360a330273db42d79230ef052686f8d9a88c38f1e688cc85d802",
+          "hosted_request_form": "ordered_choices_list",
+          "choice": "c03",
+          "usage": {
+            "prompt_tokens": 871,
+            "completion_tokens": 36,
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost_usd": 0.0001051
+          },
+          "accepted": null,
+          "probabilities": null,
+          "top1": null,
+          "top2": null,
+          "margin": null,
+          "entropy_nats": null
+        },
+        "pre_gate": null,
+        "final": "c03",
+        "pre_gate_correct": null,
+        "correct": true,
+        "brier": null,
+        "native_calls": null,
+        "admission_rule": "valid_categorical_answer_no_probability_gate"
+      },
+      "routed": {
+        "stage1": {
+          "wire_order": [
+            "East Cove archive",
+            "South Pier archive",
+            "North Pier billing",
+            "North Pier archive",
+            "INSUFFICIENT"
+          ],
+          "wire_sha256": "edb26789ca24671e3ec64f5881353c4bf8767f220a0d855235473ad5e9fda859",
+          "wire_bytes": 3007,
+          "model_payload_ordered_hash": "ce6e8e70c0d1b3b60d6bfc02074f50bc53c17e2625858bbc53929bab0b77acd2",
+          "hosted_request_form": "ordered_choices_list",
+          "choice": "North Pier archive",
+          "usage": {
+            "prompt_tokens": 542,
+            "completion_tokens": 14,
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost_usd": 6.12e-05
+          },
+          "accepted": null,
+          "probabilities": null,
+          "top1": null,
+          "top2": null,
+          "margin": null,
+          "entropy_nats": null
+        },
+        "stage2": {
+          "wire_order": [
+            "c05",
+            "c04",
+            "c03",
+            "c02",
+            "c01",
+            "INSUFFICIENT"
+          ],
+          "wire_sha256": "3d1753cc5185c6a1920f9bf5bfc7d254ac5a86154142b763c0af2d11fa43a79c",
+          "wire_bytes": 3022,
+          "model_payload_ordered_hash": "a19d86e7ae764a29ffeb33a919c164c03c8f8f35720084a094b13f18b2232d46",
+          "hosted_request_form": "ordered_choices_list",
+          "choice": "c03",
+          "usage": {
+            "prompt_tokens": 566,
+            "completion_tokens": 36,
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost_usd": 7.46e-05
+          },
+          "accepted": null,
+          "probabilities": null,
+          "top1": null,
+          "top2": null,
+          "margin": null,
+          "entropy_nats": null
+        },
+        "selected_region": "North Pier archive",
+        "pre_gate": null,
+        "final": "c03",
+        "pre_gate_correct": null,
+        "correct": true,
+        "native_calls": null,
+        "admission_rule": "valid_categorical_answer_no_probability_gate",
+        "stage1_brier": null,
+        "stage2_brier": null,
+        "selected_path_confidence": null,
+        "confidence_category": "categorical_no_confidence",
+        "full_20_way_top2_margin": null
+      },
+      "baseline": {
+        "final": "INSUFFICIENT",
+        "correct": false
+      }
+    },
+    {
+      "case": "paraphrase",
+      "permutation": "seeded_29",
+      "goal": "Open the record of visitors arriving at the northern pier's preserved collection.",
+      "expected": "c03",
+      "correct_flat_position": 6,
+      "correct_region_position": 2,
+      "correct_region_control_position": 0,
+      "correct_stage2_wire_position": 0,
+      "evidence": {
+        "goal": "Open the record of visitors arriving at the northern pier's preserved collection.",
+        "page": "Archive and billing directory",
+        "regions": [
+          {
+            "name": "South Pier archive",
+            "description": "Southern pier preserved collection."
+          },
+          {
+            "name": "East Cove archive",
+            "description": "Eastern cove preserved collection."
+          },
+          {
+            "name": "North Pier archive",
+            "description": "Northern pier preserved collection."
+          },
+          {
+            "name": "North Pier billing",
+            "description": "Northern pier active billing."
+          }
+        ],
+        "controls": [
+          "c11: Open details | South Pier archive / Collection overview",
+          "c19: Open details | East Cove archive / Invoice copy",
+          "c20: Open details | East Cove archive / Annual report",
+          "c14: Open details | South Pier archive / Invoice copy",
+          "c12: Open details | South Pier archive / South Pier Details",
+          "c16: Open details | East Cove archive / Collection overview",
+          "c03: Open details | North Pier archive / Visitor arrivals log",
+          "c01: Open details | North Pier archive / Collection overview",
+          "c09: Open details | North Pier billing / Annual report",
+          "c02: Open details | North Pier archive / North Pier Details",
+          "c08: Open details | North Pier billing / North Pier invoice",
+          "c06: Open details | North Pier billing / Account overview",
+          "c18: Open details | East Cove archive / Visitor arrivals log",
+          "c04: Open details | North Pier archive / North Pier invoice (archived copy)",
+          "c07: Open details | North Pier billing / Payment history",
+          "c05: Open details | North Pier archive / Annual report",
+          "c15: Open details | South Pier archive / Annual report",
+          "c10: Open details | North Pier billing / Credit note",
+          "c17: Open details | East Cove archive / East Cove Details",
+          "c13: Open details | South Pier archive / Visitor arrivals log"
+        ]
+      },
+      "evidence_sha256": "7fdd592fca19f462a30eef2a21faea351d07110013207490e09f473cd6c3f529",
+      "region_order": [
+        "South Pier archive",
+        "East Cove archive",
+        "North Pier archive",
+        "North Pier billing"
+      ],
+      "flat_order": [
+        "c11",
+        "c19",
+        "c20",
+        "c14",
+        "c12",
+        "c16",
+        "c03",
+        "c01",
+        "c09",
+        "c02",
+        "c08",
+        "c06",
+        "c18",
+        "c04",
+        "c07",
+        "c05",
+        "c15",
+        "c10",
+        "c17",
+        "c13"
+      ],
+      "flat": {
+        "answer": {
+          "wire_order": [
+            "c11",
+            "c19",
+            "c20",
+            "c14",
+            "c12",
+            "c16",
+            "c03",
+            "c01",
+            "c09",
+            "c02",
+            "c08",
+            "c06",
+            "c18",
+            "c04",
+            "c07",
+            "c05",
+            "c15",
+            "c10",
+            "c17",
+            "c13",
+            "INSUFFICIENT"
+          ],
+          "wire_sha256": "e989746f48952fd94cae0848b9be715e32708b500c47027be7fccf9ad573afe6",
+          "wire_bytes": 4603,
+          "model_payload_ordered_hash": "c864aa8e71a1c9713e990ce3be70777ee54d304f2c6b6fa542e2b619221e5c9d",
+          "hosted_request_form": "ordered_choices_list",
+          "choice": "c03",
+          "usage": {
+            "prompt_tokens": 871,
+            "completion_tokens": 13,
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost_usd": 9.36e-05
+          },
+          "accepted": null,
+          "probabilities": null,
+          "top1": null,
+          "top2": null,
+          "margin": null,
+          "entropy_nats": null
+        },
+        "pre_gate": null,
+        "final": "c03",
+        "pre_gate_correct": null,
+        "correct": true,
+        "brier": null,
+        "native_calls": null,
+        "admission_rule": "valid_categorical_answer_no_probability_gate"
+      },
+      "routed": {
+        "stage1": {
+          "wire_order": [
+            "South Pier archive",
+            "East Cove archive",
+            "North Pier archive",
+            "North Pier billing",
+            "INSUFFICIENT"
+          ],
+          "wire_sha256": "eee0fa42e6c34c37e765ead3f1852c8fcbd15ae8a908a99313d51eca028371c9",
+          "wire_bytes": 3007,
+          "model_payload_ordered_hash": "c95ce4c3fb02e91bdf9ec60d5c71745c7482e3bd1615b0d9fac5943df2b6466a",
+          "hosted_request_form": "ordered_choices_list",
+          "choice": "North Pier archive",
+          "usage": {
+            "prompt_tokens": 542,
+            "completion_tokens": 14,
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost_usd": 6.12e-05
+          },
+          "accepted": null,
+          "probabilities": null,
+          "top1": null,
+          "top2": null,
+          "margin": null,
+          "entropy_nats": null
+        },
+        "stage2": {
+          "wire_order": [
+            "c03",
+            "c01",
+            "c02",
+            "c04",
+            "c05",
+            "INSUFFICIENT"
+          ],
+          "wire_sha256": "a811aa99ec32c090673807e9d6eccc783703bdf57b45becc48b63b6f45b724b1",
+          "wire_bytes": 3022,
+          "model_payload_ordered_hash": "01067992d04317c002c3ab882b7f3a9018eb2a21331739739eeb1b8fb3dae13d",
+          "hosted_request_form": "ordered_choices_list",
+          "choice": "c03",
+          "usage": {
+            "prompt_tokens": 566,
+            "completion_tokens": 13,
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost_usd": 6.31e-05
+          },
+          "accepted": null,
+          "probabilities": null,
+          "top1": null,
+          "top2": null,
+          "margin": null,
+          "entropy_nats": null
+        },
+        "selected_region": "North Pier archive",
+        "pre_gate": null,
+        "final": "c03",
+        "pre_gate_correct": null,
+        "correct": true,
+        "native_calls": null,
+        "admission_rule": "valid_categorical_answer_no_probability_gate",
+        "stage1_brier": null,
+        "stage2_brier": null,
+        "selected_path_confidence": null,
+        "confidence_category": "categorical_no_confidence",
+        "full_20_way_top2_margin": null
+      },
+      "baseline": {
+        "final": "INSUFFICIENT",
+        "correct": false
+      }
+    },
+    {
+      "case": "near_name",
+      "permutation": "identity",
+      "goal": "Open the North Pier invoice in active billing records, not the archived copy.",
+      "expected": "c08",
+      "correct_flat_position": 7,
+      "correct_region_position": 1,
+      "correct_region_control_position": 2,
+      "correct_stage2_wire_position": 2,
+      "evidence": {
+        "goal": "Open the North Pier invoice in active billing records, not the archived copy.",
+        "page": "Archive and billing directory",
+        "regions": [
+          {
+            "name": "North Pier archive",
+            "description": "Northern pier preserved collection."
+          },
+          {
+            "name": "North Pier billing",
+            "description": "Northern pier active billing."
+          },
+          {
+            "name": "South Pier archive",
+            "description": "Southern pier preserved collection."
+          },
+          {
+            "name": "East Cove archive",
+            "description": "Eastern cove preserved collection."
+          }
+        ],
+        "controls": [
+          "c01: Open details | North Pier archive / Collection overview",
+          "c02: Open details | North Pier archive / North Pier Details",
+          "c03: Open details | North Pier archive / Visitor arrivals log",
+          "c04: Open details | North Pier archive / North Pier invoice (archived copy)",
+          "c05: Open details | North Pier archive / Annual report",
+          "c06: Open details | North Pier billing / Account overview",
+          "c07: Open details | North Pier billing / Payment history",
+          "c08: Open details | North Pier billing / North Pier invoice",
+          "c09: Open details | North Pier billing / Annual report",
+          "c10: Open details | North Pier billing / Credit note",
+          "c11: Open details | South Pier archive / Collection overview",
+          "c12: Open details | South Pier archive / South Pier Details",
+          "c13: Open details | South Pier archive / Visitor arrivals log",
+          "c14: Open details | South Pier archive / Invoice copy",
+          "c15: Open details | South Pier archive / Annual report",
+          "c16: Open details | East Cove archive / Collection overview",
+          "c17: Open details | East Cove archive / East Cove Details",
+          "c18: Open details | East Cove archive / Visitor arrivals log",
+          "c19: Open details | East Cove archive / Invoice copy",
+          "c20: Open details | East Cove archive / Annual report"
+        ]
+      },
+      "evidence_sha256": "f6b054f4406cc06744945770c8761fbcbcb5b341942f4b45bfc1fd0fd59f012f",
+      "region_order": [
+        "North Pier archive",
+        "North Pier billing",
+        "South Pier archive",
+        "East Cove archive"
+      ],
+      "flat_order": [
+        "c01",
+        "c02",
+        "c03",
+        "c04",
+        "c05",
+        "c06",
+        "c07",
+        "c08",
+        "c09",
+        "c10",
+        "c11",
+        "c12",
+        "c13",
+        "c14",
+        "c15",
+        "c16",
+        "c17",
+        "c18",
+        "c19",
+        "c20"
+      ],
+      "flat": {
+        "answer": {
+          "wire_order": [
+            "c01",
+            "c02",
+            "c03",
+            "c04",
+            "c05",
+            "c06",
+            "c07",
+            "c08",
+            "c09",
+            "c10",
+            "c11",
+            "c12",
+            "c13",
+            "c14",
+            "c15",
+            "c16",
+            "c17",
+            "c18",
+            "c19",
+            "c20",
+            "INSUFFICIENT"
+          ],
+          "wire_sha256": "beff42f762be3fd6ed2d5de676c896e91afa1d44ffff38588621732d13aa5d61",
+          "wire_bytes": 4599,
+          "model_payload_ordered_hash": "4ed05a422c4a721c5425ee0b98f6149c66f7d937db4fd78086ddfadfaab67c94",
+          "hosted_request_form": "ordered_choices_list",
+          "choice": "c08",
+          "usage": {
+            "prompt_tokens": 872,
+            "completion_tokens": 39,
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost_usd": 0.0001067
+          },
+          "accepted": null,
+          "probabilities": null,
+          "top1": null,
+          "top2": null,
+          "margin": null,
+          "entropy_nats": null
+        },
+        "pre_gate": null,
+        "final": "c08",
+        "pre_gate_correct": null,
+        "correct": true,
+        "brier": null,
+        "native_calls": null,
+        "admission_rule": "valid_categorical_answer_no_probability_gate"
+      },
+      "routed": {
+        "stage1": {
+          "wire_order": [
+            "North Pier archive",
+            "North Pier billing",
+            "South Pier archive",
+            "East Cove archive",
+            "INSUFFICIENT"
+          ],
+          "wire_sha256": "0d1382e1ccb48dc043eb3bb78ea53ffc914e73304a0bfafa3ee76f9113a0a699",
+          "wire_bytes": 3003,
+          "model_payload_ordered_hash": "b4fa31bf3c29d68c6eb1389fd400be23ba304f2cf6fbf9177b30f8b3ce643901",
+          "hosted_request_form": "ordered_choices_list",
+          "choice": "North Pier billing",
+          "usage": {
+            "prompt_tokens": 543,
+            "completion_tokens": 14,
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost_usd": 6.13e-05
+          },
+          "accepted": null,
+          "probabilities": null,
+          "top1": null,
+          "top2": null,
+          "margin": null,
+          "entropy_nats": null
+        },
+        "stage2": {
+          "wire_order": [
+            "c06",
+            "c07",
+            "c08",
+            "c09",
+            "c10",
+            "INSUFFICIENT"
+          ],
+          "wire_sha256": "63678914ce092f2b2e2d794bb84ed7f33f8d8b42484e6112b4493b6ca3943aaa",
+          "wire_bytes": 2987,
+          "model_payload_ordered_hash": "a8eaf5deb334ec85ce56645a2462c63491f53a6a5f85d943f60d0208734fa30a",
+          "hosted_request_form": "ordered_choices_list",
+          "choice": "c08",
+          "usage": {
+            "prompt_tokens": 560,
+            "completion_tokens": 28,
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost_usd": 7e-05
+          },
+          "accepted": null,
+          "probabilities": null,
+          "top1": null,
+          "top2": null,
+          "margin": null,
+          "entropy_nats": null
+        },
+        "selected_region": "North Pier billing",
+        "pre_gate": null,
+        "final": "c08",
+        "pre_gate_correct": null,
+        "correct": true,
+        "native_calls": null,
+        "admission_rule": "valid_categorical_answer_no_probability_gate",
+        "stage1_brier": null,
+        "stage2_brier": null,
+        "selected_path_confidence": null,
+        "confidence_category": "categorical_no_confidence",
+        "full_20_way_top2_margin": null
+      },
+      "baseline": {
+        "final": "INSUFFICIENT",
+        "correct": false
+      }
+    },
+    {
+      "case": "near_name",
+      "permutation": "reverse",
+      "goal": "Open the North Pier invoice in active billing records, not the archived copy.",
+      "expected": "c08",
+      "correct_flat_position": 12,
+      "correct_region_position": 2,
+      "correct_region_control_position": 2,
+      "correct_stage2_wire_position": 2,
+      "evidence": {
+        "goal": "Open the North Pier invoice in active billing records, not the archived copy.",
+        "page": "Archive and billing directory",
+        "regions": [
+          {
+            "name": "East Cove archive",
+            "description": "Eastern cove preserved collection."
+          },
+          {
+            "name": "South Pier archive",
+            "description": "Southern pier preserved collection."
+          },
+          {
+            "name": "North Pier billing",
+            "description": "Northern pier active billing."
+          },
+          {
+            "name": "North Pier archive",
+            "description": "Northern pier preserved collection."
+          }
+        ],
+        "controls": [
+          "c20: Open details | East Cove archive / Annual report",
+          "c19: Open details | East Cove archive / Invoice copy",
+          "c18: Open details | East Cove archive / Visitor arrivals log",
+          "c17: Open details | East Cove archive / East Cove Details",
+          "c16: Open details | East Cove archive / Collection overview",
+          "c15: Open details | South Pier archive / Annual report",
+          "c14: Open details | South Pier archive / Invoice copy",
+          "c13: Open details | South Pier archive / Visitor arrivals log",
+          "c12: Open details | South Pier archive / South Pier Details",
+          "c11: Open details | South Pier archive / Collection overview",
+          "c10: Open details | North Pier billing / Credit note",
+          "c09: Open details | North Pier billing / Annual report",
+          "c08: Open details | North Pier billing / North Pier invoice",
+          "c07: Open details | North Pier billing / Payment history",
+          "c06: Open details | North Pier billing / Account overview",
+          "c05: Open details | North Pier archive / Annual report",
+          "c04: Open details | North Pier archive / North Pier invoice (archived copy)",
+          "c03: Open details | North Pier archive / Visitor arrivals log",
+          "c02: Open details | North Pier archive / North Pier Details",
+          "c01: Open details | North Pier archive / Collection overview"
+        ]
+      },
+      "evidence_sha256": "eae50e4dbc9de29b4b00255b6ef5256fc124d2cdf993f5b1d091eb5474f81fc6",
+      "region_order": [
+        "East Cove archive",
+        "South Pier archive",
+        "North Pier billing",
+        "North Pier archive"
+      ],
+      "flat_order": [
+        "c20",
+        "c19",
+        "c18",
+        "c17",
+        "c16",
+        "c15",
+        "c14",
+        "c13",
+        "c12",
+        "c11",
+        "c10",
+        "c09",
+        "c08",
+        "c07",
+        "c06",
+        "c05",
+        "c04",
+        "c03",
+        "c02",
+        "c01"
+      ],
+      "flat": {
+        "answer": {
+          "wire_order": [
+            "c20",
+            "c19",
+            "c18",
+            "c17",
+            "c16",
+            "c15",
+            "c14",
+            "c13",
+            "c12",
+            "c11",
+            "c10",
+            "c09",
+            "c08",
+            "c07",
+            "c06",
+            "c05",
+            "c04",
+            "c03",
+            "c02",
+            "c01",
+            "INSUFFICIENT"
+          ],
+          "wire_sha256": "4522ecddf36fa367e23892c80939600b177334cbd61fe9e4dc4f93207badc4c5",
+          "wire_bytes": 4599,
+          "model_payload_ordered_hash": "ff6a8c913241795976655bcbcd59be6bb912671736c9abefd961d3cb6a7bccb4",
+          "hosted_request_form": "ordered_choices_list",
+          "choice": "c08",
+          "usage": {
+            "prompt_tokens": 872,
+            "completion_tokens": 13,
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost_usd": 9.37e-05
+          },
+          "accepted": null,
+          "probabilities": null,
+          "top1": null,
+          "top2": null,
+          "margin": null,
+          "entropy_nats": null
+        },
+        "pre_gate": null,
+        "final": "c08",
+        "pre_gate_correct": null,
+        "correct": true,
+        "brier": null,
+        "native_calls": null,
+        "admission_rule": "valid_categorical_answer_no_probability_gate"
+      },
+      "routed": {
+        "stage1": {
+          "wire_order": [
+            "East Cove archive",
+            "South Pier archive",
+            "North Pier billing",
+            "North Pier archive",
+            "INSUFFICIENT"
+          ],
+          "wire_sha256": "ea897fd0d99af96c9ecdadb4da0521e65b2c475180a48a698690c9625484c23d",
+          "wire_bytes": 3003,
+          "model_payload_ordered_hash": "b3909343bf60a438b505e404424fe2fe2e2a0d1c221b2098909682473afda11a",
+          "hosted_request_form": "ordered_choices_list",
+          "choice": "North Pier billing",
+          "usage": {
+            "prompt_tokens": 543,
+            "completion_tokens": 14,
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost_usd": 6.13e-05
+          },
+          "accepted": null,
+          "probabilities": null,
+          "top1": null,
+          "top2": null,
+          "margin": null,
+          "entropy_nats": null
+        },
+        "stage2": {
+          "wire_order": [
+            "c10",
+            "c09",
+            "c08",
+            "c07",
+            "c06",
+            "INSUFFICIENT"
+          ],
+          "wire_sha256": "b9eb800511de69da6d72f9beeb0057124b9fe024849c9cbeb4944f10cf2c1dd0",
+          "wire_bytes": 2987,
+          "model_payload_ordered_hash": "da30effee386e4ffa538fc0d84179f8853fbeaf0373208e7da6a48643303938e",
+          "hosted_request_form": "ordered_choices_list",
+          "choice": "c08",
+          "usage": {
+            "prompt_tokens": 560,
+            "completion_tokens": 13,
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost_usd": 6.25e-05
+          },
+          "accepted": null,
+          "probabilities": null,
+          "top1": null,
+          "top2": null,
+          "margin": null,
+          "entropy_nats": null
+        },
+        "selected_region": "North Pier billing",
+        "pre_gate": null,
+        "final": "c08",
+        "pre_gate_correct": null,
+        "correct": true,
+        "native_calls": null,
+        "admission_rule": "valid_categorical_answer_no_probability_gate",
+        "stage1_brier": null,
+        "stage2_brier": null,
+        "selected_path_confidence": null,
+        "confidence_category": "categorical_no_confidence",
+        "full_20_way_top2_margin": null
+      },
+      "baseline": {
+        "final": "INSUFFICIENT",
+        "correct": false
+      }
+    },
+    {
+      "case": "near_name",
+      "permutation": "seeded_29",
+      "goal": "Open the North Pier invoice in active billing records, not the archived copy.",
+      "expected": "c08",
+      "correct_flat_position": 10,
+      "correct_region_position": 3,
+      "correct_region_control_position": 1,
+      "correct_stage2_wire_position": 1,
+      "evidence": {
+        "goal": "Open the North Pier invoice in active billing records, not the archived copy.",
+        "page": "Archive and billing directory",
+        "regions": [
+          {
+            "name": "South Pier archive",
+            "description": "Southern pier preserved collection."
+          },
+          {
+            "name": "East Cove archive",
+            "description": "Eastern cove preserved collection."
+          },
+          {
+            "name": "North Pier archive",
+            "description": "Northern pier preserved collection."
+          },
+          {
+            "name": "North Pier billing",
+            "description": "Northern pier active billing."
+          }
+        ],
+        "controls": [
+          "c11: Open details | South Pier archive / Collection overview",
+          "c19: Open details | East Cove archive / Invoice copy",
+          "c20: Open details | East Cove archive / Annual report",
+          "c14: Open details | South Pier archive / Invoice copy",
+          "c12: Open details | South Pier archive / South Pier Details",
+          "c16: Open details | East Cove archive / Collection overview",
+          "c03: Open details | North Pier archive / Visitor arrivals log",
+          "c01: Open details | North Pier archive / Collection overview",
+          "c09: Open details | North Pier billing / Annual report",
+          "c02: Open details | North Pier archive / North Pier Details",
+          "c08: Open details | North Pier billing / North Pier invoice",
+          "c06: Open details | North Pier billing / Account overview",
+          "c18: Open details | East Cove archive / Visitor arrivals log",
+          "c04: Open details | North Pier archive / North Pier invoice (archived copy)",
+          "c07: Open details | North Pier billing / Payment history",
+          "c05: Open details | North Pier archive / Annual report",
+          "c15: Open details | South Pier archive / Annual report",
+          "c10: Open details | North Pier billing / Credit note",
+          "c17: Open details | East Cove archive / East Cove Details",
+          "c13: Open details | South Pier archive / Visitor arrivals log"
+        ]
+      },
+      "evidence_sha256": "780465e26109cbe682070d9889233fc04013de72844ea897b035e71ed210a536",
+      "region_order": [
+        "South Pier archive",
+        "East Cove archive",
+        "North Pier archive",
+        "North Pier billing"
+      ],
+      "flat_order": [
+        "c11",
+        "c19",
+        "c20",
+        "c14",
+        "c12",
+        "c16",
+        "c03",
+        "c01",
+        "c09",
+        "c02",
+        "c08",
+        "c06",
+        "c18",
+        "c04",
+        "c07",
+        "c05",
+        "c15",
+        "c10",
+        "c17",
+        "c13"
+      ],
+      "flat": {
+        "answer": {
+          "wire_order": [
+            "c11",
+            "c19",
+            "c20",
+            "c14",
+            "c12",
+            "c16",
+            "c03",
+            "c01",
+            "c09",
+            "c02",
+            "c08",
+            "c06",
+            "c18",
+            "c04",
+            "c07",
+            "c05",
+            "c15",
+            "c10",
+            "c17",
+            "c13",
+            "INSUFFICIENT"
+          ],
+          "wire_sha256": "bab5055ee6bb3ef8b8835eab16ea6afe50d0329613caa6c9db68a712845ce658",
+          "wire_bytes": 4599,
+          "model_payload_ordered_hash": "158224edde072012d40505744d73edf1a49341c5f0af8ef60ca9a479079105b7",
+          "hosted_request_form": "ordered_choices_list",
+          "choice": "c08",
+          "usage": {
+            "prompt_tokens": 872,
+            "completion_tokens": 13,
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost_usd": 9.37e-05
+          },
+          "accepted": null,
+          "probabilities": null,
+          "top1": null,
+          "top2": null,
+          "margin": null,
+          "entropy_nats": null
+        },
+        "pre_gate": null,
+        "final": "c08",
+        "pre_gate_correct": null,
+        "correct": true,
+        "brier": null,
+        "native_calls": null,
+        "admission_rule": "valid_categorical_answer_no_probability_gate"
+      },
+      "routed": {
+        "stage1": {
+          "wire_order": [
+            "South Pier archive",
+            "East Cove archive",
+            "North Pier archive",
+            "North Pier billing",
+            "INSUFFICIENT"
+          ],
+          "wire_sha256": "0d6a91d2de1d88db0be2d2557cdf9e27ec9e0f0c4581cc4b12974cb49f28c1bb",
+          "wire_bytes": 3003,
+          "model_payload_ordered_hash": "412c8f255d709177897b59720ed3719fd5fe9ad06d1abf01717ac5974a48df91",
+          "hosted_request_form": "ordered_choices_list",
+          "choice": "North Pier billing",
+          "usage": {
+            "prompt_tokens": 543,
+            "completion_tokens": 14,
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost_usd": 6.13e-05
+          },
+          "accepted": null,
+          "probabilities": null,
+          "top1": null,
+          "top2": null,
+          "margin": null,
+          "entropy_nats": null
+        },
+        "stage2": {
+          "wire_order": [
+            "c09",
+            "c08",
+            "c06",
+            "c07",
+            "c10",
+            "INSUFFICIENT"
+          ],
+          "wire_sha256": "5141eec0786a05f7ed844ef76d61a9e08d749dcb0797e36cb3272312abce0177",
+          "wire_bytes": 2987,
+          "model_payload_ordered_hash": "5270a48500eb20a36fd0f54bf6ec0a1805c0ec64a8a4c77ad415d3cdeaaea998",
+          "hosted_request_form": "ordered_choices_list",
+          "choice": "c08",
+          "usage": {
+            "prompt_tokens": 560,
+            "completion_tokens": 13,
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost_usd": 6.25e-05
+          },
+          "accepted": null,
+          "probabilities": null,
+          "top1": null,
+          "top2": null,
+          "margin": null,
+          "entropy_nats": null
+        },
+        "selected_region": "North Pier billing",
+        "pre_gate": null,
+        "final": "c08",
+        "pre_gate_correct": null,
+        "correct": true,
+        "native_calls": null,
+        "admission_rule": "valid_categorical_answer_no_probability_gate",
+        "stage1_brier": null,
+        "stage2_brier": null,
+        "selected_path_confidence": null,
+        "confidence_category": "categorical_no_confidence",
+        "full_20_way_top2_margin": null
+      },
+      "baseline": {
+        "final": "INSUFFICIENT",
+        "correct": false
+      }
+    },
+    {
+      "case": "insufficient",
+      "permutation": "identity",
+      "goal": "Open the North Pier annual report; no archive or billing section was specified.",
+      "expected": "INSUFFICIENT",
+      "correct_flat_position": 20,
+      "correct_region_position": 4,
+      "correct_region_control_position": null,
+      "correct_stage2_wire_position": null,
+      "evidence": {
+        "goal": "Open the North Pier annual report; no archive or billing section was specified.",
+        "page": "Archive and billing directory",
+        "regions": [
+          {
+            "name": "North Pier archive",
+            "description": "Northern pier preserved collection."
+          },
+          {
+            "name": "North Pier billing",
+            "description": "Northern pier active billing."
+          },
+          {
+            "name": "South Pier archive",
+            "description": "Southern pier preserved collection."
+          },
+          {
+            "name": "East Cove archive",
+            "description": "Eastern cove preserved collection."
+          }
+        ],
+        "controls": [
+          "c01: Open details | North Pier archive / Collection overview",
+          "c02: Open details | North Pier archive / North Pier Details",
+          "c03: Open details | North Pier archive / Visitor arrivals log",
+          "c04: Open details | North Pier archive / North Pier invoice (archived copy)",
+          "c05: Open details | North Pier archive / Annual report",
+          "c06: Open details | North Pier billing / Account overview",
+          "c07: Open details | North Pier billing / Payment history",
+          "c08: Open details | North Pier billing / North Pier invoice",
+          "c09: Open details | North Pier billing / Annual report",
+          "c10: Open details | North Pier billing / Credit note",
+          "c11: Open details | South Pier archive / Collection overview",
+          "c12: Open details | South Pier archive / South Pier Details",
+          "c13: Open details | South Pier archive / Visitor arrivals log",
+          "c14: Open details | South Pier archive / Invoice copy",
+          "c15: Open details | South Pier archive / Annual report",
+          "c16: Open details | East Cove archive / Collection overview",
+          "c17: Open details | East Cove archive / East Cove Details",
+          "c18: Open details | East Cove archive / Visitor arrivals log",
+          "c19: Open details | East Cove archive / Invoice copy",
+          "c20: Open details | East Cove archive / Annual report"
+        ]
+      },
+      "evidence_sha256": "5ae608cb4f8e9c6eba565e9517ea0787c81c5a2a373670d5cfe1da19570394c9",
+      "region_order": [
+        "North Pier archive",
+        "North Pier billing",
+        "South Pier archive",
+        "East Cove archive"
+      ],
+      "flat_order": [
+        "c01",
+        "c02",
+        "c03",
+        "c04",
+        "c05",
+        "c06",
+        "c07",
+        "c08",
+        "c09",
+        "c10",
+        "c11",
+        "c12",
+        "c13",
+        "c14",
+        "c15",
+        "c16",
+        "c17",
+        "c18",
+        "c19",
+        "c20"
+      ],
+      "flat": {
+        "answer": {
+          "wire_order": [
+            "c01",
+            "c02",
+            "c03",
+            "c04",
+            "c05",
+            "c06",
+            "c07",
+            "c08",
+            "c09",
+            "c10",
+            "c11",
+            "c12",
+            "c13",
+            "c14",
+            "c15",
+            "c16",
+            "c17",
+            "c18",
+            "c19",
+            "c20",
+            "INSUFFICIENT"
+          ],
+          "wire_sha256": "0b83d19e374d3afcd0c6fb76670181c5633a66e4b71f0b73bc375c1197ae9151",
+          "wire_bytes": 4601,
+          "model_payload_ordered_hash": "294c4dc46eb9bb49a09134be4df0f50263fc407392f15d8c5ae0741ed9067263",
+          "hosted_request_form": "ordered_choices_list",
+          "choice": "INSUFFICIENT",
+          "usage": {
+            "prompt_tokens": 872,
+            "completion_tokens": 45,
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost_usd": 0.0001097
+          },
+          "accepted": null,
+          "probabilities": null,
+          "top1": null,
+          "top2": null,
+          "margin": null,
+          "entropy_nats": null
+        },
+        "pre_gate": null,
+        "final": "INSUFFICIENT",
+        "pre_gate_correct": null,
+        "correct": true,
+        "brier": null,
+        "native_calls": null,
+        "admission_rule": "valid_categorical_answer_no_probability_gate"
+      },
+      "routed": {
+        "stage1": {
+          "wire_order": [
+            "North Pier archive",
+            "North Pier billing",
+            "South Pier archive",
+            "East Cove archive",
+            "INSUFFICIENT"
+          ],
+          "wire_sha256": "2d91d2519270c6812ee245541e33be4b33a8422e4507580c3be4e76002b39689",
+          "wire_bytes": 3005,
+          "model_payload_ordered_hash": "3453695a579f8b061b75e287e652d366d72af8c0ff6c5a90bdb8f0dae7a32bca",
+          "hosted_request_form": "ordered_choices_list",
+          "choice": "INSUFFICIENT",
+          "usage": {
+            "prompt_tokens": 543,
+            "completion_tokens": 60,
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost_usd": 8.43e-05
+          },
+          "accepted": null,
+          "probabilities": null,
+          "top1": null,
+          "top2": null,
+          "margin": null,
+          "entropy_nats": null
+        },
+        "stage2": null,
+        "selected_region": "INSUFFICIENT",
+        "pre_gate": null,
+        "final": "INSUFFICIENT",
+        "pre_gate_correct": null,
+        "correct": true,
+        "native_calls": null,
+        "admission_rule": "valid_categorical_answer_no_probability_gate",
+        "stage1_brier": null,
+        "stage2_brier": null,
+        "selected_path_confidence": null,
+        "confidence_category": "categorical_no_confidence",
+        "full_20_way_top2_margin": null
+      },
+      "baseline": {
+        "final": "INSUFFICIENT",
+        "correct": true
+      }
+    },
+    {
+      "case": "insufficient",
+      "permutation": "reverse",
+      "goal": "Open the North Pier annual report; no archive or billing section was specified.",
+      "expected": "INSUFFICIENT",
+      "correct_flat_position": 20,
+      "correct_region_position": 4,
+      "correct_region_control_position": null,
+      "correct_stage2_wire_position": null,
+      "evidence": {
+        "goal": "Open the North Pier annual report; no archive or billing section was specified.",
+        "page": "Archive and billing directory",
+        "regions": [
+          {
+            "name": "East Cove archive",
+            "description": "Eastern cove preserved collection."
+          },
+          {
+            "name": "South Pier archive",
+            "description": "Southern pier preserved collection."
+          },
+          {
+            "name": "North Pier billing",
+            "description": "Northern pier active billing."
+          },
+          {
+            "name": "North Pier archive",
+            "description": "Northern pier preserved collection."
+          }
+        ],
+        "controls": [
+          "c20: Open details | East Cove archive / Annual report",
+          "c19: Open details | East Cove archive / Invoice copy",
+          "c18: Open details | East Cove archive / Visitor arrivals log",
+          "c17: Open details | East Cove archive / East Cove Details",
+          "c16: Open details | East Cove archive / Collection overview",
+          "c15: Open details | South Pier archive / Annual report",
+          "c14: Open details | South Pier archive / Invoice copy",
+          "c13: Open details | South Pier archive / Visitor arrivals log",
+          "c12: Open details | South Pier archive / South Pier Details",
+          "c11: Open details | South Pier archive / Collection overview",
+          "c10: Open details | North Pier billing / Credit note",
+          "c09: Open details | North Pier billing / Annual report",
+          "c08: Open details | North Pier billing / North Pier invoice",
+          "c07: Open details | North Pier billing / Payment history",
+          "c06: Open details | North Pier billing / Account overview",
+          "c05: Open details | North Pier archive / Annual report",
+          "c04: Open details | North Pier archive / North Pier invoice (archived copy)",
+          "c03: Open details | North Pier archive / Visitor arrivals log",
+          "c02: Open details | North Pier archive / North Pier Details",
+          "c01: Open details | North Pier archive / Collection overview"
+        ]
+      },
+      "evidence_sha256": "c92ff3d8ba3e8f9c7ab9bcb35a27e37f526cc438c2716e17fd8c70627d202043",
+      "region_order": [
+        "East Cove archive",
+        "South Pier archive",
+        "North Pier billing",
+        "North Pier archive"
+      ],
+      "flat_order": [
+        "c20",
+        "c19",
+        "c18",
+        "c17",
+        "c16",
+        "c15",
+        "c14",
+        "c13",
+        "c12",
+        "c11",
+        "c10",
+        "c09",
+        "c08",
+        "c07",
+        "c06",
+        "c05",
+        "c04",
+        "c03",
+        "c02",
+        "c01"
+      ],
+      "flat": {
+        "answer": {
+          "wire_order": [
+            "c20",
+            "c19",
+            "c18",
+            "c17",
+            "c16",
+            "c15",
+            "c14",
+            "c13",
+            "c12",
+            "c11",
+            "c10",
+            "c09",
+            "c08",
+            "c07",
+            "c06",
+            "c05",
+            "c04",
+            "c03",
+            "c02",
+            "c01",
+            "INSUFFICIENT"
+          ],
+          "wire_sha256": "bd56970cb109b7210da92e472b1d45a63aab09a0128333c0ba2c8a2af1d1ccdf",
+          "wire_bytes": 4601,
+          "model_payload_ordered_hash": "6049b473cf294f59fe236ed0bbe8da611686d275c27521a805874035961c42ff",
+          "hosted_request_form": "ordered_choices_list",
+          "choice": "INSUFFICIENT",
+          "usage": {
+            "prompt_tokens": 872,
+            "completion_tokens": 55,
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost_usd": 0.0001147
+          },
+          "accepted": null,
+          "probabilities": null,
+          "top1": null,
+          "top2": null,
+          "margin": null,
+          "entropy_nats": null
+        },
+        "pre_gate": null,
+        "final": "INSUFFICIENT",
+        "pre_gate_correct": null,
+        "correct": true,
+        "brier": null,
+        "native_calls": null,
+        "admission_rule": "valid_categorical_answer_no_probability_gate"
+      },
+      "routed": {
+        "stage1": {
+          "wire_order": [
+            "East Cove archive",
+            "South Pier archive",
+            "North Pier billing",
+            "North Pier archive",
+            "INSUFFICIENT"
+          ],
+          "wire_sha256": "94e7e89cb103806835aa5dcb30b4161b9c9619459757dfadc8525901d25942be",
+          "wire_bytes": 3005,
+          "model_payload_ordered_hash": "bc4629b6a8abaccf10996963f80113b66eb1a628e425de46ea59e514c9fcdb2f",
+          "hosted_request_form": "ordered_choices_list",
+          "choice": "INSUFFICIENT",
+          "usage": {
+            "prompt_tokens": 543,
+            "completion_tokens": 84,
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost_usd": 9.63e-05
+          },
+          "accepted": null,
+          "probabilities": null,
+          "top1": null,
+          "top2": null,
+          "margin": null,
+          "entropy_nats": null
+        },
+        "stage2": null,
+        "selected_region": "INSUFFICIENT",
+        "pre_gate": null,
+        "final": "INSUFFICIENT",
+        "pre_gate_correct": null,
+        "correct": true,
+        "native_calls": null,
+        "admission_rule": "valid_categorical_answer_no_probability_gate",
+        "stage1_brier": null,
+        "stage2_brier": null,
+        "selected_path_confidence": null,
+        "confidence_category": "categorical_no_confidence",
+        "full_20_way_top2_margin": null
+      },
+      "baseline": {
+        "final": "INSUFFICIENT",
+        "correct": true
+      }
+    },
+    {
+      "case": "insufficient",
+      "permutation": "seeded_29",
+      "goal": "Open the North Pier annual report; no archive or billing section was specified.",
+      "expected": "INSUFFICIENT",
+      "correct_flat_position": 20,
+      "correct_region_position": 4,
+      "correct_region_control_position": null,
+      "correct_stage2_wire_position": null,
+      "evidence": {
+        "goal": "Open the North Pier annual report; no archive or billing section was specified.",
+        "page": "Archive and billing directory",
+        "regions": [
+          {
+            "name": "South Pier archive",
+            "description": "Southern pier preserved collection."
+          },
+          {
+            "name": "East Cove archive",
+            "description": "Eastern cove preserved collection."
+          },
+          {
+            "name": "North Pier archive",
+            "description": "Northern pier preserved collection."
+          },
+          {
+            "name": "North Pier billing",
+            "description": "Northern pier active billing."
+          }
+        ],
+        "controls": [
+          "c11: Open details | South Pier archive / Collection overview",
+          "c19: Open details | East Cove archive / Invoice copy",
+          "c20: Open details | East Cove archive / Annual report",
+          "c14: Open details | South Pier archive / Invoice copy",
+          "c12: Open details | South Pier archive / South Pier Details",
+          "c16: Open details | East Cove archive / Collection overview",
+          "c03: Open details | North Pier archive / Visitor arrivals log",
+          "c01: Open details | North Pier archive / Collection overview",
+          "c09: Open details | North Pier billing / Annual report",
+          "c02: Open details | North Pier archive / North Pier Details",
+          "c08: Open details | North Pier billing / North Pier invoice",
+          "c06: Open details | North Pier billing / Account overview",
+          "c18: Open details | East Cove archive / Visitor arrivals log",
+          "c04: Open details | North Pier archive / North Pier invoice (archived copy)",
+          "c07: Open details | North Pier billing / Payment history",
+          "c05: Open details | North Pier archive / Annual report",
+          "c15: Open details | South Pier archive / Annual report",
+          "c10: Open details | North Pier billing / Credit note",
+          "c17: Open details | East Cove archive / East Cove Details",
+          "c13: Open details | South Pier archive / Visitor arrivals log"
+        ]
+      },
+      "evidence_sha256": "21a7aa0a876ec5273dc455ad93b1d515fb81ee8a2e8cf8d9e92a2156379915f3",
+      "region_order": [
+        "South Pier archive",
+        "East Cove archive",
+        "North Pier archive",
+        "North Pier billing"
+      ],
+      "flat_order": [
+        "c11",
+        "c19",
+        "c20",
+        "c14",
+        "c12",
+        "c16",
+        "c03",
+        "c01",
+        "c09",
+        "c02",
+        "c08",
+        "c06",
+        "c18",
+        "c04",
+        "c07",
+        "c05",
+        "c15",
+        "c10",
+        "c17",
+        "c13"
+      ],
+      "flat": {
+        "answer": {
+          "wire_order": [
+            "c11",
+            "c19",
+            "c20",
+            "c14",
+            "c12",
+            "c16",
+            "c03",
+            "c01",
+            "c09",
+            "c02",
+            "c08",
+            "c06",
+            "c18",
+            "c04",
+            "c07",
+            "c05",
+            "c15",
+            "c10",
+            "c17",
+            "c13",
+            "INSUFFICIENT"
+          ],
+          "wire_sha256": "7cace3c283a93d9106f14b1c2e153d51d349efae1e46389ddd2823ce0d351d54",
+          "wire_bytes": 4601,
+          "model_payload_ordered_hash": "053a0bffd32fc9b3139d08816a9bc791215121e40bc63790360eced0630ce667",
+          "hosted_request_form": "ordered_choices_list",
+          "choice": "INSUFFICIENT",
+          "usage": {
+            "prompt_tokens": 872,
+            "completion_tokens": 15,
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost_usd": 9.47e-05
+          },
+          "accepted": null,
+          "probabilities": null,
+          "top1": null,
+          "top2": null,
+          "margin": null,
+          "entropy_nats": null
+        },
+        "pre_gate": null,
+        "final": "INSUFFICIENT",
+        "pre_gate_correct": null,
+        "correct": true,
+        "brier": null,
+        "native_calls": null,
+        "admission_rule": "valid_categorical_answer_no_probability_gate"
+      },
+      "routed": {
+        "stage1": {
+          "wire_order": [
+            "South Pier archive",
+            "East Cove archive",
+            "North Pier archive",
+            "North Pier billing",
+            "INSUFFICIENT"
+          ],
+          "wire_sha256": "91374aafc111e7805c8d3a5d98cdb6e90417ed314ba507e282056732eb9ec7d5",
+          "wire_bytes": 3005,
+          "model_payload_ordered_hash": "1130799ed7c850f92257b74f061eb738cbaf45854a0cdee659bae18aba567f3f",
+          "hosted_request_form": "ordered_choices_list",
+          "choice": "INSUFFICIENT",
+          "usage": {
+            "prompt_tokens": 543,
+            "completion_tokens": 56,
+            "cached_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost_usd": 8.23e-05
+          },
+          "accepted": null,
+          "probabilities": null,
+          "top1": null,
+          "top2": null,
+          "margin": null,
+          "entropy_nats": null
+        },
+        "stage2": null,
+        "selected_region": "INSUFFICIENT",
+        "pre_gate": null,
+        "final": "INSUFFICIENT",
+        "pre_gate_correct": null,
+        "correct": true,
+        "native_calls": null,
+        "admission_rule": "valid_categorical_answer_no_probability_gate",
+        "stage1_brier": null,
+        "stage2_brier": null,
+        "selected_path_confidence": null,
+        "confidence_category": "categorical_no_confidence",
+        "full_20_way_top2_margin": null
+      },
+      "baseline": {
+        "final": "INSUFFICIENT",
+        "correct": true
+      }
+    }
+  ],
+  "native_calls": null,
+  "hosted_calls": 33,
+  "max_hosted_calls": 36,
+  "usage": {
+    "known_cost_usd": 0.0026433,
+    "cost_complete": true,
+    "prompt_tokens": 22008,
+    "completion_tokens": 885,
+    "usage_complete": true
+  },
+  "stopped_on_error": false
+}

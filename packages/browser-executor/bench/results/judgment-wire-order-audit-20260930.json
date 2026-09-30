@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "scope": "historical frozen typed matrix, before aligned option-order intervention",
+  "frozen_cases_sha256": "24019ecb7500dfdb6b223b3bdc4a81864a28949c763ca63a3dc0a2e0552cc4cd",
+  "aligned_engine_sha256": "3e5d43cf66632a891564f0494f162a5cdedfda4896aa5b7364817e5226af5588",
+  "installed_runtime_worker_source_sha256": "e9d4ca87a9566c739d7f31f86815b6977635c004eb8bf6911ce408365dc6acae",
+  "upstream_order_evidence": {
+    "installed_package": "laya-mlx 0.2.0",
+    "agent_to_internal": "laya_mlx/agent.py:185-205",
+    "render_options": "laya_mlx/common.py:31-39",
+    "result": "choice criteria retains dict insertion order; render_options iterates crit.items()"
+  },
+  "old_laya_rows": 135,
+  "old_kev_rows": 135,
+  "same_model_payload_sha256_pairs": 135,
+  "laya_historical_wire_equals_canonical_native_request": 135,
+  "laya_historical_wire_order_counts": {"INSUFFICIENT,NO,YES": 135},
+  "kev_historical_wire_order_counts": {"YES,NO,INSUFFICIENT": 135},
+  "aligned_laya_state_and_instruction_equal_to_historical": 135,
+  "aligned_laya_criteria_order_equals_original_payload_order": 135,
+  "sample": {
+    "case": "first_form",
+    "question_type": "page_fields_satisfied",
+    "payload_sha256": "bfaa7783cf9ea71dfd36680a4b4fee9c3b7f81c08c3737942e536e2e6c93e2b7",
+    "laya_historical": {
+      "wire_order": ["INSUFFICIENT", "NO", "YES"],
+      "wire_sha256": "9f0a3a88db01bf1907efee834de334dd54e3e9ef92211a531c2bf4613276b076",
+      "model_payload_ordered_hash": "c5ff2b04e04a35bc3ea04e663f2e4ace5483c58f020664a280f176bb04c60773"
+    },
+    "laya_aligned": {
+      "wire_order": ["YES", "NO", "INSUFFICIENT"],
+      "wire_sha256": "c8883467fc38e4da1d2f443cbea9d87ad21b220a0b278db280e8193987273788",
+      "model_payload_ordered_hash": "fa8e89187290cb5973a03f3a17da42755b5a0be8a1d775c17a0705b138a239a9"
+    }
+  },
+  "aligned_intervention": {
+    "laya_result": "judgment-matrix-laya-aligned-20260930.json",
+    "laya_result_sha256": "e8907c1812cdb26b1a7a671b849f3c54d2bc8e12385a01a04161289c8d3fc569",
+    "kev_result": "judgment-matrix-kev-aligned-20260930.json",
+    "kev_result_sha256": "74d26945a54286c2862c9edd871d6ff6848fc76a08fd9434d097c22af27c45a1",
+    "paired_equal_payload_hashes": 135,
+    "paired_equal_ordered_payload_hashes": 135,
+    "historical_vs_aligned_laya_wire_identical": 0,
+    "historical_vs_aligned_laya_top_choice_identical": 135,
+    "historical_vs_aligned_laya_gate_identical": 128,
+    "historical_vs_aligned_kev_wire_identical": 135,
+    "historical_vs_aligned_kev_top_choice_identical": 135,
+    "historical_vs_aligned_kev_gate_identical": 135
+  },
+  "interpretation": "Equal sorted payload hashes did not establish equal option order at model input. Prior paired-model claims are option-order-confounded; retain pilot outputs without relabeling."
+}

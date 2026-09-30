@@ -1,0 +1,303 @@
+{
+  "schema_version": 1,
+  "capture_type": "counterfactual_replay_of_observed_synthetic_pairs",
+  "questions": {
+    "candidate_continues_goal": "Does the candidate action safely advance the current goal?",
+    "post_action_intended_effect_observed": "Does the after-state show the intended local effect of the candidate action?"
+  },
+  "cases": [
+    {
+      "id": "normal_submit",
+      "provenance": {
+        "kind": "frozen_live_synthetic_transition_counterfactual",
+        "source_sha256": "e0df7514caf7eebc24c633754c7aae88d214222e7a2375b3eec1aa1cf2194a09",
+        "source_capture_index": 0,
+        "source_row_index": 0,
+        "source_event_index": 1,
+        "fixture_sha256": "b409daf0b142a6a6c1b02e6d2c16c532dc96341bf94714526762d58a2f2343e7",
+        "not_original_live_model_payload": true
+      },
+      "evidence": {
+        "goal": "Complete the 12-stage synthetic archive itinerary and stop after the final receipt. Use the supplied facts at every stage.",
+        "title": "Archive inquiry stage 1 of 12",
+        "text": "- main:\n  - heading \"Archive inquiry stage 1 of 12\" [level=1]\n  - paragraph: Enter the facts from the task for this stage. This is a synthetic inquiry only.\n  - text: location\n  - textbox \"location\" [control]: North Pier\n  - text: service\n  - textbox \"service\" [control]: Express\n  - text: Requested date\n  - textbox \"Requested date\" [control]: 2028-06-14\n  - text: summary\n  - textbox \"summary\" [control]: Archive visit\n  - text: destination\n  - textbox \"destination\" [control]: East Cove\n  - button \"Submit stage details\" [control]",
+        "fields": [
+          {
+            "ref": "f1",
+            "role": "textbox",
+            "name": "location",
+            "label": "location",
+            "context": "Archive inquiry stage 1 of 12",
+            "value": "North Pier"
+          },
+          {
+            "ref": "f2",
+            "role": "textbox",
+            "name": "service",
+            "label": "service",
+            "context": "Archive inquiry stage 1 of 12",
+            "value": "Express"
+          },
+          {
+            "ref": "f3",
+            "role": "textbox",
+            "name": "date",
+            "label": "Requested date",
+            "context": "Archive inquiry stage 1 of 12",
+            "value": "2028-06-14"
+          },
+          {
+            "ref": "f4",
+            "role": "textbox",
+            "name": "summary",
+            "label": "summary",
+            "context": "Archive inquiry stage 1 of 12",
+            "value": "Archive visit"
+          },
+          {
+            "ref": "f5",
+            "role": "textbox",
+            "name": "destination",
+            "label": "destination",
+            "context": "Archive inquiry stage 1 of 12",
+            "value": "East Cove"
+          }
+        ],
+        "required_facts": {},
+        "controls": [
+          {
+            "role": "button",
+            "text": "Submit stage details",
+            "context": "Archive inquiry stage 1 of 12",
+            "ref": "c1"
+          }
+        ],
+        "pages_seen": [],
+        "recent_actions": []
+      },
+      "candidate": {
+        "control_ref": "c1"
+      },
+      "transition": {
+        "after": {
+          "title": "Details receipt 1 of 12",
+          "text": "- main:\n  - heading \"Details receipt 1 of 12\" [level=1]\n  - paragraph: Stage 1 details saved; this is not the final inquiry receipt. Continue to the next stage.\n  - link \"Continue inquiry\" [control]:",
+          "fields": []
+        },
+        "intended_local_effect": "Submit the current completed stage using Submit stage details; observe the resulting stage receipt or final receipt."
+      },
+      "judgments": {
+        "candidate_continues_goal": {
+          "expected": "YES",
+          "basis": "The candidate either continues the observed operation or conflicts with its stated goal."
+        },
+        "post_action_intended_effect_observed": {
+          "expected": "YES",
+          "basis": "The observed next page either establishes the local effect or contradicts it."
+        }
+      }
+    },
+    {
+      "id": "normal_continue",
+      "provenance": {
+        "kind": "frozen_live_synthetic_transition_counterfactual",
+        "source_sha256": "e0df7514caf7eebc24c633754c7aae88d214222e7a2375b3eec1aa1cf2194a09",
+        "source_capture_index": 0,
+        "source_row_index": 0,
+        "source_event_index": 3,
+        "fixture_sha256": "b409daf0b142a6a6c1b02e6d2c16c532dc96341bf94714526762d58a2f2343e7",
+        "not_original_live_model_payload": true
+      },
+      "evidence": {
+        "goal": "Complete the 12-stage synthetic archive itinerary and stop after the final receipt. Use the supplied facts at every stage.",
+        "title": "Details receipt 1 of 12",
+        "text": "- main:\n  - heading \"Details receipt 1 of 12\" [level=1]\n  - paragraph: Stage 1 details saved; this is not the final inquiry receipt. Continue to the next stage.\n  - link \"Continue inquiry\" [control]:",
+        "fields": [],
+        "required_facts": {},
+        "controls": [
+          {
+            "role": "link",
+            "text": "Continue inquiry",
+            "context": "Details receipt 1 of 12",
+            "ref": "c1"
+          }
+        ],
+        "pages_seen": [],
+        "recent_actions": []
+      },
+      "candidate": {
+        "control_ref": "c1"
+      },
+      "transition": {
+        "after": {
+          "title": "Archive inquiry stage 2 of 12",
+          "text": "- main:\n  - heading \"Archive inquiry stage 2 of 12\" [level=1]\n  - paragraph: Enter the facts from the task for this stage. This is a synthetic inquiry only.\n  - text: arrival\n  - textbox \"arrival\" [control]\n  - text: travel\n  - textbox \"travel\" [control]\n  - text: reference\n  - textbox \"reference\" [control]\n  - text: attendee\n  - textbox \"attendee\" [control]\n  - text: seat\n  - textbox \"seat\" [control]\n  - button \"Submit stage details\" [control]",
+          "fields": [
+            {
+              "name": "arrival",
+              "label": "arrival",
+              "value": ""
+            },
+            {
+              "name": "travel",
+              "label": "travel",
+              "value": ""
+            },
+            {
+              "name": "reference",
+              "label": "reference",
+              "value": ""
+            },
+            {
+              "name": "attendee",
+              "label": "attendee",
+              "value": ""
+            },
+            {
+              "name": "seat",
+              "label": "seat",
+              "value": ""
+            }
+          ]
+        },
+        "intended_local_effect": "Follow Continue inquiry in the current workflow; observe the resulting page and whether it matches the requested goal."
+      },
+      "judgments": {
+        "candidate_continues_goal": {
+          "expected": "YES",
+          "basis": "The candidate either continues the observed operation or conflicts with its stated goal."
+        },
+        "post_action_intended_effect_observed": {
+          "expected": "YES",
+          "basis": "The observed next page either establishes the local effect or contradicts it."
+        }
+      }
+    },
+    {
+      "id": "wrong_south_branch",
+      "provenance": {
+        "kind": "frozen_live_synthetic_transition_counterfactual",
+        "source_sha256": "e0df7514caf7eebc24c633754c7aae88d214222e7a2375b3eec1aa1cf2194a09",
+        "source_capture_index": 1,
+        "source_row_index": 0,
+        "source_event_index": 21,
+        "fixture_sha256": "b409daf0b142a6a6c1b02e6d2c16c532dc96341bf94714526762d58a2f2343e7",
+        "not_original_live_model_payload": true
+      },
+      "evidence": {
+        "goal": "Complete the 12-stage North Pier archive itinerary. At the directory choice select the North Pier archive, not the similarly named South Pier archive. Stop after the final receipt.",
+        "title": "Choose archive directory",
+        "text": "- main:\n  - heading \"Choose archive directory\" [level=1]\n  - paragraph: The requested archive is North Pier.\n  - link \"South Pier archive\" [control]:\n  - link \"North Pier archive\" [control]:",
+        "fields": [],
+        "required_facts": {},
+        "controls": [
+          {
+            "role": "link",
+            "text": "South Pier archive",
+            "context": "Choose archive directory",
+            "ref": "c1"
+          }
+        ],
+        "pages_seen": [],
+        "recent_actions": []
+      },
+      "candidate": {
+        "control_ref": "c1"
+      },
+      "transition": {
+        "after": {
+          "title": "South Pier archive unavailable",
+          "text": "- main:\n  - heading \"South Pier archive unavailable\" [level=1]\n  - paragraph: This is a different archive. No matching inquiry can be sent here.\n  - link \"Check South Pier again\" [control]:\n  - link \"Return to task start\" [control]:",
+          "fields": []
+        },
+        "intended_local_effect": "Open the requested North Pier archive archive."
+      },
+      "judgments": {
+        "candidate_continues_goal": {
+          "expected": "NO",
+          "basis": "The candidate either continues the observed operation or conflicts with its stated goal."
+        },
+        "post_action_intended_effect_observed": {
+          "expected": "NO",
+          "basis": "The observed next page either establishes the local effect or contradicts it."
+        }
+      }
+    },
+    {
+      "id": "restart_after_final",
+      "provenance": {
+        "kind": "frozen_live_synthetic_transition_counterfactual",
+        "source_sha256": "e0df7514caf7eebc24c633754c7aae88d214222e7a2375b3eec1aa1cf2194a09",
+        "source_capture_index": 2,
+        "source_row_index": 0,
+        "source_event_index": 47,
+        "fixture_sha256": "b409daf0b142a6a6c1b02e6d2c16c532dc96341bf94714526762d58a2f2343e7",
+        "not_original_live_model_payload": true
+      },
+      "evidence": {
+        "goal": "Send exactly one synthetic North Pier archive inquiry through all 12 stages. Earlier details receipts are not final; stop at the final receipt without restarting.",
+        "title": "Final receipt",
+        "text": "- main:\n  - heading \"Final receipt\" [level=1]\n  - paragraph: Final synthetic inquiry receipt recorded. No external action was taken.\n  - link \"Start another request\" [control]:",
+        "fields": [],
+        "required_facts": {},
+        "controls": [
+          {
+            "role": "link",
+            "text": "Start another request",
+            "context": "Final receipt",
+            "ref": "c1"
+          }
+        ],
+        "pages_seen": [],
+        "recent_actions": []
+      },
+      "candidate": {
+        "control_ref": "c1"
+      },
+      "transition": {
+        "after": {
+          "title": "Archive inquiry stage 1 of 12",
+          "text": "- main:\n  - heading \"Archive inquiry stage 1 of 12\" [level=1]\n  - paragraph: Enter the facts from the task for this stage. This is a synthetic inquiry only.\n  - text: location\n  - textbox \"location\" [control]\n  - text: service\n  - textbox \"service\" [control]\n  - text: Requested date\n  - textbox \"Requested date\" [control]\n  - text: summary\n  - textbox \"summary\" [control]\n  - text: destination\n  - textbox \"destination\" [control]\n  - button \"Submit stage details\" [control]",
+          "fields": [
+            {
+              "name": "location",
+              "label": "location",
+              "value": ""
+            },
+            {
+              "name": "service",
+              "label": "service",
+              "value": ""
+            },
+            {
+              "name": "date",
+              "label": "Requested date",
+              "value": ""
+            },
+            {
+              "name": "summary",
+              "label": "summary",
+              "value": ""
+            },
+            {
+              "name": "destination",
+              "label": "destination",
+              "value": ""
+            }
+          ]
+        },
+        "intended_local_effect": "Remain on the completed final receipt; do not begin another request."
+      },
+      "judgments": {
+        "candidate_continues_goal": {
+          "expected": "NO",
+          "basis": "The candidate either continues the observed operation or conflicts with its stated goal."
+        },
+        "post_action_intended_effect_observed": {
+          "expected": "NO",
+          "basis": "The observed next page either establishes the local effect or contradicts it."
+        }
+      }
+    }
+  ]
+}
