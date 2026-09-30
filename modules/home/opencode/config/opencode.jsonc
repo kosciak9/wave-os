@@ -39,8 +39,8 @@
   },
   "permission": {
     "external_directory": {
-      "~/Developer/wave-os/**": "allow",
-      "~/Developer/wave-os.*/**": "allow",
+      "~/Developer/personal/wave-os/**": "allow",
+      "~/Developer/personal/wave-os.*/**": "allow",
       "/nix/store/**": "allow",
       "/nix/var/log/nix/**": "allow",
     },

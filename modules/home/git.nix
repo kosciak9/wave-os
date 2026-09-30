@@ -30,10 +30,6 @@ in
     includes = [
       { path = "config.d/personal"; }
       {
-        condition = "gitdir:~/projects/alergeek/";
-        path = "config.d/alergeek";
-      }
-      {
         condition = "gitdir:~/Developer/alergeek/";
         path = "config.d/alergeek";
       }

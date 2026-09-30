@@ -16,18 +16,6 @@
 	}
 }
 
-https://opencode.localhost {
-	tls internal
-	reverse_proxy 127.0.0.1:51199
-}
-
-https://renekton.dusky-diatonic.ts.net {
-	tls {
-		get_certificate tailscale
-	}
-	reverse_proxy 127.0.0.1:51199
-}
-
 https://renekton.dusky-diatonic.ts.net:18790 {
 	tls {
 		get_certificate tailscale

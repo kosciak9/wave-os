@@ -10,7 +10,7 @@
     ../../modules/home/git.nix
     ../../modules/home/neovim
     ../../modules/home/opencode
-    ../../modules/home/opencode/darwin.nix
+    ../../modules/home/herdr
     ../../modules/home/starship
     ../../modules/home/vicinae
     ../../modules/home/zoxide

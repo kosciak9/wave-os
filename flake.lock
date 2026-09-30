@@ -239,6 +239,43 @@
         "url": "https://flakehub.com/f/cachix/git-hooks.nix/0.1.941"
       }
     },
+    "herdr": {
+      "inputs": {
+        "nixpkgs": "nixpkgs_3",
+        "rust-overlay": "rust-overlay"
+      },
+      "locked": {
+        "lastModified": 1790708764,
+        "narHash": "sha256-uu452Xe23pSvFk7w7fKPjiaqY5QenUIljao2SFAxpc0=",
+        "owner": "herdrdev",
+        "repo": "herdr",
+        "rev": "7b116c05bfda646af39d2524c54e70c751f57ee8",
+        "type": "github"
+      },
+      "original": {
+        "owner": "herdrdev",
+        "ref": "v0.9.3",
+        "repo": "herdr",
+        "type": "github"
+      }
+    },
+    "herdr-worktrunk": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1789971463,
+        "narHash": "sha256-unoP8GUAULiOBTrS/+noCed/VOw6yqBObqHmit17xy0=",
+        "owner": "devashish2203",
+        "repo": "herdr-worktrunk",
+        "rev": "8ceca541de8fb0d6006727e172534e1e2af17224",
+        "type": "github"
+      },
+      "original": {
+        "owner": "devashish2203",
+        "repo": "herdr-worktrunk",
+        "rev": "8ceca541de8fb0d6006727e172534e1e2af17224",
+        "type": "github"
+      }
+    },
     "home-manager": {
       "inputs": {
         "nixpkgs": [
@@ -378,7 +415,7 @@
     },
     "nix-openclaw-tools": {
       "inputs": {
-        "nixpkgs": "nixpkgs_3"
+        "nixpkgs": "nixpkgs_4"
       },
       "locked": {
         "lastModified": 1789172097,
@@ -494,6 +531,22 @@
     },
     "nixpkgs_3": {
       "locked": {
+        "lastModified": 1779911860,
+        "narHash": "sha256-ubcLAcKBDCZjhxw/kH5DL5GdBZQdzLqpkTe7HonvJVs=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "c0a89c379b4ac67c7b13b051ddbd4e0dbc9b0eaf",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs_4": {
+      "locked": {
         "lastModified": 1788834054,
         "narHash": "sha256-9dzTcXMtlknZyT47Vv1PnpGgN7UYA8WxxqyxsKdvYbo=",
         "owner": "NixOS",
@@ -508,7 +561,7 @@
         "type": "github"
       }
     },
-    "nixpkgs_4": {
+    "nixpkgs_5": {
       "locked": {
         "lastModified": 1788179007,
         "narHash": "sha256-hn1oU2rue2SYK8dAr8+WNZWtbsz1S2W5mnHlSEuh3bo=",
@@ -524,7 +577,7 @@
         "type": "github"
       }
     },
-    "nixpkgs_5": {
+    "nixpkgs_6": {
       "locked": {
         "lastModified": 1787900134,
         "narHash": "sha256-VYXO0XZlgj06dxJZRhrD3WoSsvq/c7+/Akyoa22pefw=",
@@ -594,6 +647,8 @@
         "determinate": "determinate",
         "devenv-nixpkgs": "devenv-nixpkgs",
         "ghostty-cursor-shaders": "ghostty-cursor-shaders",
+        "herdr": "herdr",
+        "herdr-worktrunk": "herdr-worktrunk",
         "home-manager": "home-manager",
         "hyprland-scroll-overview": "hyprland-scroll-overview",
         "kanagawa-kvantum": "kanagawa-kvantum",
@@ -601,11 +656,32 @@
         "nix-flatpak": "nix-flatpak",
         "nix-openclaw": "nix-openclaw",
         "nixos-hardware": "nixos-hardware",
-        "nixpkgs": "nixpkgs_4",
+        "nixpkgs": "nixpkgs_5",
         "sqlit": "sqlit",
         "vicinae": "vicinae",
         "vicinae-extensions": "vicinae-extensions",
         "zen-browser": "zen-browser"
+      }
+    },
+    "rust-overlay": {
+      "inputs": {
+        "nixpkgs": [
+          "herdr",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1783577481,
+        "narHash": "sha256-EWMxOWrJ031f8f/lrcEmhTRs4npw1/5N3Hcjin846c8=",
+        "owner": "oxalica",
+        "repo": "rust-overlay",
+        "rev": "4cdea398dc491b082dccdce0fad1ed0b75fa3394",
+        "type": "github"
+      },
+      "original": {
+        "owner": "oxalica",
+        "repo": "rust-overlay",
+        "type": "github"
       }
     },
     "soulver-cpp": {
@@ -746,7 +822,7 @@
     },
     "vicinae": {
       "inputs": {
-        "nixpkgs": "nixpkgs_5",
+        "nixpkgs": "nixpkgs_6",
         "numen": "numen",
         "soulver-cpp": "soulver-cpp",
         "systems": "systems_4"

@@ -105,7 +105,7 @@ in
     ../../modules/home/git.nix
     ../../modules/home/neovim
     ../../modules/home/opencode
-    ../../modules/home/opencode/linux.nix
+    ../../modules/home/herdr
     ../../modules/home/starship
     ../../modules/home/vicinae
     ../../modules/home/zoxide
@@ -127,7 +127,6 @@ in
     sessionVariables = {
       ANDROID_HOME = "$HOME/.local/share/android-sdk";
       GTK_USE_PORTAL = "1";
-      OPENCODE_ATTACH_TARGET = "localhost:51199";
       QT_QPA_PLATFORM = "wayland";
       _JAVA_AWT_WM_NONREPARENTING = "1";
       QT_STYLE_OVERRIDE = "kvantum";
@@ -163,7 +162,6 @@ in
         waytator
         wl-clipboard
         zenBrowser
-        worktrunk
       ])
       ++ displayReconcilerRuntime;
   };
@@ -376,13 +374,13 @@ in
       enable = true;
       createDirectories = true;
       desktop = "$HOME";
-      download = "$HOME/downloads";
+      download = "$HOME/Downloads";
       templates = "$HOME";
-      publicShare = "$HOME/public";
-      documents = "$HOME/documents";
-      music = "$HOME/media";
-      pictures = "$HOME/media";
-      videos = "$HOME/media";
+      publicShare = "$HOME/Public";
+      documents = "$HOME/Documents";
+      music = "$HOME/Media";
+      pictures = "$HOME/Media";
+      videos = "$HOME/Media";
     };
     configFile = {
       "Kvantum/Kanagawa".source = "${kanagawa-kvantum}/share/Kvantum/Kanagawa";
