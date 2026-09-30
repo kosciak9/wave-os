@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ options, pkgs, ... }:
 
 let
   wavePowerProfilePolicy = pkgs.writeScriptBin "wave-power-profile-policy" ''
@@ -78,6 +78,9 @@ in
       enable = true;
       openFirewall = false;
       settings.KexAlgorithms = [ "+ecdh-sha2-nistp256" ];
+      settings.Macs = (options.services.openssh.settings.type.getSubOptions [ ]).Macs.default ++ [
+        "hmac-sha2-256"
+      ];
     };
     avahi = {
       enable = true;
