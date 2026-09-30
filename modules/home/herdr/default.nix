@@ -20,6 +20,7 @@ let
     # Skip the slow test suite there; Linux keeps the nixpkgs checks enabled.
     doCheck = !pkgs.stdenv.hostPlatform.isDarwin;
   };
+  herdrLinux = pkgs.stdenv.hostPlatform.isLinux;
 in
 {
   xdg.configFile."herdr/config.toml".text = ''
@@ -63,6 +64,43 @@ in
       message = "Herdr requires CLAUDE_CONFIG_DIR, CODEX_HOME, and ANTIGRAVITY_CLI_CONFIG_DIR to be declared as absolute paths (for example ${config.home.homeDirectory}/.claude, ${config.home.homeDirectory}/.codex, and ${config.home.homeDirectory}/.gemini/config); relative paths, tilde, and shell-variable expansion are unsupported.";
     }
   ];
+
+  systemd.user.services.herdr = lib.mkIf herdrLinux {
+    Unit = {
+      Description = "Herdr default session";
+      X-Restart-Triggers = [
+        herdr
+        (toString inputs.herdr)
+        (toString inputs.herdr-worktrunk)
+        (toString config.xdg.configFile."herdr/config.toml".source)
+      ];
+    };
+    Service = {
+      Type = "simple";
+      Environment = [
+        (lib.escapeShellArg "HERDR_CONFIG_PATH=${
+          toString config.xdg.configFile."herdr/config.toml".source
+        }")
+        (lib.escapeShellArg "XDG_CONFIG_HOME=${config.xdg.configHome}")
+        (lib.escapeShellArg "SHELL=${lib.getExe config.programs.zsh.package}")
+        (lib.escapeShellArg "PATH=${
+          lib.makeBinPath [
+            pkgs.coreutils
+            pkgs.bash
+          ]
+        }:${config.home.profileDirectory}/bin:/etc/profiles/per-user/${config.home.username}/bin:/run/current-system/sw/bin:/usr/bin:/bin")
+      ];
+      ExecStartPre = "-${lib.getExe herdr} --session default server stop";
+      ExecStart = "${lib.getExe herdr} --session default server";
+      ExecStop = "${lib.getExe herdr} --session default server stop";
+      Restart = "on-failure";
+      RestartSec = 3;
+      KillSignal = "SIGINT";
+      KillMode = "mixed";
+      TimeoutStopSec = 30;
+    };
+    Install.WantedBy = [ "default.target" ];
+  };
 
   home = {
     packages = with pkgs; [
@@ -164,6 +202,10 @@ in
       herdrWorktrunk = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
         run ${lib.getExe herdr} plugin link ${lib.escapeShellArg (toString inputs.herdr-worktrunk)} --enabled
       '';
+
+      herdrServicesReady = lib.mkIf herdrLinux (
+        lib.hm.dag.entryBetween [ "reloadSystemd" ] [ "herdrIntegrations" "herdrWorktrunk" ] ""
+      );
     };
   };
 }
