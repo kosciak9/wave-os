@@ -396,6 +396,7 @@ let
     "document-extract"
     "web-readability"
     "device-pair"
+    "xai"
   ];
   # Exhaustive complement for pinned OpenClaw 2026.9.4: default-on bundled plugins stay disabled visibly and at runtime.
   disabledPluginIds = [
@@ -449,7 +450,6 @@ let
     "vllm"
     "webhooks"
     "workboard"
-    "xai"
   ];
   openclawPackageSetBase = pkgs.openclawPackages.withTools { excludeToolNames = [ "git" ]; };
   # Pinned OpenClaw 2026.9.4 registers both the built-in session dashboard and Telegram Mini App as /dashboard; preserve the built-in command and rename the Mini App command to /openclaw_ui until upstream resolves it.
@@ -1171,10 +1171,9 @@ in
           skipBootstrap = true;
           contextInjection = "continuation-skip";
           model = {
-            # Keep expensive frontier models opt-in; route routine work through
-            # the efficient GPT-6 tier before OpenCode Go fallbacks.
             primary = "openai/gpt-6.1-sol";
             fallbacks = [
+              "xai/grok-4.7"
               "openai/gpt-6-luna"
               "opencode-go/deepseek-v4-flash"
               "opencode-go/deepseek-v4-pro"
@@ -1183,7 +1182,7 @@ in
               "openrouter/openrouter/free"
             ];
           };
-          utilityModel = "openai/gpt-6-luna";
+          utilityModel = "xai/grok-4.7";
           modelSelectionScope = "session";
           thinkingDefault = "medium";
           fastModeDefault = false;
@@ -1200,7 +1199,7 @@ in
             memoryFlush = {
               enabled = true;
               softThresholdTokens = 4000;
-              model = "openai/gpt-6-luna";
+              model = "xai/grok-4.3";
             };
             notifyUser = false;
             thinkingLevel = "inherit";
@@ -1268,6 +1267,18 @@ in
               agentRuntime.id = "openclaw";
               codeMode = false;
             };
+            "xai/grok-4.7" = {
+              alias = "grok";
+              agentRuntime.id = "openclaw";
+              codeMode = false;
+              params.thinking = "off";
+            };
+            "xai/grok-4.3" = {
+              alias = "grok-cheap";
+              agentRuntime.id = "openclaw";
+              codeMode = false;
+              params.thinking = "low";
+            };
           };
           modelPolicy.allow = [
             "openai/gpt-6-astra"
@@ -1279,6 +1290,8 @@ in
             "openrouter/deepseek/deepseek-v4-flash-0731"
             "openrouter/z-ai/glm-5.3-flash"
             "openrouter/openrouter/free"
+            "xai/grok-4.7"
+            "xai/grok-4.3"
           ];
           heartbeat = {
             every = "0m";
@@ -1351,15 +1364,15 @@ in
           description = "Delegowany agent dobierający web_search, web_fetch lub Camofox do charakteru zadania i zwracający zwięzłe, zweryfikowane ustalenia.";
           workspace = browserWorkspace;
           model = {
-            primary = "openai/gpt-6-luna";
+            primary = "xai/grok-4.7";
             fallbacks = [ ];
           };
           modelPolicy.allow = [
-            "openai/gpt-6-luna"
+            "xai/grok-4.7"
             "openai/gpt-6.1-sol"
           ];
           utilityModel = "";
-          thinkingDefault = "low";
+          thinkingDefault = "off";
           fastModeDefault = false;
           contextInjection = "never";
           runtime = {
@@ -1392,14 +1405,14 @@ in
         providers = {
           "opencode-go".apiKey = secret "OPENCODE_API_KEY";
           openai.models = [
+            # OAuth route budgets are aligned with OpenCode.
             {
               id = "gpt-6-astra";
               name = "GPT-6 Astra";
-              contextWindow = 872000;
-              contextTokens = 700000;
+              contextWindow = 1050000;
+              contextTokens = 922000;
+              maxTokens = 128000;
             }
-            # Explicit GPT-6 rows use the OAuth subscription route and conservative input budgets.
-            # GPT-6.1 Sol context is deliberately not raised based on the larger API reference.
             # Prices are API-reference estimates, not subscription billing.
             {
               id = "gpt-6.1-sol";
@@ -1410,8 +1423,8 @@ in
                 "text"
                 "image"
               ];
-              contextWindow = 872000;
-              contextTokens = 700000;
+              contextWindow = 1050000;
+              contextTokens = 922000;
               maxTokens = 128000;
               cost = {
                 input = 2;
@@ -1465,9 +1478,8 @@ in
                 "text"
                 "image"
               ];
-              contextWindow = 872000;
-              # 700000 input tokens tested successfully through the subscription route.
-              contextTokens = 700000;
+              contextWindow = 1050000;
+              contextTokens = 922000;
               maxTokens = 128000;
               cost = {
                 input = 0.1;
@@ -1722,8 +1734,8 @@ in
                 mode = "escalate";
                 agents = [ "main" ];
                 allowedChatTypes = [ "direct" ];
-                model = "openai/gpt-6-luna";
-                thinking = "off";
+                model = "xai/grok-4.3";
+                thinking = "low";
                 fastMode = false;
                 queryMode = "recent";
                 promptStyle = "balanced";
