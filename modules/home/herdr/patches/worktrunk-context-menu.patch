@@ -98,6 +98,17 @@ diff --git a/src/client/shell/context_menu.rs b/src/client/shell/context_menu.rs
      fn activate_tab_context_action(
          &mut self,
          tab_id: String,
+diff --git a/src/server/client_commands.rs b/src/server/client_commands.rs
+--- a/src/server/client_commands.rs
++++ b/src/server/client_commands.rs
+@@ -15,6 +15,7 @@
+ const CLIENT_SHELL_METHODS: &[&str] = &[
+     "client_shell.surface.set",
+     "command.invoke",
++    "plugin.action.invoke",
+     "integration.install",
+     "integration.list",
+     "layout.set_split_ratio",
 diff --git a/src/app/api/plugins/mod.rs b/src/app/api/plugins/mod.rs
 --- a/src/app/api/plugins/mod.rs
 +++ b/src/app/api/plugins/mod.rs
