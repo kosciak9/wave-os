@@ -1,0 +1,16 @@
+diff --git a/open.sh b/open.sh
+--- a/open.sh
++++ b/open.sh
+@@ -34,7 +34,11 @@
+   # checkout in a workspace, so hand it the one the action was invoked from.
+   [[ -n ${HERDR_WORKSPACE_ID:-} ]] && args+=(--env "HERDR_WORKSPACE_ID=$HERDR_WORKSPACE_ID")
+ else
+-  args+=(--placement split --direction down)
++  if ! target_pane=$(jq -er '.focused_pane_id // empty' <<<"$HERDR_PLUGIN_CONTEXT_JSON") || [[ -z $target_pane ]]; then
++    printf '%s\n' 'Worktrunk: cannot open split without an invocation pane' >&2
++    exit 1
++  fi
++  args+=(--placement split --direction down --target-pane "$target_pane")
+ fi
+
+ exec "$herdr" "${args[@]}"

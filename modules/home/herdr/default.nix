@@ -7,7 +7,14 @@
 }:
 
 let
-  herdr = inputs.herdr.packages.${pkgs.stdenv.hostPlatform.system}.default;
+  herdr = inputs.herdr.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs (old: {
+    patches = (old.patches or [ ]) ++ [ ./patches/worktrunk-context-menu.patch ];
+  });
+  herdrWorktrunk = pkgs.applyPatches {
+    name = "herdr-worktrunk";
+    src = inputs.herdr-worktrunk;
+    patches = [ ./patches/worktrunk-target-pane.patch ];
+  };
   claudeDirectory =
     config.home.sessionVariables.CLAUDE_CONFIG_DIR or "${config.home.homeDirectory}/.claude";
   codexDirectory = config.home.sessionVariables.CODEX_HOME or "${config.home.homeDirectory}/.codex";
@@ -71,7 +78,7 @@ in
       X-Restart-Triggers = [
         herdr
         (toString inputs.herdr)
-        (toString inputs.herdr-worktrunk)
+        (toString herdrWorktrunk)
         (toString config.xdg.configFile."herdr/config.toml".source)
       ];
     };
@@ -200,7 +207,7 @@ in
 
       # Nix owns registration and enabled state; Herdr manages the mutable registry.
       herdrWorktrunk = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
-        run ${lib.getExe herdr} plugin link ${lib.escapeShellArg (toString inputs.herdr-worktrunk)} --enabled
+        run ${lib.getExe herdr} plugin link ${lib.escapeShellArg (toString herdrWorktrunk)} --enabled
       '';
 
       herdrServicesReady = lib.mkIf herdrLinux (

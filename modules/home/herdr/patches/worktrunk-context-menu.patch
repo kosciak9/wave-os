@@ -1,0 +1,160 @@
+diff --git a/src/client/shell/context_menu.rs b/src/client/shell/context_menu.rs
+--- a/src/client/shell/context_menu.rs
++++ b/src/client/shell/context_menu.rs
+@@ -16,8 +16,7 @@
+             } => vec![
+                 item("Rename", Action::Rename),
+                 item("Close", Action::Close),
+-                item("New worktree", Action::NewWorktree),
+-                item("Open worktree...", Action::OpenWorktree),
++                item("Worktrunk: switch / create...", Action::NewWorktree),
+             ],
+             ClientContextMenuTarget::Workspace {
+                 is_linked_worktree: true,
+@@ -25,7 +24,7 @@
+             } => vec![
+                 item("Rename", Action::Rename),
+                 item("Close", Action::Close),
+-                item("Delete worktree checkout...", Action::RemoveWorktree),
++                item("Worktrunk: remove...", Action::RemoveWorktree),
+             ],
+             ClientContextMenuTarget::Workspace {
+                 has_worktree_children: true,
+@@ -34,8 +33,7 @@
+             } => vec![
+                 item("Rename", Action::Rename),
+                 item("Close group", Action::Close),
+-                item("New worktree", Action::NewWorktree),
+-                item("Open worktree...", Action::OpenWorktree),
++                item("Worktrunk: switch / create...", Action::NewWorktree),
+                 item(
+                     if *collapsed { "Expand" } else { "Collapse" },
+                     Action::ToggleGroup,
+@@ -223,8 +221,6 @@
+         action: ClientContextMenuAction,
+         outcome: &mut ClientShellInput,
+     ) {
+-        use crate::input::KeybindAction;
+-
+         match action {
+             ClientContextMenuAction::Rename => {
+                 let label = self
+@@ -260,14 +256,11 @@
+                     );
+                 }
+             }
+-            ClientContextMenuAction::NewWorktree => {
+-                self.begin_worktree_action_for(KeybindAction::NewWorktree, workspace_id, outcome)
+-            }
+-            ClientContextMenuAction::OpenWorktree => {
+-                self.begin_worktree_action_for(KeybindAction::OpenWorktree, workspace_id, outcome)
++            ClientContextMenuAction::NewWorktree | ClientContextMenuAction::OpenWorktree => {
++                self.invoke_worktrunk_context_action("open", workspace_id, outcome)
+             }
+             ClientContextMenuAction::RemoveWorktree => {
+-                self.begin_worktree_action_for(KeybindAction::RemoveWorktree, workspace_id, outcome)
++                self.invoke_worktrunk_context_action("remove", workspace_id, outcome)
+             }
+             ClientContextMenuAction::ToggleGroup => {
+                 let key = self.snapshot.as_deref().and_then(|snapshot| {
+@@ -288,6 +281,40 @@
+         }
+     }
+
++    fn invoke_worktrunk_context_action(
++        &mut self,
++        action_id: &str,
++        workspace_id: String,
++        outcome: &mut ClientShellInput,
++    ) {
++        use crate::api::schema::{Method, PluginActionInvokeParams, PluginInvocationContext};
++
++        self.push_endpoint_method(
++            Method::PluginActionInvoke(PluginActionInvokeParams {
++                plugin_id: Some("worktrunk".into()),
++                action_id: action_id.into(),
++                context: Some(PluginInvocationContext {
++                    workspace_id: Some(workspace_id),
++                    workspace_label: None,
++                    workspace_cwd: None,
++                    worktree: None,
++                    tab_id: None,
++                    tab_label: None,
++                    focused_pane_id: None,
++                    focused_pane_cwd: None,
++                    focused_pane_agent: None,
++                    focused_pane_status: None,
++                    selected_text: None,
++                    invocation_source: Some("context_menu".into()),
++                    correlation_id: None,
++                    clicked_url: None,
++                    link_handler_id: None,
++                }),
++            }),
++            outcome,
++        );
++    }
++
+     fn activate_tab_context_action(
+         &mut self,
+         tab_id: String,
+diff --git a/src/app/api/plugins/mod.rs b/src/app/api/plugins/mod.rs
+--- a/src/app/api/plugins/mod.rs
++++ b/src/app/api/plugins/mod.rs
+@@ -200,7 +200,55 @@
+         ) {
+             return encode_error(id, code, message);
+         }
+-        let context = self.merge_plugin_context(params.context, &id);
++        let context = if params.context.as_ref().is_some_and(|context| {
++            context.invocation_source.as_deref() == Some("context_menu")
++        }) {
++            let Some(workspace_id) = params
++                .context
++                .as_ref()
++                .and_then(|context| context.workspace_id.as_deref())
++            else {
++                return encode_error(
++                    id,
++                    "workspace_not_found",
++                    "context menu requires a workspace",
++                );
++            };
++            let Some(ws_idx) = self
++                .state
++                .workspaces
++                .iter()
++                .position(|workspace| workspace.id == workspace_id)
++            else {
++                return encode_error(
++                    id,
++                    "workspace_not_found",
++                    "context menu workspace no longer exists",
++                );
++            };
++            let mut context = self.plugin_context_for_workspace(ws_idx, &id);
++            context.workspace_cwd = context
++                .worktree
++                .as_ref()
++                .map(|worktree| worktree.checkout_path.clone())
++                .or_else(|| {
++                    self.state.workspaces[ws_idx]
++                        .resolved_identity_cwd_from(&self.state.terminals, &self.terminal_runtimes)
++                        .map(|cwd| cwd.to_string_lossy().to_string())
++                });
++            if context.workspace_cwd.is_none() {
++                return encode_error(
++                    id,
++                    "workspace_cwd_not_found",
++                    "context menu workspace has no identity cwd",
++                );
++            }
++            self.state.switch_workspace(ws_idx);
++            context.invocation_source = Some("context_menu".into());
++            context
++        } else {
++            self.merge_plugin_context(params.context, &id)
++        };
+         let log = match self.start_plugin_command(
+             &plugin,
+             Some(action.action_id.clone()),
