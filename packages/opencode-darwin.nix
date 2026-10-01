@@ -49,8 +49,10 @@ stdenv.mkDerivation {
     runHook preInstall
 
     ${if stdenv.hostPlatform.isDarwin then "unzip -q $src" else "tar -xzf $src"}
-    install -Dm755 opencode $out/bin/.opencode-unwrapped
-    makeBinaryWrapper $out/bin/.opencode-unwrapped $out/bin/opencode \
+    install -Dm755 opencode $out/libexec/opencode
+    mkdir -p $out/bin
+    makeBinaryWrapper $out/libexec/opencode $out/bin/opencode \
+      --argv0 opencode \
       --prefix PATH : ${
         lib.makeBinPath [
           ripgrep
