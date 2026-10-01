@@ -28,6 +28,16 @@ let
     doCheck = !pkgs.stdenv.hostPlatform.isDarwin;
   };
   herdrLinux = pkgs.stdenv.hostPlatform.isLinux;
+  herdrDarwin = pkgs.stdenv.hostPlatform.isDarwin;
+  herdrLogDirectory = "${config.xdg.stateHome}/herdr";
+  herdrDarwinStart = pkgs.writeShellScript "herdr-default-server" ''
+    set -eu
+    # Source preflights also make source-only updates change the launchd plist.
+    test -r ${lib.escapeShellArg "${herdrWorktrunk}/herdr-plugin.toml"}
+    test -r ${lib.escapeShellArg "${inputs.herdr}/Cargo.toml"}
+    ${lib.getExe herdr} --session default server stop || true
+    exec ${lib.getExe herdr} --session default server
+  '';
 in
 {
   xdg.configFile."herdr/config.toml".text = ''
@@ -107,6 +117,33 @@ in
       TimeoutStopSec = 30;
     };
     Install.WantedBy = [ "default.target" ];
+  };
+
+  launchd.agents.herdr = lib.mkIf herdrDarwin {
+    enable = true;
+    domain = "user";
+    config = {
+      ProgramArguments = [ (toString herdrDarwinStart) ];
+      EnvironmentVariables = {
+        HERDR_CONFIG_PATH = toString config.xdg.configFile."herdr/config.toml".source;
+        XDG_CONFIG_HOME = config.xdg.configHome;
+        HOME = config.home.homeDirectory;
+        SHELL = lib.getExe config.programs.zsh.package;
+        PATH = "${
+          lib.makeBinPath [
+            pkgs.coreutils
+            pkgs.bash
+          ]
+        }:${config.home.profileDirectory}/bin:/etc/profiles/per-user/${config.home.username}/bin:/run/current-system/sw/bin:/usr/bin:/bin:/usr/sbin:/sbin";
+      };
+      RunAtLoad = true;
+      KeepAlive.SuccessfulExit = false;
+      ExitTimeOut = 30;
+      ThrottleInterval = 3;
+      ProcessType = "Standard";
+      StandardOutPath = "${herdrLogDirectory}/default.out.log";
+      StandardErrorPath = "${herdrLogDirectory}/default.err.log";
+    };
   };
 
   home = {
@@ -212,6 +249,19 @@ in
 
       herdrServicesReady = lib.mkIf herdrLinux (
         lib.hm.dag.entryBetween [ "reloadSystemd" ] [ "herdrIntegrations" "herdrWorktrunk" ] ""
+      );
+
+      herdrDarwinLogDirectory = lib.mkIf herdrDarwin (
+        lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+          run ${pkgs.coreutils}/bin/mkdir -p -- ${lib.escapeShellArg herdrLogDirectory}
+        ''
+      );
+
+      herdrDarwinServicesReady = lib.mkIf herdrDarwin (
+        lib.hm.dag.entryBetween
+          [ "setupLaunchAgents" ]
+          [ "herdrIntegrations" "herdrWorktrunk" "herdrDarwinLogDirectory" ]
+          ""
       );
     };
   };
