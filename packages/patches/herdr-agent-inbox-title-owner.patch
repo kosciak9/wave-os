@@ -1,0 +1,18 @@
+--- a/daemon.py
++++ b/daemon.py
+@@ -180,7 +180,7 @@
+         if isinstance(t, int) and 5 <= t <= 600:
+             cfg["summarize_timeout_secs"] = t
+         tab = data.get("tab") or {}
+-        cfg["tab_rename"] = bool(tab.get("rename_from_agent_title", False))
++        cfg["tab_rename"] = False
+         n = tab.get("max_chars")
+         if isinstance(n, int) and 4 <= n <= 200:
+             cfg["tab_max_chars"] = n
+@@ -1073,8 +1073,6 @@
+         if self.last_report.get(tid) == want:
+             return None
+         params = {"pane_id": pane_id, "source": SOURCE, "tokens": tokens}
+-        if meta_title:
+-            params["title"] = meta_title
+         return (pane_id, tid, params, want)

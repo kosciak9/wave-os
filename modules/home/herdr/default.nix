@@ -7,6 +7,7 @@
 }:
 
 let
+  plugins = import ./plugins.nix { inherit pkgs lib; };
   herdr = inputs.herdr.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs (old: {
     patches = (old.patches or [ ]) ++ [ ./patches/worktrunk-context-menu.patch ];
   });
@@ -34,6 +35,9 @@ let
     set -eu
     # Source preflights also make source-only updates change the launchd plist.
     test -r ${lib.escapeShellArg "${herdrWorktrunk}/herdr-plugin.toml"}
+    ${lib.concatMapStringsSep "\n" (
+      plugin: "test -r ${lib.escapeShellArg "${plugin}/herdr-plugin.toml"}"
+    ) (lib.attrValues plugins)}
     test -r ${lib.escapeShellArg "${inputs.herdr}/Cargo.toml"}
     ${lib.getExe herdr} --session default server stop || true
     exec ${lib.getExe herdr} --session default server
@@ -71,6 +75,18 @@ in
     type = "plugin_action"
     command = "worktrunk.remove"
     description = "Worktree: remove"
+
+    [[keys.command]]
+    key = "prefix+shift+i"
+    type = "plugin_action"
+    command = "herdr-agent-inbox.open"
+    description = "Agent inbox"
+
+    [[keys.command]]
+    key = "prefix+shift+u"
+    type = "plugin_action"
+    command = "herdr-agent-usage.open"
+    description = "Agent limits dashboard"
   '';
 
   assertions = [
@@ -92,7 +108,8 @@ in
         (toString inputs.herdr)
         (toString herdrWorktrunk)
         (toString config.xdg.configFile."herdr/config.toml".source)
-      ];
+      ]
+      ++ lib.attrValues plugins;
     };
     Service = {
       Type = "simple";
@@ -249,8 +266,15 @@ in
         run ${lib.getExe herdr} plugin link ${lib.escapeShellArg (toString herdrWorktrunk)} --enabled
       '';
 
+      herdrPlugins = lib.hm.dag.entryAfter [ "linkGeneration" ] (
+        lib.concatMapStringsSep "\n" (plugin: ''
+          run ${lib.getExe herdr} plugin link ${lib.escapeShellArg (toString plugin)} --enabled
+        '') (lib.attrValues plugins)
+      );
+
       herdrServicesReady = lib.mkIf herdrLinux (
-        lib.hm.dag.entryBetween [ "reloadSystemd" ] [ "herdrIntegrations" "herdrWorktrunk" ] ""
+        lib.hm.dag.entryBetween [ "reloadSystemd" ] [ "herdrIntegrations" "herdrWorktrunk" "herdrPlugins" ]
+          ""
       );
 
       herdrDarwinLogDirectory = lib.mkIf herdrDarwin (
@@ -262,7 +286,7 @@ in
       herdrDarwinServicesReady = lib.mkIf herdrDarwin (
         lib.hm.dag.entryBetween
           [ "setupLaunchAgents" ]
-          [ "herdrIntegrations" "herdrWorktrunk" "herdrDarwinLogDirectory" ]
+          [ "herdrIntegrations" "herdrWorktrunk" "herdrPlugins" "herdrDarwinLogDirectory" ]
           ""
       );
     };

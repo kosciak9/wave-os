@@ -11,6 +11,18 @@
       url = "github:devashish2203/herdr-worktrunk/8ceca541de8fb0d6006727e172534e1e2af17224";
       flake = false;
     };
+    herdr-auto-title = {
+      url = "github:kryptamine/herdr-auto-title/b840874b932b9adc6b7162b8193fceaa04e80be7";
+      flake = false;
+    };
+    herdr-agent-inbox = {
+      url = "github:douglascorrea/herdr-agent-inbox/78b243279b4da55150b58dc2cc3cffcdc2fd6a04";
+      flake = false;
+    };
+    herdr-agent-usage = {
+      url = "github:levi-qiao/herdr-agent-usage/1b21311ec3fa2b46c2c715a8490f104fbde857e0";
+      flake = false;
+    };
     deploy-rs.url = "github:serokell/deploy-rs/e760371d631165e7d8de5b0dcf148e21ec4c16f0";
     devenv-nixpkgs.url = "github:NixOS/nixpkgs/34ab99075ac4f7e40cf037eef32cb1c360bb85e9";
     # Vicinae intentionally keeps its release-tested Nixpkgs pin; following repository Nixpkgs triggers the known qtkeychain Darwin ld64 crash.
@@ -91,6 +103,15 @@
       packageOverlay =
         final: prev:
         {
+          herdr-auto-title = final.callPackage ./packages/herdr-auto-title.nix {
+            src = inputs.herdr-auto-title;
+          };
+          herdr-agent-inbox = final.callPackage ./packages/herdr-agent-inbox.nix {
+            src = inputs.herdr-agent-inbox;
+          };
+          herdr-agent-usage = final.callPackage ./packages/herdr-agent-usage.nix {
+            src = inputs.herdr-agent-usage;
+          };
           plannotator = final.callPackage ./packages/plannotator.nix { };
           opencode = final.callPackage ./packages/opencode-darwin.nix { };
           kanagawa-gtk-theme = final.callPackage ./packages/kanagawa-gtk-theme.nix { };
@@ -221,13 +242,21 @@
 
       packages.${system} = {
         inherit kanagawa-kvantum;
-        inherit (pkgs) camofox-browser-cli;
+        inherit (pkgs)
+          camofox-browser-cli
+          herdr-auto-title
+          herdr-agent-inbox
+          herdr-agent-usage
+          ;
       };
       packages.${darwinSystem} = {
         deploy-rs = inputs.deploy-rs.packages.${darwinSystem}.deploy-rs;
         wave-deploy-sudo = deployment.sudoWrapper;
         wave-deploy-root = deployment.rootStdio;
         inherit (darwinPkgs)
+          herdr-auto-title
+          herdr-agent-inbox
+          herdr-agent-usage
           openclaw-sandbox-machine-check
           openclaw-languagetool-mcp-context
           openclaw-languagetool-mcp-image
