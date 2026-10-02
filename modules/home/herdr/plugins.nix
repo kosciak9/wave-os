@@ -17,11 +17,6 @@ let
     export HERDR_AUTO_TITLE_WORKSPACES=false
     exec ${lib.getExe pkgs.herdr-auto-title} "$@"
   '';
-  python =
-    file:
-    pkgs.writeShellScript "herdr-inbox-${file}" ''
-      exec ${pkgs.python3}/bin/python3 -B ${pkgs.herdr-agent-inbox}/${file}.py "$@"
-    '';
   usageDashboard = pkgs.writeShellScript "herdr-usage-dashboard" ''
     export HERDR_AGENT_USAGE_DASHBOARD_ONLY=1
     ${lib.getExe pkgs.herdr-agent-usage} refresh --provider all || true
@@ -48,66 +43,6 @@ in
           (toString autoTitle)
           "restart"
         ];
-      }
-    ];
-  };
-  inbox = stage "herdr-agent-inbox-plugin" {
-    id = "herdr-agent-inbox";
-    name = "Agent Inbox";
-    version = pkgs.herdr-agent-inbox.version;
-    min_herdr_version = "0.7.0";
-    platforms = [
-      "linux"
-      "macos"
-    ];
-    # The detached upstream daemon survives a server restart; replace it on startup.
-    startup = [
-      {
-        command = [
-          pkgs.stdenv.shell
-          "${pkgs.herdr-agent-inbox}/scripts/restart-daemon.sh"
-        ];
-      }
-    ];
-    events = [
-      {
-        on = "pane.agent_detected";
-        command = [
-          pkgs.stdenv.shell
-          "${pkgs.herdr-agent-inbox}/scripts/ensure-daemon.sh"
-        ];
-      }
-    ];
-    actions = [
-      {
-        id = "open";
-        title = "Open agent inbox";
-        command = openPane "herdr-agent-inbox" "inbox";
-      }
-    ]
-    ++
-      map
-        (id: {
-          inherit id;
-          title = "Agent Inbox: ${id}";
-          command = [
-            (toString (python "actions"))
-            id
-          ];
-        })
-        [
-          "settle"
-          "unread"
-          "settle-workspace"
-        ];
-    panes = [
-      {
-        id = "inbox";
-        title = "Agent Inbox";
-        placement = "popup";
-        width = "80%";
-        height = "70%";
-        command = [ (toString (python "inbox_tui")) ];
       }
     ];
   };

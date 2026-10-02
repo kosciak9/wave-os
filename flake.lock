@@ -261,23 +261,6 @@
         "type": "github"
       }
     },
-    "herdr-agent-inbox": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1785260877,
-        "narHash": "sha256-hF2zQVI4yVRLs5HhqUvon9d6kXuwpXI+n0drl1nB6A0=",
-        "owner": "douglascorrea",
-        "repo": "herdr-agent-inbox",
-        "rev": "78b243279b4da55150b58dc2cc3cffcdc2fd6a04",
-        "type": "github"
-      },
-      "original": {
-        "owner": "douglascorrea",
-        "repo": "herdr-agent-inbox",
-        "rev": "78b243279b4da55150b58dc2cc3cffcdc2fd6a04",
-        "type": "github"
-      }
-    },
     "herdr-agent-usage": {
       "flake": false,
       "locked": {
@@ -685,7 +668,6 @@
         "devenv-nixpkgs": "devenv-nixpkgs",
         "ghostty-cursor-shaders": "ghostty-cursor-shaders",
         "herdr": "herdr",
-        "herdr-agent-inbox": "herdr-agent-inbox",
         "herdr-agent-usage": "herdr-agent-usage",
         "herdr-auto-title": "herdr-auto-title",
         "herdr-worktrunk": "herdr-worktrunk",

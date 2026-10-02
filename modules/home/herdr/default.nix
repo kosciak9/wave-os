@@ -9,7 +9,10 @@
 let
   plugins = import ./plugins.nix { inherit pkgs lib; };
   herdr = inputs.herdr.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs (old: {
-    patches = (old.patches or [ ]) ++ [ ./patches/worktrunk-context-menu.patch ];
+    patches = (old.patches or [ ]) ++ [
+      ./patches/worktrunk-context-menu.patch
+      ./patches/agents-pane-title.patch
+    ];
   });
   herdrWorktrunk = pkgs.applyPatches {
     name = "herdr-worktrunk";
@@ -52,6 +55,9 @@ in
     [theme]
     name = "kanagawa"
 
+    [ui.sidebar.agents]
+    rows = [["pane"], ["workspace", "machine", "agent"]]
+
     [[keys.command]]
     key = "prefix+shift+g"
     type = "plugin_action"
@@ -75,12 +81,6 @@ in
     type = "plugin_action"
     command = "worktrunk.remove"
     description = "Worktree: remove"
-
-    [[keys.command]]
-    key = "prefix+shift+i"
-    type = "plugin_action"
-    command = "herdr-agent-inbox.open"
-    description = "Agent inbox"
 
     [[keys.command]]
     key = "prefix+shift+u"
@@ -266,7 +266,37 @@ in
         run ${lib.getExe herdr} plugin link ${lib.escapeShellArg (toString herdrWorktrunk)} --enabled
       '';
 
-      herdrPlugins = lib.hm.dag.entryAfter [ "linkGeneration" ] (
+      herdrPluginReconciliation = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+        (
+          registered=$(${lib.getExe herdr} --session default plugin list --json) || exit $?
+          removed=$(HERDR_REGISTERED_PLUGINS="$registered" ${pkgs.python3}/bin/python3 - ${lib.escapeShellArgs (map toString (lib.attrValues plugins))} <<'PY'
+        import json
+        import os
+        import pathlib
+        import re
+        import sys
+        import tomllib
+
+        desired = {tomllib.loads((pathlib.Path(root) / "herdr-plugin.toml").read_text())["id"]
+                   for root in sys.argv[1:]}
+        registered = json.loads(os.environ["HERDR_REGISTERED_PLUGINS"])["result"]["plugins"]
+        for plugin in registered:
+            root = pathlib.Path(plugin["plugin_root"])
+            if (plugin["source"]["kind"] == "local"
+                    and root.parent == pathlib.Path(${builtins.toJSON builtins.storeDir})
+                    and re.fullmatch(r"[a-z0-9]{32}-herdr-[a-z0-9-]+-plugin", root.name)
+                    and plugin["plugin_id"] not in desired):
+                print(plugin["plugin_id"])
+        PY
+          ) || exit $?
+          while IFS= read -r plugin; do
+            [ -n "$plugin" ] || continue
+            run ${lib.getExe herdr} --session default plugin uninstall "$plugin" || exit $?
+          done <<< "$removed"
+        )
+      '';
+
+      herdrPlugins = lib.hm.dag.entryAfter [ "herdrPluginReconciliation" ] (
         lib.concatMapStringsSep "\n" (plugin: ''
           run ${lib.getExe herdr} plugin link ${lib.escapeShellArg (toString plugin)} --enabled
         '') (lib.attrValues plugins)
