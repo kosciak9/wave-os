@@ -22,11 +22,6 @@
       force = true;
       recursive = true;
     };
-    "opencode/skills" = {
-      source = ./config/skills;
-      force = true;
-      recursive = true;
-    };
     "opencode/opencode.jsonc" = {
       source = ./config/opencode.jsonc;
       force = true;
