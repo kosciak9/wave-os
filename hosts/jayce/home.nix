@@ -97,6 +97,7 @@ let
 in
 {
   imports = [
+    ./desktop/voxtype.nix
     ../../modules/home/cli
     ../../modules/home/camofox/linux.nix
     ../../modules/home/devenv

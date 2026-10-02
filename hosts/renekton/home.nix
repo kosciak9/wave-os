@@ -13,6 +13,7 @@
     ../../modules/home/herdr
     ../../modules/home/starship
     ../../modules/home/vicinae
+    ../../modules/home/whisper/darwin.nix
     ../../modules/home/zoxide
     ../../modules/home/zen-browser
     ../../modules/home/zsh

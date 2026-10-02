@@ -1,9 +1,9 @@
 {
   coreutils,
+  curl,
   ffmpeg,
+  jq,
   lib,
-  openclaw-whisper-model,
-  whisper-cpp,
   writeShellApplication,
 }:
 
@@ -11,11 +11,13 @@ writeShellApplication {
   name = "openclaw-whisper";
   runtimeInputs = [
     coreutils
+    curl
     ffmpeg
-    whisper-cpp
+    jq
   ];
   text = ''
     set -euo pipefail
+    umask 077
 
     if [ "$#" -ne 1 ] || [ ! -f "$1" ] || [ ! -r "$1" ]; then
       printf '%s\n' "openclaw-whisper: expected one readable regular-file audio path" >&2
@@ -62,28 +64,26 @@ writeShellApplication {
       exit 1
     fi
 
-    if ! timeout --foreground --signal=TERM --kill-after=5s 180s whisper-cli \
-      --model "${openclaw-whisper-model}/share/openclaw/models/ggml-large-v3-turbo-q5_0.bin" \
-      --file "$wav_file" \
-      --language auto \
-      --output-txt \
-      --output-file "$tmp_dir/transcript" \
-      --no-timestamps \
-      --no-prints \
-      >"$tmp_dir/whisper.stdout" 2>"$tmp_dir/whisper.stderr"; then
+    if ! curl --fail --silent --show-error --noproxy '*' \
+      --connect-timeout 5 --max-time 180 \
+      --form "file=@$wav_file;type=audio/wav" \
+      --form-string language=auto \
+      --form-string translate=false \
+      --form-string response_format=json \
+      http://127.0.0.1:18080/v1/audio/transcriptions \
+      >"$tmp_dir/response.json" 2>"$tmp_dir/whisper.stderr"; then
       printf '%s\n' "openclaw-whisper: transcription failed" >&2
       exit 1
     fi
 
-    if [ ! -s "$transcript_file" ]; then
+    if ! jq -er '.text | select(type == "string") | select(test("\\S"))' \
+      "$tmp_dir/response.json" >"$transcript_file" 2>/dev/null; then
       printf '%s\n' "openclaw-whisper: transcription produced no text" >&2
       exit 1
     fi
 
     cat "$transcript_file"
   '';
-
-  passthru.model = openclaw-whisper-model;
 
   meta = {
     description = "Local speech-to-text wrapper for OpenClaw using Whisper";

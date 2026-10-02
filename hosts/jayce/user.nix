@@ -21,6 +21,7 @@ in
 {
   services.accounts-daemon.enable = true;
   services.fprintd.enable = true;
+  programs.ydotool.enable = true;
 
   # GDM fingerprints cannot decrypt the login keyring; require a typed password there.
   programs.dconf.profiles.gdm.databases = [
@@ -46,6 +47,7 @@ in
       "networkmanager"
       "video"
       "wheel"
+      "ydotool"
     ];
   };
 
