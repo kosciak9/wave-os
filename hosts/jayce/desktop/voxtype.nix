@@ -38,6 +38,7 @@ in
         engine = "whisper";
         state_file = "auto";
         hotkey.enabled = false;
+        osd.enabled = false;
         audio = {
           device = "default";
           sample_rate = 16000;
@@ -52,7 +53,7 @@ in
           translate = false;
         };
         output = {
-          mode = "paste";
+          mode = "clipboard";
           paste_keys = "shift+insert";
           pre_type_delay_ms = 200;
           auto_submit = false;
@@ -60,7 +61,7 @@ in
           notification = {
             on_recording_start = true;
             on_recording_stop = true;
-            on_transcription = false;
+            on_transcription = true;
           };
         };
         text.filter_filler_words = false;
