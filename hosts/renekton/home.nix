@@ -34,6 +34,10 @@
   };
   programs = {
     home-manager.enable = true;
+    herdr.federation = {
+      coordinator = true;
+      savedMachines."9717018a05f556969843d066b82d2988" = "machine_77c29d300c7ac622a2dfc783ac227170";
+    };
     zen-browser = {
       enable = true;
       package = null;

@@ -40,6 +40,8 @@ let
   '';
 in
 {
+  imports = [ ./federation.nix ];
+
   xdg.configFile."herdr/config.toml".text = ''
     onboarding = false
 
