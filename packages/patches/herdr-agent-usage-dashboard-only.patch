@@ -1,0 +1,48 @@
+--- a/src/refresh.rs
++++ b/src/refresh.rs
+@@ -388,8 +388,11 @@
+     topic_pane: Option<&str>,
+ ) -> Result<()> {
+     let cache = CacheStore::from_env()?;
+-    WatchHerdrEnvironment::current().save(&cache)?;
+-    if force {
+-        restore_quota_agent_view(&cache);
++    let dashboard_only = std::env::var_os("HERDR_AGENT_USAGE_DASHBOARD_ONLY").is_some();
++    if !dashboard_only {
++        WatchHerdrEnvironment::current().save(&cache)?;
++        if force {
++            restore_quota_agent_view(&cache);
++        }
+     }
+     // Agent inventory is metadata-only. Reusing it for both the fetch and the
+@@ -1511,7 +1514,10 @@
+     force: bool,
+     allow_icon_while_scrolled: bool,
+ ) -> Result<()> {
+-    apply_icon_attention(panes, cache, None, false, false)?;
++    let dashboard_only = std::env::var_os("HERDR_AGENT_USAGE_DASHBOARD_ONLY").is_some();
++    if !dashboard_only {
++        apply_icon_attention(panes, cache, None, false, false)?;
++    }
+     if let Some(pane) =
+         topic_pane.and_then(|pane_id| panes.iter_mut().find(|pane| pane.pane_id == pane_id))
+     {
+@@ -1542,6 +1548,9 @@
+             ),
+         );
+     }
++    if dashboard_only {
++        return Ok(());
++    }
+     notify_low_quota(cache, &tokens);
+     let mut publish_panes = panes.to_vec();
+     sync_vendor_row_siblings(&mut tokens, &mut publish_panes);
+@@ -2185,7 +2194,7 @@
+             ] {
+                 let mut snapshot = ProviderSnapshot::new(
+                     Provider::Kilo,
+-                    vec![window(WindowKind::Monthly, 20.6, 1_790_950_387)],
++                    vec![window(WindowKind::Monthly, 20.6, CacheStore::now_unix() + 3600)],
+                     1,
+                 );
+                 snapshot.account_id = Some(owner.to_string());

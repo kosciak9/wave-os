@@ -261,6 +261,57 @@
         "type": "github"
       }
     },
+    "herdr-agent-inbox": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1785260877,
+        "narHash": "sha256-hF2zQVI4yVRLs5HhqUvon9d6kXuwpXI+n0drl1nB6A0=",
+        "owner": "douglascorrea",
+        "repo": "herdr-agent-inbox",
+        "rev": "78b243279b4da55150b58dc2cc3cffcdc2fd6a04",
+        "type": "github"
+      },
+      "original": {
+        "owner": "douglascorrea",
+        "repo": "herdr-agent-inbox",
+        "rev": "78b243279b4da55150b58dc2cc3cffcdc2fd6a04",
+        "type": "github"
+      }
+    },
+    "herdr-agent-usage": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1790737217,
+        "narHash": "sha256-NeVgHH6qDa0FIy3Ll2kRk7yCNK8QMBEdLwQkwK4g0H4=",
+        "owner": "levi-qiao",
+        "repo": "herdr-agent-usage",
+        "rev": "1b21311ec3fa2b46c2c715a8490f104fbde857e0",
+        "type": "github"
+      },
+      "original": {
+        "owner": "levi-qiao",
+        "repo": "herdr-agent-usage",
+        "rev": "1b21311ec3fa2b46c2c715a8490f104fbde857e0",
+        "type": "github"
+      }
+    },
+    "herdr-auto-title": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1790764263,
+        "narHash": "sha256-hr6F5A5PXwonHXHo2GJ0d2CZFdG/afElF6fKUP1lH7M=",
+        "owner": "kryptamine",
+        "repo": "herdr-auto-title",
+        "rev": "b840874b932b9adc6b7162b8193fceaa04e80be7",
+        "type": "github"
+      },
+      "original": {
+        "owner": "kryptamine",
+        "repo": "herdr-auto-title",
+        "rev": "b840874b932b9adc6b7162b8193fceaa04e80be7",
+        "type": "github"
+      }
+    },
     "herdr-worktrunk": {
       "flake": false,
       "locked": {
@@ -634,6 +685,9 @@
         "devenv-nixpkgs": "devenv-nixpkgs",
         "ghostty-cursor-shaders": "ghostty-cursor-shaders",
         "herdr": "herdr",
+        "herdr-agent-inbox": "herdr-agent-inbox",
+        "herdr-agent-usage": "herdr-agent-usage",
+        "herdr-auto-title": "herdr-auto-title",
         "herdr-worktrunk": "herdr-worktrunk",
         "home-manager": "home-manager",
         "hyprland-scroll-overview": "hyprland-scroll-overview",
