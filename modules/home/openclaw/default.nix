@@ -1059,10 +1059,14 @@ in
     runtimePackages = [
       pkgs.podman
       pkgs.openclaw-llama-server
-      pkgs.openclaw-whisper
     ];
 
     config = {
+      # Keep the dummy credential out of automatic OpenAI auth selection.
+      auth.profiles."openai:local-whisper" = {
+        provider = "local-whisper";
+        mode = "api_key";
+      };
       gateway = {
         mode = "local";
         port = 18789;
@@ -1404,6 +1408,7 @@ in
         mode = "merge";
         providers = {
           "opencode-go".apiKey = secret "OPENCODE_API_KEY";
+          openai.request.allowPrivateNetwork = true;
           openai.models = [
             # OAuth route budgets are aligned with OpenCode.
             {
@@ -1652,9 +1657,11 @@ in
           concurrency = 1;
           models = [
             {
-              type = "cli";
-              command = lib.getExe pkgs.openclaw-whisper;
-              args = [ "{{AttachmentPath}}" ];
+              provider = "openai";
+              model = "whisper-1";
+              profile = "openai:local-whisper";
+              baseUrl = "http://127.0.0.1:18080/v1";
+              language = "auto";
               capabilities = [ "audio" ];
               maxBytes = 20971520;
               timeoutSeconds = 360;

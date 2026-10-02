@@ -7,10 +7,11 @@
 
 let
   logDirectory = "${config.home.homeDirectory}/Library/Logs/Whisper";
+  temporaryDirectory = "${config.home.homeDirectory}/Library/Caches/Whisper";
 in
 {
-  home.activation.whisperLogDirectory = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    ${lib.getExe' pkgs.coreutils "install"} -d -m 0700 -- "${logDirectory}"
+  home.activation.whisperDirectories = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    ${lib.getExe' pkgs.coreutils "install"} -d -m 0700 -- "${logDirectory}" "${temporaryDirectory}"
   '';
 
   launchd.agents.whisper-server = {
@@ -30,7 +31,11 @@ in
         "--language"
         "auto"
         "--no-timestamps"
+        "--convert"
+        "--tmp-dir"
+        temporaryDirectory
       ];
+      EnvironmentVariables.PATH = "${lib.makeBinPath [ pkgs.ffmpeg ]}:/usr/bin:/bin";
       RunAtLoad = true;
       KeepAlive = true;
       ThrottleInterval = 10;
