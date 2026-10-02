@@ -1,6 +1,7 @@
 { lib, ... }:
 {
   imports = [
+    ../../modules/home/agents
     ../../modules/home/openclaw
     ../../modules/home/camofox
     ../../modules/home/cli
