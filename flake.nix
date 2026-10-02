@@ -15,10 +15,6 @@
       url = "github:kryptamine/herdr-auto-title/b840874b932b9adc6b7162b8193fceaa04e80be7";
       flake = false;
     };
-    herdr-agent-inbox = {
-      url = "github:douglascorrea/herdr-agent-inbox/78b243279b4da55150b58dc2cc3cffcdc2fd6a04";
-      flake = false;
-    };
     herdr-agent-usage = {
       url = "github:levi-qiao/herdr-agent-usage/1b21311ec3fa2b46c2c715a8490f104fbde857e0";
       flake = false;
@@ -105,9 +101,6 @@
         {
           herdr-auto-title = final.callPackage ./packages/herdr-auto-title.nix {
             src = inputs.herdr-auto-title;
-          };
-          herdr-agent-inbox = final.callPackage ./packages/herdr-agent-inbox.nix {
-            src = inputs.herdr-agent-inbox;
           };
           herdr-agent-usage = final.callPackage ./packages/herdr-agent-usage.nix {
             src = inputs.herdr-agent-usage;
@@ -245,7 +238,6 @@
         inherit (pkgs)
           camofox-browser-cli
           herdr-auto-title
-          herdr-agent-inbox
           herdr-agent-usage
           ;
       };
@@ -255,7 +247,6 @@
         wave-deploy-root = deployment.rootStdio;
         inherit (darwinPkgs)
           herdr-auto-title
-          herdr-agent-inbox
           herdr-agent-usage
           openclaw-sandbox-machine-check
           openclaw-languagetool-mcp-context
