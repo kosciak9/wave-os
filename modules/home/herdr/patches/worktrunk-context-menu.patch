@@ -20,10 +20,10 @@ diff --git a/src/client/shell/context_menu.rs b/src/client/shell/context_menu.rs
              ],
              ClientContextMenuTarget::Workspace {
                  has_worktree_children: true,
-@@ -34,8 +33,7 @@
-             } => vec![
-                 item("Rename", Action::Rename),
-                 item("Close group", Action::Close),
+@@ -38,8 +38,7 @@
+                     if *close_group { "Close group" } else { "Close" },
+                     Action::Close,
+                 ),
 -                item("New worktree", Action::NewWorktree),
 -                item("Open worktree...", Action::OpenWorktree),
 +                item("Worktrunk: switch / create...", Action::NewWorktree),

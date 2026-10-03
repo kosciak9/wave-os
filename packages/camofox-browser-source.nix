@@ -6,7 +6,7 @@
 }:
 
 let
-  version = "1.15.0";
+  version = "1.18.0";
   upstreamRev = "v${version}";
   camoufox =
     {
@@ -30,7 +30,7 @@ stdenvNoCC.mkDerivation {
     owner = "jo-inc";
     repo = "camofox-browser";
     rev = upstreamRev;
-    hash = "sha256-YouQZa+xAWl0PL24A4eUJDb7JAMoefZBEnB+tfF3IBU=";
+    hash = "sha256-O2Lze6e6AZn/vX0QCaoS9nABpduf02pco+JDsFDP5eA=";
   };
 
   patches = [ ./patches/camofox-click-outcome.patch ];
@@ -55,7 +55,7 @@ stdenvNoCC.mkDerivation {
 
   passthru = {
     inherit upstreamRev;
-    gitHead = "771b610a7b5994759c138b912741de58b0edd588";
+    gitHead = "f94c81babf4bfd44cdd4bd46e1f2e1fb1d91c753";
   };
 
   meta = {

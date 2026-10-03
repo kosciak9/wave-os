@@ -4,26 +4,26 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     herdr = {
-      url = "github:jerryfane/herdr/e377528fba6f08905f3db57c5572828c9a3c0356";
+      url = "github:jerryfane/herdr/f9ae2a132fced4f314a6b1421aadf6f15b6f3761";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     herdr-worktrunk = {
-      url = "github:devashish2203/herdr-worktrunk/8ceca541de8fb0d6006727e172534e1e2af17224";
+      url = "github:devashish2203/herdr-worktrunk/77e91a9b5429c0296cd883300b4b1d4664e9edd6";
       flake = false;
     };
     herdr-auto-title = {
-      url = "github:kryptamine/herdr-auto-title/b840874b932b9adc6b7162b8193fceaa04e80be7";
+      url = "github:kryptamine/herdr-auto-title/1ffa8292c424cf679ed632275750819c234e610b";
       flake = false;
     };
     herdr-agent-usage = {
       url = "github:levi-qiao/herdr-agent-usage/1b21311ec3fa2b46c2c715a8490f104fbde857e0";
       flake = false;
     };
-    deploy-rs.url = "github:serokell/deploy-rs/e760371d631165e7d8de5b0dcf148e21ec4c16f0";
-    devenv-nixpkgs.url = "github:NixOS/nixpkgs/34ab99075ac4f7e40cf037eef32cb1c360bb85e9";
+    deploy-rs.url = "github:serokell/deploy-rs/cf64c8cbadd9b13ea79ba7720aa2930500f2ece7";
+    devenv-nixpkgs.url = "github:NixOS/nixpkgs/c59305bab2065cfecc4944690d9eedbb56f3a9fa";
     # Vicinae intentionally keeps its release-tested Nixpkgs pin; following repository Nixpkgs triggers the known qtkeychain Darwin ld64 crash.
     vicinae = {
-      url = "github:vicinaehq/vicinae/v0.27.5";
+      url = "github:vicinaehq/vicinae/v0.29.1";
     };
     vicinae-extensions = {
       url = "github:vicinaehq/extensions";
@@ -49,7 +49,7 @@
     };
 
     nix-openclaw = {
-      url = "github:openclaw/nix-openclaw/24a88a9c2ae57c01b9edf0fdfe79fca261c06908";
+      url = "github:openclaw/nix-openclaw/f62d33f760bcbdbc6a52ac589eae22bf99201f90";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.home-manager.follows = "home-manager";
     };
@@ -77,7 +77,7 @@
     };
 
     hyprland-scroll-overview = {
-      url = "github:yayuuu/hyprland-scroll-overview/f9248ab6bee770e9d68813b48cc6ca12b3271254";
+      url = "github:yayuuu/hyprland-scroll-overview/10eeefa0519e09992b68a1d2949781a876230f5c";
       flake = false;
     };
   };
@@ -124,6 +124,9 @@
           substack-mcp = final.callPackage ./packages/substack-mcp.nix { };
           camofox-browser-source = final.callPackage ./packages/camofox-browser-source.nix { };
           camofox-browser-cli = final.callPackage ./packages/camofox-browser-cli.nix { };
+          claude-code = final.callPackage ./packages/claude-code.nix { inherit prev; };
+          codex = final.callPackage ./packages/codex.nix { inherit prev; };
+          antigravity-cli = final.callPackage ./packages/antigravity-cli.nix { inherit prev; };
         }
         // prev.lib.optionalAttrs prev.stdenv.hostPlatform.isLinux {
           wave-hyprland = prev.hyprland.overrideAttrs (old: {

@@ -9,29 +9,28 @@
 let
   py = python312.pkgs;
 
-  # The pinned nixpkgs snapshot has MLX 0.32.0, but laya-mlx 0.2.0 requires
-  # >=0.32.2. Use the upstream wheels matched to renekton's macOS 26 arm64.
+  # Use the upstream wheels matched to renekton's macOS 26 arm64.
   mlxMetal = py.buildPythonPackage {
     pname = "mlx-metal";
-    version = "0.32.2";
+    version = "0.32.3";
     format = "wheel";
     src = fetchurl {
-      url = "https://files.pythonhosted.org/packages/dd/cd/4e50bf325100e7165e13d025f264362bf0009196269f9eaf87f2c6e738a2/mlx_metal-0.32.2-py3-none-macosx_26_0_arm64.whl";
-      sha256 = "e6abeac9ac5265830c9c1541b6f96e9be37a85c2446763a46ad466c63a3837ab";
+      url = "https://files.pythonhosted.org/packages/ee/38/cb985ca86979ca6f954a2a45eb6e3f9b787c5d55227564a04f87953b3d56/mlx_metal-0.32.3-py3-none-macosx_26_0_arm64.whl";
+      sha256 = "34ae9b83ad2f0ccdd3e5d48ec35176e7119f57069eef187122916dc941a4ae1f";
     };
     meta = {
-      description = "MLX 0.32.2 Metal kernels";
+      description = "MLX 0.32.3 Metal kernels";
       license = lib.licenses.mit;
       platforms = [ "aarch64-darwin" ];
     };
   };
   mlx = py.buildPythonPackage {
     pname = "mlx";
-    version = "0.32.2";
+    version = "0.32.3";
     format = "wheel";
     src = fetchurl {
-      url = "https://files.pythonhosted.org/packages/0b/eb/af6b1a8b45f24d22e4735c52e0696c66233bd477e1b9e9dbbef225bdf88b/mlx-0.32.2-cp312-cp312-macosx_26_0_arm64.whl";
-      sha256 = "68560fd648c5bb900aa6f6765cd74c5a8abaf092d97d73584a57b7545966c227";
+      url = "https://files.pythonhosted.org/packages/4a/c1/13ff85d72f7cf01239c1031688b11cf1c7a3f0c7380636728976e510bfbd/mlx-0.32.3-cp312-cp312-macosx_26_0_arm64.whl";
+      sha256 = "72711cb23cc6dccc5a460f63f39c11931a00b2c6dcd6fba253921090072e21bc";
     };
     propagatedBuildInputs = [ mlxMetal ];
     nativeBuildInputs = [ cctools ];
@@ -42,7 +41,7 @@ let
     '';
     pythonImportsCheck = [ "mlx.core" ];
     meta = {
-      description = "MLX 0.32.2 arrays and ML inference on Apple Silicon";
+      description = "MLX 0.32.3 arrays and ML inference on Apple Silicon";
       license = lib.licenses.mit;
       platforms = [ "aarch64-darwin" ];
     };
@@ -52,11 +51,11 @@ let
   # model; neither is downloaded or executed at service startup.
   layaMlx = py.buildPythonPackage rec {
     pname = "laya-mlx";
-    version = "0.2.0";
+    version = "0.3.0";
     format = "wheel";
     src = fetchurl {
-      url = "https://files.pythonhosted.org/packages/61/21/89b7f030fcbfb6327f1fc553480fbeaa2aae7408338ee422c2cf37746e66/laya_mlx-0.2.0-py3-none-any.whl";
-      sha256 = "1a80a0cc79c55be808de0b1208a172566209b5780d796b98d86235e9cf335187";
+      url = "https://files.pythonhosted.org/packages/48/84/f347d19c3d22e00a67e945f466b1319f784d66244d4dca4741bc9b433904/laya_mlx-0.3.0-py3-none-any.whl";
+      sha256 = "6f3be5f292440d80c1c8fb8810ef5e82159a15295bd9894df7e574de325b49c3";
     };
     propagatedBuildInputs = [
       mlx

@@ -65,7 +65,7 @@
         vscode-langservers-extracted
         yaml-language-server
         beamPackages.expert
-        typescript-go
+        typescript
         deno
         biome
         oxlint

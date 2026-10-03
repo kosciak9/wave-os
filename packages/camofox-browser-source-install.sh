@@ -5,9 +5,12 @@ substituteInPlace Dockerfile \
     'FROM docker.io/library/node:22-trixie-slim@sha256:7b8a0c89c54499bee567618f96578e1a12a800f062fbdbfd1fb6a443fa6f6284 AS camofox-browser'
 substituteInPlace Dockerfile \
   --replace-fail \
-    'ARG ARCH=x86_64' \
-    'ARG ARCH=@CAMOUFOX_ARCH@
-ARG CAMOUFOX_SHA256=@CAMOUFOX_SHA256@'
+    'amd64) CAMOUFOX_ARCH="x86_64" ;; \' \
+    'amd64) CAMOUFOX_ARCH="@CAMOUFOX_ARCH@" ;; \'
+substituteInPlace Dockerfile \
+  --replace-fail \
+    'arm64) CAMOUFOX_ARCH="arm64" ;; \' \
+    'arm64) CAMOUFOX_ARCH="@CAMOUFOX_ARCH@" ;; \'
 substituteInPlace server.js \
   --replace-fail \
     '        humanize: true,' \
@@ -40,9 +43,9 @@ substituteInPlace Dockerfile \
     squid \'
 substituteInPlace Dockerfile \
   --replace-fail \
-    '    && (unzip -q /tmp/camoufox.zip -d /root/.cache/camoufox || true)' \
-    '    && echo "${CAMOUFOX_SHA256}  /tmp/camoufox.zip" | sha256sum -c - \
-    && (unzip -q /tmp/camoufox.zip -d /root/.cache/camoufox || true)'
+    '    && curl -fL -o /tmp/camoufox.zip "https://github.com/daijro/camoufox/releases/download/v${CAMOUFOX_VERSION}-${CAMOUFOX_RELEASE}/camoufox-${CAMOUFOX_VERSION}-${CAMOUFOX_RELEASE}-lin.${CAMOUFOX_ARCH}.zip" \' \
+    '    && curl -fL -o /tmp/camoufox.zip "https://github.com/daijro/camoufox/releases/download/v${CAMOUFOX_VERSION}-${CAMOUFOX_RELEASE}/camoufox-${CAMOUFOX_VERSION}-${CAMOUFOX_RELEASE}-lin.${CAMOUFOX_ARCH}.zip" \
+    && echo "@CAMOUFOX_SHA256@  /tmp/camoufox.zip" | sha256sum -c - \'
 substituteInPlace Dockerfile \
   --replace-fail \
     'ENV CAMOFOX_PORT=9377

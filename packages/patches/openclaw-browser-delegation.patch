@@ -1,9 +1,6 @@
---- sessions-spawn-tool-2GiVSHqU.mjs
-+++ sessions-spawn-tool-2GiVSHqU.mjs
-@@ -2573,7 +2573,26 @@ function sanitizeMountPathHint(value) {
- 	if (!/^[A-Za-z0-9._\-/:]+$/.test(trimmed)) return;
- 	return trimmed;
- }
+--- sessions-spawn-tool-CE1WiS6Q.mjs
++++ sessions-spawn-tool-CE1WiS6Q.mjs
+@@ -2573,4 +2573,23 @@ async function spawnSubagentDirect(params, ctx) {
 +// Only the validated main -> browser native spawn may add the browser role's reviewed tools.
 +function resolveBrowserDelegationAllowlist(cfg, requesterAgentId, targetAgentId, inheritedAllowlist) {
 +	if (requesterAgentId !== "main" || targetAgentId !== "browser" || !Array.isArray(inheritedAllowlist) || inheritedAllowlist.length === 0) return inheritedAllowlist;

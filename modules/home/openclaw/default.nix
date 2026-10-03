@@ -6,7 +6,7 @@
 }:
 
 let
-  openclawVersion = "2026.9.4";
+  openclawVersion = "2026.9.5";
   home = config.home.homeDirectory;
   state = "${home}/.openclaw";
   workspace = "${state}/workspace";
@@ -398,7 +398,7 @@ let
     "device-pair"
     "xai"
   ];
-  # Exhaustive complement for pinned OpenClaw 2026.9.4: default-on bundled plugins stay disabled visibly and at runtime.
+  # Exhaustive complement for pinned OpenClaw 2026.9.5: default-on bundled plugins stay disabled visibly and at runtime.
   disabledPluginIds = [
     "a2a"
     "acpx"
@@ -452,7 +452,7 @@ let
     "workboard"
   ];
   openclawPackageSetBase = pkgs.openclawPackages.withTools { excludeToolNames = [ "git" ]; };
-  # Pinned OpenClaw 2026.9.4 registers both the built-in session dashboard and Telegram Mini App as /dashboard; preserve the built-in command and rename the Mini App command to /openclaw_ui until upstream resolves it.
+  # Pinned OpenClaw 2026.9.5 registers both the built-in session dashboard and Telegram Mini App as /dashboard; preserve the built-in command and rename the Mini App command to /openclaw_ui until upstream resolves it.
   patchedOpenclawGateway = openclawPackageSetBase.openclaw-gateway.overrideAttrs (oldAttrs: {
     installPhase = ''
       ${oldAttrs.installPhase}
@@ -499,7 +499,7 @@ let
         exit 1
       fi
       controlUiChunk=$(find "$controlUiAssetDir" -type f -name 'control-ui-boot-new-*.js' -print)
-      controlUiAgentListAnchor='agents(){return Ne(this.read().context?.agents.state.agentsList?.agents??[])}'
+      controlUiAgentListAnchor='agents(){return Be(this.read().context?.agents.state.agentsList?.agents??[])}'
       controlUiAgentListOccurrenceCount=$(awk -v needle="$controlUiAgentListAnchor" '
         {
           remaining = $0
@@ -521,11 +521,11 @@ let
 
       spawnChunkDir="$out/lib/openclaw/dist"
       spawnChunkCount=$(find "$spawnChunkDir" -maxdepth 1 -type f -name 'sessions-spawn-tool-*.mjs' -print | wc -l | tr -d '[:space:]')
-      if [ "$spawnChunkCount" -ne 1 ] || [ ! -f "$spawnChunkDir/sessions-spawn-tool-2GiVSHqU.mjs" ]; then
-        printf '%s\n' "refusing to build OpenClaw Gateway: expected exactly the pinned sessions-spawn-tool-2GiVSHqU.mjs bundle in $spawnChunkDir" >&2
+      if [ "$spawnChunkCount" -ne 1 ] || [ ! -f "$spawnChunkDir/sessions-spawn-tool-CE1WiS6Q.mjs" ]; then
+        printf '%s\n' "refusing to build OpenClaw Gateway: expected exactly the pinned sessions-spawn-tool-CE1WiS6Q.mjs bundle in $spawnChunkDir" >&2
         exit 1
       fi
-      spawnChunk="$spawnChunkDir/sessions-spawn-tool-2GiVSHqU.mjs"
+      spawnChunk="$spawnChunkDir/sessions-spawn-tool-CE1WiS6Q.mjs"
       spawnAnchorCount=$(awk -v needle='async function spawnSubagentDirect(params, ctx) {' '
         {
           remaining = $0

@@ -6,7 +6,7 @@
   "plugin": [
     "./plugin/notify/index.js",
     [
-      "@plannotator/opencode@0.27.14",
+      "@plannotator/opencode@0.27.25",
       {
         "workflow": "plan-agent",
         "planningAgents": ["brainstorm-planner"],
