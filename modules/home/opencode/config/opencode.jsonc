@@ -3,21 +3,18 @@
   "lsp": true,
   "model": "openai/gpt-6.1-sol",
   "small_model": "openai/gpt-6-luna",
+  "default_agent": "opencode",
   "plugin": [
-    "./plugin/notify/index.js",
-    [
-      "@plannotator/opencode@0.27.25",
-      {
-        "workflow": "plan-agent",
-        "planningAgents": ["brainstorm-planner"],
-        "runtime": "cli",
-      },
-    ],
-    "opencode-worktrunk-workspaces@0.1.0",
+    // [
+    //   "@plannotator/opencode@0.27.25",
+    //   {
+    //     "workflow": "plan-agent",
+    //     "planningAgents": ["brainstorm-planner"],
+    //     "runtime": "cli",
+    //   },
+    // ],
     "opencode-websearch@0.6.0",
-    "@alergeek-ventures/opencode@1.2.0",
     "@slkiser/opencode-quota@4.9.0",
-    "@gotgenes/opencode-agent-identity@3.1.1",
     "cc-safety-net@2.4.1",
   ],
   "tools": {
@@ -31,11 +28,6 @@
         "-c",
         "if CONTEXT7_API_KEY=$(pass show context7.com/api-key 2>/dev/null); then export CONTEXT7_API_KEY; else unset CONTEXT7_API_KEY; fi; exec npx -y @upstash/context7-mcp@4.1.1",
       ],
-      "enabled": true,
-    },
-    "linear": {
-      "type": "remote",
-      "url": "https://mcp.linear.app/mcp",
       "enabled": true,
     },
   },
@@ -69,9 +61,6 @@
       "npm search *": "allow",
     },
     "edit": "deny",
-    "readGuideline": "deny",
-    "listGuidelines": "deny",
-    "linear_*": "deny",
   },
   "agent": {
     "title": {
@@ -89,63 +78,13 @@
       "model": "openai/gpt-6.1-sol",
       "variant": "medium",
     },
-    "brainstorm-planner": {
+    "opencode": {
+      "mode": "primary",
       "model": "openai/gpt-6.1-sol",
-      "variant": "high",
-      "permission": {},
-    },
-    "build-orchiestrator": {
-      "model": "openai/gpt-6.1-sol",
-      "variant": "medium",
-      "permission": {},
-    },
-    "plain-coder": {
-      "model": "openai/gpt-6.1-sol",
-      "variant": "medium",
+      "variant": "fast",
       "permission": {
         "edit": "allow",
-      },
-    },
-    "builder": {
-      "model": "openai/gpt-6-luna",
-      "variant": "low",
-      "permission": {
-        "edit": "allow",
-      },
-    },
-    "explorer": {
-      "model": "openai/gpt-6-luna",
-      "variant": "low",
-      "permission": {},
-    },
-    "manual-tester": {
-      "model": "openai/gpt-6-luna",
-      "variant": "medium",
-      "permission": {
-        "context7_*": "deny",
-      },
-    },
-    "linear": {
-      "model": "openai/gpt-6-luna",
-      "variant": "low",
-      "permission": {
-        "linear_*": "allow",
-      },
-    },
-    "code-review-orchestrator": {
-      "model": "openai/gpt-6.1-sol",
-      "variant": "medium",
-      "permission": {
-        "readGuideline": "allow",
-        "listGuidelines": "allow",
-      },
-    },
-    "file-level-code-reviewer": {
-      "model": "openai/gpt-6.1-sol",
-      "variant": "high",
-      "permission": {
-        "readGuideline": "allow",
-        "listGuidelines": "allow",
+        "question": "allow",
       },
     },
     "build": {
@@ -155,10 +94,22 @@
       "disable": true,
     },
     "general": {
-      "disable": true,
+      "model": "openai/gpt-6.1-sol",
+      "variant": "medium",
+      "permission": {
+        "edit": "allow",
+        "task": "allow",
+      },
     },
     "explore": {
-      "disable": true,
+      "description": "Codebase and documentation researcher with file reading/search, Bash, web search/fetch, and Context7. No edit or skill tools; include task-specific instructions and relevant context when delegating.",
+      "model": "openai/gpt-6-luna",
+      "variant": "low",
+      "permission": {
+        "edit": "deny",
+        "context7_*": "allow",
+        "skill": "deny",
+      },
     },
   },
   "provider": {
@@ -171,6 +122,11 @@
           },
         },
         "gpt-6.1-sol": {
+          "variants": {
+            "fast": {
+              "reasoningEffort": "low",
+            },
+          },
           "options": {
             "serviceTier": "default",
             "reasoningEffort": "medium",
