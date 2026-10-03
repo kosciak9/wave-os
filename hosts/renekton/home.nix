@@ -2,6 +2,7 @@
 {
   imports = [
     ../../modules/home/agents
+    ../../modules/home/claude-code
     ../../modules/home/openclaw
     ../../modules/home/camofox
     ../../modules/home/cli

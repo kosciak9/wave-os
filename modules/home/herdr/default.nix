@@ -19,8 +19,8 @@ let
     src = inputs.herdr-worktrunk;
     patches = [ ./patches/worktrunk-target-pane.patch ];
   };
-  claudeDirectory =
-    config.home.sessionVariables.CLAUDE_CONFIG_DIR or "${config.home.homeDirectory}/.claude";
+  claudeDirectory = config.programs.claude-code.configDir;
+  claudeHookPath = "${claudeDirectory}/hooks/herdr-agent-state.sh";
   codexDirectory = config.home.sessionVariables.CODEX_HOME or "${config.home.homeDirectory}/.codex";
   antigravityDirectory =
     config.home.sessionVariables.ANTIGRAVITY_CLI_CONFIG_DIR
@@ -96,9 +96,27 @@ in
         codexDirectory
         antigravityDirectory
       ];
-      message = "Herdr requires CLAUDE_CONFIG_DIR, CODEX_HOME, and ANTIGRAVITY_CLI_CONFIG_DIR to be declared as absolute paths (for example ${config.home.homeDirectory}/.claude, ${config.home.homeDirectory}/.codex, and ${config.home.homeDirectory}/.gemini/config); relative paths, tilde, and shell-variable expansion are unsupported.";
+      message = "Herdr requires programs.claude-code.configDir, CODEX_HOME, and ANTIGRAVITY_CLI_CONFIG_DIR to be declared as absolute paths (for example ${config.home.homeDirectory}/.claude, ${config.home.homeDirectory}/.codex, and ${config.home.homeDirectory}/.gemini/config); relative paths, tilde, and shell-variable expansion are unsupported.";
     }
   ];
+
+  programs.claude-code.settings.hooks.SessionStart = [
+    {
+      matcher = "^(startup|resume|clear|compact|fork)$";
+      hooks = [
+        {
+          type = "command";
+          command = "${lib.getExe pkgs.bash} ${lib.escapeShellArg claudeHookPath} session";
+          timeout = 10;
+        }
+      ];
+    }
+  ];
+
+  home.file.${claudeHookPath} = {
+    source = inputs.herdr + "/src/integration/assets/claude/herdr-agent-state.sh";
+    executable = true;
+  };
 
   systemd.user.services.herdr = lib.mkIf herdrLinux {
     Unit = {
@@ -170,7 +188,6 @@ in
       herdr
       antigravity-cli
       bash
-      claude-code
       codex
       fzf
       jq
@@ -182,12 +199,10 @@ in
       # Upstream owns these mutable settings and hook assets, not Home Manager links.
       herdrIntegrations = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
         (
-          claude=${lib.escapeShellArg claudeDirectory}
           codex=${lib.escapeShellArg codexDirectory}
           antigravity=${lib.escapeShellArg antigravityDirectory}
-          directories=("$claude" "$claude/hooks" "$codex" "$antigravity" "$antigravity/hooks")
-          files=("$claude/settings.json" "$claude/hooks/herdr-agent-state.sh"
-            "$codex/config.toml" "$codex/hooks.json" "$codex/herdr-agent-state.sh"
+          directories=("$codex" "$antigravity" "$antigravity/hooks")
+          files=("$codex/config.toml" "$codex/hooks.json" "$codex/herdr-agent-state.sh"
             "$antigravity/hooks.json" "$antigravity/hooks/herdr-agent-state.sh")
 
           for path in "''${directories[@]}" "''${files[@]}"; do
@@ -254,8 +269,8 @@ in
           fi
 
           run ${pkgs.coreutils}/bin/mkdir -p -- "''${directories[@]}" || exit $?
-          for integration in claude codex antigravity-cli; do
-            run ${pkgs.coreutils}/bin/env CLAUDE_CONFIG_DIR="$claude" CODEX_HOME="$codex" \
+          for integration in codex antigravity-cli; do
+            run ${pkgs.coreutils}/bin/env CODEX_HOME="$codex" \
               ANTIGRAVITY_CLI_CONFIG_DIR="$antigravity" ${lib.getExe herdr} integration install "$integration" || exit $?
           done
         )

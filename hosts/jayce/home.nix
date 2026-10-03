@@ -99,6 +99,7 @@ in
   imports = [
     ./desktop/voxtype.nix
     ../../modules/home/agents
+    ../../modules/home/claude-code
     ../../modules/home/cli
     ../../modules/home/camofox/linux.nix
     ../../modules/home/devenv
