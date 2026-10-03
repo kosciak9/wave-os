@@ -69,8 +69,10 @@ in
     nixd
     nixfmt
     nvd
+    prettier
     statix
     python3
+    treefmt
     inputs.deploy-rs.packages.${pkgs.stdenv.hostPlatform.system}.deploy-rs
   ];
 
@@ -161,34 +163,17 @@ in
       exec ${pkgs.python3}/bin/python3 "${config.devenv.root}/tools/wave.py" "$@"
     '';
 
-    nix-format.exec = ''
-      set -euo pipefail
-      if (($# > 0)); then
-        nixfmt -- "$@"
-      else
-        files=()
-        while IFS= read -r -d $'\0' file; do
-          if [[ -f "$file" ]]; then
-            files+=("$file")
-          fi
-        done < <(git ls-files --cached --others --exclude-standard -z -- '*.nix')
-        if ((''${#files[@]} > 0)); then
-          nixfmt -- "''${files[@]}"
-        fi
-      fi
+    format.exec = ''
+      exec treefmt "$@"
+    '';
+
+    check.exec = ''
+      exec nix-check "$@"
     '';
 
     nix-check.exec = ''
       set -euo pipefail
-      files=()
-      while IFS= read -r -d $'\0' file; do
-        if [[ -f "$file" ]]; then
-          files+=("$file")
-        fi
-      done < <(git ls-files --cached --others --exclude-standard -z -- '*.nix')
-      if ((''${#files[@]} > 0)); then
-        nixfmt --check -- "''${files[@]}"
-      fi
+      treefmt --fail-on-change
       statix check .
       deadnix --fail .
     '';

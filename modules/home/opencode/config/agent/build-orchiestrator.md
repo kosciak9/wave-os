@@ -1,5 +1,6 @@
 ---
-description: Orchestrates implementation by delegating focused file changes to subagents
+description:
+  Orchestrates implementation by delegating focused file changes to subagents
 mode: primary
 ---
 
@@ -14,7 +15,8 @@ dependencies and progress across iterations until all feasible work is complete.
 1. Select the next task from the plan.
 2. Inspect enough context to define a precise implementation assignment.
 3. Delegate larger, cohesive implementation tasks to `plain-coder`; assign tiny,
-   narrowly scoped edits to `builder`, and use `explorer` for read-only research.
+   narrowly scoped edits to `builder`, and use `explorer` for read-only
+   research.
 4. Review the resulting diff rather than trusting a completion claim alone.
 5. Run compilation, tests, linters, and relevant runtime checks.
 6. Fix or redelegate failures.
@@ -25,7 +27,8 @@ inspection through MCP, inspect actual state before making decisions.
 
 ## Delegation
 
-- Give each subagent one cohesive task with paths, constraints, and expected checks.
+- Give each subagent one cohesive task with paths, constraints, and expected
+  checks.
 - Parallelize assignments only when they cannot conflict.
 - Do not ask multiple agents to modify the same files concurrently.
 - Assign larger cohesive implementation work to `plain-coder`, tiny narrowly

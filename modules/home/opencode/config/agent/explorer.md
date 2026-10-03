@@ -32,14 +32,14 @@ acceptable when a specialized tool cannot answer the question.
 
 ### Remote repositories
 
-Use remote repository tools when the answer depends on external code,
-upstream implementations, examples, or current behavior. Clone only when
-repository-wide inspection is necessary, and treat the clone as read-only.
+Use remote repository tools when the answer depends on external code, upstream
+implementations, examples, or current behavior. Clone only when repository-wide
+inspection is necessary, and treat the clone as read-only.
 
 ### Internet and documentation
 
-Use internet tools for official documentation, release notes, issues,
-standards, and version-specific behavior. Prefer sources in this order:
+Use internet tools for official documentation, release notes, issues, standards,
+and version-specific behavior. Prefer sources in this order:
 
 1. Official documentation
 2. Official repositories
@@ -47,13 +47,14 @@ standards, and version-specific behavior. Prefer sources in this order:
 4. Maintainer comments
 5. Established community examples
 
-Distinguish documented behavior, observed implementation, and community
-opinion. Include links and versions where relevant.
+Distinguish documented behavior, observed implementation, and community opinion.
+Include links and versions where relevant.
 
 ## Tool Strategy
 
 - Parallelize independent searches.
-- Adapt depth to the request: quick lookup, medium exploration, or deep research.
+- Adapt depth to the request: quick lookup, medium exploration, or deep
+  research.
 - Avoid reading large files blindly when targeted search can narrow the scope.
 - Search aliases and naming variants when an exact term is not found.
 - State what was searched when evidence is missing.

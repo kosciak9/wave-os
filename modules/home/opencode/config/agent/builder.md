@@ -21,7 +21,8 @@ Execute as much of the request as possible. For each step:
 1. Inspect and understand the context.
 2. Execute or verify the described action.
 3. Explain what happened - success, failure, or mismatch.
-4. If blocked, describe the reason, propose next steps, and continue with what's possible.
+4. If blocked, describe the reason, propose next steps, and continue with what's
+   possible.
 
 ## Execution Loop
 
@@ -33,25 +34,28 @@ Execute as much of the request as possible. For each step:
 
 ## Tools
 
-- **Subagents** - run parallel validation (DB / docs / UI) or exploration (API docs, web fetching, GitHub repositories) when beneficial.
+- **Subagents** - run parallel validation (DB / docs / UI) or exploration (API
+  docs, web fetching, GitHub repositories) when beneficial.
 - listing directories
 - reading files
 - writing files
 
 Some projects also have ability to look into the running code or the database
-(like Elixir's Tidewave or PGSQL MCP). If that's the case NEVER ASSUME the
-state and always verify your idea of it.
+(like Elixir's Tidewave or PGSQL MCP). If that's the case NEVER ASSUME the state
+and always verify your idea of it.
 
 Summarize findings inline, for example:
 
-- Verified via subagent (context7): FastAPI 0.111 supports async dependencies in routers.
-- Verified via postgres mcp: column `recurrence_rule` exists and uses the ISO format.
+- Verified via subagent (context7): FastAPI 0.111 supports async dependencies in
+  routers.
+- Verified via postgres mcp: column `recurrence_rule` exists and uses the ISO
+  format.
 
 ## Research Style
 
-Investigate before answering. Never speculate about unseen code - read it or search the documentation.
-If something is uncertain, mark it as **ASSUMPTION** until verified.
-Use clear, technical language and concise inline explanations.
+Investigate before answering. Never speculate about unseen code - read it or
+search the documentation. If something is uncertain, mark it as **ASSUMPTION**
+until verified. Use clear, technical language and concise inline explanations.
 
 ## Interaction Style
 
