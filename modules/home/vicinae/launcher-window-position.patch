@@ -4,19 +4,19 @@ Use halfway placement in the generic QML and shared available-geometry C++
 positioning paths, matching the centered placement provided by the Wayland
 layer-shell path. The shared C++ path also covers macOS during show setup.
 
-diff --git a/src/server/src/qml/qml/LauncherWindow.qml b/src/server/src/qml/qml/LauncherWindow.qml
---- a/src/server/src/qml/qml/LauncherWindow.qml
-+++ b/src/server/src/qml/qml/LauncherWindow.qml
-@@ -471,1 +471,1 @@ Window {
--            root.y = Screen.virtualY + (Screen.height - root.height) / 3;
-+            root.y = Screen.virtualY + (Screen.height - root.height) / 2;
-@@ -477,1 +477,1 @@ Window {
--            root.y = Screen.virtualY + (Screen.height - root.height) / 3;
-+            root.y = Screen.virtualY + (Screen.height - root.height) / 2;
-diff --git a/src/server/src/qml/launcher-window.cpp b/src/server/src/qml/launcher-window.cpp
---- a/src/server/src/qml/launcher-window.cpp
-+++ b/src/server/src/qml/launcher-window.cpp
-@@ -665,2 +665,2 @@ void LauncherWindow::positionOnCursorScreen() {
+diff --git a/src/server/src/ui/qml/launcher/LauncherWindow.qml b/src/server/src/ui/qml/launcher/LauncherWindow.qml
+--- a/src/server/src/ui/qml/launcher/LauncherWindow.qml
++++ b/src/server/src/ui/qml/launcher/LauncherWindow.qml
+@@ -440,1 +440,1 @@
+-            root.y = Screen.virtualY + (Screen.height - root.expandedHeight) / 3;
++            root.y = Screen.virtualY + (Screen.height - root.expandedHeight) / 2;
+@@ -446,1 +446,1 @@
+-            root.y = Screen.virtualY + (Screen.height - root.expandedHeight) / 3;
++            root.y = Screen.virtualY + (Screen.height - root.expandedHeight) / 2;
+diff --git a/src/server/src/ui/windows/launcher-window.cpp b/src/server/src/ui/windows/launcher-window.cpp
+--- a/src/server/src/ui/windows/launcher-window.cpp
++++ b/src/server/src/ui/windows/launcher-window.cpp
+@@ -719,2 +719,2 @@ void LauncherWindow::positionOnCursorScreen() {
 -  m_window->setPosition(avail.left() + (avail.width() - m_window->width()) / 2,
 -                        avail.top() + (avail.height() - refHeight) / 3);
 +  m_window->setPosition(avail.left() + (avail.width() - m_window->width()) / 2,
