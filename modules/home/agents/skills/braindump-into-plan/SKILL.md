@@ -99,6 +99,14 @@ existing system, and make decisions explicit.
    questions, and a concise list of implementation steps up to date as the
    conversation evolves.
 
+Agents cannot reliably estimate elapsed completion time. Do not estimate
+minutes, hours, or days, provide ETAs, promise completion dates, or compute
+pseudo-schedules. Describe scope, dependencies, uncertainty, and validation
+instead; qualitative scope groupings are fine. If asked for duration, explain
+that a reliable estimate requires evidence rather than inventing one. Actual
+measured durations and user-set deadlines or budgets may be recorded, but are
+not completion estimates.
+
 ### Interaction rhythm
 
 > Good: several conversational exchanges, one broad research block, then several

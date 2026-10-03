@@ -26,11 +26,6 @@
       source = ./config/opencode.jsonc;
       force = true;
     };
-    "opencode/plugin" = {
-      source = ./config/plugin;
-      force = true;
-      recursive = true;
-    };
     "opencode/plugins/herdr-agent-state.js".source =
       inputs.herdr + "/src/integration/assets/opencode/herdr-agent-state.js";
     "opencode/herdr-tui-session.js".source =

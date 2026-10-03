@@ -24,9 +24,9 @@ If delegation is unavailable, work directly.
 - Choose agents by competence and the assignment's scope, not by a required
   agent name.
 
-  > Example: assign larger cohesive implementation work to `plain-coder`,
-  > smaller scoped edits to `builder`, and read-only research to `explorer` when
-  > those agents are available and suited to the work.
+  > Example: assign larger cohesive implementation work to a general-purpose
+  > implementation agent and read-only research to a read-only exploration agent
+  > when those roles are available and suited to the work.
 
 - Keep responsibility for integration, review, and final verification.
 - Review the resulting diff rather than trusting a completion claim alone. For
