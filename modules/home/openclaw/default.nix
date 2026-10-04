@@ -33,6 +33,10 @@ let
     provider = "default";
     inherit id;
   };
+  browserLoginTools = [
+    "browser_login_open"
+    "browser_login_save"
+  ];
   ownerRestrictedTools = [
     "automations"
     "gateway"
@@ -41,8 +45,9 @@ let
     "sessions_send"
     "sessions_spawn"
     "subagents"
-  ];
-  approvedTools = [
+  ]
+  ++ browserLoginTools;
+  approvedTools = browserLoginTools ++ [
     "browser_observations"
     "read"
     "write"
@@ -74,11 +79,12 @@ let
     "gateway"
   ];
   sandboxTools = [ "session_status" ] ++ approvedTools;
-  camofoxTools = [
+  browserPluginTools = [
     "camofox_create_tab"
     "camofox_snapshot"
     "camofox_close_tab"
     "camofox_list_tabs"
+    "lightpanda_read"
   ];
   executorTools = [
     "browser_execute"
@@ -90,7 +96,7 @@ let
     "web_search"
     "web_fetch"
   ]
-  ++ camofoxTools
+  ++ browserPluginTools
   ++ executorTools;
   macAppsMcpReadTools = [
     "mail_list_accounts"
@@ -1301,8 +1307,8 @@ in
             every = "0m";
           };
           subagents = {
-            maxConcurrent = 1;
-            maxChildrenPerAgent = 1;
+            maxConcurrent = 3;
+            maxChildrenPerAgent = 3;
             maxSpawnDepth = 1;
             runTimeoutSeconds = 900;
             delegationMode = "suggest";
@@ -1569,7 +1575,7 @@ in
         profile = "minimal";
         alsoAllow =
           approvedTools
-          ++ camofoxTools
+          ++ browserPluginTools
           ++ executorTools
           ++ macAppsMcpPolicyIds
           ++ obsidianMcpPolicyIds
@@ -1611,7 +1617,7 @@ in
         };
         sandbox.tools.allow =
           sandboxTools
-          ++ camofoxTools
+          ++ browserPluginTools
           ++ executorTools
           ++ macAppsMcpPolicyIds
           ++ obsidianMcpPolicyIds
@@ -1635,7 +1641,7 @@ in
           "view_image"
           "pdf"
         ]
-        ++ camofoxTools
+        ++ browserPluginTools
         ++ executorTools;
         swarm = false;
         updatePlan = true;
@@ -1765,6 +1771,8 @@ in
               config = {
                 url = "http://127.0.0.1:9377";
                 autoStart = false;
+                viewerUrl = "https://renekton.dusky-diatonic.ts.net:6080/vnc.html?autoconnect=1&resize=scale";
+                lightpandaUrl = "http://127.0.0.1:9378/mcp";
               };
             };
           };

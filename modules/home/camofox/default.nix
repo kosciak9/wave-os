@@ -17,6 +17,12 @@ let
     buildArch = "arm64";
     transport = "${podman} --connection openclaw-sandbox";
     transportExec = "exec ${podman} --connection openclaw-sandbox";
+    # The owner logs in through noVNC: loopback only, reached over the tailnet via Caddy.
+    extraRunArgs = ''
+      --publish 127.0.0.1:16080:6080 \
+      --env ENABLE_VNC=1 \
+      --env VNC_BIND=0.0.0.0 \
+    '';
     imageBuildPrelude = ''
       deadline=$((SECONDS + 180))
       while ! info=$(${podman} --connection openclaw-sandbox info --format json 2>/dev/null) ||

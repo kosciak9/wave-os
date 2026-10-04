@@ -8,6 +8,7 @@
   transport,
   transportExec,
   imageBuildPrelude ? "",
+  extraRunArgs ? "",
 }:
 
 let
@@ -78,14 +79,14 @@ let
     --env CAMOFOX_TRACES_DIR=/home/node/.camofox/traces \
     --env CAMOFOX_UPLOADS_DIR=/home/node/.camofox/uploads \
     --env CAMOFOX_COOKIES_DIR=/home/node/.camofox/cookies \
-    --env MAX_SESSIONS=5 \
-    --env MAX_TABS_PER_SESSION=3 \
-    --env SESSION_TIMEOUT_MS=600000 \
+    --env MAX_SESSIONS=10 \
+    --env MAX_TABS_PER_SESSION=6 \
+    --env SESSION_TIMEOUT_MS=1800000 \
     --env BROWSER_IDLE_TIMEOUT_MS=300000 \
-    --env TAB_INACTIVITY_MS=300000 \
+    --env TAB_INACTIVITY_MS=1800000 \
     --env CAMOFOX_CRASH_REPORT_ENABLED=false \
     --env CAMOFOX_DISABLE_DEFAULT_ADDONS=true \
-    ${lib.escapeShellArg image}
+    ${extraRunArgs}${lib.escapeShellArg image}
   '';
 in
 {

@@ -4,6 +4,7 @@
     ../../modules/home/agents
     ../../modules/home/openclaw
     ../../modules/home/camofox
+    ../../modules/home/lightpanda
     ../../modules/home/cli
     ../../modules/home/devenv
     ../../modules/home/development-caddy/darwin.nix
