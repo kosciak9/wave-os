@@ -16,6 +16,13 @@ PanelWindow {
     property var audioLevels: Array(12).fill(0)
     property real borderPhase: 0
     property real borderCoverage: 0.18
+    property real recordingProgress: 0
+    readonly property int recordingDurationMs: Number(Quickshell.env("WAVE_DICTATION_MAX_DURATION_MS"))
+    readonly property real recordingRemainingMs: (1 - recordingProgress) * recordingDurationMs
+    readonly property color recordingBorderColor: recordingRemainingMs <= 5000 ? Theme.waveRed
+        : recordingRemainingMs <= 10000 ? Theme.carpYellow : Theme.fujiWhite
+    onRecordingProgressChanged: recordingBorder.requestPaint()
+    onRecordingBorderColorChanged: recordingBorder.requestPaint()
     readonly property int pillWidth: 168
     readonly property int pillHeight: 44
     readonly property bool active: stage === "recording" || stage === "transcribing"
@@ -25,9 +32,14 @@ PanelWindow {
         : stage === "cancelled" ? Theme.fujiGray : Theme.waveRed
 
     function show(nextStage: string): void {
-        if (stage !== nextStage)
-            audioLevels = Array(12).fill(0)
+        // State-file updates and notifications can announce the same transition.
+        if (stage === nextStage)
+            return
+        audioLevels = Array(12).fill(0)
+        recordingCountdown.stop()
         stage = nextStage
+        if (nextStage === "recording")
+            recordingCountdown.restart()
         borderFill.stop()
         if (nextStage === "ready")
             borderFill.restart()
@@ -143,6 +155,15 @@ PanelWindow {
         easing.type: Easing.OutCubic
     }
 
+    NumberAnimation {
+        id: recordingCountdown
+        target: root
+        property: "recordingProgress"
+        from: 0
+        to: 1
+        duration: root.recordingDurationMs
+    }
+
     Rectangle {
         id: bubble
         anchors.fill: parent
@@ -151,6 +172,66 @@ PanelWindow {
         color: Theme.sumiInk0
         border.width: 1
         border.color: Theme.sumiInk3
+
+        Canvas {
+            id: recordingBorder
+            anchors.fill: parent
+            visible: root.stage === "recording"
+            enabled: false
+            renderTarget: Canvas.FramebufferObject
+            onVisibleChanged: requestPaint()
+            onWidthChanged: requestPaint()
+            onHeightChanged: requestPaint()
+            onPaint: {
+                const ctx = getContext("2d")
+                const inset = 0.75
+                const r = height / 2 - inset
+                const left = inset
+                const right = width - inset
+                const top = inset
+                const bottom = height - inset
+                const centerX = width / 2
+                const halfLength = width + height - 4 * inset + (Math.PI - 4) * r
+                const visibleLength = Math.max(0, Math.min(1, root.recordingProgress)) * halfLength
+
+                ctx.clearRect(0, 0, width, height)
+                ctx.strokeStyle = root.recordingBorderColor
+                ctx.fillStyle = root.recordingBorderColor
+                ctx.lineWidth = 1.5
+                ctx.lineCap = "round"
+                ctx.lineJoin = "round"
+
+                if (root.recordingProgress <= 0) {
+                    ctx.beginPath()
+                    ctx.arc(centerX, bottom, 0.75, 0, 2 * Math.PI)
+                    ctx.fill()
+                    return
+                }
+
+                function strokeHalf(clockwise) {
+                    ctx.beginPath()
+                    ctx.moveTo(centerX, bottom)
+                    if (clockwise) {
+                        ctx.lineTo(right - r, bottom)
+                        ctx.arc(right - r, bottom - r, r, Math.PI / 2, 0, true)
+                        ctx.lineTo(right, top + r)
+                        ctx.arc(right - r, top + r, r, 0, -Math.PI / 2, true)
+                        ctx.lineTo(centerX, top)
+                    } else {
+                        ctx.lineTo(left + r, bottom)
+                        ctx.arc(left + r, bottom - r, r, Math.PI / 2, Math.PI, false)
+                        ctx.lineTo(left, top + r)
+                        ctx.arc(left + r, top + r, r, Math.PI, 3 * Math.PI / 2, false)
+                        ctx.lineTo(centerX, top)
+                    }
+                    ctx.setLineDash([visibleLength, halfLength])
+                    ctx.stroke()
+                }
+
+                strokeHalf(true)
+                strokeHalf(false)
+            }
+        }
 
         Shape {
             id: activityBorder

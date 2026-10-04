@@ -2,6 +2,7 @@
 
 let
   sessionTarget = "wayland-session@hyprland.desktop.target";
+  maxDurationSecs = 300;
   audioLevels = pkgs.writeScriptBin "wave-voxtype-levels" (
     "#!${lib.getExe pkgs.python3}\n" + builtins.readFile ./voxtype-levels.py
   );
@@ -48,7 +49,7 @@ in
         audio = {
           device = "default";
           sample_rate = 16000;
-          max_duration_secs = 60;
+          max_duration_secs = maxDurationSecs;
         };
         whisper = {
           mode = "remote";
@@ -59,7 +60,7 @@ in
           translate = false;
         };
         output = {
-          mode = "clipboard";
+          mode = "paste";
           paste_keys = "shift+insert";
           pre_type_delay_ms = 200;
           auto_submit = false;
@@ -88,4 +89,8 @@ in
     };
     Install.WantedBy = [ sessionTarget ];
   };
+
+  systemd.user.services.quickshell.Service.Environment = [
+    "WAVE_DICTATION_MAX_DURATION_MS=${toString (maxDurationSecs * 1000)}"
+  ];
 }

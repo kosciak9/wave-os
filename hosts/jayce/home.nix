@@ -471,7 +471,7 @@ in
         "X-Restart-Triggers" = [ "${./desktop/quickshell}" ];
       };
       Service = {
-        Environment = "WAVE_NOTIFICATION_SOUND=${notificationSoundPath}";
+        Environment = [ "WAVE_NOTIFICATION_SOUND=${notificationSoundPath}" ];
         UMask = "0077";
       };
     };
