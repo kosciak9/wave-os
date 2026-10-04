@@ -15,6 +15,7 @@ PanelWindow {
     required property var modelData
     required property bool primary
     required property var notificationService
+    required property var caffeinateService
 
     screen: modelData
     color: "transparent"
@@ -384,6 +385,64 @@ PanelWindow {
         }
     }
 
+    component CaffeinateWidget: WidgetButton {
+        id: caffeinateWidget
+
+        active: root.caffeinateService.known && root.caffeinateService.active
+        activeColor: Theme.waveBlue1
+        inactiveOpacity: root.caffeinateService.pending ? 0.65 : 1
+        border.width: active || root.caffeinateService.error.length > 0 ? 1 : 0
+        border.color: root.caffeinateService.error.length > 0 ? Theme.waveRed : Theme.carpYellow
+
+        onClicked: function(mouse) {
+            if (mouse.button === Qt.LeftButton)
+                root.caffeinateService.toggle()
+        }
+
+        Text {
+            text: "Caffeinate " + root.caffeinateService.status + (root.caffeinateService.error.length > 0 ? " !" : "")
+            color: root.caffeinateService.error.length > 0 ? Theme.waveRed
+                : caffeinateWidget.active ? Theme.carpYellow : Theme.oldWhite
+            font.family: Theme.fontFamily
+            font.pixelSize: 11
+            font.weight: Font.Bold
+        }
+
+        PopupWindow {
+            anchor.item: caffeinateWidget
+            anchor.edges: Edges.Bottom | Edges.Right
+            anchor.gravity: Edges.Bottom | Edges.Left
+            visible: caffeinateWidget.hovered
+            color: "transparent"
+            implicitWidth: 310
+            implicitHeight: caffeinateTooltip.implicitHeight + 20
+
+            Rectangle {
+                anchors.fill: parent
+                radius: 6
+                color: Theme.sumiInk1
+                border.width: 1
+                border.color: Theme.sumiInk3
+
+                Text {
+                    id: caffeinateTooltip
+                    anchors.centerIn: parent
+                    width: parent.width - 20
+                    text: "Caffeinate: " + root.caffeinateService.status
+                        + "\nPerformance + sleep inhibition.\nLock and display power-off remain enabled."
+                        + (root.caffeinateService.pending ? "\nWaiting for systemd…"
+                            : root.caffeinateService.known ? "\nClick to turn " + (root.caffeinateService.active ? "OFF." : "ON.") : "\nWaiting for service state…")
+                        + (root.caffeinateService.error.length > 0 ? "\n" + root.caffeinateService.error : "")
+                    color: Theme.oldWhite
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 11
+                    textFormat: Text.PlainText
+                    wrapMode: Text.Wrap
+                }
+            }
+        }
+    }
+
     component ClockWidget: WidgetButton {
         id: clockWidget
 
@@ -469,6 +528,8 @@ PanelWindow {
                 }
 
                 BatteryWidget { barVisible: root.primary }
+
+                CaffeinateWidget {}
 
                 NotificationWidget { barVisible: root.primary }
 

@@ -3,7 +3,8 @@
     oh-my-zsh.plugins = [ "systemd" ];
 
     shellAliases = {
-      caffeinate = "echo 'preventing idle and lid sleep' && systemd-inhibit --what=idle:sleep:handle-lid-switch --who=caffeinate --why=Caffeinate sleep infinity";
+      caffeinate = "systemctl --user start wave-caffeinate.service";
+      decaffeinate = "systemctl --user stop wave-caffeinate.service";
       cp = "cp -rv --reflink=auto";
       sc-suspend = "systemctl suspend";
     };

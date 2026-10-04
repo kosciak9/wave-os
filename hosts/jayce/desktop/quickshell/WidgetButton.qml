@@ -11,6 +11,7 @@ Rectangle {
     property bool active: false
     property color activeColor: Theme.sumiInk3
     property real inactiveOpacity: 1
+    readonly property bool hovered: pointer.containsMouse
 
     signal clicked(var mouse)
     signal scrolled(var wheel)

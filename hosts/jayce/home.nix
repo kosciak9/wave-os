@@ -31,6 +31,28 @@ let
     ];
     text = builtins.readFile ./scripts/backlight-dim.sh;
   };
+  caffeinateReady = pkgs.writeShellApplication {
+    name = "wave-caffeinate-ready";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.systemd
+    ];
+    text = ''
+      export NOTIFY_SOCKET="$WAVE_CAFFEINATE_NOTIFY_SOCKET"
+      systemd-notify --ready
+      exec sleep infinity
+    '';
+  };
+  caffeinate = pkgs.writeShellApplication {
+    name = "wave-caffeinate";
+    runtimeInputs = [ pkgs.systemd ];
+    text = ''
+      # systemd-inhibit strips NOTIFY_SOCKET from its child environment.
+      export WAVE_CAFFEINATE_NOTIFY_SOCKET="$NOTIFY_SOCKET"
+      exec systemd-inhibit --what=sleep --mode=block-weak --who=wave-caffeinate \
+        --why='Keep background tasks running' ${lib.getExe caffeinateReady}
+    '';
+  };
   displayReconciler = pkgs.writeShellApplication {
     name = "wave-display-reconciler";
     runtimeInputs = with pkgs; [
@@ -334,7 +356,7 @@ in
         general = {
           lock_cmd = "pidof hyprlock || hyprlock";
           before_sleep_cmd = "systemctl --user stop wave-backlight-dim.service; loginctl lock-session";
-          after_sleep_cmd = "hyprctl dispatch 'hl.dsp.dpms({ action = \"enable\" })'";
+          after_sleep_cmd = "${displayReconcilerPath} notify resume";
         };
         listener = [
           {
@@ -349,7 +371,12 @@ in
           {
             timeout = 600;
             on-timeout = "hyprctl dispatch 'hl.dsp.dpms({ action = \"disable\" })'";
-            on-resume = "hyprctl dispatch 'hl.dsp.dpms({ action = \"enable\" })'";
+            on-resume = "${displayReconcilerPath} notify display-on";
+          }
+          {
+            timeout = 900;
+            on-timeout = "${displayReconcilerPath} notify idle-start";
+            on-resume = "${displayReconcilerPath} notify idle-end";
           }
         ];
       };
@@ -417,6 +444,25 @@ in
     style.name = "kvantum";
   };
   systemd.user.services = {
+    wave-caffeinate = {
+      Unit = {
+        Description = "Keep tasks running at performance without preventing lock or DPMS";
+        After = [ "wayland-session-waitenv.service" ];
+        PartOf = [ sessionTarget ];
+        ConditionEnvironment = "WAYLAND_DISPLAY";
+      };
+      Service = {
+        Type = "notify";
+        NotifyAccess = "all";
+        # A weak sleep lock allows root's critical-battery hibernation. The
+        # session sleep policy explicitly respects it even for its owning UID.
+        ExecStart = lib.getExe caffeinate;
+        ExecStartPost = "${displayReconcilerPath} notify policy-changed";
+        ExecStopPost = "${displayReconcilerPath} notify policy-changed";
+        TimeoutStartSec = 10;
+        TimeoutStopSec = 5;
+      };
+    };
     quickshell = {
       Unit = {
         After = lib.mkForce [ "wayland-session-waitenv.service" ];
@@ -474,7 +520,8 @@ in
     wave-lid-inhibit = {
       Unit = {
         Description = "Keep lid ownership with the Wave session";
-        After = [ "wayland-session-waitenv.service" ];
+        After = [ "wave-display-reconciler.service" ];
+        BindsTo = [ "wave-display-reconciler.service" ];
         PartOf = [ sessionTarget ];
         ConditionEnvironment = "WAYLAND_DISPLAY";
       };
@@ -483,7 +530,7 @@ in
         Restart = "always";
         RestartSec = 1;
       };
-      Install.WantedBy = [ sessionTarget ];
+      Install.WantedBy = [ "wave-display-reconciler.service" ];
     };
 
     hyprsunset = {

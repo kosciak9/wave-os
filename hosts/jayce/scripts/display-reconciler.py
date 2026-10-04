@@ -20,6 +20,11 @@ from pathlib import Path
 INTERNAL = "eDP-1"
 EVENT_DELAY = 0.20
 GENERATED_EVENT_TIMEOUT = 5.0
+RESUME_SLEEP_GRACE = 5.0
+NOTIFY_ACTIONS = (
+    "lid-close", "lid-open", "policy-changed", "resume",
+    "idle-start", "idle-end", "display-on",
+)
 
 
 def identity(description):
@@ -233,6 +238,34 @@ def lid_state():
     return "unknown"
 
 
+def logind_query(method):
+    return json_query(
+        "busctl", "--json=short", "call", "org.freedesktop.login1",
+        "/org/freedesktop/login1", "org.freedesktop.login1.Manager", method,
+    )
+
+
+def sleep_inhibited(idle):
+    """Fail closed, including on malformed replies or our own weak inhibitor."""
+    reply = logind_query("ListInhibitors")
+    if not isinstance(reply, dict):
+        return True
+    data = reply.get("data")
+    if not isinstance(data, list) or len(data) != 1 or not isinstance(data[0], list):
+        return True
+    for inhibitor in data[0]:
+        if (not isinstance(inhibitor, list) or len(inhibitor) != 6
+                or not all(isinstance(value, str) for value in inhibitor[:4])
+                or not all(isinstance(value, int) for value in inhibitor[4:])):
+            return True
+        what, _, _, mode, _, _ = inhibitor
+        if mode in ("block", "block-weak"):
+            kinds = set(what.split(":"))
+            if "sleep" in kinds or (idle and "idle" in kinds):
+                return True
+    return False
+
+
 def lid_policy(monitors):
     """Classify topology before doing any action; in particular never target None."""
     external = [monitor for monitor in monitors if monitor.get("name") != INTERNAL]
@@ -298,6 +331,8 @@ class Reconciler:
         self.suspend_requested = False
         self.suspend_retry_at = 0.0
         self.suspend_delay = 1.0
+        self.idle_requested = False
+        self.closed_locked = False
         self.closed_migrated = False
         self.pending_active_restore = {}
 
@@ -455,44 +490,83 @@ class Reconciler:
     def finish_topology_transition(self):
         self.pending_active_restore.clear()
 
+    def set_dpms(self, monitors, enabled, internal_only=False):
+        for monitor in monitors:
+            connector = monitor.get("name")
+            if not connector or (internal_only and connector != INTERNAL):
+                continue
+            if enabled and connector == INTERNAL and lid_state() == "closed":
+                continue
+            if monitor.get("dpmsStatus") is enabled:
+                continue
+            run(
+                "hyprctl", "dispatch",
+                "hl.dsp.dpms({ action = %s, monitor = %s })"
+                % (json.dumps("enable" if enabled else "disable"), json.dumps(connector)),
+            )
+
+    def defer_sleep(self):
+        self.suspend_retry_at = time.monotonic() + self.suspend_delay
+        self.suspend_delay = next_suspend_retry_delay(self.suspend_delay)
+
+    def request_sleep(self, idle=False):
+        if self.suspend_requested or time.monotonic() < self.suspend_retry_at:
+            return
+        if sleep_inhibited(idle):
+            self.defer_sleep()
+            return
+        capability = logind_query("CanSuspendThenHibernate")
+        operation = (
+            "suspend-then-hibernate"
+            if isinstance(capability, dict) and capability.get("data") == ["yes"]
+            else "suspend"
+        )
+        # Both sleep commands return once queued; never bypass logind inhibitors.
+        result = run("systemctl", "--no-ask-password", "--check-inhibitors=yes", operation)
+        if result.ok:
+            print("wave-display-reconciler: %s requested" % operation, file=sys.stderr)
+            self.suspend_requested = True
+            self.suspend_retry_at = 0.0
+            self.suspend_delay = 1.0
+        else:
+            self.defer_sleep()
+
     def close(self):
         with self.lock:
+            if lid_state() != "closed":
+                return
+            if not self.closed_locked:
+                run("systemctl", "--user", "stop", "wave-backlight-dim.service")
+                self.closed_locked = run("loginctl", "lock-session").ok
             monitors = self.snapshot()
             if monitors is None:
+                self.set_dpms([{"name": INTERNAL}], False, internal_only=True)
+                self.defer_sleep()
                 return
+            self.set_dpms(monitors, False, internal_only=True)
             policy, _ = lid_policy(monitors)
             if policy == "suspend":
-                if not self.suspend_requested and time.monotonic() >= self.suspend_retry_at:
-                    self.blackout()
-                    run("systemctl", "--user", "stop", "wave-backlight-dim.service")
-                    run("loginctl", "lock-session")
-                    result = run("systemctl", "suspend")
-                    if result.ok:
-                        print("wave-display-reconciler: suspend requested", file=sys.stderr)
-                        self.suspend_requested = True
-                        self.suspend_retry_at = 0.0
-                        self.suspend_delay = 1.0
-                    else:
-                        print("wave-display-reconciler: suspend denied; daemon remains active", file=sys.stderr)
-                        self.suspend_retry_at = time.monotonic() + self.suspend_delay
-                        self.suspend_delay = next_suspend_retry_delay(self.suspend_delay)
+                self.lid_action = "closed"
+                self.request_sleep()
                 return
             target = self.target_external(monitors)
             if policy == "steady":
                 self.restore_outputs(monitors)
                 self.lid_action = "closed"
-                self.suspend_retry_at = 0.0
-                self.suspend_delay = 1.0
+                self.request_sleep()
                 return
             if not target:
                 print("wave-display-reconciler: migration topology had no target", file=sys.stderr)
+                self.defer_sleep()
                 return
             if self.lid_action == "closed" and self.closed_migrated:
+                self.request_sleep()
                 return
             self.blackout()
             run("systemctl", "--user", "stop", "wave-backlight-dim.service")
             workspace_list = json_query("hyprctl", "workspaces", "-j")
             if not isinstance(workspace_list, list):
+                self.defer_sleep()
                 return
             internal_workspaces = [
                 w["id"] for w in workspace_list
@@ -502,6 +576,7 @@ class Reconciler:
                 self.move(workspace_id, target)
             remaining = json_query("hyprctl", "workspaces", "-j")
             if not isinstance(remaining, list):
+                self.defer_sleep()
                 return
             if not any(
                 w.get("monitor") == INTERNAL and managed_workspace(w)
@@ -510,14 +585,22 @@ class Reconciler:
                 result = run("hyprctl", "eval", 'hl.monitor({ output = "eDP-1", disabled = true })')
                 if result.ok:
                     self.closed_migrated = True
-                    self.suspend_retry_at = 0.0
-                    self.suspend_delay = 1.0
             self.lid_action = "closed"
             save_state(self.state_path, self.ownership)
+            self.request_sleep()
 
     def open(self):
         with self.lock:
+            if lid_state() == "closed":
+                return self.close()
+            self.closed_locked = False
+            self.suspend_requested = False
+            self.suspend_retry_at = 0.0
+            self.suspend_delay = 1.0
             if self.lid_action == "open":
+                monitors = self.snapshot()
+                if monitors is not None:
+                    self.set_dpms(monitors, True)
                 return
             self.begin_topology_transition()
             self.blackout()
@@ -530,6 +613,7 @@ class Reconciler:
                         continue
                     if any(m.get("name") == INTERNAL for m in monitors):
                         self.restore_outputs(monitors)
+                        self.set_dpms(monitors, True)
                         self.lid_action = "open"
                         self.suspend_requested = False
                         self.suspend_retry_at = 0.0
@@ -543,19 +627,73 @@ class Reconciler:
 
     def reconcile(self):
         with self.lock:
-            monitors = self.snapshot()
-            if monitors is None:
-                return
             if lid_state() == "closed":
                 return self.close()
+            monitors = self.snapshot()
+            if monitors is None:
+                if self.idle_requested and not self.suspend_requested:
+                    self.defer_sleep()
+                return
             if not any(monitor.get("name") == INTERNAL for monitor in monitors):
                 self.lid_action = "unknown"
-                return self.open()
+                self.open()
+                if self.idle_requested:
+                    self.request_sleep(idle=True)
+                return
             self.restore_outputs(monitors)
             self.lid_action = "open"
-            self.suspend_requested = False
-            self.suspend_retry_at = 0.0
-            self.suspend_delay = 1.0
+            self.closed_locked = False
+            if self.idle_requested:
+                self.request_sleep(idle=True)
+            else:
+                self.suspend_requested = False
+                self.suspend_retry_at = 0.0
+                self.suspend_delay = 1.0
+
+    def control_action(self, action):
+        with self.lock:
+            if action == "lid-close":
+                self.close()
+            elif action == "lid-open":
+                self.idle_requested = False
+                self.open()
+            elif action == "idle-start":
+                self.idle_requested = True
+                monitors = json_query("hyprctl", "monitors", "-j")
+                if isinstance(monitors, list):
+                    self.set_dpms(monitors, False)
+                self.reconcile()
+            elif action == "idle-end":
+                self.idle_requested = False
+                if lid_state() == "closed":
+                    return
+                self.suspend_retry_at = 0.0
+                self.suspend_delay = 1.0
+            elif action == "policy-changed":
+                # Let activity from clicking the toggle cancel an expired idle
+                # request before sleeping; closed-lid intent remains in effect.
+                self.suspend_retry_at = time.monotonic() + EVENT_DELAY
+                self.suspend_delay = 1.0
+                self.reconcile()
+            elif action == "resume":
+                self.suspend_requested = False
+                self.idle_requested = False
+                self.suspend_delay = RESUME_SLEEP_GRACE
+                self.suspend_retry_at = time.monotonic() + RESUME_SLEEP_GRACE
+                if lid_state() == "closed":
+                    self.closed_locked = False
+                    self.close()
+                else:
+                    self.lid_action = "unknown"
+                    self.open()
+            elif action == "display-on":
+                if lid_state() == "closed":
+                    self.close()
+                    monitors = json_query("hyprctl", "monitors", "-j")
+                    if isinstance(monitors, list):
+                        self.set_dpms(monitors, True)
+                else:
+                    self.open()
 
     def socket_connected(self):
         """Reconcile each initial connection and every socket reconnect."""
@@ -563,17 +701,20 @@ class Reconciler:
 
     def retry_suspend_if_due(self):
         """Retry denied suspend without blocking the selector loop."""
-        if not self.suspend_retry_at or self.suspend_requested:
+        if (not self.suspend_retry_at or self.suspend_requested
+                or time.monotonic() < self.suspend_retry_at):
             return
         monitors = json_query("hyprctl", "monitors", "-j")
         if not isinstance(monitors, list):
+            self.defer_sleep()
             return
-        if lid_state() != "closed" or any(m.get("name") != INTERNAL for m in monitors):
+        if lid_state() == "closed":
+            self.close()
+        elif self.idle_requested:
+            self.request_sleep(idle=True)
+        else:
             self.suspend_retry_at = 0.0
             self.suspend_delay = 1.0
-            return
-        if time.monotonic() >= self.suspend_retry_at:
-            self.close()
 
 
 def parse_event(line):
@@ -651,10 +792,7 @@ def daemon():
                     client, _ = control.accept()
                     action = client.recv(64).decode().strip()
                     client.close()
-                    if action == "lid-close":
-                        reconciler.close()
-                    elif action == "lid-open":
-                        reconciler.open()
+                    reconciler.control_action(action)
                     continue
                 elif hypr is not None:
                     connection = hypr
@@ -729,7 +867,7 @@ def main():
     subparsers = parser.add_subparsers(dest="command", required=True)
     subparsers.add_parser("daemon")
     notify_parser = subparsers.add_parser("notify")
-    notify_parser.add_argument("action", choices=("lid-close", "lid-open"))
+    notify_parser.add_argument("action", choices=NOTIFY_ACTIONS)
     arguments = parser.parse_args()
     if arguments.command == "daemon":
         daemon()

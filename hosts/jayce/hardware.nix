@@ -9,15 +9,20 @@
   imports = [ (modulesPath + "/installer/scan/not-detected.nix") ];
 
   boot = {
-    initrd.availableKernelModules = [
-      "nvme"
-      "xhci_pci"
-      "thunderbolt"
-      "usbhid"
-      "usb_storage"
-      "sd_mod"
-    ];
-    initrd.kernelModules = [ ];
+    initrd = {
+      # systemd records the active Btrfs swapfile location in EFI at hibernation,
+      # then resolves it after unlocking LUKS in the initrd.
+      systemd.enable = true;
+      availableKernelModules = [
+        "nvme"
+        "xhci_pci"
+        "thunderbolt"
+        "usbhid"
+        "usb_storage"
+        "sd_mod"
+      ];
+      kernelModules = [ ];
+    };
     kernelModules = [ "kvm-amd" ];
     extraModulePackages = [ ];
   };
@@ -50,7 +55,13 @@
   boot.initrd.luks.devices."luks-bc69f56b-c5a5-413e-b350-afd3ecd7aa1b".device =
     "/dev/disk/by-uuid/bc69f56b-c5a5-413e-b350-afd3ecd7aa1b";
 
-  swapDevices = [ ];
+  swapDevices = [
+    {
+      device = "/swap/swapfile";
+      size = 65536;
+      priority = 0;
+    }
+  ];
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
   hardware.cpu.amd.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;
 }

@@ -1,4 +1,4 @@
-"""Keep the PPD profile aligned with the physical power source."""
+"""Use performance on AC or with caffeinate, otherwise save battery power."""
 
 import asyncio
 import logging
@@ -8,27 +8,23 @@ from dbus_next.aio import MessageBus
 
 
 LOG = logging.getLogger("wave-power-profile-policy")
-UPower = "org.freedesktop.UPower"
-UPower_PATH = "/org/freedesktop/UPower"
+LOGIN = "org.freedesktop.login1"
+LOGIN_PATH = "/org/freedesktop/login1"
+UPOWER = "org.freedesktop.UPower"
+UPOWER_PATH = "/org/freedesktop/UPower"
 PPD = "org.freedesktop.UPower.PowerProfiles"
 PPD_PATH = "/org/freedesktop/UPower/PowerProfiles"
-PROPERTIES = "org.freedesktop.DBus.Properties"
 
 
 async def connect_and_run():
     bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
     try:
-        upower_object = await bus.introspect(UPower, UPower_PATH)
-        upower_proxy = bus.get_proxy_object(UPower, UPower_PATH, upower_object)
-        upower = upower_proxy.get_interface(UPower)
-        upower_properties = upower_proxy.get_interface(PROPERTIES)
-
-        # Reading this at startup also deliberately establishes the initial
-        # desired state without treating a manually selected PPD profile as a
-        # transition.
-        on_battery = await upower.get_on_battery()
-        LOG.info("Initial power source: %s", "battery" if on_battery else "AC")
-
+        login_object = await bus.introspect(LOGIN, LOGIN_PATH)
+        login = bus.get_proxy_object(LOGIN, LOGIN_PATH, login_object).get_interface(
+            LOGIN + ".Manager"
+        )
+        upower_object = await bus.introspect(UPOWER, UPOWER_PATH)
+        upower = bus.get_proxy_object(UPOWER, UPOWER_PATH, upower_object).get_interface(UPOWER)
         ppd_object = await bus.introspect(PPD, PPD_PATH)
         ppd = bus.get_proxy_object(PPD, PPD_PATH, ppd_object).get_interface(PPD)
 
@@ -72,36 +68,38 @@ async def connect_and_run():
                     await asyncio.sleep(min(2 ** attempt, 16))
             raise RuntimeError("PPD did not accept a profile change")
 
-        async def apply_for_power_state(battery):
-            desired = "power-saver" if battery else "performance"
+        async def apply_profile(performance):
+            desired = "performance" if performance else "power-saver"
             profiles = await available_profiles()
             if desired == "performance" and desired not in profiles:
                 LOG.warning("Performance profile unavailable; falling back to balanced")
                 desired = "balanced"
             try:
-                await set_profile(desired)
+                if await ppd.get_active_profile() != desired:
+                    await set_profile(desired)
             except Exception:
-                if not battery and desired == "performance":
+                if performance and desired == "performance":
                     LOG.warning("Performance profile unavailable; falling back to balanced")
                     await set_profile("balanced")
                 else:
                     raise
 
-        await apply_for_power_state(on_battery)
-        transitions = asyncio.Queue()
-
-        def power_properties_changed(interface, changed, invalidated):
-            nonlocal on_battery
-            if interface != UPower or "OnBattery" not in changed:
-                return
-            new_state = changed["OnBattery"].value
-            if new_state != on_battery:
-                on_battery = new_state
-                transitions.put_nowait(new_state)
-
-        upower_properties.on_properties_changed(power_properties_changed)
+        previous = None
         while True:
-            await apply_for_power_state(await transitions.get())
+            inhibitors = await login.call_list_inhibitors()
+            active = any(
+                who == "wave-caffeinate" and "sleep" in what.split(":")
+                and mode in ("block", "block-weak")
+                for what, who, _why, mode, _uid, _pid in inhibitors
+            )
+            if active != previous:
+                LOG.info("Caffeinate %s", "enabled" if active else "disabled")
+                previous = active
+            on_battery = await upower.get_on_battery()
+            await apply_profile(active or not on_battery)
+            # BlockInhibited changes only when the aggregate mask changes, so it
+            # cannot identify our lock appearing alongside another sleep lock.
+            await asyncio.sleep(2)
     finally:
         bus.disconnect()
 

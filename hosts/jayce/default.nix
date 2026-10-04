@@ -129,13 +129,19 @@ in
     };
     gnome.gnome-keyring.enable = true;
     logind.settings.Login = {
-      HandleLidSwitch = "suspend";
-      HandleLidSwitchDocked = "ignore";
-      HandleLidSwitchExternalPower = "suspend";
+      HandleLidSwitch = "suspend-then-hibernate";
+      HandleLidSwitchDocked = "suspend-then-hibernate";
+      HandleLidSwitchExternalPower = "suspend-then-hibernate";
     };
     power-profiles-daemon.enable = true;
     printing.enable = true;
-    upower.enable = true;
+    upower = {
+      enable = true;
+      percentageLow = 20;
+      percentageCritical = 10;
+      percentageAction = 5;
+      criticalPowerAction = "Hibernate";
+    };
     tailscale.enable = true;
     syncthing = {
       enable = true;
@@ -156,40 +162,64 @@ in
     };
   };
 
-  systemd.services.wave-power-profile-policy = {
-    description = "Select the power profile based on AC power state";
-    # The daemon units pull this policy in and restart it after PartOf stops it;
-    # keep it out of multi-user.target to avoid an ordering cycle.
-    wantedBy = [
-      "power-profiles-daemon.service"
-      "upower.service"
-    ];
-    wants = [
-      "power-profiles-daemon.service"
-      "upower.service"
-    ];
-    after = [
-      "dbus.service"
-      "power-profiles-daemon.service"
-      "upower.service"
-    ];
-    partOf = [
-      "power-profiles-daemon.service"
-      "upower.service"
-    ];
-    serviceConfig = {
-      Type = "simple";
-      ExecStart = "${wavePowerProfilePolicy}/bin/wave-power-profile-policy";
-      Restart = "on-failure";
-      RestartSec = 5;
-      User = "root";
-      Group = "root";
-      NoNewPrivileges = true;
-      PrivateTmp = true;
-      ProtectHome = true;
-      ProtectSystem = "strict";
-      RestrictAddressFamilies = [ "AF_UNIX" ];
-      CapabilityBoundingSet = "";
+  systemd = {
+    sleep.settings.Sleep = {
+      HibernateDelaySec = "30min";
+      HibernateOnACPower = true;
+    };
+    services = {
+      # Keep hibernation storage out of root snapshots; prepare this subvolume
+      # before activation, rather than silently creating a normal directory.
+      mkswap-swap-swapfile.serviceConfig.ExecCondition = "${pkgs.btrfs-progs}/bin/btrfs subvolume show /swap";
+
+      wave-blackout-before-sleep = {
+        description = "Trigger Wave OS blackout before sleep";
+        wantedBy = [ "sleep.target" ];
+        before = [ "sleep.target" ];
+        serviceConfig.Type = "oneshot";
+        script = ''
+          ${pkgs.systemd}/bin/systemctl --user --machine=kosciak@.host start wave-blackout.service || true
+          ${pkgs.coreutils}/bin/sleep 0.08
+        '';
+      };
+
+      wave-power-profile-policy = {
+        description = "Select performance on AC or with caffeinate, otherwise save battery power";
+        # The daemon units pull this policy in and restart it after PartOf stops it;
+        # keep it out of multi-user.target to avoid an ordering cycle.
+        wantedBy = [
+          "power-profiles-daemon.service"
+          "upower.service"
+        ];
+        wants = [
+          "power-profiles-daemon.service"
+          "upower.service"
+        ];
+        after = [
+          "dbus.service"
+          "systemd-logind.service"
+          "power-profiles-daemon.service"
+          "upower.service"
+        ];
+        partOf = [
+          "power-profiles-daemon.service"
+          "upower.service"
+        ];
+        serviceConfig = {
+          Type = "simple";
+          ExecStart = "${wavePowerProfilePolicy}/bin/wave-power-profile-policy";
+          Restart = "on-failure";
+          RestartSec = 5;
+          User = "root";
+          Group = "root";
+          NoNewPrivileges = true;
+          PrivateTmp = true;
+          ProtectHome = true;
+          ProtectSystem = "strict";
+          RestrictAddressFamilies = [ "AF_UNIX" ];
+          CapabilityBoundingSet = "";
+        };
+      };
     };
   };
 
@@ -210,17 +240,6 @@ in
       enable = true;
       enableGlobalCompInit = false;
     };
-  };
-
-  systemd.services.wave-blackout-before-sleep = {
-    description = "Trigger Wave OS blackout before sleep";
-    wantedBy = [ "sleep.target" ];
-    before = [ "sleep.target" ];
-    serviceConfig.Type = "oneshot";
-    script = ''
-      ${pkgs.systemd}/bin/systemctl --user --machine=kosciak@.host start wave-blackout.service || true
-      ${pkgs.coreutils}/bin/sleep 0.08
-    '';
   };
 
   security = {

@@ -10,6 +10,10 @@ ShellRoot {
         id: notifications
     }
 
+    Caffeinate {
+        id: caffeinate
+    }
+
     readonly property var primaryScreen: {
         const screens = Quickshell.screens
         let first = null
@@ -36,6 +40,7 @@ ShellRoot {
             Bar {
                 primary: modelData === root.primaryScreen
                 notificationService: notifications
+                caffeinateService: caffeinate
             }
         }
     }
