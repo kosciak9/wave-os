@@ -3,7 +3,7 @@
   "lsp": true,
   "model": "openai/gpt-6.1-sol",
   "small_model": "openai/gpt-6-luna",
-  "default_agent": "opencode",
+  "default_agent": "ଚ",
   "plugin": [
     // [
     //   "@plannotator/opencode@0.27.25",
@@ -78,7 +78,7 @@
       "model": "openai/gpt-6.1-sol",
       "variant": "medium",
     },
-    "opencode": {
+    "ଚ": {
       "mode": "primary",
       "model": "openai/gpt-6.1-sol",
       "variant": "fast",
