@@ -7,14 +7,20 @@
 }:
 
 let
-  vicinae =
-    inputs.vicinae.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs
-      (oldAttrs: {
-        patches = (oldAttrs.patches or [ ]) ++ [
-          ./launcher-window-position.patch
-          ./font-reset-after-qt-init.patch
-        ];
-      });
+  vicinaeBase =
+    if pkgs.stdenv.hostPlatform.isLinux then
+      # EGL loads system Mesa into this process, so both must share the system runtime.
+      pkgs.callPackage "${inputs.vicinae}/nix/vicinae.nix" {
+        gcc15Stdenv = pkgs.stdenv;
+      }
+    else
+      inputs.vicinae.packages.${pkgs.stdenv.hostPlatform.system}.default;
+  vicinae = vicinaeBase.overrideAttrs (oldAttrs: {
+    patches = (oldAttrs.patches or [ ]) ++ [
+      ./launcher-window-position.patch
+      ./font-reset-after-qt-init.patch
+    ];
+  });
   passExtension =
     inputs.vicinae-extensions.packages.${pkgs.stdenv.hostPlatform.system}.pass.overrideAttrs
       (oldAttrs: {
@@ -29,6 +35,7 @@ in
     package = vicinae;
     extensions = [ passExtension ];
     settings = {
+      tray.enabled = false;
       font = {
         normal = {
           family = "Overpass Nerd Font";

@@ -21,7 +21,7 @@
     };
     deploy-rs.url = "github:serokell/deploy-rs/cf64c8cbadd9b13ea79ba7720aa2930500f2ece7";
     devenv-nixpkgs.url = "github:NixOS/nixpkgs/c59305bab2065cfecc4944690d9eedbb56f3a9fa";
-    # Vicinae intentionally keeps its release-tested Nixpkgs pin; following repository Nixpkgs triggers the known qtkeychain Darwin ld64 crash.
+    # Keep the release-tested pin for Darwin's qtkeychain; Linux uses system packages in the home module.
     vicinae = {
       url = "github:vicinaehq/vicinae/v0.29.1";
     };
