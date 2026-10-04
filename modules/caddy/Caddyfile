@@ -23,6 +23,13 @@ https://renekton.dusky-diatonic.ts.net:18790 {
 	reverse_proxy 127.0.0.1:18789
 }
 
+https://renekton.dusky-diatonic.ts.net:6080 {
+	tls {
+		get_certificate tailscale
+	}
+	reverse_proxy 127.0.0.1:16080
+}
+
 https://development-caddy.localhost, https://localhost {
 	tls internal
 	route {

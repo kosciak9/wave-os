@@ -2,7 +2,6 @@ import { spawn } from 'node:child_process';
 
 // One process per gateway, never concurrent model residents. No model-path tool parameter.
 let resident = null;
-let waiting = 0;
 const MAX_LINE = 64 * 1024;
 const SHUTDOWN_GRACE_MS = 3000;
 function retire(worker) {
@@ -112,21 +111,18 @@ export function createDecisionBridge({ executable, idleMs = 60_000, callMs = 20_
         worker.idle = setTimeout(() => { void retire(worker); }, idleMs).unref();
     }
   };
-  const queued = async (input, options) => {
-    if (options?.signal?.aborted) throw Error('model_aborted');
-    if (resident?.retiring) throw Error('local_worker_retiring');
-    if (!resident?.busy && !waiting) return bridge(input, options);
-    if (waiting >= 1) throw Error('local_worker_queue_full');
-    waiting++;
-    try {
-      while (resident?.busy) {
-        if (options?.signal?.aborted) throw Error('model_aborted');
-        await new Promise(resolve => setTimeout(resolve, 20));
-      }
-      if (resident?.retiring) throw Error('local_worker_retiring');
+  // Decisions take tens of milliseconds, so concurrent executions wait their
+  // turn on the single resident model instead of failing while it is busy.
+  let tail = Promise.resolve();
+  const queued = (input, options) => {
+    const turn = tail.then(async () => {
       if (options?.signal?.aborted) throw Error('model_aborted');
-      return await bridge(input, options);
-    } finally { waiting--; }
+      if (resident?.retiring) await Promise.race([resident.retiring,
+        new Promise(resolve => setTimeout(resolve, 2 * SHUTDOWN_GRACE_MS).unref())]);
+      return bridge(input, options);
+    });
+    tail = turn.catch(() => {});
+    return turn;
   };
   queued.close = () => resident?.executable === executable ? retire(resident) : Promise.resolve();
   return queued;

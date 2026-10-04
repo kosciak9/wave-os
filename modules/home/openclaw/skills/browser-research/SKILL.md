@@ -7,9 +7,17 @@ description:
 
 # Browser research
 
-Use `web_search` to discover sources and `web_fetch` for known static pages. Use
-Camofox when the task requires a dynamic page or stateful interaction; no
-preliminary search is required for a direct interactive task.
+Use `web_search` to discover sources and `web_fetch` for known static pages.
+When `web_fetch` returns an empty or script-only page, read it with
+`lightpanda_read`; it renders JavaScript but cannot log in or interact and is
+easily blocked. Use Camofox for logged-in, bot-protected or interactive pages;
+no preliminary search is required for a direct interactive task.
+
+If the task names a browser profile, pass it as `profile` to your first
+`camofox_create_tab`; all later tabs in this session use it and it cannot be
+changed. Without a named profile, omit it. Never choose a profile on your own
+and never type credentials. If a page requires a login, stop and report
+`login_required` with the profile and the login URL so Alfred can ask the owner.
 
 For interaction, create a tab and use `camofox_snapshot` to inspect its current
 accessibility text (follow `nextOffset` where present). Start a coherent goal

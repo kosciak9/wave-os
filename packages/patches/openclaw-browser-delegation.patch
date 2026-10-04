@@ -1,6 +1,6 @@
 --- sessions-spawn-tool-CE1WiS6Q.mjs
 +++ sessions-spawn-tool-CE1WiS6Q.mjs
-@@ -2573,4 +2573,23 @@ async function spawnSubagentDirect(params, ctx) {
+@@ -2573,4 +2573,24 @@ async function spawnSubagentDirect(params, ctx) {
 +// Only the validated main -> browser native spawn may add the browser role's reviewed tools.
 +function resolveBrowserDelegationAllowlist(cfg, requesterAgentId, targetAgentId, inheritedAllowlist) {
 +	if (requesterAgentId !== "main" || targetAgentId !== "browser" || !Array.isArray(inheritedAllowlist) || inheritedAllowlist.length === 0) return inheritedAllowlist;
@@ -16,7 +16,8 @@
 +		"camofox_list_tabs",
 +		"camofox_close_tab",
 +		"browser_execute",
-+		"browser_resolve"
++		"browser_resolve",
++		"lightpanda_read"
 +	].filter((name) => browserAllow.includes(name) && browserSandboxAllow.includes(name) && cfg.tools?.alsoAllow?.includes(name));
 +	return [...new Set([...inheritedAllowlist, ...grant])];
 +}
@@ -24,7 +25,7 @@
  	const assertActive = ctx.assertActive;
  	const promptedAt = Date.now();
  	const task = params.task;
-@@ -2602,8 +2620,9 @@ async function spawnSubagentDirect(params, ctx) {
+@@ -2602,8 +2621,9 @@ async function spawnSubagentDirect(params, ctx) {
  			requesterSandboxed: ctx.sandboxed
  		});
  		if (!childPlan.ok) return childPlan.result;
@@ -34,7 +35,7 @@
  		const spawnedByKey = requesterInternalKey;
  		const { resolvedModel, thinkingOverride } = plan;
  		const initialSession = await createInitialSubagentSession({
-@@ -2619,11 +2638,11 @@ async function spawnSubagentDirect(params, ctx) {
+@@ -2619,11 +2639,11 @@ async function spawnSubagentDirect(params, ctx) {
  			spawnedWorkspaceDir,
  			spawnedCwd,
  			sessionPermissionPolicy: ctx.sessionPermissionPolicy,
@@ -47,7 +48,7 @@
  			collect: params.collect === true,
  			outputSchema: params.outputSchema
  		});
-@@ -2787,10 +2806,10 @@ async function spawnSubagentDirect(params, ctx) {
+@@ -2787,10 +2807,10 @@ async function spawnSubagentDirect(params, ctx) {
  				depth: childDepth,
  				maxDepth: maxSpawnDepth,
  				targetAgentId,
