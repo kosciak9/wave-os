@@ -18,6 +18,7 @@ Scope {
     property alias history: historyModel
     property alias toasts: toastModel
     property int unreadCount: 0
+    signal dictationNotification(string summary, string body)
 
     property int nextEntry: 0
     property real lastSoundAt: 0
@@ -246,6 +247,13 @@ Scope {
     function onNotification(notification): void {
         notification.tracked = true
         const app = appKey(notification)
+        // Dictation has its own transient UI; never persist transcript previews.
+        if (app === "voxtype") {
+            if (!notification.lastGeneration)
+                dictationNotification(String(notification.summary), String(notification.body))
+            notification.expire()
+            return
+        }
         const oldKey = idToKey[notification.id]
         let key = oldKey || ""
         const replacement = oldKey !== undefined && oldKey !== null && oldKey !== ""

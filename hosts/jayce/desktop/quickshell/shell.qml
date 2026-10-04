@@ -67,6 +67,11 @@ ShellRoot {
 
     OpenCodeToasts {}
 
+    TranscriptionBubble {
+        targetScreen: root.primaryScreen
+        notificationService: notifications
+    }
+
     Osd {
         targetScreen: root.primaryScreen
     }
