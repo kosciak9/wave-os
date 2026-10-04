@@ -66,9 +66,6 @@
     "title": {
       "model": "openai/gpt-6-luna",
       "variant": "low",
-      "options": {
-        "reasoningEffort": "low",
-      },
     },
     "summary": {
       "model": "openai/gpt-6.1-sol",
@@ -81,7 +78,6 @@
     "ଚ": {
       "mode": "primary",
       "model": "openai/gpt-6.1-sol",
-      "variant": "fast",
       "permission": {
         "edit": "allow",
         "question": "allow",
@@ -109,34 +105,6 @@
         "edit": "deny",
         "context7_*": "allow",
         "skill": "deny",
-      },
-    },
-  },
-  "provider": {
-    "openai": {
-      "models": {
-        "gpt-6-luna": {
-          "options": {
-            "websearch": "always",
-            "serviceTier": "default",
-          },
-        },
-        "gpt-6.1-sol": {
-          "variants": {
-            "fast": {
-              "reasoningEffort": "low",
-            },
-          },
-          "options": {
-            "serviceTier": "default",
-            "reasoningEffort": "medium",
-          },
-        },
-        "gpt-6-astra": {
-          "options": {
-            "serviceTier": "default",
-          },
-        },
       },
     },
   },
