@@ -111,16 +111,110 @@ def _stage(text: str) -> None:
             _cancel_marker()
 
 
+class _StageProgress:
+    """Display only fixed summaries of recognized activity, never log content."""
+
+    _store = rb"/nix/store/[0-9a-z]{32}-[A-Za-z0-9+._?=-]+"
+    _build = re.compile(rb"building ['\"]" + _store + rb"\.drv['\"](?: on ['\"][^\r\n]+['\"])?\.\.\.")
+    _copy = re.compile(rb"copying path ['\"]" + _store + rb"['\"] (?:from|to) ['\"][^\r\n]+['\"]\.\.\.")
+    _download = re.compile(rb"(?:downloading|unpacking) ['\"][^\r\n]+['\"](?: into the Git cache)?\.\.\.")
+
+    def __init__(self, name: str, *, heartbeat: float = 15,
+                 extra_tick: Callable[[], None] | None = None):
+        self.name = name
+        self.started = self.last_output = self.last_notice = time.monotonic()
+        self.last_summary = self.started - 1
+        self.heartbeat = heartbeat
+        self.extra_tick = extra_tick
+        self.pending = b""
+        self.discarding = False
+        self.skipped = False
+        self.counts = [0, 0, 0]
+        self.reported = (0, 0, 0)
+        _stage(f"Running {name}")
+
+    def _line(self, line: bytes) -> None:
+        for index, pattern in enumerate((self._build, self._copy, self._download)):
+            if pattern.fullmatch(line):
+                self.counts[index] += 1
+                break
+
+    def feed(self, data: bytes, skipped: bool = False) -> None:
+        self.last_output = time.monotonic()
+        if skipped:
+            self.pending = b""
+            self.discarding = True
+            if not self.skipped:
+                _stage(f"  {self.name}: noisy log; sampling recent activity for summaries")
+                self.skipped = True
+        # Oversized/incomplete lines are discarded through their next newline.
+        # Neither memory nor terminal output scales with noisy child output.
+        for part in data.splitlines(keepends=True):
+            complete = part.endswith((b"\n", b"\r"))
+            if not self.discarding:
+                if len(self.pending) + len(part) > 4096:
+                    self.pending = b""
+                    self.discarding = True
+                else:
+                    self.pending += part
+                    if complete:
+                        self._line(self.pending.rstrip(b"\r\n"))
+                        self.pending = b""
+            if complete:
+                self.discarding = False
+        self._summary()
+
+    def _summary(self, *, final: bool = False) -> None:
+        now = time.monotonic()
+        if tuple(self.counts) != self.reported and (final or now - self.last_summary >= 1):
+            builds, copies, downloads = self.counts
+            _stage(f"  {self.name}: observed starts — {builds} builds, {copies} path copies, {downloads} downloads/unpacks")
+            self.reported = tuple(self.counts)
+            self.last_summary = self.last_notice = now
+
+    def tick(self) -> None:
+        if self.extra_tick is not None:
+            self.extra_tick()
+        self._summary()
+        now = time.monotonic()
+        if now - self.last_notice >= self.heartbeat:
+            _stage(f"  {self.name}: still running; {now - self.started:.0f}s elapsed; "
+                   f"{now - self.last_output:.0f}s since last observed log output")
+            self.last_notice = now
+
+    def finish(self, result: wave_process.CommandResult | None) -> None:
+        if self.pending and not self.discarding:
+            self._line(self.pending)
+        self.pending = b""
+        self._summary(final=True)
+        if result is None:
+            outcome = "failed"
+        elif result.interrupted:
+            outcome = "interrupted"
+        elif result.timed_out:
+            outcome = "timed out"
+        elif result.returncode:
+            outcome = f"failed (exit {result.returncode})"
+        else:
+            outcome = "completed"
+        _stage(f"{self.name}: {outcome} in {time.monotonic() - self.started:.1f}s")
+
+
 def _nix(repo: Path, args: list[str], run: Path, name: str, *, capture: bool = False,
          timeout: float = 1200) -> wave_process.CommandResult:
     global _current_log
     _current_log = run / name
-    _stage(f"Running {name.removesuffix('.log')}; stage log: {_current_log}")
+    progress = _StageProgress(name.removesuffix('.log'))
     argv = ["devenv", "--quiet", "shell", "--", *args]
-    result = wave_process.run_logged(argv, cwd=repo, log_path=_current_log,
-                                    cancelled=_cancelled, before_stop=_cancel_marker,
-                                    on_tick=None, timeout=timeout,
-                                    capture_stdout=capture)
+    result = None
+    try:
+        result = wave_process.run_logged(argv, cwd=repo, log_path=_current_log,
+                                         cancelled=_cancelled, before_stop=_cancel_marker,
+                                         on_tick=progress.tick, on_log=progress.feed, timeout=timeout,
+                                         capture_stdout=capture)
+    finally:
+        progress.finish(result)
+    assert result is not None
     if result.timed_out:
         raise TimeoutError(f"{name.removesuffix('.log')} timed out after {timeout:g}s")
     return result
@@ -241,9 +335,15 @@ def _deploy(repo: Path, run: Path, package: str) -> wave_process.CommandResult:
     argv = [executable, "--no-progress",
             "--no-demarcate-output", "--log-dir", str(run), f"path:{run / 'flake'}#renekton.system",
             "--", "--no-write-lock-file"]
-    return wave_process.run_logged(argv, cwd=repo, log_path=run / "console.log",
-                                   cancelled=_cancelled, before_stop=_cancel_marker,
-                                   on_tick=_deployment_progress(run), timeout=1200, env=env)
+    progress = _StageProgress("deployment", extra_tick=_deployment_progress(run))
+    result = None
+    try:
+        result = wave_process.run_logged(argv, cwd=repo, log_path=run / "console.log",
+                                        cancelled=_cancelled, before_stop=_cancel_marker,
+                                        on_tick=progress.tick, on_log=progress.feed, timeout=1200, env=env)
+        return result
+    finally:
+        progress.finish(result)
 
 
 def _log_failure(log: Path | None) -> tuple[str | None, str | None]:
@@ -308,7 +408,7 @@ def _finish(run: Path, commit: str | None, result: str, health: dict, old: dict,
     except OSError as exc:
         print(f"critical: cannot persist result; inspect logs at {run}: {exc}", file=sys.stderr)
         return 40
-    _stage(f"{result}; logs: {run}")
+    _stage(result if result == "success" else f"{result}; logs: {run}")
     if result != "success":
         _stage(f"Reason: {detail}")
         _stage(f"Stage log: {log or run / 'result.json'}")
@@ -795,7 +895,6 @@ def switch(repo: Path | None = None, *, approve_rollback: str | None = None) -> 
             (child / "wave-old-profile").write_text(old["profile_closure"] + "\n", encoding="utf-8")
             for item in child.iterdir(): item.chmod(0o600)
             flake = render_runtime_flake(repo, commit, child, run)
-            _stage("locking runtime flake")
             lock_result = _nix(repo, ["nix", "flake", "lock", f"path:{flake}"], run, "runtime-flake-lock.log")
             if lock_result.interrupted or _cancel: return _finish(run, commit, "interrupted", health, old, {}, "runtime flake lock")
             if lock_result.returncode: return _finish(run, commit, "validation_failed", health, old, {}, "runtime flake lock")
@@ -808,8 +907,7 @@ def switch(repo: Path | None = None, *, approve_rollback: str | None = None) -> 
             new = {"profile_closure": str(profile), "current_system": str(system), "profile_link": None}
             profile_already_active = old["profile_closure"] == new["profile_closure"]
             if not profile_already_active:
-                _stage("building targeted profile, deploy-rs, and sudo packages")
-                build = _nix(repo, ["nix", "build", "--no-link", "--no-write-lock-file", f"path:{flake}#profile", f"path:{flake}#deploy-rs", f"path:{flake}#sudo"], run, "build.log")
+                build = _nix(repo, ["nix", "build", "--log-format", "raw", "--verbose", "--no-link", "--no-write-lock-file", f"path:{flake}#profile", f"path:{flake}#deploy-rs", f"path:{flake}#sudo"], run, "build.log")
                 if build.interrupted or _cancel: return _finish(run, commit, "interrupted", health, old, new, "targeted build")
                 if build.returncode: return _finish(run, commit, "validation_failed", health, old, new, "targeted build")
             # An identical active profile is already realized; skip its redundant build.

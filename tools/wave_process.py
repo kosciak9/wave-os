@@ -79,6 +79,7 @@ def run_logged(
     cancelled: Callable[[], bool], before_stop: Callable[[], None],
     on_tick: Callable[[], None] | None = None, timeout: float = 1200,
     capture_stdout: bool = False, env: dict[str, str] | None = None,
+    on_log: Callable[[bytes, bool], None] | None = None,
 ) -> CommandResult:
     if cancelled():
         before_stop()
@@ -107,6 +108,20 @@ def run_logged(
     try:
         with _preserve_tty(), ExitStack() as resources:
             log = resources.enter_context(_open_log(log_path))
+            reader = resources.enter_context(log_path.open("rb")) if on_log is not None else None
+
+            def read_progress(limit: int) -> None:
+                # Bound work per poll and at exit; the complete log stays on disk.
+                if reader is not None and on_log is not None:
+                    end = os.fstat(reader.fileno()).st_size
+                    skipped = end - reader.tell() > limit
+                    if skipped:
+                        reader.seek(end - limit)
+                    data = reader.read(limit)
+                    if data:
+                        # A skipped prefix may end in the middle of a line.
+                        on_log(data, skipped)
+
             stdout_file = (
                 resources.enter_context(TemporaryFile(mode="w+b"))
                 if capture_stdout else None
@@ -141,8 +156,12 @@ def run_logged(
                     except BaseException:
                         stop_child()
                         raise
+                read_progress(64 * 1024)
 
             process.wait(timeout=2)
+            # Even a child that exits before the first poll can emit activity.
+            # Do not feed captured metadata stdout to the progress callback.
+            read_progress(1024 * 1024)
             output = ""
             if stdout_file is not None:
                 stdout_file.seek(0)
