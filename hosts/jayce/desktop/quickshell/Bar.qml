@@ -391,27 +391,26 @@ PanelWindow {
         active: root.caffeinateService.known && root.caffeinateService.active
         activeColor: Theme.waveBlue1
         inactiveOpacity: root.caffeinateService.pending ? 0.65 : 1
-        border.width: active || root.caffeinateService.error.length > 0 ? 1 : 0
-        border.color: root.caffeinateService.error.length > 0 ? Theme.waveRed : Theme.carpYellow
+        border.width: root.caffeinateService.error.length > 0 ? 1 : 0
+        border.color: Theme.waveRed
 
         onClicked: function(mouse) {
             if (mouse.button === Qt.LeftButton)
                 root.caffeinateService.toggle()
         }
 
-        Text {
-            text: "Caffeinate " + root.caffeinateService.status + (root.caffeinateService.error.length > 0 ? " !" : "")
-            color: root.caffeinateService.error.length > 0 ? Theme.waveRed
-                : caffeinateWidget.active ? Theme.carpYellow : Theme.oldWhite
-            font.family: Theme.fontFamily
-            font.pixelSize: 11
-            font.weight: Font.Bold
+        Image {
+            width: 20
+            height: 20
+            source: Quickshell.shellDir + (caffeinateWidget.active ? "/assets/coffee-steaming.svg" : "/assets/coffee.svg")
+            fillMode: Image.PreserveAspectFit
+            opacity: root.caffeinateService.known ? 0.9 : 0.45
         }
 
         PopupWindow {
             anchor.item: caffeinateWidget
-            anchor.edges: Edges.Bottom | Edges.Right
-            anchor.gravity: Edges.Bottom | Edges.Left
+            anchor.edges: Edges.Bottom | Edges.Left
+            anchor.gravity: Edges.Bottom | Edges.Right
             visible: caffeinateWidget.hovered
             color: "transparent"
             implicitWidth: 310
@@ -428,10 +427,12 @@ PanelWindow {
                     id: caffeinateTooltip
                     anchors.centerIn: parent
                     width: parent.width - 20
-                    text: "Caffeinate: " + root.caffeinateService.status
-                        + "\nPerformance + sleep inhibition.\nLock and display power-off remain enabled."
-                        + (root.caffeinateService.pending ? "\nWaiting for systemd…"
-                            : root.caffeinateService.known ? "\nClick to turn " + (root.caffeinateService.active ? "OFF." : "ON.") : "\nWaiting for service state…")
+                    text: "Caffeinate"
+                        + (root.caffeinateService.pending ? "\nChanging mode…"
+                            : !root.caffeinateService.known ? "\nChecking service state…"
+                            : caffeinateWidget.active ? "\nPerformance; tasks keep running.\nClick to allow automatic sleep."
+                            : "\nAutomatic sleep is allowed.\nClick to keep tasks running.")
+                        + "\nLock and display power-off remain enabled."
                         + (root.caffeinateService.error.length > 0 ? "\n" + root.caffeinateService.error : "")
                     color: Theme.oldWhite
                     font.family: Theme.fontFamily
@@ -509,6 +510,8 @@ PanelWindow {
                 spacing: 8
 
                 NetworkWidget { barVisible: root.primary }
+
+                CaffeinateWidget { visible: root.primary }
             }
 
             WorkspacesWidget {
@@ -528,8 +531,6 @@ PanelWindow {
                 }
 
                 BatteryWidget { barVisible: root.primary }
-
-                CaffeinateWidget {}
 
                 NotificationWidget { barVisible: root.primary }
 
