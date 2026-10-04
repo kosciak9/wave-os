@@ -16,6 +16,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 from typing import Callable
@@ -35,6 +36,10 @@ _cancel = False
 _current_run: Path | None = None
 _console_broken = False
 _current_log: Path | None = None
+_current_stage = 0
+_deployment_error: str | None = None
+_STAGES = ("Health / preflight", "Validation", "Preparation", "Build",
+           "Privilege / activation", "Verification")
 
 
 def _git(repo: Path, args: list[str], *, allow_missing: bool = False) -> str:
@@ -98,17 +103,40 @@ def _signal(_signum: int, _frame: object) -> None:
         _cancel_marker()
 
 
-def _stage(text: str) -> None:
+def _stage(text: str, *, style: str = "activity", stream=None) -> None:
     global _console_broken, _cancel
     if not text or _console_broken:
         return
     try:
-        print(text, flush=True)
+        common.console(text, style=style, stream=stream)
     except (BrokenPipeError, OSError):
         _console_broken = True
         _cancel = True
         with contextlib.suppress(OSError):
             _cancel_marker()
+
+
+def _heading(number: int) -> None:
+    global _current_stage
+    if number > _current_stage:
+        _current_stage = number
+        _stage(f"\n[{number}/{len(_STAGES)}] {_STAGES[number - 1]}", style="heading")
+
+
+def _password_banner() -> None:
+    text = ("\n=== ACTION REQUIRED: deploy-rs sudo password ===\n"
+            "Enter your local sudo password at the deploy-rs prompt in this terminal.\n"
+            "Input is hidden; press Enter to submit, or Ctrl-C to cancel.\n"
+            "Wave does not read the password.\n")
+    if sys.stdout.isatty():
+        _stage(text, style="action")
+        return
+    # rpassword uses the controlling terminal even when stdout is redirected.
+    try:
+        with open("/dev/tty", "w", encoding="utf-8") as tty:
+            _stage(text, style="action", stream=tty)
+    except OSError:
+        _stage(text, style="action")
 
 
 class _StageProgress:
@@ -120,20 +148,29 @@ class _StageProgress:
     _download = re.compile(rb"(?:downloading|unpacking) ['\"][^\r\n]+['\"](?: into the Git cache)?\.\.\.")
 
     def __init__(self, name: str, *, heartbeat: float = 15,
-                 extra_tick: Callable[[], None] | None = None):
+                 extra_tick: Callable[[], None] | None = None,
+                 on_password: Callable[[], None] | None = None):
         self.name = name
         self.started = self.last_output = self.last_notice = time.monotonic()
         self.last_summary = self.started - 1
         self.heartbeat = heartbeat
         self.extra_tick = extra_tick
+        self.on_password = on_password
+        self.password_noticed = False
         self.pending = b""
         self.discarding = False
         self.skipped = False
         self.counts = [0, 0, 0]
         self.reported = (0, 0, 0)
-        _stage(f"Running {name}")
+        _stage(f"  Running {name}")
 
     def _line(self, line: bytes) -> None:
+        if (self.on_password is not None and not self.password_noticed
+                and b"You will now be prompted for the sudo password" in line):
+            self.password_noticed = True
+            self.name = "privilege / activation pending (sudo prompt observed)"
+            self.on_password()
+            self.last_notice = time.monotonic()
         for index, pattern in enumerate((self._build, self._copy, self._download)):
             if pattern.fullmatch(line):
                 self.counts[index] += 1
@@ -197,7 +234,8 @@ class _StageProgress:
             outcome = f"failed (exit {result.returncode})"
         else:
             outcome = "completed"
-        _stage(f"{self.name}: {outcome} in {time.monotonic() - self.started:.1f}s")
+        _stage(f"  {self.name}: {outcome} in {time.monotonic() - self.started:.1f}s",
+               style="success" if outcome == "completed" else "error")
 
 
 def _nix(repo: Path, args: list[str], run: Path, name: str, *, capture: bool = False,
@@ -299,9 +337,10 @@ def _deployment_progress(run: Path) -> Callable[[], None]:
         nonlocal last_streak, last_health_notice
         if (run / "native.pid").is_file() and "pid" not in stages:
             stages.add("pid")
-            _stage("Target is starting native activation")
+            _stage("Target is starting native activation", style="success")
         if (run / "health-started").is_file() and "started" not in stages:
             stages.add("started")
+            _heading(6)
             _stage("Activation completed; checking health before confirmation")
         post_health = run / "post-health.json"
         if post_health.is_file():
@@ -316,18 +355,19 @@ def _deployment_progress(run: Path) -> Callable[[], None]:
                 unhealthy = [name for name, check in checks.items()
                              if isinstance(check, dict) and check.get("ok") is False]
                 suffix = f"; unhealthy: {', '.join(unhealthy)}" if unhealthy else ""
-                _stage(f"Health verification streak {streak}/{common.HEALTH_STREAK}{suffix}")
+                _stage(f"Health verification streak {streak}/{common.HEALTH_STREAK}{suffix}",
+                       style="warning" if unhealthy else "activity")
                 last_streak, last_health_notice = streak, now
         if (run / "health-approved.json").is_file() and "approved" not in stages:
             common.load_json(run / "health-approved.json")
             stages.add("approved")
-            _stage("Health passed; deploy-rs confirmation in progress")
+            _stage("Health passed; deploy-rs confirmation in progress", style="success")
 
     return progress
 
 
 def _deploy(repo: Path, run: Path, package: str) -> wave_process.CommandResult:
-    global _current_log
+    global _current_log, _deployment_error
     _current_log = run / "console.log"
     executable = str(Path(package) / "bin/deploy")
     env = dict(os.environ)
@@ -335,12 +375,32 @@ def _deploy(repo: Path, run: Path, package: str) -> wave_process.CommandResult:
     argv = [executable, "--no-progress",
             "--no-demarcate-output", "--log-dir", str(run), f"path:{run / 'flake'}#renekton.system",
             "--", "--no-write-lock-file"]
-    progress = _StageProgress("deployment", extra_tick=_deployment_progress(run))
+    _stage("deploy-rs runs internal Nix checks before its sudo prompt. Stay at this terminal;\n"
+           "  when the password prompt appears, enter it there (hidden), then press Enter; Ctrl-C cancels.",
+           style="warning")
+    native_progress = _deployment_progress(run)
+    progress = _StageProgress("deploy-rs internal checks / preparation", on_password=_password_banner)
+
+    def tick() -> None:
+        if _native_evidence(run):
+            progress.name = "native activation / verification"
+        native_progress()
+
+    progress.extra_tick = tick
     result = None
     try:
         result = wave_process.run_logged(argv, cwd=repo, log_path=run / "console.log",
                                         cancelled=_cancelled, before_stop=_cancel_marker,
                                         on_tick=progress.tick, on_log=progress.feed, timeout=1200, env=env)
+        if result.timed_out:
+            _deployment_error = "deploy-rs timed out after 1200s"
+            if not _native_evidence(run):
+                _deployment_error += " before any observed native launch"
+                if progress.password_noticed:
+                    _deployment_error += ("; sudo prompt was observed; privilege/activation remained pending "
+                                          "(password wait possible)")
+                else:
+                    _deployment_error += "; no sudo prompt was observed (internal checks or an unobserved prompt may have stalled)"
         return result
     finally:
         progress.finish(result)
@@ -408,9 +468,10 @@ def _finish(run: Path, commit: str | None, result: str, health: dict, old: dict,
     except OSError as exc:
         print(f"critical: cannot persist result; inspect logs at {run}: {exc}", file=sys.stderr)
         return 40
-    _stage(result if result == "success" else f"{result}; logs: {run}")
+    _stage(result if result == "success" else f"{result}; logs: {run}",
+           style="success" if result == "success" else "error")
     if result != "success":
-        _stage(f"Reason: {detail}")
+        _stage(f"Reason: {detail}", style="error")
         _stage(f"Stage log: {log or run / 'result.json'}")
         if result == "critical":
             guidance = "Do not retry or remove active.json until native activation, rollback evidence, and system profile/current-system links have been verified manually."
@@ -420,7 +481,11 @@ def _finish(run: Path, commit: str | None, result: str, health: dict, old: dict,
             guidance = "Check the recorded result and any active deployment evidence before retrying; do not manually activate or remove markers."
         elif guidance is None:
             guidance = "No activation was started. Resolve the reported validation/preflight issue, commit intended configuration changes, and rerun wave switch only when ready."
-        _stage(f"Next: {guidance}")
+        if _deployment_error and result != "critical":
+            guidance += (" In a foreground terminal, run `wave health`, then `wave switch` when ready; "
+                         "stay at the terminal through internal checks and enter the password only at the deploy-rs prompt, "
+                         "then press Enter (Ctrl-C cancels).")
+        _stage(f"Next: {guidance}", style="warning")
     return {"success": 0, "preflight_failed": 10, "validation_failed": 20,
             "deploy_failed_rolled_back": 30, "deploy_failed_unchanged": 30,
             "critical": 40, "interrupted": 130}[result]
@@ -771,6 +836,9 @@ def _approve_rollback(commit: str) -> bool | None:
 def _finalize(run: Path, active_owned: bool,
               outcome: wave_monitor.DeploymentOutcome, commit: str | None,
               old: dict, new: dict) -> tuple[int, bool]:
+    _heading(6)
+    if _deployment_error:
+        outcome = replace(outcome, error="; ".join(filter(None, (outcome.error, _deployment_error))))
     code = _finish(run, commit, outcome.result, outcome.health, old, new, outcome.error, outcome.state)
     if outcome.terminal and outcome.result != "critical" and code == outcome.code:
         try:
@@ -789,11 +857,14 @@ def switch(repo: Path | None = None, *, approve_rollback: str | None = None) -> 
         print("--approve-rollback must be exactly 40 lowercase hexadecimal characters", file=sys.stderr)
         return 2
 
-    global _cancel, _current_run, _console_broken, _current_log
+    global _cancel, _current_run, _console_broken, _current_log, _current_stage, _deployment_error
     _cancel = False
     _current_run = None
     _console_broken = False
     _current_log = None
+    _current_stage = 0
+    _deployment_error = None
+    _heading(1)
     if platform.system() != "Darwin" or platform.machine() != "arm64" or os.geteuid() == 0:
         print("wave switch requires a local non-root Darwin arm64 user", file=sys.stderr); return 10
     repo = (repo or ROOT).resolve()
@@ -895,12 +966,14 @@ def switch(repo: Path | None = None, *, approve_rollback: str | None = None) -> 
             if not health.get("ok"): return _finish(run, commit, "preflight_failed", health, old, {}, "preflight health")
             if _cancelled(): return _finish(run, commit, "interrupted", health, old, {}, "pre-validation cancellation")
             phase = "validation"
+            _heading(2)
             for args, name in ((["nix-check"], "nix-check.log"), (["nix-eval", "renekton"], "nix-eval.log")):
                 result = _nix(repo, args, run, name)
                 if result.interrupted or _cancel:
                     return _finish(run, commit, "interrupted", health, old, {}, name)
                 if result.returncode: return _finish(run, commit, "validation_failed", health, old, {}, name)
             if _cancelled(): return _finish(run, commit, "interrupted", health, old, {}, "preparation cancellation")
+            _heading(3)
             if _commit(repo) != commit: raise ValueError("HEAD changed during validation")
             _clean_upstream(repo, commit)
             if not common.same_system(common.snapshot_system(), old): raise ValueError("system changed during validation")
@@ -921,10 +994,13 @@ def switch(repo: Path | None = None, *, approve_rollback: str | None = None) -> 
             native_activate = system / "activate"
             new = {"profile_closure": str(profile), "current_system": str(system), "profile_link": None}
             profile_already_active = old["profile_closure"] == new["profile_closure"]
+            _heading(4)
             if not profile_already_active:
                 build = _nix(repo, ["nix", "build", "--log-format", "raw", "--verbose", "--no-link", "--no-write-lock-file", f"path:{flake}#profile", f"path:{flake}#deploy-rs", f"path:{flake}#sudo"], run, "build.log")
                 if build.interrupted or _cancel: return _finish(run, commit, "interrupted", health, old, new, "targeted build")
                 if build.returncode: return _finish(run, commit, "validation_failed", health, old, new, "targeted build")
+            else:
+                _stage("Build skipped: identical active profile is already realized", style="success")
             # An identical active profile is already realized; skip its redundant build.
             if not (profile.is_dir() and wrapper.is_file() and os.access(wrapper, os.X_OK) and native.is_file() and os.access(native, os.X_OK) and system.is_dir() and native_activate.is_file() and os.access(native_activate, os.X_OK)):
                 raise ValueError("profile lacks executable activation entries")
@@ -939,6 +1015,9 @@ def switch(repo: Path | None = None, *, approve_rollback: str | None = None) -> 
             if _cancelled(): return _finish(run, commit, "interrupted", health, old, new, "final baseline cancellation")
             if not health.get("ok"): return _finish(run, commit, "preflight_failed", health, old, new, "final baseline health")
             if old["profile_closure"] == new["profile_closure"]:
+                _heading(5)
+                _stage("Privilege / activation skipped: profile already current", style="success")
+                _heading(6)
                 final_health = wave_health.check_health()
                 if _cancelled():
                     return _finish(run, commit, "interrupted", final_health, old, new, "noop cancellation")
@@ -958,10 +1037,12 @@ def switch(repo: Path | None = None, *, approve_rollback: str | None = None) -> 
             common.atomic_json(STATE / "active.json", {"commit": commit, "run_dir": str(run), "old": old, "new": new})
             active_owned = True; launched = True
             phase = "native"
+            _heading(5)
             cli = _deploy(repo, run, meta["deploy_package"])
             if cli.interrupted:
                 _cancel = True
             if cli.returncode != 0 or cli.interrupted or cli.timed_out: _cancel_marker()
+            _heading(6)
             outcome = wave_monitor.observe_deployment(context, cli, baseline_health=health, interrupted=lambda: _cancel, on_update=_stage)
             code, active_owned = _finalize(run, active_owned, outcome, commit, old, new)
             return code
@@ -969,6 +1050,7 @@ def switch(repo: Path | None = None, *, approve_rollback: str | None = None) -> 
             _cancel = True; _cancel_marker()
             if launched and run is not None:
                 if isinstance(context, dict):
+                    _heading(6)
                     outcome = wave_monitor.observe_deployment(context, wave_process.CommandResult(1, interrupted=True), baseline_health=health, interrupted=lambda: _cancel, on_update=_stage)
                     code, active_owned = _finalize(run, active_owned, outcome, commit, old, new)
                     return code
@@ -977,6 +1059,7 @@ def switch(repo: Path | None = None, *, approve_rollback: str | None = None) -> 
         except Exception as exc:
             if launched and run is not None and isinstance(context, dict):
                 with contextlib.suppress(OSError): _cancel_marker()
+                _heading(6)
                 outcome = wave_monitor.observe_deployment(context, wave_process.CommandResult(1), baseline_health=health, interrupted=lambda: _cancel, on_update=_stage)
                 code, active_owned = _finalize(run, active_owned, outcome, commit, old, new)
                 return code

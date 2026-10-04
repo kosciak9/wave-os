@@ -251,10 +251,13 @@ def recover(*, accept_manual: str | None = None) -> int:
         persisted = validated_record(run, plan["context"], allow_missing_event=accept_manual is not None)
         persistence = _persisted_evidence(run)
         approval = _digest(plan)
+        common.console("\nRecovery plan", style="heading")
         print(json.dumps({"plan": plan, "fingerprint": approval}, sort_keys=True, indent=2))
         if accept_manual is not None and accept_manual != approval:
             raise ValueError("approval does not match current plan; inspect wave recover again")
         started = time.monotonic()
+        last_notice = started
+        common.console(f"\nHealth / stability verification ({common.ROLLBACK_HEALTH_WINDOW}s minimum)", style="heading")
         samples = 0
         while True:
             if _plan(retry_approval=accept_manual) != (run, plan) or _persisted_evidence(run) != persistence:
@@ -265,14 +268,19 @@ def recover(*, accept_manual: str | None = None) -> int:
             samples += 1
             if _plan(retry_approval=accept_manual) != (run, plan) or _persisted_evidence(run) != persistence:
                 raise ValueError("snapshot, marker, or original evidence changed during health probe")
+            now = time.monotonic()
+            if now - last_notice >= 15:
+                common.console(f"  Healthy samples: {samples}; {now - started:.0f}s elapsed / "
+                               f"{common.ROLLBACK_HEALTH_WINDOW}s minimum; snapshot and evidence stable")
+                last_notice = now
             if time.monotonic() - started >= common.ROLLBACK_HEALTH_WINDOW and samples >= common.HEALTH_STREAK:
                 break
             time.sleep(common.HEALTH_INTERVAL)
         if accept_manual is None:
-            print(f"Eligible: coherent current system healthy and stable for {common.ROLLBACK_HEALTH_WINDOW}s; "
-                  "native and relevant deployment processes exited; unrelated history resolved.")
+            common.console(f"Eligible: coherent current system healthy and stable for {common.ROLLBACK_HEALTH_WINDOW}s; "
+                           "native and relevant deployment processes exited; unrelated history resolved.", style="success")
             print("Health checks: " + ", ".join(f"{name}=ok" for name in health["checks"]))
-            print(f"Explicit acceptance: wave recover --accept-manual {approval}")
+            common.console(f"Explicit acceptance: wave recover --accept-manual {approval}", style="warning")
             print("Read-only: no evidence or active marker changed.")
             return 0
         record = persisted or {"result": "reconciled_manual_activation", "timestamp": common.utc_now(),
@@ -299,10 +307,10 @@ def recover(*, accept_manual: str | None = None) -> int:
             raise ValueError("active marker or snapshot changed before removal")
         (switch.STATE / "active.json").unlink()
         _sync_directory(switch.STATE)
-        print("reconciled_manual_activation; original deployment/native evidence preserved; active marker retired")
+        common.console("reconciled_manual_activation; original deployment/native evidence preserved; active marker retired", style="success")
         return 0
     except (OSError, ValueError, TypeError, KeyError, AttributeError, subprocess.SubprocessError) as exc:
-        print(f"wave recover blocked: {exc}. No activation or restart performed.", file=sys.stderr)
+        common.console(f"wave recover blocked: {exc}. No activation or restart performed.", style="error", stream=sys.stderr)
         return 10
     finally:
         if fd is not None:

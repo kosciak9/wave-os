@@ -6,6 +6,7 @@ import json
 import os
 import re
 import subprocess
+import sys
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -22,6 +23,16 @@ HEALTH_STREAK = 3
 DEPLOY_RS_REV = "cf64c8cbadd9b13ea79ba7720aa2930500f2ece7"
 
 _MAX_LOG_BYTES = 2 * 1024 * 1024
+
+
+def console(text: str, *, style: str = "activity", stream=None) -> None:
+    """Style human summaries on the destination TTY; leave redirected text plain."""
+    stream = sys.stdout if stream is None else stream
+    styles = {"heading": "1;36", "success": "1;32", "warning": "1;33",
+              "error": "1;31", "action": "1;33;7", "activity": "2"}
+    if stream.isatty() and "NO_COLOR" not in os.environ:
+        text = f"\033[{styles[style]}m{text}\033[0m"
+    print(text, file=stream, flush=True)
 
 
 def utc_now() -> str:
