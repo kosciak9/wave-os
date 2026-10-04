@@ -400,8 +400,8 @@ PanelWindow {
         }
 
         Image {
-            width: 16
-            height: 16
+            width: 18
+            height: 18
             source: Quickshell.shellDir + (caffeinateWidget.active ? "/assets/coffee-steaming.svg" : "/assets/coffee.svg")
             fillMode: Image.PreserveAspectFit
             opacity: root.caffeinateService.known ? 0.8 : 0.45
