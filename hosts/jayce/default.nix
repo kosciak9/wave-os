@@ -40,7 +40,15 @@ in
 
   networking = {
     hostName = "jayce";
-    firewall.interfaces.tailscale0.allowedTCPPorts = [ 22 ];
+    firewall.interfaces.tailscale0 = {
+      allowedTCPPorts = [ 22 ];
+      allowedUDPPortRanges = [
+        {
+          from = 60000;
+          to = 61000;
+        }
+      ];
+    };
     networkmanager = {
       enable = true;
       wifi.powersave = false;
@@ -63,6 +71,11 @@ in
     };
   };
   console.keyMap = "pl2";
+
+  programs.mosh = {
+    enable = true;
+    openFirewall = false;
+  };
 
   hardware = {
     bluetooth = {
