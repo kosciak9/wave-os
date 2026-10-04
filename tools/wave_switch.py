@@ -577,6 +577,16 @@ def _approval_required(active: dict | None) -> str | None:
         result_path = run / "result.json"
         try:
             context = _run_context(run)
+            from wave_recover import validated_record, _other_history
+
+            reconciled = validated_record(run, context)
+            if reconciled is not None:
+                if active is not None:
+                    raise ValueError("active marker remains alongside reconciled evidence; review interrupted persistence")
+                _other_history(run)
+                if not common.same_system(common.snapshot_system(), reconciled["plan"]["state"]):
+                    raise ValueError("current snapshot differs from the latest reconciled manual activation")
+                return None
             native = common.activation_result(run)
             if native == "not_started":
                 if not _native_evidence(run) and not result_path.exists():
@@ -619,7 +629,8 @@ def _approval_required(active: dict | None) -> str | None:
             old = context["old"]
             if native == "rolled_back":
                 if not common.same_system(actual, old):
-                    raise ValueError("rollback system does not match recorded old snapshot")
+                    raise ValueError("native rollback is terminal, but current snapshot differs from recorded old snapshot; "
+                                     f"current={json.dumps(actual, sort_keys=True)}; old={json.dumps(old, sort_keys=True)}")
                 if result_path.exists():
                     result = common.load_json(result_path)
                     if (result.get("result") != "deploy_failed_rolled_back"
@@ -699,7 +710,8 @@ def _approval_required(active: dict | None) -> str | None:
                 return None
             raise ValueError("native activation result conflicts with evidence")
         except FileNotFoundError:
-            if _native_evidence(run):
+            if (_native_evidence(run) or any((run / name).exists() or (run / name).is_symlink()
+                    for name in ("reconciliation.json", "reconciliation-event.json"))):
                 raise ValueError("native evidence has no readable activation context") from None
             continue
         except Exception:
@@ -823,7 +835,10 @@ def switch(repo: Path | None = None, *, approve_rollback: str | None = None) -> 
             print("Potwierdzone wdrożenie zostało odzyskane; znacznik aktywnego wdrożenia usunięto. Ta próba została zatrzymana.", file=sys.stderr)
             return 0
         except Exception as exc:
-            print(f"wave switch recovery blocked: {exc}; evidence: {LOGS}. Verify native state and the Nix profile/current-system links manually; do not remove markers or retry yet.", file=sys.stderr)
+            print(f"wave switch recovery blocked: {exc}; evidence: {LOGS}. "
+                  "A healthy current system does not prove the recorded old snapshot was restored. "
+                  "After manual activation, inspect `wave recover` (read-only) for a snapshot-bound reconciliation plan. "
+                  "Do not remove active.json; --approve-rollback cannot bypass unresolved evidence.", file=sys.stderr)
             return 10
         if active is not None:
             print(f"wave switch is blocked by an unresolved active deployment; inspect {STATE / 'active.json'} and verify native state before removing its marker", file=sys.stderr)

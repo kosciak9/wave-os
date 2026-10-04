@@ -34,6 +34,8 @@ def main(argv: list[str] | None = None) -> int:
     health.add_argument("--json", action="store_true", help="emit one JSON object")
     switch = sub.add_parser("switch", help="validate and safely activate Renekton")
     switch.add_argument("--approve-rollback", metavar="FULL_SHA40", help="approve retrying a previously rolled-back commit")
+    recover = sub.add_parser("recover", help="inspect interrupted deployment/manual activation reconciliation (read-only by default)")
+    recover.add_argument("--accept-manual", metavar="PLAN_SHA256", help="persist reconciliation of the exact plan displayed by wave recover")
     args = parser.parse_args(argv)
     if args.command == "health" and args.json:
         return _health_json()
@@ -43,6 +45,10 @@ def main(argv: list[str] | None = None) -> int:
         from wave_switch import switch
 
         return switch(approve_rollback=args.approve_rollback)
+    if args.command == "recover":
+        from wave_recover import recover
+
+        return recover(accept_manual=args.accept_manual)
     parser.print_help()
     return 2
 
