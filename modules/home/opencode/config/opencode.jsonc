@@ -35,6 +35,7 @@
     "external_directory": {
       "~/Developer/personal/wave-os/**": "allow",
       "~/Developer/personal/wave-os.*/**": "allow",
+      "~/.local/state/wave/**": "allow",
       "/nix/store/**": "allow",
       "/nix/var/log/nix/**": "allow",
     },
