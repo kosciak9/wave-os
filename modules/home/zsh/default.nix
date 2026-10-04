@@ -5,7 +5,10 @@
 }:
 
 {
-  home.packages = [ pkgs.zsh-completions ];
+  home.packages = [
+    pkgs.mosh
+    pkgs.zsh-completions
+  ];
 
   programs = {
     eza = {
@@ -92,6 +95,15 @@
             --color=marker:#98bb6c,spinner:#957fb8,header:#7e9cd8'
 
           zstyle ':fzf-tab:complete:cd:*' disabled-on any
+
+          ssh() {
+            # Only plain terminal logins use Mosh; SSH options and commands stay untouched.
+            if [[ -o interactive && -t 0 && -t 1 && $# -eq 1 && $1 != -* && $1 != ssh://* ]]; then
+              command mosh -- "$1"
+            else
+              command ssh "$@"
+            fi
+          }
 
           if (( $+commands[wt] )); then
             eval "$(command wt config shell init zsh)"
