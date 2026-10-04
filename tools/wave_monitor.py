@@ -1,4 +1,4 @@
-"""Foreground, read-only observer for native safe-switch activation."""
+"""Foreground, read-only observer for native Wave activation."""
 
 from __future__ import annotations
 

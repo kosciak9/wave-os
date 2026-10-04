@@ -34,6 +34,7 @@ SAFE_PATH = re.compile(r"^/[A-Za-z0-9._+/:=-]+$")
 _cancel = False
 _current_run: Path | None = None
 _console_broken = False
+_current_log: Path | None = None
 
 
 def _git(repo: Path, args: list[str], *, allow_missing: bool = False) -> str:
@@ -42,7 +43,7 @@ def _git(repo: Path, args: list[str], *, allow_missing: bool = False) -> str:
     if result.returncode:
         if allow_missing and result.returncode == 1:
             return ""
-        raise RuntimeError(result.stderr.strip() or "git command failed")
+        raise RuntimeError("git command failed; inspect repository status and permissions")
     return result.stdout.strip()
 
 
@@ -112,11 +113,17 @@ def _stage(text: str) -> None:
 
 def _nix(repo: Path, args: list[str], run: Path, name: str, *, capture: bool = False,
          timeout: float = 1200) -> wave_process.CommandResult:
+    global _current_log
+    _current_log = run / name
+    _stage(f"Running {name.removesuffix('.log')}; stage log: {_current_log}")
     argv = ["devenv", "--quiet", "shell", "--", *args]
-    return wave_process.run_logged(argv, cwd=repo, log_path=run / name,
-                                   cancelled=_cancelled, before_stop=_cancel_marker,
-                                   on_tick=None, timeout=timeout,
-                                   capture_stdout=capture)
+    result = wave_process.run_logged(argv, cwd=repo, log_path=_current_log,
+                                    cancelled=_cancelled, before_stop=_cancel_marker,
+                                    on_tick=None, timeout=timeout,
+                                    capture_stdout=capture)
+    if result.timed_out:
+        raise TimeoutError(f"{name.removesuffix('.log')} timed out after {timeout:g}s")
+    return result
 
 
 def render_runtime_flake(repo: Path, commit: str, temp_path: Path, run_dir: Path) -> Path:
@@ -172,8 +179,13 @@ def _meta(repo: Path, flake: Path, run: Path, expected_temp: Path, commit: str) 
     if (value["confirm_timeout"], value["activation_timeout"]) != (common.CONFIRM_TIMEOUT, common.ACTIVATION_TIMEOUT) or value["auto_rollback"] is not True or value["magic_rollback"] is not True or value["interactive_sudo"] is not True:
         raise ValueError("runtime metadata protocol mismatch")
     expected_ssh_opts = ["-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes", "-o", "ConnectionAttempts=1", "-o", "ConnectTimeout=5"]
-    if value["ssh_opts"] != expected_ssh_opts or value["source_revision"] != commit or value["deploy_revision"] != common.DEPLOY_RS_REV:
-        raise ValueError("runtime metadata pin mismatch")
+    if value["ssh_opts"] != expected_ssh_opts:
+        raise ValueError("runtime metadata pin mismatch: SSH safety options differ")
+    for key, expected in (("source_revision", commit), ("deploy_revision", common.DEPLOY_RS_REV)):
+        actual = value[key]
+        if actual != expected:
+            observed = actual if isinstance(actual, str) and HEX40.fullmatch(actual) else "missing or invalid revision"
+            raise ValueError(f"runtime metadata pin mismatch: {key} expected {expected}, got {observed}")
     if value["sudo_wrapper"] != value["expected_sudo"]:
         raise ValueError("runtime sudo adapter mismatch")
     for key in ("profile_closure", "system_closure", "deploy_package", "sudo_wrapper", "expected_sudo"):
@@ -221,6 +233,8 @@ def _deployment_progress(run: Path) -> Callable[[], None]:
 
 
 def _deploy(repo: Path, run: Path, package: str) -> wave_process.CommandResult:
+    global _current_log
+    _current_log = run / "console.log"
     executable = str(Path(package) / "bin/deploy")
     env = dict(os.environ)
     env["PATH"] = "/nix/var/nix/profiles/default/bin:/usr/bin:/bin:" + env.get("PATH", "")
@@ -232,11 +246,62 @@ def _deploy(repo: Path, run: Path, package: str) -> wave_process.CommandResult:
                                    on_tick=_deployment_progress(run), timeout=1200, env=env)
 
 
+def _log_failure(log: Path | None) -> tuple[str | None, str | None]:
+    """Classify bounded diagnostics; never copy potentially credential-bearing log text."""
+    if log is None:
+        return None, None
+    try:
+        with log.open("rb") as source:
+            source.seek(0, os.SEEK_END)
+            source.seek(max(0, source.tell() - 128 * 1024))
+            text = source.read(128 * 1024).decode("utf-8", "replace").lower()
+    except OSError:
+        return None, None
+    if "flakehub" in text and "expired" in text and "token" in text:
+        return ("expired FlakeHub token",
+                "Next run `determinate-nixd login` locally; never share the token. Then run `devenv shell -- nix-eval renekton` before retrying wave switch.")
+    auth_status = re.search(r"\bhttp(?:\s+(?:error|status(?:\s+code)?))?\s*[:=]?\s*(401|403)\b", text)
+    if auth_status or re.search(r"unauthorized|forbidden|authentication failed|invalid (?:access )?token|bad credentials", text):
+        cause = f"HTTP {auth_status.group(1)}" if auth_status is not None else "rejected credentials/access"
+        return (f"download/evaluation authentication or authorization failed ({cause})",
+                "Check access to the input/cache and the existing Nix authentication setup privately; do not paste tokens or raw logs. Retry only after access is restored.")
+    if "rate limit" in text or re.search(r"\bhttp(?:\s+(?:error|status(?:\s+code)?))?\s*[:=]?\s*429\b", text):
+        return "download rate limit exceeded", "Wait for the rate limit to reset and verify input/cache access before retrying."
+    if any(term in text for term in ("could not resolve", "couldn't resolve", "connection refused", "unable to download", "failed to download", "network is unreachable", "connection timed out")):
+        return "input/cache download or network access failed", "Verify network connectivity and input/cache availability before retrying."
+    for pattern, reason in (
+        (r"error: syntax error", "Nix syntax error"),
+        (r"error:.*attribute .* missing", "Nix evaluation references a missing attribute"),
+        (r"error:.*assertion .* failed", "Nix configuration assertion failed"),
+        (r"hash mismatch", "downloaded source hash does not match its pin"),
+        (r"builder for .* failed", "a package build failed"),
+    ):
+        if re.search(pattern, text):
+            return reason, "Inspect the stage log privately; fix and commit the failing configuration or package pin before retrying. Do not bypass validation."
+    if "error:" in text:
+        return "Nix evaluation/build reported an error", "Inspect the stage log privately for the failing expression or derivation; fix and commit the configuration before retrying."
+    return None, None
+
+
 def _finish(run: Path, commit: str | None, result: str, health: dict, old: dict,
             new: dict, error: str | None = None, state: dict | None = None) -> int:
+    log = _current_log if _current_log is not None and _current_log.parent == run else None
+    reason, guidance = _log_failure(log) if result != "success" else (None, None)
+    if error and "pin mismatch" in error:
+        reason = None
+        guidance = "Compare the recorded metadata with the committed flake.nix/flake.lock and Wave validation pins/options. Fix and commit any inconsistency; do not bypass pin validation."
+    detail = error or "deployment failed"
+    if reason:
+        detail = f"{detail}: {reason}"
+    if error and "health" in error:
+        unhealthy = [name for name, item in health.get("checks", {}).items()
+                     if isinstance(item, dict) and item.get("ok") is False]
+        if unhealthy:
+            detail += "; unhealthy checks: " + ", ".join(unhealthy)
     payload = {"commit": commit, "result": result, "timestamp": common.utc_now(), "health": health,
                "log_dir": str(run), "old": old, "new": new, "state": state or {},
-               "interrupted": _cancel, "error": error}
+               "interrupted": _cancel, "error": detail if result != "success" else error,
+               "stage_log": str(log) if log is not None else None}
     try:
         common.atomic_json(run / "result.json", payload)
         common.atomic_json(STATE / "latest.json", payload)
@@ -244,6 +309,18 @@ def _finish(run: Path, commit: str | None, result: str, health: dict, old: dict,
         print(f"critical: cannot persist result; inspect logs at {run}: {exc}", file=sys.stderr)
         return 40
     _stage(f"{result}; logs: {run}")
+    if result != "success":
+        _stage(f"Reason: {detail}")
+        _stage(f"Stage log: {log or run / 'result.json'}")
+        if result == "critical":
+            guidance = "Do not retry or remove active.json until native activation, rollback evidence, and system profile/current-system links have been verified manually."
+        elif result in {"deploy_failed_rolled_back", "deploy_failed_unchanged"}:
+            guidance = "The previous system is verified healthy. Inspect deployment logs privately and fix the cause before retrying; a rolled-back commit requires explicit retry approval."
+        elif result == "interrupted":
+            guidance = "Check the recorded result and any active deployment evidence before retrying; do not manually activate or remove markers."
+        elif guidance is None:
+            guidance = "No activation was started. Resolve the reported validation/preflight issue, commit intended configuration changes, and rerun wave switch only when ready."
+        _stage(f"Next: {guidance}")
     return {"success": 0, "preflight_failed": 10, "validation_failed": 20,
             "deploy_failed_rolled_back": 30, "deploy_failed_unchanged": 30,
             "critical": 40, "interrupted": 130}[result]
@@ -595,35 +672,36 @@ def _finalize(run: Path, active_owned: bool,
     return code, active_owned
 
 
-def safe_switch(repo: Path | None = None, *, approve_rollback: str | None = None) -> int:
+def switch(repo: Path | None = None, *, approve_rollback: str | None = None) -> int:
     if approve_rollback is not None and not HEX40.fullmatch(approve_rollback):
         print("--approve-rollback must be exactly 40 lowercase hexadecimal characters", file=sys.stderr)
         return 2
 
-    global _cancel, _current_run, _console_broken
+    global _cancel, _current_run, _console_broken, _current_log
     _cancel = False
     _current_run = None
     _console_broken = False
+    _current_log = None
     if platform.system() != "Darwin" or platform.machine() != "arm64" or os.geteuid() == 0:
-        print("safe-switch requires a local non-root Darwin arm64 user", file=sys.stderr); return 10
+        print("wave switch requires a local non-root Darwin arm64 user", file=sys.stderr); return 10
     repo = (repo or ROOT).resolve()
     try:
         _private_directory(STATE)
         _private_directory(STATE / "logs")
         _private_directory(LOGS)
     except OSError as exc:
-        print(f"safe-switch state initialization failed: {exc}", file=sys.stderr)
+        print(f"wave switch state initialization failed: {exc}", file=sys.stderr)
         return 10
     try:
         lock_fd = _lock_path(STATE / "safe-switch.lock")
     except OSError as exc:
-        print(f"safe-switch lock initialization failed: {exc}", file=sys.stderr)
+        print(f"wave switch lock initialization failed: {exc}", file=sys.stderr)
         return 10
     try:
         fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError as exc:
         os.close(lock_fd)
-        if exc.errno in (errno.EACCES, errno.EAGAIN): print("safe-switch is already running; inspect active.json", file=sys.stderr)
+        if exc.errno in (errno.EACCES, errno.EAGAIN): print(f"wave switch is already running; inspect {STATE / 'active.json'}", file=sys.stderr)
         return 10
     old_handlers = {sig: signal.signal(sig, _signal) for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)}
     run = temp_root = None; active_owned = False; launched = False; context: dict | None = None
@@ -645,10 +723,10 @@ def safe_switch(repo: Path | None = None, *, approve_rollback: str | None = None
             print("Potwierdzone wdrożenie zostało odzyskane; znacznik aktywnego wdrożenia usunięto. Ta próba została zatrzymana.", file=sys.stderr)
             return 0
         except Exception as exc:
-            print("safe-switch recovery is blocked by ambiguous activation evidence; verify native state and the Nix profile/current-system links manually", file=sys.stderr)
+            print(f"wave switch recovery blocked: {exc}; evidence: {LOGS}. Verify native state and the Nix profile/current-system links manually; do not remove markers or retry yet.", file=sys.stderr)
             return 10
         if active is not None:
-            print("safe-switch is blocked by an unresolved active deployment; verify native state before removing its marker", file=sys.stderr)
+            print(f"wave switch is blocked by an unresolved active deployment; inspect {STATE / 'active.json'} and verify native state before removing its marker", file=sys.stderr)
             return 10
         if rollback_commit is None and approve_rollback is not None:
             print("--approve-rollback was supplied, but there is no prior rolled-back commit to approve; no deployment was started.", file=sys.stderr)
@@ -661,7 +739,7 @@ def safe_switch(repo: Path | None = None, *, approve_rollback: str | None = None
             else:
                 approval = _approve_rollback(rollback_commit)
                 if approval is None:
-                    print(f"A TTY is unavailable, so rollback approval cannot be requested interactively. To approve this retry, rerun: wave safe-switch --approve-rollback {rollback_commit}", file=sys.stderr)
+                    print(f"A TTY is unavailable, so rollback approval cannot be requested interactively. To approve this retry, rerun: wave switch --approve-rollback {rollback_commit}", file=sys.stderr)
                     return 30
                 if not approval:
                     print("Rollback retry was explicitly declined. No deployment was started.", file=sys.stderr)
@@ -808,4 +886,4 @@ def safe_switch(repo: Path | None = None, *, approve_rollback: str | None = None
 
 
 if __name__ == "__main__":
-    raise SystemExit(safe_switch())
+    raise SystemExit(switch())

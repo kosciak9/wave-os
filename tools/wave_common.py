@@ -18,7 +18,8 @@ HEALTH_WINDOW = 120
 ROLLBACK_HEALTH_WINDOW = 60
 HEALTH_INTERVAL = 5
 HEALTH_STREAK = 3
-DEPLOY_RS_REV = "e760371d631165e7d8de5b0dcf148e21ec4c16f0"
+# Keep this independent runtime gate in sync with the reviewed flake.nix/flake.lock pin.
+DEPLOY_RS_REV = "cf64c8cbadd9b13ea79ba7720aa2930500f2ece7"
 
 _MAX_LOG_BYTES = 2 * 1024 * 1024
 
