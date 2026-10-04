@@ -13,7 +13,9 @@ PanelWindow {
     required property var notificationService
     property string stage: "idle"
     property string daemonState: ""
-    property real wavePhase: 0
+    property var audioLevels: Array(12).fill(0)
+    property real borderPhase: 0
+    property real borderCoverage: 0.18
     readonly property int pillWidth: 168
     readonly property int pillHeight: 44
     readonly property bool active: stage === "recording" || stage === "transcribing"
@@ -23,11 +25,28 @@ PanelWindow {
         : stage === "cancelled" ? Theme.fujiGray : Theme.waveRed
 
     function show(nextStage: string): void {
+        if (stage !== nextStage)
+            audioLevels = Array(12).fill(0)
         stage = nextStage
+        borderFill.stop()
+        if (nextStage === "ready")
+            borderFill.restart()
+        else
+            borderCoverage = 0.18
         idleTimer.stop()
         hideTimer.stop()
         if (!active)
             hideTimer.restart()
+    }
+
+    function updateAudioLevel(data: string): void {
+        if (stage !== "recording")
+            return
+        const level = Number(data)
+        if (!Number.isFinite(level))
+            return
+        audioLevels = audioLevels.slice(1).concat([Math.max(0, Math.min(1, level))])
+        audioDecayTimer.restart()
     }
 
     function readState(): void {
@@ -92,12 +111,36 @@ PanelWindow {
     }
     Timer { id: hideTimer; interval: root.stage === "ready" ? 2400 : 1600; onTriggered: root.stage = "idle" }
 
-    NumberAnimation on wavePhase {
+    Process {
+        command: ["wave-voxtype-levels"]
+        running: root.stage === "recording"
+        stdout: SplitParser {
+            onRead: function(data) { root.updateAudioLevel(data) }
+        }
+    }
+
+    Timer {
+        id: audioDecayTimer
+        interval: 250
+        onTriggered: root.audioLevels = Array(12).fill(0)
+    }
+
+    NumberAnimation on borderPhase {
         from: 0
-        to: Math.PI * 2
-        duration: root.stage === "recording" ? 900 : 1400
+        to: 1
+        duration: 1800
         loops: Animation.Infinite
-        running: root.active
+        running: root.stage === "transcribing"
+    }
+
+    NumberAnimation {
+        id: borderFill
+        target: root
+        property: "borderCoverage"
+        from: 0.18
+        to: 1
+        duration: 360
+        easing.type: Easing.OutCubic
     }
 
     Rectangle {
@@ -109,25 +152,64 @@ PanelWindow {
         border.width: 1
         border.color: Theme.sumiInk3
 
+        Shape {
+            id: activityBorder
+            anchors.fill: parent
+            visible: root.stage === "transcribing" || root.stage === "ready"
+            readonly property real inset: 1
+            readonly property real arcRadius: height / 2 - inset
+            readonly property real perimeter: 2 * (width - height) + 2 * Math.PI * arcRadius
+
+            ShapePath {
+                strokeColor: root.stage === "ready" ? Theme.springGreen : Theme.crystalBlue
+                strokeWidth: 1.5
+                capStyle: ShapePath.RoundCap
+                fillColor: "transparent"
+                strokeStyle: root.borderCoverage >= 0.999 ? ShapePath.SolidLine : ShapePath.DashLine
+                dashPattern: [root.borderCoverage * activityBorder.perimeter / strokeWidth,
+                    Math.max(0.001, (1 - root.borderCoverage) * activityBorder.perimeter / strokeWidth)]
+                dashOffset: -root.borderPhase * activityBorder.perimeter / strokeWidth
+                startX: activityBorder.width / 2
+                startY: activityBorder.inset
+                PathLine { x: activityBorder.width - activityBorder.height / 2; y: activityBorder.inset }
+                PathArc {
+                    x: activityBorder.width - activityBorder.height / 2
+                    y: activityBorder.height - activityBorder.inset
+                    radiusX: activityBorder.arcRadius; radiusY: activityBorder.arcRadius
+                    direction: PathArc.Clockwise
+                }
+                PathLine { x: activityBorder.height / 2; y: activityBorder.height - activityBorder.inset }
+                PathArc {
+                    x: activityBorder.height / 2
+                    y: activityBorder.inset
+                    radiusX: activityBorder.arcRadius; radiusY: activityBorder.arcRadius
+                    direction: PathArc.Clockwise
+                }
+                PathLine { x: activityBorder.width / 2; y: activityBorder.inset }
+            }
+        }
+
         Row {
             anchors.centerIn: parent
             height: 28
             spacing: 5
-            visible: root.active
+            visible: root.stage === "recording"
 
             Repeater {
                 model: 12
 
                 delegate: Rectangle {
                     required property int index
-                    readonly property real pulse: (1 + Math.sin(root.wavePhase - index * 0.48)) / 2
+                    readonly property real level: root.audioLevels[index]
 
                     anchors.verticalCenter: parent.verticalCenter
                     width: 2
-                    height: root.stage === "recording" ? 6 + 22 * pulse : 4 + 6 * pulse
+                    height: 4 + 24 * level
                     radius: width / 2
                     color: root.accent
-                    opacity: root.stage === "recording" ? 0.6 + 0.4 * pulse : 0.25 + 0.75 * pulse
+                    opacity: 0.4 + 0.6 * level
+                    Behavior on height { NumberAnimation { duration: 70 } }
+                    Behavior on opacity { NumberAnimation { duration: 70 } }
                 }
             }
         }

@@ -2,6 +2,9 @@
 
 let
   sessionTarget = "wayland-session@hyprland.desktop.target";
+  audioLevels = pkgs.writeScriptBin "wave-voxtype-levels" (
+    "#!${lib.getExe pkgs.python3}\n" + builtins.readFile ./voxtype-levels.py
+  );
   daemon = pkgs.writeShellApplication {
     name = "wave-voxtype-daemon";
     runtimeInputs = with pkgs; [
@@ -28,7 +31,10 @@ let
   };
 in
 {
-  home.packages = [ pkgs.voxtype ];
+  home.packages = [
+    pkgs.voxtype
+    audioLevels
+  ];
 
   programs.ghostty.settings.keybind = [ "shift+insert=paste_from_clipboard" ];
 
