@@ -400,11 +400,11 @@ PanelWindow {
         }
 
         Image {
-            width: 20
-            height: 20
+            width: 16
+            height: 16
             source: Quickshell.shellDir + (caffeinateWidget.active ? "/assets/coffee-steaming.svg" : "/assets/coffee.svg")
             fillMode: Image.PreserveAspectFit
-            opacity: root.caffeinateService.known ? 0.9 : 0.45
+            opacity: root.caffeinateService.known ? 0.8 : 0.45
         }
 
         PopupWindow {
