@@ -24,6 +24,7 @@ let
       owner_file=${lib.escapeShellArg cfg.ownerIdFile}
       env_file=${lib.escapeShellArg cfg.modelEnvFile}
       state_dir=${lib.escapeShellArg state}
+      provider=${lib.escapeShellArg cfg.provider}
 
       # Installing the service is safe before the owner supplies its test token.
       if [[ ! -e "$token_file" && ! -L "$token_file" ]]; then
@@ -54,7 +55,7 @@ let
       trap cleanup EXIT
       trap 'exit 0' INT TERM
       if ! jq -en --rawfile token "$token_file" --rawfile owner "$owner_file" \
-        --arg provider ${lib.escapeShellArg cfg.provider} --arg model ${lib.escapeShellArg cfg.model} '
+        --arg provider "$provider" --arg model ${lib.escapeShellArg cfg.model} '
           ($token | sub("\\n$"; "")) as $token |
           ($owner | sub("\\n$"; "")) as $owner |
           select($token | test("^[0-9]+:[A-Za-z0-9_-]+$")) |
@@ -83,7 +84,7 @@ let
           exit 1
         fi
         env_args=(--env-file "$env_file")
-      elif [[ ${lib.escapeShellArg cfg.provider} == opencode-go ]]; then
+      elif [[ "$provider" == opencode-go ]]; then
         if ! OPENCODE_API_KEY=$(${lib.escapeShellArg openclaw} secrets store get OPENCODE_API_KEY --plain 2>/dev/null) || [[ -z "$OPENCODE_API_KEY" ]]; then
           printf '%s\n' 'Pi requires the existing OpenCode API key or a private model environment file.' >&2
           exit 1
