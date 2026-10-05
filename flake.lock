@@ -559,6 +559,22 @@
         "type": "github"
       }
     },
+    "nixpkgs-ahri": {
+      "locked": {
+        "lastModified": 1791031588,
+        "narHash": "sha256-/FGDr01siZ8txrVzkOz6CYjiz0XR27JuVJP+aWchi4s=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "825e2028c29b702a4a5f085f08095d12099784f2",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "825e2028c29b702a4a5f085f08095d12099784f2",
+        "type": "github"
+      }
+    },
     "nixpkgs-libxml2": {
       "locked": {
         "lastModified": 1751274312,
@@ -720,6 +736,7 @@
         "nix-openclaw": "nix-openclaw",
         "nixos-hardware": "nixos-hardware",
         "nixpkgs": "nixpkgs_4",
+        "nixpkgs-ahri": "nixpkgs-ahri",
         "sqlit": "sqlit",
         "vicinae": "vicinae",
         "vicinae-extensions": "vicinae-extensions",

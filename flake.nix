@@ -3,6 +3,7 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs-ahri.url = "github:NixOS/nixpkgs/825e2028c29b702a4a5f085f08095d12099784f2";
     herdr = {
       url = "github:jerryfane/herdr/f9ae2a132fced4f314a6b1421aadf6f15b6f3761";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -226,23 +227,10 @@
         ];
       };
 
-      nixosConfigurations.ahri = nixpkgs.lib.nixosSystem {
+      nixosConfigurations.ahri = inputs.nixpkgs-ahri.lib.nixosSystem {
         system = "aarch64-linux";
-        modules = [
-          nixos-hardware.nixosModules.raspberry-pi-4
-          ./hosts/ahri/default.nix
-        ];
+        modules = [ ./hosts/ahri/default.nix ];
       };
-
-      lib.mkAhriImage =
-        { sshPublicKey }:
-        (self.nixosConfigurations.ahri.extendModules {
-          specialArgs = { inherit sshPublicKey; };
-          modules = [
-            "${nixpkgs}/nixos/modules/installer/sd-card/sd-image.nix"
-            ./hosts/ahri/sd-image.nix
-          ];
-        }).config.system.build.sdImage;
 
       darwinConfigurations.renekton = nix-darwin.lib.darwinSystem {
         system = darwinSystem;
