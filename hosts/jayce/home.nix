@@ -187,6 +187,7 @@ in
         wl-clipboard
         zenBrowser
       ])
+      ++ [ inputs.herdr-gpui.packages.${pkgs.stdenv.hostPlatform.system}.default ]
       ++ displayReconcilerRuntime;
   };
 

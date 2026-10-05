@@ -312,6 +312,28 @@
         "type": "github"
       }
     },
+    "herdr-gpui": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "rust-overlay": "rust-overlay_2"
+      },
+      "locked": {
+        "lastModified": 1791182698,
+        "narHash": "sha256-EuBi0X0XQGVZjzHh5Wmv5Ssgsp/xFQvOx6xr8mnu/60=",
+        "owner": "penso",
+        "repo": "herdr-gpui",
+        "rev": "37f51423039795c1a405240eb0df0dd9f2278447",
+        "type": "github"
+      },
+      "original": {
+        "owner": "penso",
+        "ref": "v20261005.1",
+        "repo": "herdr-gpui",
+        "type": "github"
+      }
+    },
     "herdr-worktrunk": {
       "flake": false,
       "locked": {
@@ -688,6 +710,7 @@
         "herdr": "herdr",
         "herdr-agent-usage": "herdr-agent-usage",
         "herdr-auto-title": "herdr-auto-title",
+        "herdr-gpui": "herdr-gpui",
         "herdr-worktrunk": "herdr-worktrunk",
         "home-manager": "home-manager",
         "hyprland-scroll-overview": "hyprland-scroll-overview",
@@ -716,6 +739,27 @@
         "owner": "oxalica",
         "repo": "rust-overlay",
         "rev": "4cdea398dc491b082dccdce0fad1ed0b75fa3394",
+        "type": "github"
+      },
+      "original": {
+        "owner": "oxalica",
+        "repo": "rust-overlay",
+        "type": "github"
+      }
+    },
+    "rust-overlay_2": {
+      "inputs": {
+        "nixpkgs": [
+          "herdr-gpui",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1790062494,
+        "narHash": "sha256-Mds1vuoczq1fRm1rf+Iar8IKDBHNjOMo2JqqPWJUlng=",
+        "owner": "oxalica",
+        "repo": "rust-overlay",
+        "rev": "b88764907c1b2de6c0e206d8d9d9634d91c81334",
         "type": "github"
       },
       "original": {

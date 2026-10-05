@@ -7,6 +7,10 @@
       url = "github:jerryfane/herdr/f9ae2a132fced4f314a6b1421aadf6f15b6f3761";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    herdr-gpui = {
+      url = "github:penso/herdr-gpui/v20261005.1";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     herdr-worktrunk = {
       url = "github:devashish2203/herdr-worktrunk/77e91a9b5429c0296cd883300b4b1d4664e9edd6";
       flake = false;
