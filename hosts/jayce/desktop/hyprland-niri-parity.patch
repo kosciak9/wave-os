@@ -231,7 +231,16 @@ index 4aa1185..645e61c 100644
      m_scrollingData->recalculate();
  }
 
-@@ -746,12 +782,15 @@ void CScrollingAlgorithm::newTarget(SP<ITarget> target) {
+@@ -721,6 +761,7 @@ void CScrollingAlgorithm::newTarget(SP<ITarget> target) {
+     SP<SScrollingTargetData> droppingData   = droppingOn ? dataFor(droppingOn->layoutTarget()) : nullptr;
+     SP<SColumnData>          droppingColumn = droppingData ? droppingData->column.lock() : nullptr;
+-    const auto               width          = target->window()->m_ruleApplicator->static_.scrollingWidth;
++    const auto              dragWidth      = g_layoutManager->dragController()->draggedScrollingWidth();
++    const auto              width          = dragWidth ? dragWidth : target->window()->m_ruleApplicator->static_.scrollingWidth;
+ 
+     if (!droppingColumn) {
+         auto col = m_scrollingData->add(width);
+@@ -746,12 +787,15 @@ void CScrollingAlgorithm::newTarget(SP<ITarget> target) {
              if (!WITHIN_RANGE) {
                  // we are not within edge range, so we drop into the column
 
@@ -253,6 +262,18 @@ index 4aa1185..645e61c 100644
              } else {
                  // we are within the edge drop, make a new column
 
+@@ -756,9 +800,9 @@ void CScrollingAlgorithm::newTarget(SP<ITarget> target) {
+                 // we are within the edge drop, make a new column
+ 
+                 if (WITHIN_RANGE_LEFT)
+-                    droppingColumn = m_scrollingData->add(m_scrollingData->idx(droppingColumn) - 1);
++                    droppingColumn = m_scrollingData->add(m_scrollingData->idx(droppingColumn) - 1, width);
+                 else
+-                    droppingColumn = m_scrollingData->add(m_scrollingData->idx(droppingColumn));
++                    droppingColumn = m_scrollingData->add(m_scrollingData->idx(droppingColumn), width);
+ 
+                 droppingColumn->add(target);
+             }
 @@ -785,4 +824,17 @@ void CScrollingAlgorithm::removeTarget(SP<ITarget> target) {
      if (!DATA)
          return;
@@ -571,6 +592,75 @@ index 98a43be..a08e529 100644
 
          void                     expelTarget(SP<SScrollingTargetData> tdata, SP<SColumnData> srcCol, std::optional<int64_t> insertIdx);
 
+diff --git a/src/layout/supplementary/DragController.cpp b/src/layout/supplementary/DragController.cpp
+--- a/src/layout/supplementary/DragController.cpp
++++ b/src/layout/supplementary/DragController.cpp
+@@ -2,6 +2,8 @@
+ 
+ #include "../LayoutManager.hpp"
+ #include "../space/Space.hpp"
++#include "../algorithm/Algorithm.hpp"
++#include "../algorithm/tiled/scrolling/ScrollingAlgorithm.hpp"
+ 
+ #include "../../Compositor.hpp"
+ #include "../../managers/SeatManager.hpp"
+@@ -75,6 +77,10 @@ bool CDragStateController::draggingTiled() const {
+     return m_draggingTiled;
+ }
+ 
++std::optional<float> CDragStateController::draggedScrollingWidth() const {
++    return m_wasDraggingWindow && m_draggingTiled ? m_draggingScrollingWidth : std::nullopt;
++}
++
+ bool CDragStateController::exclusiveDeviceGrab() const {
+     return m_exclusiveDeviceGrab && !m_target.expired();
+ }
+@@ -106,8 +112,17 @@ bool CDragStateController::updateDragWindow() {
+         const auto MOUSECOORDS = g_pInputManager->getMouseCoordsInternal();
+         DRAGGINGTARGET->setPositionGlobal(CBox{MOUSECOORDS - DRAGGINGTARGET->position().size() / 2.F, DRAGGINGTARGET->position().size()});
+     } else if (!DRAGGINGTARGET->floating() && m_dragMode == MBIND_MOVE) {
++        const auto SCROLLING = dynamic_cast<Tiled::CScrollingAlgorithm*>(DRAGGINGTARGET->space()->algorithm()->tiledAlgo().get());
++        if (SCROLLING) {
++            const auto DATA = SCROLLING->dataFor(DRAGGINGTARGET);
++            const auto COLUMN = DATA ? DATA->column.lock() : nullptr;
++            if (COLUMN)
++                m_draggingScrollingWidth = COLUMN->getColumnWidth();
++        }
++
+         Vector2D MINSIZE = DRAGGINGTARGET->minSize().value_or(Vector2D{MIN_WINDOW_SIZE, MIN_WINDOW_SIZE});
+-        DRAGGINGTARGET->rememberFloatingSize((DRAGGINGTARGET->position().size() * 0.8489).clamp(MINSIZE, Vector2D{}).floor());
++        const auto DRAG_SIZE = DRAGGINGTARGET->position().size() * (m_draggingScrollingWidth ? 1.0 : 0.8489);
++        DRAGGINGTARGET->rememberFloatingSize(DRAG_SIZE.clamp(MINSIZE, Vector2D{}).floor());
+ 
+         if (m_dragThresholdReached) {
+             DRAGGINGTARGET->setPositionGlobal(CBox{g_pInputManager->getMouseCoordsInternal() - DRAGGINGTARGET->position().size() / 2.F, DRAGGINGTARGET->position().size()});
+@@ -132,6 +147,7 @@ void CDragStateController::dragBegin(SP<ITarget> target, eMouseBindMode mode, std:
+     m_exclusiveDeviceGrab = exclusiveDeviceGrab;
+     m_grabbedCorner       = CORNER_NONE;
++    m_draggingScrollingWidth.reset();
+ 
+     const auto  DRAGGINGTARGET = m_target.lock();
+     static auto PDRAGTHRESHOLD = CConfigValue<Config::INTEGER>("binds:drag_threshold");
+ 
+diff --git a/src/layout/supplementary/DragController.hpp b/src/layout/supplementary/DragController.hpp
+--- a/src/layout/supplementary/DragController.hpp
++++ b/src/layout/supplementary/DragController.hpp
+@@ -27,6 +27,7 @@ namespace Layout::Supplementary {
+         bool           dragThresholdReached() const;
+         void           resetDragThresholdReached();
+         bool           draggingTiled() const;
++        std::optional<float> draggedScrollingWidth() const;
+         bool           exclusiveDeviceGrab() const;
+ 
+         /*
+@@ -53,6 +54,7 @@ namespace Layout::Supplementary {
+         Vector2D                           m_beginDragPositionXY;
+         Vector2D                           m_beginDragSizeXY;
+         Vector2D                           m_draggingWindowOriginalFloatSize;
++        std::optional<float>               m_draggingScrollingWidth;
+         Layout::eRectCorner                m_grabbedCorner = sc<Layout::eRectCorner>(0) /* CORNER_NONE */;
+         std::optional<Layout::eRectCorner> m_forcedGrabbedCorner;
+     };
 diff --git a/src/managers/SessionLockManager.cpp b/src/managers/SessionLockManager.cpp
 index bb3e792..249a83a 100644
 --- a/src/managers/SessionLockManager.cpp

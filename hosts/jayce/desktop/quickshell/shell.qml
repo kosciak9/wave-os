@@ -55,6 +55,10 @@ ShellRoot {
 
     Blackout {}
 
+    Keybinds {
+        fallbackScreen: root.primaryScreen
+    }
+
     NotificationToasts {
         targetScreen: root.primaryScreen
         service: notifications
