@@ -130,6 +130,7 @@ in
     ../../modules/home/neovim
     ../../modules/home/opencode
     ../../modules/home/herdr
+    ../../modules/home/herdr/gpui.nix
     ../../modules/home/starship
     ../../modules/home/vicinae
     ../../modules/home/zoxide
@@ -187,7 +188,6 @@ in
         wl-clipboard
         zenBrowser
       ])
-      ++ [ inputs.herdr-gpui.packages.${pkgs.stdenv.hostPlatform.system}.default ]
       ++ displayReconcilerRuntime;
   };
 
