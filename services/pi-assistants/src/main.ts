@@ -21,9 +21,11 @@ async function main() {
     ),
   );
   const models = await configuredModels(config);
+  console.log("startup_configured");
   await mkdir("/state", { recursive: true, mode: 0o700 });
   const bot = new Bot(config.botToken);
   await bot.init();
+  console.log("telegram_authenticated");
   const storage = await SqliteStorage.open(
     await openDurableDatabase("/state/pi.sqlite"),
   );
@@ -35,6 +37,7 @@ async function main() {
     api: bot.api,
     fatal,
   });
+  console.log("durable_resumed");
   let admission: Promise<unknown> | undefined;
   let ready = false;
   let stopping = false;
@@ -72,6 +75,7 @@ async function main() {
       allowed_updates: ["message"],
       onStart: () => {
         ready = !stopping;
+        console.log("telegram_polling_ready");
       },
     })
     .catch(() => fatal("polling_failure"));

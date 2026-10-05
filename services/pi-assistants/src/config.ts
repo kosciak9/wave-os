@@ -40,14 +40,15 @@ export function parseConfig(value: unknown): Config {
 export async function configuredModels(config: Config): Promise<Models> {
   const models = builtinModels();
   const provider = models.getProvider(config.model.provider);
-  if (!provider || !(await models.getAuth(provider.id))) {
-    throw new Error("Provider unavailable or unconfigured");
+  if (!provider) throw new Error("Provider unavailable");
+  if (await models.getAuth(provider.id)) {
+    const refreshed = await models.refresh({ providers: [provider.id] });
+    if (refreshed.errors.size)
+      throw new Error("Model catalogue refresh failed");
+  } else {
+    console.error("model_auth_unconfigured");
   }
-  const refreshed = await models.refresh({ providers: [provider.id] });
-  if (
-    refreshed.errors.size ||
-    !models.getModel(provider.id, config.model.modelId)
-  ) {
+  if (!models.getModel(provider.id, config.model.modelId)) {
     throw new Error("Selected model unavailable");
   }
   return models;

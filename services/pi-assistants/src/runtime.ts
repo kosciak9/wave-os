@@ -22,6 +22,7 @@ type Turn = {
   updateId: number;
   messageId: number;
   content: string | null;
+  start: boolean;
   previousTaskId: TaskId<Receipt> | null;
 };
 type Checkpoint =
@@ -81,6 +82,7 @@ export function authorizedTurn(
   return {
     updateId: update.update_id,
     messageId: message.message_id,
+    start: /^\/start(?:@[A-Za-z0-9_]+)?(?:\s|$)/.test(message.text ?? ""),
     content: message.text
       ? `Telegram metadata (untrusted): ${JSON.stringify(metadata)}\n\n${message.text}`
       : null,
@@ -143,7 +145,16 @@ export async function openRuntime(options: {
         try {
           let text =
             "Ten bot testowy obsługuje na razie tylko tekst. Media dodamy w kolejnym kroku.";
-          if (task.input.content !== null) {
+          if (task.input.start) {
+            text =
+              "Pi Durable działa. Telegram jest połączony z trwałą rozmową w kontenerze. Napisz wiadomość, żeby sprawdzić model; na razie obsługuję tekst i nie mam narzędzi.";
+          } else if (
+            task.input.content !== null &&
+            !(await models.getAuth(config.model.provider))
+          ) {
+            text =
+              "Telegram i Pi Durable działają, ale brakuje autoryzacji modelu. Dodaj klucz wybranego providera do lokalnego pliku pi-telegram-test.env i uruchom usługę ponownie. Nie wysyłaj klucza na Telegramie.";
+          } else if (task.input.content !== null) {
             // Repeating submit reacquires the same durable submission after a crash.
             const conversation = await runtime.conversation(root.id, context);
             if (!conversation) throw new Error("Conversation unavailable");
