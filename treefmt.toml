@@ -11,3 +11,9 @@ includes = ["*.md"]
 command = "rustfmt"
 options = ["--edition", "2021"]
 includes = ["*.rs"]
+excludes = ["tools/wave/*.rs", "tools/wave/src/*.rs"]
+
+[formatter.wave-rust]
+command = "rustfmt"
+options = ["--edition", "2024"]
+includes = ["tools/wave/*.rs", "tools/wave/src/*.rs"]

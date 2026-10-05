@@ -2,6 +2,7 @@
 
 {
   imports = [
+    ../../modules/wave/darwin.nix
     ../../modules/caddy/darwin.nix
     ./firewall.nix
     ./power.nix

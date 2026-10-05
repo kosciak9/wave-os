@@ -1,6 +1,7 @@
 {
   pkgs,
   inputs,
+  lib,
   config,
   ...
 }:
@@ -56,7 +57,7 @@ in
     };
   };
 
-  tasks."betterleaks:prepare-worktree-hooks" = {
+  tasks."betterleaks:prepare-worktree-hooks" = lib.mkIf config.git-hooks.enable {
     before = [ "devenv:git-hooks:install" ];
     exec = ''
       set -euo pipefail
@@ -100,10 +101,6 @@ in
   };
 
   scripts = {
-    wave.exec = ''
-      exec ${pkgs.python3}/bin/python3 "${config.devenv.root}/tools/wave.py" "$@"
-    '';
-
     format.exec = ''
       exec treefmt "$@"
     '';

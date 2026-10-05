@@ -103,6 +103,7 @@
       packageOverlay =
         final: prev:
         {
+          wave = final.callPackage ./packages/wave.nix { };
           herdr-auto-title = final.callPackage ./packages/herdr-auto-title.nix {
             src = inputs.herdr-auto-title;
           };
@@ -177,10 +178,17 @@
       kanagawa-kvantum = pkgs.callPackage ./packages/kanagawa-kvantum.nix {
         src = inputs.kanagawa-kvantum;
       };
-      deployment = import ./tools/deploy-renekton.nix {
+      darwinDeployment = import ./tools/deploy-local.nix {
         pkgs = darwinPkgs;
         deployLib = inputs.deploy-rs.lib.${darwinSystem};
         configuration = self.darwinConfigurations.renekton;
+        host = "renekton";
+      };
+      linuxDeployment = import ./tools/deploy-local.nix {
+        inherit pkgs;
+        deployLib = inputs.deploy-rs.lib.${system};
+        configuration = self.nixosConfigurations.jayce;
+        host = "jayce";
       };
     in
     {
@@ -189,6 +197,7 @@
       # and a matching nix-darwin fix land.
       nixosConfigurations.jayce = nixpkgs.lib.nixosSystem {
         inherit system;
+        specialArgs.waveRevision = self.rev or "unknown";
         modules = [
           nixos-hardware.nixosModules.framework-16-7040-amd
           inputs.vicinae.nixosModules.default
@@ -220,6 +229,7 @@
 
       darwinConfigurations.renekton = nix-darwin.lib.darwinSystem {
         system = darwinSystem;
+        specialArgs.waveRevision = self.rev or "unknown";
         modules = [
           determinate.darwinModules.default
           home-manager.darwinModules.home-manager
@@ -246,8 +256,12 @@
       };
 
       packages.${system} = {
+        deploy-rs = inputs.deploy-rs.packages.${system}.deploy-rs;
+        wave-deploy-sudo = linuxDeployment.sudoWrapper;
+        wave-deploy-root = linuxDeployment.rootStdio;
         inherit kanagawa-kvantum;
         inherit (pkgs)
+          wave
           camofox-browser-cli
           slack-mirror
           slack-mirror-context
@@ -258,9 +272,10 @@
       };
       packages.${darwinSystem} = {
         deploy-rs = inputs.deploy-rs.packages.${darwinSystem}.deploy-rs;
-        wave-deploy-sudo = deployment.sudoWrapper;
-        wave-deploy-root = deployment.rootStdio;
+        wave-deploy-sudo = darwinDeployment.sudoWrapper;
+        wave-deploy-root = darwinDeployment.rootStdio;
         inherit (darwinPkgs)
+          wave
           herdr-auto-title
           herdr-agent-usage
           openclaw-sandbox-machine-check
@@ -282,7 +297,15 @@
           camofox-browser-cli
           ;
       };
-      deploy.nodes.renekton = deployment.node;
-      checks.${darwinSystem} = inputs.deploy-rs.lib.${darwinSystem}.deployChecks self.deploy;
+      deploy.nodes = {
+        renekton = darwinDeployment.node;
+        jayce = linuxDeployment.node;
+      };
+      checks.${darwinSystem} = inputs.deploy-rs.lib.${darwinSystem}.deployChecks {
+        nodes.renekton = darwinDeployment.node;
+      };
+      checks.${system} = inputs.deploy-rs.lib.${system}.deployChecks {
+        nodes.jayce = linuxDeployment.node;
+      };
     };
 }

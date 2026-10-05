@@ -1,0 +1,51 @@
+{
+  lib,
+  rustPlatform,
+  stdenv,
+  makeWrapper,
+  curl,
+  git,
+  openssh,
+  iproute2,
+  procps,
+  glibc,
+  devenv,
+}:
+rustPlatform.buildRustPackage {
+  pname = "wave";
+  version = "0.1.0";
+  src = lib.cleanSourceWith {
+    src = ../tools/wave;
+    filter = path: type: lib.cleanSourceFilter path type && builtins.baseNameOf path != "target";
+  };
+  cargoLock.lockFile = ../tools/wave/Cargo.lock;
+
+  nativeBuildInputs = [ makeWrapper ];
+  postFixup = ''
+    wrapProgram "$out/bin/wave" \
+      --prefix PATH : "/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:${
+        lib.makeBinPath (
+          [
+            curl
+            git
+            openssh
+            devenv
+          ]
+          ++ lib.optionals stdenv.hostPlatform.isLinux [
+            iproute2
+            procps
+            glibc.bin
+          ]
+        )
+      }"
+  '';
+
+  meta = {
+    description = "Local Wave OS source and guarded deployment CLI";
+    mainProgram = "wave";
+    platforms = [
+      "x86_64-linux"
+      "aarch64-darwin"
+    ];
+  };
+}

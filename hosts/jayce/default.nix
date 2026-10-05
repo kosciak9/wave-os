@@ -9,6 +9,7 @@ in
 
 {
   imports = [
+    ../../modules/wave/nixos.nix
     ../../modules/caddy/linux.nix
     ./hardware.nix
     ./user.nix
