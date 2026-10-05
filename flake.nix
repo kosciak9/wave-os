@@ -226,6 +226,24 @@
         ];
       };
 
+      nixosConfigurations.ahri = nixpkgs.lib.nixosSystem {
+        system = "aarch64-linux";
+        modules = [
+          nixos-hardware.nixosModules.raspberry-pi-4
+          ./hosts/ahri/default.nix
+        ];
+      };
+
+      lib.mkAhriImage =
+        { sshPublicKey }:
+        (self.nixosConfigurations.ahri.extendModules {
+          specialArgs = { inherit sshPublicKey; };
+          modules = [
+            "${nixpkgs}/nixos/modules/installer/sd-card/sd-image.nix"
+            ./hosts/ahri/sd-image.nix
+          ];
+        }).config.system.build.sdImage;
+
       darwinConfigurations.renekton = nix-darwin.lib.darwinSystem {
         system = darwinSystem;
         specialArgs.waveRevision = self.rev or "unknown";
