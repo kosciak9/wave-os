@@ -10,7 +10,7 @@
         theme = "light:kanagawa,dark:kanagawa";
         layout = {
           mode = "superset";
-          sidebar_gap = 2.0;
+          sidebar_gap = 8.0;
         };
         terminal.family = "Overpass Mono";
         sidebar.family = "Overpass";
