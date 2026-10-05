@@ -1,7 +1,10 @@
-{ lib, pkgs, ... }:
+{ modulesPath, pkgs, ... }:
 
 {
-  imports = [ ./hardware.nix ];
+  imports = [
+    ./hardware.nix
+    "${modulesPath}/profiles/all-hardware.nix"
+  ];
 
   networking = {
     hostName = "ahri";
@@ -50,15 +53,15 @@
       '';
     };
 
-    journald.settings.Journal = {
-      Storage = "volatile";
-      RuntimeMaxUse = "32M";
-      RuntimeKeepFree = "64M";
-      MaxRetentionSec = "1day";
-      RateLimitIntervalSec = "30s";
-      RateLimitBurst = 1000;
-      ForwardToSyslog = false;
-    };
+    journald.extraConfig = ''
+      Storage=volatile
+      RuntimeMaxUse=32M
+      RuntimeKeepFree=64M
+      MaxRetentionSec=1day
+      RateLimitIntervalSec=30s
+      RateLimitBurst=1000
+      ForwardToSyslog=no
+    '';
   };
 
   boot.tmp = {
@@ -125,7 +128,4 @@
     nixos.enable = false;
   };
   system.stateVersion = "26.05";
-
-  # Keep the generic image's cache-backed kernel for this headless host.
-  boot.kernelPackages = lib.mkForce pkgs.linuxPackages;
 }
