@@ -126,6 +126,7 @@
           openclaw-llama-server = final.callPackage ./packages/openclaw-llama-server.nix { };
           anytype-mcp = final.callPackage ./packages/anytype-mcp.nix { };
           substack-mcp = final.callPackage ./packages/substack-mcp.nix { };
+          workspace-mcp = final.callPackage ./packages/workspace-mcp.nix { };
           camofox-browser-source = final.callPackage ./packages/camofox-browser-source.nix { };
           camofox-browser-cli = final.callPackage ./packages/camofox-browser-cli.nix { };
           claude-code = final.callPackage ./packages/claude-code.nix { inherit prev; };
@@ -148,8 +149,6 @@
           openclawRuntimePlugins = (prev.openclawRuntimePlugins or { }) // {
             "camofox-browser" = final.camofox-openclaw-plugin;
           };
-          mac-apps-mcp-host = final.callPackage ./packages/mac-apps-mcp-host.nix { };
-          mac-apps-mcp-server = final.callPackage ./packages/mac-apps-mcp-server.nix { };
           openclawPackages = prev.openclawPackages // {
             openclaw-app = prev.openclawPackages.openclaw-app.overrideAttrs (_: {
               dontFixup = true;
@@ -263,6 +262,7 @@
           openclaw-llama-server
           anytype-mcp
           substack-mcp
+          workspace-mcp
           camofox-browser-source
           camofox-openclaw-plugin
           browser-decision

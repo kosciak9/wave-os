@@ -80,7 +80,6 @@
     tailscale
     tree-sitter
     zsh
-    mac-apps-mcp-server
   ];
 
   fonts.packages = [

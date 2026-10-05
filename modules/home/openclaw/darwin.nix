@@ -136,7 +136,6 @@ in
 {
   home.packages = [
     pkgs.openclaw-languagetool-mcp-image
-    pkgs.mac-apps-mcp-host
   ];
 
   home.activation.openclawLogDirectory = lib.hm.dag.entryAfter [ "writeBoundary" ] ''

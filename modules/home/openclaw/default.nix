@@ -15,6 +15,9 @@ let
   telegramGroupIdFile = "${home}/.config/secrets/openclaw/telegram-group-id";
   telegramGroupAllowFromFile = "${home}/.config/secrets/openclaw/telegram-group-allow-from.json";
   obsidianVaultPathFile = "${home}/.config/secrets/openclaw/obsidian-vault-path";
+  googleWorkspaceClientFile = "${home}/.config/secrets/openclaw/google-workspace-client.json";
+  googleWorkspaceEmailFile = "${home}/.config/secrets/openclaw/google-workspace-email";
+  googleWorkspaceState = "${state}/google-workspace";
   runtimeConfigDirectory = "${state}/runtime-config";
   runtimeConfig = "${runtimeConfigDirectory}/openclaw.json";
   # MCP deny patterns are either exact tool names or prefix patterns ending in '*'.
@@ -98,38 +101,38 @@ let
   ]
   ++ browserPluginTools
   ++ executorTools;
-  macAppsMcpReadTools = [
-    "mail_list_accounts"
-    "mail_list_mailboxes"
-    "mail_get_emails"
-    "mail_get_email"
-    "mail_search"
-    "mail_search_body"
-    "mail_fts_index"
-    "mail_fts_stats"
-    "calendar_list"
-    "calendar_today"
-    "calendar_this_week"
-    "calendar_get_events"
-    "calendar_get_event"
+  workspaceMcpReadTools = [
+    "search_gmail_messages"
+    "get_gmail_message_content"
+    "get_gmail_messages_content_batch"
+    "get_gmail_thread_content"
+    "get_gmail_threads_content_batch"
+    "list_gmail_labels"
+    "list_calendars"
+    "get_events"
   ];
-  macAppsMcpAutonomousWriteTools = [
-    "mail_set_flags"
-    "mail_move"
-    "mail_create_draft"
-    "calendar_create_event"
-    "calendar_modify_event"
+  workspaceMcpAutonomousWriteTools = [
+    "modify_gmail_message_labels"
+    "draft_gmail_message"
+    "manage_event"
   ];
-  macAppsMcpDeniedTools = [
-    "mail_send"
-    "mail_reply"
-    "mail_forward"
-    "calendar_delete_event"
-    "reminders_*"
-    "notes_*"
+  workspaceMcpDeniedTools = [
+    "send_gmail_message"
+    "start_google_auth"
+    "get_gmail_attachment_content"
+    "batch_modify_gmail_message_labels"
+    "manage_gmail_label"
+    "manage_gmail_filter"
+    "list_gmail_filters"
+    "create_calendar"
+    "manage_out_of_office"
+    "manage_focus_time"
   ];
-  macAppsMcpTools = macAppsMcpReadTools ++ macAppsMcpAutonomousWriteTools;
-  macAppsMcpPolicyIds = map (tool: "mac-apps__${tool}") macAppsMcpTools;
+  workspaceMcpTools = workspaceMcpReadTools ++ workspaceMcpAutonomousWriteTools;
+  workspaceMcpPolicyIds = map (tool: "workspace__${tool}") workspaceMcpTools;
+  workspaceMcpPolicy = pkgs.writeText "openclaw-workspace-mcp-policy.json" (
+    builtins.toJSON { allowedTools = workspaceMcpTools; }
+  );
   obsidianMcpReadTools = [
     "obsidian_list_vaults"
     "obsidian_read_note"
@@ -365,7 +368,6 @@ let
   ];
   homeAssistantMcpPolicyIds = map (tool: "home-assistant__${tool}") homeAssistantMcpTools;
   twentyMcpPolicyIds = [ "twenty__*" ];
-  macAppsMcpHostApp = "${home}/Applications/Home Manager Apps/Mac Apps MCP Host.app";
   deniedTools = [
     "conversations_send"
     "code_execution"
@@ -575,6 +577,49 @@ let
   '';
   podman = lib.getExe pkgs.podman;
   jq = lib.getExe pkgs.jq;
+  workspaceMcp = pkgs.writeShellApplication {
+    name = "openclaw-workspace-mcp";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.jq
+    ];
+    text = ''
+      set -euo pipefail
+      umask 077
+
+      client_file=${lib.escapeShellArg googleWorkspaceClientFile}
+      email_file=${lib.escapeShellArg googleWorkspaceEmailFile}
+      state_directory=${lib.escapeShellArg googleWorkspaceState}
+      for file in "$client_file" "$email_file"; do
+        if [[ -L "$file" || ! -f "$file" || ! -r "$file" ]] ||
+          [[ "$(stat -c '%a' "$file")" != 600 ]] ||
+          [[ "$(stat -c '%u' "$file")" != "$(id -u)" ]]; then
+          printf '%s\n' "refusing to start Workspace MCP: OAuth client and account files must be owned by the user and mode 0600" >&2
+          exit 1
+        fi
+      done
+      if ! ${jq} -e '(.installed // .web) | (.client_id | type == "string" and length > 0) and (.client_secret | type == "string" and length > 0)' "$client_file" >/dev/null 2>&1; then
+        printf '%s\n' "refusing to start Workspace MCP: invalid Google OAuth client JSON" >&2
+        exit 1
+      fi
+      email=$(< "$email_file")
+      if [[ ! "$email" =~ ^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$ ]]; then
+        printf '%s\n' "refusing to start Workspace MCP: invalid configured Google account" >&2
+        exit 1
+      fi
+      install -d -m 0700 -- "$state_directory" "$state_directory/credentials" "$state_directory/logs"
+      cd "$state_directory"
+      exec ${pkgs.coreutils}/bin/env -i \
+        HOME="$state_directory" PATH="$PATH" \
+        PYTHONPATH=${lib.escapeShellArg pkgs.workspace-mcp.pythonPath} \
+        PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1 \
+        GOOGLE_CLIENT_SECRET_PATH="$client_file" USER_GOOGLE_EMAIL="$email" \
+        WORKSPACE_MCP_CREDENTIALS_DIR="$state_directory/credentials" \
+        WORKSPACE_MCP_LOG_DIR="$state_directory/logs" WORKSPACE_MCP_LOG_LEVEL=WARNING \
+        ${pkgs.workspace-mcp.pythonEnvironment}/bin/python \
+        ${../../../packages/workspace-mcp/launcher.py} ${workspaceMcpPolicy}
+    '';
+  };
   anytypeMcp = pkgs.writeShellApplication {
     name = "openclaw-anytype-mcp";
     runtimeInputs = [
@@ -981,18 +1026,12 @@ in
       message = "The official OpenClaw llama-cpp runtime plugin must be exactly ${openclawVersion}";
     }
     {
-      assertion = listIsDuplicateFree macAppsMcpTools;
-      message = "Mac Apps MCP allowed tools must not contain duplicates";
+      assertion = listIsDuplicateFree workspaceMcpTools;
+      message = "Workspace MCP allowed tools must not contain duplicates";
     }
     {
-      assertion = listsAreDisjoint macAppsMcpTools macAppsMcpDeniedTools;
-      message = "Mac Apps MCP allowed and denied tools must be disjoint";
-    }
-    {
-      assertion = builtins.all (
-        tool: !(lib.hasPrefix "reminders_" tool || lib.hasPrefix "notes_" tool)
-      ) macAppsMcpTools;
-      message = "Mac Apps MCP tools must not include reminders_ or notes_ tools";
+      assertion = listsAreDisjoint workspaceMcpTools workspaceMcpDeniedTools;
+      message = "Workspace MCP allowed and denied tools must be disjoint";
     }
     {
       assertion = listIsDuplicateFree obsidianMcpTools;
@@ -1043,6 +1082,7 @@ in
 
     packages = [
       (lib.hiPrio openclawCliWrapper)
+      workspaceMcp
     ];
 
     file.".openclaw/skills/browser-research".source = ./skills/browser-research;
@@ -1577,7 +1617,7 @@ in
           approvedTools
           ++ browserPluginTools
           ++ executorTools
-          ++ macAppsMcpPolicyIds
+          ++ workspaceMcpPolicyIds
           ++ obsidianMcpPolicyIds
           ++ anytypeMcpPolicyIds
           ++ substackMcpPolicyIds
@@ -1619,7 +1659,7 @@ in
           sandboxTools
           ++ browserPluginTools
           ++ executorTools
-          ++ macAppsMcpPolicyIds
+          ++ workspaceMcpPolicyIds
           ++ obsidianMcpPolicyIds
           ++ anytypeMcpPolicyIds
           ++ substackMcpPolicyIds
@@ -1846,22 +1886,17 @@ in
       discovery.mdns.mode = "minimal";
       mcp = {
         servers = {
-          "mac-apps" = {
+          workspace = {
             enabled = true;
             transport = "stdio";
-            command = "${macAppsMcpHostApp}/Contents/MacOS/Mac Apps MCP Host";
-            args = [ (lib.getExe pkgs.mac-apps-mcp-server) ];
-            env = {
-              MACOS_MCP_READONLY = "false";
-              MACOS_MCP_CONFIRM_DESTRUCTIVE = "true";
-              MACOS_MCP_WRITE_RATE_LIMIT = "1";
-            };
-            connectionTimeoutMs = 10000;
+            command = lib.getExe workspaceMcp;
+            args = [ ];
+            connectionTimeoutMs = 30000;
             requestTimeoutMs = 300000;
             supportsParallelToolCalls = false;
             toolFilter = {
-              include = macAppsMcpTools;
-              exclude = macAppsMcpDeniedTools;
+              include = workspaceMcpTools;
+              exclude = workspaceMcpDeniedTools;
             };
           };
           obsidian = {
