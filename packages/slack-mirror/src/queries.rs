@@ -331,8 +331,12 @@ fn safe_error(error: Option<String>) -> Option<String> {
     })
 }
 fn job_row(r: &rusqlite::Row<'_>) -> rusqlite::Result<Value> {
+    let error: Option<String> = r.get(6)?;
+    let deferred = matches!(error.as_deref(), Some("ratelimited" | "request_deferred"));
+    let retry_at: i64 = r.get(7)?;
+    let complete: bool = r.get(5)?;
     Ok(
-        json!({"kind":r.get::<_,String>(0)?,"thread_ts":r.get::<_,String>(1)?,"oldest_ts":r.get::<_,Option<String>>(2)?,"latest_ts":r.get::<_,Option<String>>(3)?,"newest_ts":r.get::<_,Option<String>>(4)?,"complete":r.get::<_,bool>(5)?,"error":safe_error(r.get(6)?),"retry_at":r.get::<_,i64>(7)?,"updated_at":r.get::<_,i64>(8)?}),
+        json!({"kind":r.get::<_,String>(0)?,"thread_ts":r.get::<_,String>(1)?,"oldest_ts":r.get::<_,Option<String>>(2)?,"latest_ts":r.get::<_,Option<String>>(3)?,"newest_ts":r.get::<_,Option<String>>(4)?,"complete":complete,"error":if deferred {None} else {safe_error(error.clone())},"deferred_reason":if deferred {error} else {None},"waiting":!complete && retry_at > crate::store::now_ms(),"retry_at":retry_at,"updated_at":r.get::<_,i64>(8)?}),
     )
 }
 
@@ -408,7 +412,7 @@ fn status(c: &Connection, args: &Value, page: &Page) -> Result<Value> {
         {
             let value: Value = serde_json::from_str(&raw)?;
             let mut progress = json!({});
-            for field in ["complete", "unavailable", "has_cursor"] {
+            for field in ["complete", "unavailable", "has_cursor", "waiting"] {
                 if let Some(value) = value[field].as_bool() {
                     progress[field] = value.into();
                 }
@@ -422,12 +426,45 @@ fn status(c: &Connection, args: &Value, page: &Page) -> Result<Value> {
             meta.insert(key, progress);
         }
     }
-    let mut stmt=c.prepare("SELECT kind,complete,count(*),sum(CASE WHEN error IS NOT NULL THEN 1 ELSE 0 END) FROM sync_jobs GROUP BY kind,complete")?;
-    let jobs=stmt.query_map([],|r|Ok(json!({"kind":r.get::<_,String>(0)?,"complete":r.get::<_,bool>(1)?,"count":r.get::<_,i64>(2)?,"errors":r.get::<_,i64>(3)?})))?.collect::<rusqlite::Result<Vec<_>>>()?;
+    for method in [
+        "conversations.history",
+        "conversations.replies",
+        "subscriptions.thread.getView",
+    ] {
+        let key = format!("api:{method}");
+        if let Some(raw) = c
+            .query_row("SELECT value FROM meta WHERE key=?1", [&key], |r| {
+                r.get::<_, String>(0)
+            })
+            .optional()?
+        {
+            let saved: Value = serde_json::from_str(&raw)?;
+            let mut pacing = json!({});
+            for field in [
+                "interval_ms",
+                "next_request_at",
+                "cooldown_until",
+                "rate_limit_count",
+            ] {
+                if let Some(value) = saved[field].as_u64() {
+                    pacing[field] = value.into();
+                }
+            }
+            pacing["waiting"] = json!(saved["next_request_at"]
+                .as_i64()
+                .is_some_and(|deadline| deadline > crate::store::now_ms()));
+            pacing["rate_limited"] = json!(saved["cooldown_until"]
+                .as_i64()
+                .is_some_and(|deadline| deadline > crate::store::now_ms()));
+            meta.insert(key, pacing);
+        }
+    }
+    let mut stmt=c.prepare("SELECT kind,complete,count(*),sum(CASE WHEN error IS NOT NULL AND error NOT IN ('ratelimited','request_deferred') THEN 1 ELSE 0 END),sum(CASE WHEN complete=0 AND retry_at>?1 THEN 1 ELSE 0 END) FROM sync_jobs GROUP BY kind,complete")?;
+    let jobs=stmt.query_map([crate::store::now_ms()],|r|Ok(json!({"kind":r.get::<_,String>(0)?,"complete":r.get::<_,bool>(1)?,"count":r.get::<_,i64>(2)?,"errors":r.get::<_,i64>(3)?,"waiting":r.get::<_,i64>(4)?})))?.collect::<rusqlite::Result<Vec<_>>>()?;
     let view = optional(args, "view")?.unwrap_or("conversations");
     if view == "jobs" {
         let errors_only = boolean(args, "errors_only", false)?;
-        let mut stmt = c.prepare("SELECT kind,thread_ts,oldest_ts,latest_ts,newest_ts,complete,error,retry_at,updated_at,channel_id FROM sync_jobs WHERE (kind,channel_id,thread_ts)>(?1,?2,?3) AND (?4=0 OR error IS NOT NULL) ORDER BY kind,channel_id,thread_ts LIMIT ?5")?;
+        let mut stmt = c.prepare("SELECT kind,thread_ts,oldest_ts,latest_ts,newest_ts,complete,error,retry_at,updated_at,channel_id FROM sync_jobs WHERE (kind,channel_id,thread_ts)>(?1,?2,?3) AND (?4=0 OR (error IS NOT NULL AND error NOT IN ('ratelimited','request_deferred'))) ORDER BY kind,channel_id,thread_ts LIMIT ?5")?;
         let items = stmt
             .query_map(
                 params![

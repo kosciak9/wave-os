@@ -5,10 +5,11 @@ use crate::{
 use anyhow::{bail, Result};
 use reqwest::{redirect::Policy, Client};
 use rusqlite::{params, OptionalExtension};
-use serde_json::Value;
+use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{collections::HashMap, fmt, path::PathBuf, sync::Arc, time::Duration};
 use tokio::sync::Mutex;
+use tokio::time::Instant;
 
 #[derive(Debug)]
 pub struct ApiError {
@@ -50,6 +51,45 @@ pub(crate) fn code(e: &anyhow::Error) -> &'static str {
         .unwrap_or("engine_failure")
 }
 
+pub(crate) fn deferred(e: &anyhow::Error) -> bool {
+    matches!(code(e), "ratelimited" | "request_deferred")
+}
+
+struct RequestBudget {
+    next_request: Instant,
+    cooldown: Instant,
+    interval: Duration,
+    successes: u32,
+    rate_limits: u64,
+}
+
+impl RequestBudget {
+    fn baseline(method: &str) -> Duration {
+        match method {
+            "conversations.history" | "conversations.replies" | "subscriptions.thread.getView" => {
+                Duration::from_millis(1250)
+            }
+            _ => Duration::ZERO,
+        }
+    }
+
+    fn new(method: &str) -> Self {
+        Self {
+            next_request: Instant::now(),
+            cooldown: Instant::now(),
+            interval: Self::baseline(method),
+            successes: 0,
+            rate_limits: 0,
+        }
+    }
+
+    fn ready_after(&self) -> Duration {
+        self.next_request
+            .max(self.cooldown)
+            .saturating_duration_since(Instant::now())
+    }
+}
+
 const READ_METHODS: &[&str] = &[
     "auth.test",
     "client.counts",
@@ -75,7 +115,7 @@ pub struct SlackClient {
     http: Client,
     session_file: Arc<PathBuf>,
     gate: Arc<Mutex<IdentityGate>>,
-    cooldowns: Arc<Mutex<HashMap<String, tokio::time::Instant>>>,
+    budgets: Arc<Mutex<HashMap<String, RequestBudget>>>,
 }
 
 pub(crate) fn fingerprint(session: &Session) -> [u8; 32] {
@@ -125,7 +165,7 @@ impl SlackClient {
             http,
             session_file: Arc::new(session_file),
             gate: Arc::new(Mutex::new(IdentityGate::default())),
-            cooldowns: Arc::new(Mutex::new(HashMap::new())),
+            budgets: Arc::new(Mutex::new(HashMap::new())),
         })
     }
 
@@ -133,6 +173,34 @@ impl SlackClient {
         let session = load_session(&self.session_file).map_err(|_| error("session_unavailable"))?;
         domain(&session)?;
         Ok(session)
+    }
+
+    pub(crate) async fn ready_after(&self, method: &str) -> Duration {
+        self.budgets
+            .lock()
+            .await
+            .get(method)
+            .map(RequestBudget::ready_after)
+            .unwrap_or(Duration::ZERO)
+    }
+
+    fn record_budget(store: Option<&Store>, method: &str, budget: &RequestBudget) -> Result<()> {
+        // The caller supplies the archive because auth.test runs under the identity gate.
+        if let Some(store) = store {
+            let now = chrono::Utc::now().timestamp_millis();
+            let wait = budget.ready_after().as_millis().min(i64::MAX as u128) as i64;
+            let cooldown = budget.cooldown.saturating_duration_since(Instant::now());
+            store.set_meta(
+                    &format!("api:{method}"),
+                    &json!({
+                        "interval_ms":budget.interval.as_millis() as u64,
+                        "next_request_at":now.saturating_add(wait),
+                        "cooldown_until":if cooldown.is_zero() {0} else {now.saturating_add(cooldown.as_millis().min(i64::MAX as u128) as i64)},
+                        "rate_limit_count":budget.rate_limits
+                    }).to_string(),
+                )?;
+        }
+        Ok(())
     }
 
     pub(crate) fn unchanged(&self, expected: &[u8; 32]) -> Result<()> {
@@ -144,10 +212,39 @@ impl SlackClient {
 
     pub(crate) async fn bind(&self, store: Store) -> Result<()> {
         let mut gate = self.gate.lock().await;
-        gate.store = Some(store);
+        gate.store = Some(store.clone());
         gate.verified = None;
         drop(gate);
         self.checked_session().await?;
+        let now = chrono::Utc::now().timestamp_millis();
+        let mut budgets = self.budgets.lock().await;
+        for method in READ_METHODS {
+            let Some(raw) = store.meta(&format!("api:{method}"))? else {
+                continue;
+            };
+            let Ok(saved) = serde_json::from_str::<Value>(&raw) else {
+                continue;
+            };
+            let budget = budgets
+                .entry((*method).to_owned())
+                .or_insert_with(|| RequestBudget::new(method));
+            if let Some(interval) = saved["interval_ms"].as_u64() {
+                budget.interval = Duration::from_millis(interval.min(60_000))
+                    .max(RequestBudget::baseline(method));
+            }
+            for (field, deadline) in [
+                ("cooldown_until", &mut budget.cooldown),
+                ("next_request_at", &mut budget.next_request),
+            ] {
+                if let Some(saved) = saved[field].as_i64() {
+                    let remaining = saved.saturating_sub(now).clamp(0, 86_400_000) as u64;
+                    *deadline = (*deadline).max(Instant::now() + Duration::from_millis(remaining));
+                }
+            }
+            budget.rate_limits = budget
+                .rate_limits
+                .max(saved["rate_limit_count"].as_u64().unwrap_or(0));
+        }
         Ok(())
     }
 
@@ -157,7 +254,9 @@ impl SlackClient {
         let digest = fingerprint(&session);
         if gate.verified != Some(digest) {
             gate.verified = None;
-            let identity = self.request(&session, "auth.test", &[]).await?;
+            let identity = self
+                .request(&session, "auth.test", &[], gate.store.as_ref())
+                .await?;
             self.unchanged(&digest)?;
             let team = identity["team_id"]
                 .as_str()
@@ -214,7 +313,10 @@ impl SlackClient {
         }
         let session = self.checked_session().await?;
         let digest = fingerprint(&session);
-        let value = self.request(&session, method, fields).await?;
+        let store = self.gate.lock().await.store.clone();
+        let value = self
+            .request(&session, method, fields, store.as_ref())
+            .await?;
         self.unchanged(&digest)?;
         Ok((value, digest))
     }
@@ -224,6 +326,7 @@ impl SlackClient {
         session: &Session,
         method: &str,
         fields: &[(String, String)],
+        store: Option<&Store>,
     ) -> Result<Value> {
         if !READ_METHODS.contains(&method)
             || fields
@@ -232,15 +335,21 @@ impl SlackClient {
         {
             return Err(error("method_forbidden"));
         }
-        if let Some(deadline) = self.cooldowns.lock().await.get(method).copied() {
-            let wait = deadline.saturating_duration_since(tokio::time::Instant::now());
+        {
+            let mut budgets = self.budgets.lock().await;
+            let budget = budgets
+                .entry(method.to_owned())
+                .or_insert_with(|| RequestBudget::new(method));
+            let wait = budget.ready_after();
             if !wait.is_zero() {
                 return Err(ApiError {
-                    code: "ratelimited",
+                    code: "request_deferred",
                     retry_after: wait,
                 }
                 .into());
             }
+            budget.next_request = Instant::now() + budget.interval;
+            Self::record_budget(store, method, budget)?;
         }
         let mut form = vec![("token".to_owned(), session.token.clone())];
         form.extend_from_slice(fields);
@@ -261,7 +370,7 @@ impl SlackClient {
             .unwrap_or(30)
             .clamp(1, 86400);
         if response.status().as_u16() == 429 {
-            return self.rate_limit(method, retry).await;
+            return self.rate_limit(store, method, retry).await;
         }
         if !response.status().is_success() {
             return Err(error("http_failed"));
@@ -287,7 +396,7 @@ impl SlackClient {
         let value: Value = serde_json::from_slice(&bytes).map_err(|_| error("decode_failed"))?;
         if value["ok"].as_bool() != Some(true) {
             let code = match value["error"].as_str().unwrap_or("") {
-                "ratelimited" => return self.rate_limit(method, retry).await,
+                "ratelimited" => return self.rate_limit(store, method, retry).await,
                 "invalid_auth" => "invalid_auth",
                 "not_authed" => "not_authed",
                 "token_revoked" => "token_revoked",
@@ -305,15 +414,34 @@ impl SlackClient {
             };
             return Err(error(code));
         }
+        {
+            let mut budgets = self.budgets.lock().await;
+            if let Some(budget) = budgets.get_mut(method) {
+                budget.successes += 1;
+                if budget.successes >= 64 {
+                    budget.interval = (budget.interval / 2).max(RequestBudget::baseline(method));
+                    budget.successes = 0;
+                }
+                Self::record_budget(store, method, budget)?;
+            }
+        }
         Ok(value)
     }
 
-    async fn rate_limit<T>(&self, method: &str, seconds: u64) -> Result<T> {
+    async fn rate_limit<T>(&self, store: Option<&Store>, method: &str, seconds: u64) -> Result<T> {
         let retry_after = Duration::from_secs(seconds);
-        self.cooldowns
-            .lock()
-            .await
-            .insert(method.to_owned(), tokio::time::Instant::now() + retry_after);
+        {
+            let mut budgets = self.budgets.lock().await;
+            let budget = budgets
+                .entry(method.to_owned())
+                .or_insert_with(|| RequestBudget::new(method));
+            budget.cooldown = Instant::now() + retry_after;
+            budget.interval =
+                (budget.interval.max(Duration::from_millis(1250)) * 2).min(Duration::from_secs(60));
+            budget.successes = 0;
+            budget.rate_limits = budget.rate_limits.saturating_add(1);
+            Self::record_budget(store, method, budget)?;
+        }
         Err(ApiError {
             code: "ratelimited",
             retry_after,

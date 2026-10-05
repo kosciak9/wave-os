@@ -301,6 +301,7 @@ struct Catalog {
     unavailable: bool,
     attempted_at: i64,
     pages: u64,
+    waiting: bool,
 }
 impl Catalog {
     fn new(method: &'static str) -> Self {
@@ -314,6 +315,7 @@ impl Catalog {
             unavailable: false,
             attempted_at: 0,
             pages: 0,
+            waiting: false,
         }
     }
 }
@@ -327,6 +329,7 @@ fn catalog_status(store: &Store, task: &Catalog) -> Result<()> {
     store.set_meta(&format!("catalog:{}", task.method), &json!({
         "complete":task.done,"error":task.error,"unavailable":task.unavailable,
         "pages":task.pages,"has_cursor":!task.cursor.is_empty(),"attempted_at":task.attempted_at,
+        "waiting":task.waiting,
         "retry_at":if task.done || task.unavailable {0} else {now_ms().saturating_add(retry_ms)}
     }).to_string())
 }
@@ -337,7 +340,7 @@ fn engine_health(store: &Store, catalog: &[Catalog]) -> Result<()> {
     }
     let failed_job = store.with_conn(|c| {
         Ok(c.query_row(
-            "SELECT EXISTS(SELECT 1 FROM sync_jobs WHERE error IS NOT NULL)",
+            "SELECT EXISTS(SELECT 1 FROM sync_jobs WHERE error IS NOT NULL AND error NOT IN ('ratelimited','request_deferred'))",
             [],
             |r| r.get::<_, bool>(0),
         )?)
@@ -362,6 +365,7 @@ async fn scheduler(store: Store, client: SlackClient, notify: Arc<Notify>) -> Re
     let mut catalog: Vec<_> = methods.into_iter().map(Catalog::new).collect();
     let mut last_reconcile = Instant::now();
     let mut reported = false;
+    let mut history_turn = 0usize;
     prepare_reconcile(&store)?;
     loop {
         client.checked_session().await?;
@@ -378,6 +382,7 @@ async fn scheduler(store: Store, client: SlackClient, notify: Arc<Notify>) -> Re
                     task.unavailable = false;
                     task.cursor.clear();
                     task.pages = 0;
+                    task.waiting = false;
                 }
             }
             last_reconcile = Instant::now();
@@ -387,15 +392,30 @@ async fn scheduler(store: Store, client: SlackClient, notify: Arc<Notify>) -> Re
             if task.done || task.unavailable || Instant::now() < task.retry_at {
                 continue;
             }
+            let wait = client.ready_after(task.method).await;
+            if !wait.is_zero() {
+                task.retry_at = Instant::now() + wait;
+                task.waiting = true;
+                catalog_status(&store, task)?;
+                continue;
+            }
             task.attempted_at = now_ms();
             match catalog_page(&store, &client, task).await {
                 Ok(()) => {
                     task.delay_ms = 0;
                     task.error = None;
                     task.pages += 1;
+                    task.waiting = false;
                 }
                 Err(e) if slack::auth_error(&e) || !recoverable(&e) => return Err(e),
+                Err(e) if slack::deferred(&e) => {
+                    task.error = None;
+                    task.waiting = true;
+                    let wait = e.downcast_ref::<ApiError>().unwrap().retry_after;
+                    task.retry_at = Instant::now() + wait;
+                }
                 Err(e) => {
+                    task.waiting = false;
                     task.error = Some(failure_code(&e));
                     task.unavailable = matches!(
                         failure_code(&e),
@@ -415,10 +435,25 @@ async fn scheduler(store: Store, client: SlackClient, notify: Arc<Notify>) -> Re
             catalog_status(&store, task)?;
             time::sleep(Duration::from_millis(100)).await;
         }
-        // Gaps run first, with reserved history and reply budgets even during reconnect storms.
-        crawl(&store, &client, "gap", 4).await?;
-        crawl(&store, &client, "history", 4).await?;
-        crawl(&store, &client, "refresh", 2).await?;
+        // These queues share one API quota. Rotate so gap catch-up cannot starve backfill.
+        let history_kinds = ["gap", "history", "gap", "history", "refresh"];
+        for _ in 0..8 {
+            if !client.ready_after("conversations.history").await.is_zero() {
+                break;
+            }
+            let mut attempted = false;
+            for offset in 0..history_kinds.len() {
+                let index = (history_turn + offset) % history_kinds.len();
+                if crawl(&store, &client, history_kinds[index], 1).await? > 0 {
+                    history_turn = (index + 1) % history_kinds.len();
+                    attempted = true;
+                    break;
+                }
+            }
+            if !attempted {
+                break;
+            }
+        }
         crawl(&store, &client, "thread", 16).await?;
         engine_health(&store, &catalog)?;
         store.set_meta(
@@ -479,7 +514,7 @@ async fn catalog_page(store: &Store, client: &SlackClient, task: &mut Catalog) -
     if !task.cursor.is_empty() {
         fields.push((
             if task.method == "subscriptions.thread.getView" {
-                "max_ts"
+                "current_ts"
             } else {
                 "cursor"
             }
@@ -509,6 +544,7 @@ async fn catalog_page(store: &Store, client: &SlackClient, task: &mut Catalog) -
             ("version_ts".into(), "0".into()),
             ("build_version_ts".into(), "0".into()),
         ]),
+        "subscriptions.thread.getView" => fields.push(("priority_mode".into(), "all".into())),
         _ => {}
     }
     let event_id = snapshot_id(store)?;
@@ -557,7 +593,7 @@ async fn catalog_page(store: &Store, client: &SlackClient, task: &mut Catalog) -
                 .as_array()
                 .ok_or_else(|| slack::error("invalid_page"))?;
             let more = has_more(&value)?;
-            let mut minimum: Option<String> = None;
+            let mut last_position: Option<String> = None;
             for thread in threads {
                 if !thread.is_object() {
                     return Err(slack::error("invalid_entity"));
@@ -588,10 +624,17 @@ async fn catalog_page(store: &Store, client: &SlackClient, task: &mut Catalog) -
                 if !valid_ts(ts) {
                     return Err(slack::error("invalid_page"));
                 }
-                minimum = Some(minimum.map_or_else(|| ts.to_owned(), |old| old.min(ts.to_owned())));
+                if last_position
+                    .as_deref()
+                    .is_some_and(|previous| ts > previous)
+                {
+                    return Err(slack::error("invalid_page"));
+                }
+                last_position = Some(ts.to_owned());
             }
             if more {
-                let cursor = minimum.ok_or_else(|| slack::error("pagination_stalled"))?;
+                // max_ts in the response is a snapshot watermark, not the next-page cursor.
+                let cursor = last_position.ok_or_else(|| slack::error("pagination_stalled"))?;
                 if !task.cursor.is_empty() && cursor >= task.cursor {
                     return Err(slack::error("pagination_stalled"));
                 }
@@ -680,15 +723,38 @@ fn take_job(store: &Store, kind: &str) -> Result<Option<Job>> {
     })
 }
 
-async fn crawl(store: &Store, client: &SlackClient, kind: &str, budget: usize) -> Result<()> {
+async fn crawl(store: &Store, client: &SlackClient, kind: &str, budget: usize) -> Result<usize> {
+    let method = if kind == "thread" {
+        "conversations.replies"
+    } else {
+        "conversations.history"
+    };
+    let mut attempted = 0;
     for _ in 0..budget {
+        if !client.ready_after(method).await.is_zero() {
+            break;
+        }
         let Some(mut job) = take_job(store, kind)? else {
             break;
         };
         initialize_job(store, &mut job)?;
+        attempted += 1;
         match job_page(store, client, &job).await {
             Ok(()) => {}
             Err(e) if slack::auth_error(&e) || !recoverable(&e) => return Err(e),
+            Err(e) if slack::deferred(&e) => {
+                let wait = e
+                    .downcast_ref::<ApiError>()
+                    .unwrap()
+                    .retry_after
+                    .as_millis()
+                    .min(i64::MAX as u128) as i64;
+                store.with_conn(|c| {
+                    c.execute("UPDATE sync_jobs SET error=CASE WHEN error IN ('ratelimited','request_deferred') THEN NULL ELSE error END,retry_at=?4,updated_at=?5 WHERE kind=?1 AND channel_id=?2 AND thread_ts=?3", params![job.kind,job.channel,job.root,now_ms().saturating_add(wait),now_ms()])?;
+                    Ok(())
+                })?;
+                break;
+            }
             Err(e) => {
                 store.set_meta("engine_error", failure_code(&e))?;
                 let delay = retry_delay(&e, job.retry_at.saturating_sub(job.updated_at));
@@ -709,7 +775,7 @@ async fn crawl(store: &Store, client: &SlackClient, kind: &str, budget: usize) -
         }
         time::sleep(Duration::from_millis(150)).await;
     }
-    Ok(())
+    Ok(attempted)
 }
 
 fn initialize_job(store: &Store, job: &mut Job) -> Result<()> {
