@@ -21,6 +21,8 @@ in
 {
   packages = with pkgs; [
     betterleaks
+    cargo
+    clippy
     deadnix
     jq
     nil
@@ -35,6 +37,8 @@ in
     nixfmt
     nvd
     prettier
+    rustc
+    rustfmt
     statix
     python3
     treefmt

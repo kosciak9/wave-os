@@ -3,6 +3,7 @@
   imports = [
     ../../modules/home/agents
     ../../modules/home/openclaw
+    ../../modules/home/slack-mirror
     ../../modules/home/camofox
     ../../modules/home/lightpanda
     ../../modules/home/cli
@@ -34,6 +35,12 @@
           >/dev/null 2>&1 </dev/null || true
       fi
     '';
+  };
+  services.slack-mirror = {
+    enable = true;
+    sync.enable = false;
+    # Podman permits one active VM; sharing it does not couple service lifecycles.
+    machineName = "openclaw-sandbox";
   };
   programs = {
     home-manager.enable = true;

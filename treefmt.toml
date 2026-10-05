@@ -6,3 +6,8 @@ includes = ["*.nix"]
 command = "prettier"
 options = ["--write", "--prose-wrap", "always"]
 includes = ["*.md"]
+
+[formatter.rust]
+command = "rustfmt"
+options = ["--edition", "2021"]
+includes = ["*.rs"]

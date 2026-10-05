@@ -110,6 +110,11 @@
             src = inputs.herdr-agent-usage;
           };
           plannotator = final.callPackage ./packages/plannotator.nix { };
+          slack-mirror = final.callPackage ./packages/slack-mirror.nix { };
+          slack-mirror-context = final.callPackage ./packages/slack-mirror-context.nix { };
+          slack-mirror-image = final.callPackage ./packages/slack-mirror-image.nix {
+            context = final.slack-mirror-context;
+          };
           opencode = final.callPackage ./packages/opencode-darwin.nix { };
           kanagawa-gtk-theme = final.callPackage ./packages/kanagawa-gtk-theme.nix { };
           openclaw-sandbox-machine-check =
@@ -243,6 +248,9 @@
         inherit kanagawa-kvantum;
         inherit (pkgs)
           camofox-browser-cli
+          slack-mirror
+          slack-mirror-context
+          slack-mirror-image
           herdr-auto-title
           herdr-agent-usage
           ;
@@ -255,6 +263,9 @@
           herdr-auto-title
           herdr-agent-usage
           openclaw-sandbox-machine-check
+          slack-mirror
+          slack-mirror-context
+          slack-mirror-image
           openclaw-languagetool-mcp-context
           openclaw-languagetool-mcp-image
           openclaw-embeddinggemma
