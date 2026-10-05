@@ -4,7 +4,6 @@
     ../../modules/home/agents
     ../../modules/home/openclaw
     ../../modules/home/slack-mirror
-    ../../modules/home/pi-assistants
     ../../modules/home/camofox
     ../../modules/home/lightpanda
     ../../modules/home/cli
@@ -70,5 +69,4 @@
     copyApps.enable = false;
   };
   xdg.enable = true;
-  services.pi-telegram-test.enable = true;
 }

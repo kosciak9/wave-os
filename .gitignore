@@ -6,5 +6,7 @@
 .playwright-mcp
 __pycache__/
 *.pyc
+node_modules/
+dist/
 /packages/slack-mirror/target/
 /tools/wave/target/

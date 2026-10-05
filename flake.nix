@@ -134,7 +134,6 @@
           substack-mcp = final.callPackage ./packages/substack-mcp.nix { };
           workspace-mcp = final.callPackage ./packages/workspace-mcp.nix { };
           camofox-browser-source = final.callPackage ./packages/camofox-browser-source.nix { };
-          pi-assistants-image = final.callPackage ./packages/pi-assistants-image.nix { };
           camofox-browser-cli = final.callPackage ./packages/camofox-browser-cli.nix { };
           claude-code = final.callPackage ./packages/claude-code.nix { inherit prev; };
           codex = final.callPackage ./packages/codex.nix { inherit prev; };
@@ -291,7 +290,6 @@
           substack-mcp
           workspace-mcp
           camofox-browser-source
-          pi-assistants-image
           camofox-openclaw-plugin
           browser-decision
           camofox-browser-cli
