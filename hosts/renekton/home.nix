@@ -39,7 +39,7 @@
   };
   services.slack-mirror = {
     enable = true;
-    sync.enable = false;
+    sync.enable = true;
     # Podman permits one active VM; sharing it does not couple service lifecycles.
     machineName = "openclaw-sandbox";
   };
