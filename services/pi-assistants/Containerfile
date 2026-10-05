@@ -1,0 +1,16 @@
+FROM docker.io/library/node:24-bookworm-slim@sha256:24b8bc17702002d2ed0c1da9ad66c3ee507cc279d0856726662ff2b6fc35c149 AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY tsconfig.json ./
+COPY src ./src
+RUN npm run build && npm prune --omit=dev
+
+FROM docker.io/library/node:24-bookworm-slim@sha256:24b8bc17702002d2ed0c1da9ad66c3ee507cc279d0856726662ff2b6fc35c149
+ENV NODE_ENV=production
+WORKDIR /app
+COPY --from=build /app/package.json /app/package-lock.json ./
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/node_modules ./node_modules
+EXPOSE 8080
+CMD ["node", "dist/main.js"]
