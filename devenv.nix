@@ -20,6 +20,7 @@ let
 in
 {
   packages = with pkgs; [
+    age
     betterleaks
     deadnix
     jq
@@ -35,6 +36,8 @@ in
     nixfmt
     nvd
     prettier
+    rclone
+    sops
     statix
     python3
     treefmt

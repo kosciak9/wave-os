@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
+from pathlib import Path
 
 import wave_health
 
@@ -36,11 +38,19 @@ def main(argv: list[str] | None = None) -> int:
     switch.add_argument("--approve-rollback", metavar="FULL_SHA40", help="approve retrying a previously rolled-back commit")
     recover = sub.add_parser("recover", help="inspect interrupted deployment/manual activation reconciliation (read-only by default)")
     recover.add_argument("--accept-manual", metavar="PLAN_SHA256", help="persist reconciliation of the exact plan displayed by wave recover")
+    secrets = sub.add_parser("secrets", help="manage secrets declared by the active Nix configuration")
+    secrets.add_argument("action", choices=["refresh"])
     args = parser.parse_args(argv)
     if args.command == "health" and args.json:
         return _health_json()
     if args.command == "health":
         return _health()
+    if args.command == "secrets":
+        refresh = Path("/run/current-system/sw/bin/wave-secrets-refresh")
+        if not refresh.is_file():
+            print("wave secrets: not enabled in the active system configuration", file=sys.stderr)
+            return 1
+        return subprocess.call(["sudo", str(refresh)])
     if args.command == "switch":
         from wave_switch import switch
 

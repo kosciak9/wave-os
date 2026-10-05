@@ -52,6 +52,11 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    sops-nix = {
+      url = "github:Mic92/sops-nix/dcd241ba97088c22569d1573286e1b9daad340c0";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     nix-openclaw = {
       url = "github:openclaw/nix-openclaw/f62d33f760bcbdbc6a52ac589eae22bf99201f90";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -178,12 +183,21 @@
       };
     in
     {
+      nixosModules.wave-secrets = import ./modules/secrets {
+        sopsModule = inputs.sops-nix.nixosModules.sops;
+        sopsSource = inputs.sops-nix.outPath;
+      };
+      darwinModules.wave-secrets = import ./modules/secrets {
+        sopsModule = inputs.sops-nix.darwinModules.sops;
+        sopsSource = inputs.sops-nix.outPath;
+      };
       # TODO: Generated manuals remain enabled despite Determinate Nix's contextless options.json warning.
       # Remove this note after NixOS/nixpkgs#485682, nix-community/home-manager#8942,
       # and a matching nix-darwin fix land.
       nixosConfigurations.jayce = nixpkgs.lib.nixosSystem {
         inherit system;
         modules = [
+          self.nixosModules.wave-secrets
           nixos-hardware.nixosModules.framework-16-7040-amd
           inputs.vicinae.nixosModules.default
           ./hosts/jayce/default.nix
@@ -215,6 +229,7 @@
       darwinConfigurations.renekton = nix-darwin.lib.darwinSystem {
         system = darwinSystem;
         modules = [
+          self.darwinModules.wave-secrets
           determinate.darwinModules.default
           home-manager.darwinModules.home-manager
           inputs.nix-openclaw.darwinModules.openclaw
@@ -240,6 +255,7 @@
       };
 
       packages.${system} = {
+        sops-install-secrets = inputs.sops-nix.packages.${system}.sops-install-secrets;
         inherit kanagawa-kvantum;
         inherit (pkgs)
           camofox-browser-cli
@@ -248,6 +264,7 @@
           ;
       };
       packages.${darwinSystem} = {
+        sops-install-secrets = inputs.sops-nix.packages.${darwinSystem}.sops-install-secrets;
         deploy-rs = inputs.deploy-rs.packages.${darwinSystem}.deploy-rs;
         wave-deploy-sudo = deployment.sudoWrapper;
         wave-deploy-root = deployment.rootStdio;
