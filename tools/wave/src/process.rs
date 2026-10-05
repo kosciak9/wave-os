@@ -1,6 +1,7 @@
+use crate::presentation::{Completion, Progress};
 use anyhow::{Result, anyhow};
 use std::fs::OpenOptions;
-use std::io::{Read, Write};
+use std::io::Read;
 use std::os::fd::{AsRawFd, RawFd};
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -76,12 +77,12 @@ pub fn install_signals() -> Result<()> {
 }
 
 pub fn capture(command: &mut Command, timeout: Duration) -> Result<Output> {
-    run_inner(command, timeout, true, false, true, || Ok(()))
+    run_inner(command, timeout, true, false, true, None, || Ok(()))
 }
 
 /// Bounded read-only observation remains available while cancellation is latched.
 pub fn capture_uncancelled(command: &mut Command, timeout: Duration) -> Result<Output> {
-    run_inner(command, timeout, true, false, false, || Ok(()))
+    run_inner(command, timeout, true, false, false, None, || Ok(()))
 }
 
 pub fn run(
@@ -89,18 +90,46 @@ pub fn run(
     timeout: Duration,
     capture: bool,
     before_stop: impl FnMut() -> Result<()>,
+    progress: &mut Progress,
+    mut on_tick: impl FnMut(&mut Progress),
 ) -> Result<Output> {
-    run_inner(command, timeout, capture, true, true, before_stop)
+    let result = run_inner(
+        command,
+        timeout,
+        capture,
+        true,
+        true,
+        Some(View {
+            progress,
+            on_tick: &mut on_tick,
+        }),
+        before_stop,
+    );
+    let completion = match &result {
+        Ok(output) if output.interrupted => Completion::Interrupted,
+        Ok(output) if output.timed_out => Completion::TimedOut,
+        Ok(output) if output.code == 0 => Completion::Success,
+        Ok(output) => Completion::Failed(output.code),
+        Err(_) => Completion::Unavailable,
+    };
+    progress.finish(completion);
+    result
+}
+
+struct View<'a> {
+    progress: &'a mut Progress,
+    on_tick: &'a mut dyn FnMut(&mut Progress),
 }
 
 struct Terminal {
     file: std::fs::File,
     attributes: libc::termios,
     prompted: bool,
+    prompt_allowed: bool,
 }
 
 impl Terminal {
-    fn save() -> Option<Self> {
+    fn save(prompt_allowed: bool) -> Option<Self> {
         let file = OpenOptions::new()
             .read(true)
             .write(true)
@@ -115,6 +144,7 @@ impl Terminal {
             file,
             attributes: unsafe { attributes.assume_init() },
             prompted: false,
+            prompt_allowed,
         })
     }
 
@@ -123,8 +153,7 @@ impl Terminal {
             return;
         }
         self.prompted = true;
-        let _ = self.file.write_all(b"\nWave: deploy-rs requires your local sudo password. Enter it at its terminal prompt (hidden); Ctrl-C cancels.\n");
-        let _ = self.file.flush();
+        crate::presentation::password_prompt(&mut self.file);
     }
 }
 
@@ -156,6 +185,8 @@ impl Drain {
         output: &mut Vec<u8>,
         keep: bool,
         terminal: &mut Option<Terminal>,
+        mut progress: Option<&mut Progress>,
+        stderr: bool,
     ) -> Result<()> {
         let mut buffer = [0; 16384];
         // A continuously writing child must not starve deadline/cancellation checks.
@@ -169,7 +200,14 @@ impl Drain {
                         }
                         output.extend_from_slice(&buffer[..count]);
                     }
-                    if !self.noticed && terminal.is_some() {
+                    if !keep && let Some(progress) = &mut progress {
+                        progress.feed(&buffer[..count], stderr);
+                    }
+                    if !self.noticed
+                        && terminal
+                            .as_ref()
+                            .is_some_and(|terminal| terminal.prompt_allowed)
+                    {
                         self.notice_tail.extend_from_slice(&buffer[..count]);
                         if self
                             .notice_tail
@@ -202,6 +240,7 @@ fn run_inner(
     capture: bool,
     interactive: bool,
     honor_cancellation: bool,
+    mut view: Option<View<'_>>,
     mut before_stop: impl FnMut() -> Result<()>,
 ) -> Result<Output> {
     let started = Instant::now();
@@ -214,7 +253,11 @@ fn run_inner(
             timed_out: false,
         });
     }
-    let mut terminal = if interactive { Terminal::save() } else { None };
+    let mut terminal = if interactive {
+        Terminal::save(view.as_ref().is_some_and(|view| view.progress.can_prompt()))
+    } else {
+        None
+    };
     // Leave the caller's stdin configuration intact (Command defaults to inherit).
     command.stdout(Stdio::piped()).stderr(Stdio::piped());
     let mut child = command.spawn().map_err(|_| anyhow!(ProcessError::Start))?;
@@ -239,6 +282,10 @@ fn run_inner(
         .and_then(|_| nonblocking(stderr.as_raw_fd()))
         .err();
     loop {
+        if let Some(view) = &mut view {
+            (view.on_tick)(view.progress);
+            view.progress.tick();
+        }
         let interrupted = honor_cancellation && cancelled();
         let timed_out = started.elapsed() >= timeout;
         if interrupted || timed_out || failure.is_some() {
@@ -266,8 +313,24 @@ fn run_inner(
             });
         }
         if let Err(error) = out
-            .read(&mut stdout, &mut bytes, capture, &mut terminal)
-            .and_then(|_| err.read(&mut stderr, &mut Vec::new(), false, &mut terminal))
+            .read(
+                &mut stdout,
+                &mut bytes,
+                capture,
+                &mut terminal,
+                view.as_mut().map(|view| &mut *view.progress),
+                false,
+            )
+            .and_then(|_| {
+                err.read(
+                    &mut stderr,
+                    &mut Vec::new(),
+                    false,
+                    &mut terminal,
+                    view.as_mut().map(|view| &mut *view.progress),
+                    true,
+                )
+            })
         {
             failure = Some(error);
             continue;
@@ -278,8 +341,22 @@ fn run_inner(
                 // Drain finite buffered output after the direct child is reaped.
                 for _ in 0..33 {
                     let previous = bytes.len();
-                    out.read(&mut stdout, &mut bytes, capture, &mut terminal)?;
-                    err.read(&mut stderr, &mut Vec::new(), false, &mut terminal)?;
+                    out.read(
+                        &mut stdout,
+                        &mut bytes,
+                        capture,
+                        &mut terminal,
+                        view.as_mut().map(|view| &mut *view.progress),
+                        false,
+                    )?;
+                    err.read(
+                        &mut stderr,
+                        &mut Vec::new(),
+                        false,
+                        &mut terminal,
+                        view.as_mut().map(|view| &mut *view.progress),
+                        true,
+                    )?;
                     if bytes.len() == previous {
                         break;
                     }

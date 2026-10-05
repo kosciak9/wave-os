@@ -3,6 +3,7 @@ mod health;
 mod logging;
 mod model;
 mod native;
+mod presentation;
 mod process;
 mod recover;
 mod source;
@@ -107,6 +108,7 @@ fn run(action: Action) -> Result<i32> {
                             deploy::switch(&paths, host, approve_rollback.as_deref())
                         }
                         Action::Recover { accept_manual } => {
+                            presentation::begin(host, "recover");
                             recover::run(&paths, accept_manual.as_deref())
                         }
                         _ => unreachable!(),
@@ -119,6 +121,13 @@ fn run(action: Action) -> Result<i32> {
 
 fn main() {
     let cli = Cli::parse();
+    presentation::enable(!matches!(
+        &cli.command,
+        Action::Native(_)
+            | Action::Confirm(_)
+            | Action::Check { json: true }
+            | Action::Health { json: true }
+    ));
     let internal = matches!(&cli.command, Action::Native(_) | Action::Confirm(_));
     let (event_host, stage) = match &cli.command {
         Action::Native(args) => (Some(args.host), "supervisor"),
@@ -133,7 +142,9 @@ fn main() {
         Ok(code) => code,
         Err(_) => {
             // Error chains can contain subprocess output, paths or private metadata.
-            eprintln!("wave: operation failed or blocked; no raw diagnostic output was retained.");
+            presentation::error(
+                "Operation failed or blocked; no raw diagnostic output was retained.",
+            );
             let code = if internal {
                 1
             } else if process::cancelled() {

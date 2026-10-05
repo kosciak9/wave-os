@@ -23,11 +23,10 @@ pub fn event(name: &str, host: Host, commit: Option<&str>, stage: &str, code: Op
     if let Some(code) = code {
         message.push_str(&format!(" exit={code}"));
     }
-    eprintln!("{message}");
     if !system_event(name, host, revision, stage, code, &message)
         && !UNAVAILABLE_REPORTED.swap(true, Ordering::Relaxed)
     {
-        eprintln!("wave: system logging unavailable");
+        crate::presentation::warning("System logging is unavailable");
     }
 }
 

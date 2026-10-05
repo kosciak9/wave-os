@@ -1,6 +1,7 @@
 use crate::{
     health, logging,
     model::*,
+    presentation::{self, Completion, Progress, Task},
     process,
     state::{self, Paths},
 };
@@ -89,6 +90,7 @@ pub fn run(paths: &Paths, accept_manual: Option<&str>) -> Result<i32> {
     };
     verify_quiescence()?;
     let start = Instant::now();
+    let mut progress = Progress::new(Task::RecoveryHealth);
     loop {
         let next_sample = Instant::now() + Duration::from_secs(5);
         ensure!(!process::cancelled(), "recovery interrupted");
@@ -100,11 +102,13 @@ pub fn run(paths: &Paths, accept_manual: Option<&str>) -> Result<i32> {
         );
         verify_quiescence()?;
         ensure!(health::check(op.host).ok(), "recovery health window failed");
+        progress.tick();
         if start.elapsed() >= Duration::from_secs(60) {
             break;
         }
         thread::sleep(next_sample.saturating_duration_since(Instant::now()));
     }
+    progress.finish(Completion::Success);
     ensure!(
         state::receipt(paths)? == receipt && state::snapshot()? == snapshot,
         "recovery evidence changed"
@@ -131,6 +135,6 @@ pub fn run(paths: &Paths, accept_manual: Option<&str>) -> Result<i32> {
         Ok(())
     })?;
     logging::event("reconciled", op.host, Some(&op.commit), "recovery", Some(0));
-    println!("Wave recovery reconciled the verified active system.");
+    presentation::success("Recovery reconciled the verified active system");
     Ok(0)
 }

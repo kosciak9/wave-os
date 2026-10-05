@@ -1,6 +1,7 @@
 use crate::{
     health, logging,
     model::*,
+    presentation::{self, Completion, Progress, Step, Task},
     process, source,
     state::{self, Paths},
 };
@@ -102,22 +103,32 @@ fn runtime_flake(
     Ok(())
 }
 
-fn nix(repo: &Path, args: &[&str], capture: bool) -> Result<process::Output> {
+fn nix(repo: &Path, args: &[&str], capture: bool, task: Task) -> Result<process::Output> {
+    let mut progress = Progress::new(task);
+    let mut command = Command::new("devenv");
+    command.args([
+        "--quiet",
+        "--option",
+        "git-hooks.enable:bool",
+        "false",
+        "shell",
+        "--",
+    ]);
+    if args.first() == Some(&"nix") {
+        command
+            .args(["nix", "--log-format", "internal-json", "--verbose"])
+            .args(&args[1..]);
+    } else {
+        command.args(args);
+    }
+    command.current_dir(repo);
     process::run(
-        Command::new("devenv")
-            .args([
-                "--quiet",
-                "--option",
-                "git-hooks.enable:bool",
-                "false",
-                "shell",
-                "--",
-            ])
-            .args(args)
-            .current_dir(repo),
+        &mut command,
         Duration::from_secs(1200),
         capture,
         || Ok(()),
+        &mut progress,
+        |_| {},
     )
 }
 
@@ -204,19 +215,29 @@ fn fence(paths: &Paths, op: &Operation) -> Result<()> {
 }
 
 fn healthy_window(host: Host, expected: &Snapshot, seconds: u64) -> Result<()> {
+    let mut progress = Progress::new(Task::RollbackHealth);
     let started = Instant::now();
-    loop {
-        ensure!(
-            state::snapshot()? == *expected
-                && health::check(host).ok()
-                && state::snapshot()? == *expected,
-            "system is not stable and healthy"
-        );
-        if started.elapsed() >= Duration::from_secs(seconds) {
-            return Ok(());
+    let result = (|| {
+        loop {
+            ensure!(
+                state::snapshot()? == *expected
+                    && health::check(host).ok()
+                    && state::snapshot()? == *expected,
+                "system is not stable and healthy"
+            );
+            if started.elapsed() >= Duration::from_secs(seconds) {
+                return Ok(());
+            }
+            progress.tick();
+            thread::sleep(Duration::from_secs(5));
         }
-        thread::sleep(Duration::from_secs(5));
-    }
+    })();
+    progress.finish(if result.is_ok() {
+        Completion::Success
+    } else {
+        Completion::Unavailable
+    });
+    result
 }
 
 fn finalize(paths: &Paths, op: &Operation, outcome: Outcome, snapshot: Snapshot) -> Result<()> {
@@ -246,8 +267,10 @@ fn finalize(paths: &Paths, op: &Operation, outcome: Outcome, snapshot: Snapshot)
 }
 
 fn observe(paths: &Paths, op: &Operation, cli_ok: bool) -> Result<i32> {
+    let mut progress = Progress::new(Task::Observe);
     let deadline = Instant::now() + Duration::from_secs(ACTIVATION_TIMEOUT + CONFIRM_TIMEOUT + 120);
     loop {
+        progress.tick();
         let receipt = state::receipt(paths)?;
         match receipt.filter(|r| state::same_operation(&r.operation, op)) {
             Some(receipt) if receipt.terminal => {
@@ -276,6 +299,8 @@ fn observe(paths: &Paths, op: &Operation, cli_ok: bool) -> Result<i32> {
                     );
                     finalize(paths, op, Outcome::Success, current)?;
                     logging::event("success", op.host, Some(&op.commit), "deploy", Some(0));
+                    progress.finish(Completion::Success);
+                    presentation::success("Deployment confirmed; system is healthy");
                     return Ok(0);
                 }
                 if (receipt.exit_code.is_some_and(|code| code != 0)
@@ -297,6 +322,9 @@ fn observe(paths: &Paths, op: &Operation, cli_ok: bool) -> Result<i32> {
                         "rollback",
                         receipt.exit_code,
                     );
+                    presentation::warning(
+                        "Deployment failed; the previous system is restored and healthy",
+                    );
                     return Ok(if process::cancelled() { 130 } else { 30 });
                 }
                 anyhow::bail!("terminal deployment cannot be safely classified");
@@ -312,6 +340,9 @@ fn observe(paths: &Paths, op: &Operation, cli_ok: bool) -> Result<i32> {
                         state::no_operation_processes(op)?;
                         finalize(paths, op, Outcome::Restored, op.old.clone())?;
                         logging::event("restored", op.host, Some(&op.commit), "deploy", Some(30));
+                        presentation::warning(
+                            "No native activation was launched; the previous system is unchanged and healthy",
+                        );
                         return Ok(if process::cancelled() { 130 } else { 30 });
                     }
                 }
@@ -351,6 +382,7 @@ fn rollback_approval(commit: &str, explicit: Option<&str>) -> Result<()> {
 }
 
 pub fn switch(paths: &Paths, host: Host, approval: Option<&str>) -> Result<i32> {
+    presentation::begin(host, "switch");
     if let Some(value) = approval {
         ensure!(sha40(value), "invalid rollback approval");
     }
@@ -365,8 +397,8 @@ pub fn switch(paths: &Paths, host: Host, approval: Option<&str>) -> Result<i32> 
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => (),
         _ => {
             logging::event("blocked", host, None, "recovery", Some(40));
-            eprintln!(
-                "Wave: an earlier deployment has unresolved state; reconcile it with the previous CLI before upgrading."
+            presentation::warning(
+                "Wave: an earlier deployment has unresolved state; reconcile it with the previous CLI before upgrading.",
             );
             return Ok(40);
         }
@@ -374,14 +406,16 @@ pub fn switch(paths: &Paths, host: Host, approval: Option<&str>) -> Result<i32> 
     let active = state::load(paths)?;
     if active.operation.is_some() {
         logging::event("blocked", host, None, "recovery", Some(40));
-        eprintln!("Wave: unresolved deployment; inspect `wave recover` before retrying.");
+        presentation::warning("Unresolved deployment; inspect `wave recover` before retrying.");
         return Ok(40);
     }
     if let Some(receipt) = state::receipt(paths)? {
         state::quiescent(&receipt)?;
     }
     logging::event("start", host, None, "source", None);
+    presentation::section(Step::Source);
     let commit = source::refresh(paths)?;
+    presentation::revision("Source revision", &commit);
     if active.rollback_commit.as_deref() == Some(&commit) {
         rollback_approval(&commit, approval)?;
     } else {
@@ -392,23 +426,31 @@ pub fn switch(paths: &Paths, host: Host, approval: Option<&str>) -> Result<i32> 
     }
     let old = state::snapshot()?;
     if !old.profile.join("deploy-rs-activate").is_file() {
-        eprintln!(
-            "Wave: current profile lacks deploy-rs rollback support; a supervised initial bootstrap is required."
+        presentation::warning(
+            "Wave: current profile lacks deploy-rs rollback support; a supervised initial bootstrap is required.",
         );
         return Ok(10);
     }
     logging::event("start", host, Some(&commit), "preflight", None);
+    presentation::section(Step::Preflight);
     ensure!(
         health::check(host).ok() && !process::cancelled(),
         "preflight health failed"
     );
+    presentation::success("Current system is healthy");
     let runtime = tempfile::Builder::new().prefix("wave-").tempdir()?;
     fs::set_permissions(runtime.path(), fs::Permissions::from_mode(0o700))?;
     let validation = runtime.path().join("validation");
+    presentation::section(Step::Validation);
     source::validation_copy(&paths.source, &commit, &validation)?;
     logging::event("start", host, Some(&commit), "validation", None);
-    passed(nix(&validation, &["nix-check"], false)?)?;
-    passed(nix(&validation, &["nix-eval", host.name()], false)?)?;
+    passed(nix(&validation, &["nix-check"], false, Task::StaticChecks)?)?;
+    passed(nix(
+        &validation,
+        &["nix-eval", host.name()],
+        false,
+        Task::Evaluation,
+    )?)?;
     source::clean(&paths.source, &commit)?;
     ensure!(
         state::snapshot()? == old,
@@ -427,7 +469,13 @@ pub fn switch(paths: &Paths, host: Host, approval: Option<&str>) -> Result<i32> 
     runtime_flake(&paths.source, &commit, host, &temp, &flake_directory)?;
     let flake = format!("path:{}", flake_directory.display());
     logging::event("start", host, Some(&commit), "prepare", None);
-    passed(nix(&validation, &["nix", "flake", "lock", &flake], false)?)?;
+    presentation::section(Step::Preparation);
+    passed(nix(
+        &validation,
+        &["nix", "flake", "lock", &flake],
+        false,
+        Task::RuntimeLock,
+    )?)?;
     let meta: Metadata = serde_json::from_slice(&passed(nix(
         &validation,
         &[
@@ -438,9 +486,11 @@ pub fn switch(paths: &Paths, host: Host, approval: Option<&str>) -> Result<i32> 
             &format!("{flake}#waveMeta"),
         ],
         true,
+        Task::Metadata,
     )?)?)?;
     validate(&meta, &commit, &temp)?;
     logging::event("start", host, Some(&commit), "build", None);
+    presentation::section(Step::Build);
     let targets = [
         format!("{flake}#profile"),
         format!("{flake}#deploy-rs"),
@@ -455,7 +505,7 @@ pub fn switch(paths: &Paths, host: Host, approval: Option<&str>) -> Result<i32> 
         targets[1].as_str(),
         targets[2].as_str(),
     ];
-    passed(nix(&validation, &args, false)?)?;
+    passed(nix(&validation, &args, false, Task::Build)?)?;
     let new = Snapshot {
         profile: meta.profile_closure,
         system: meta.system_closure,
@@ -475,7 +525,10 @@ pub fn switch(paths: &Paths, host: Host, approval: Option<&str>) -> Result<i32> 
     );
     if new == old {
         logging::event("success", host, Some(&commit), "deploy", Some(0));
-        println!("Wave: system already current; activation skipped.");
+        presentation::section(Step::Activation);
+        presentation::detail("Skipped: identical profile is already active");
+        presentation::section(Step::Verification);
+        presentation::success("System already current and healthy; no activation was needed");
         return Ok(0);
     }
     let op = Operation {
@@ -497,6 +550,9 @@ pub fn switch(paths: &Paths, host: Host, approval: Option<&str>) -> Result<i32> 
         Ok(())
     })?;
     logging::event("deploy_started", host, Some(&commit), "deploy", None);
+    presentation::section(Step::Activation);
+    let mut progress = Progress::new(Task::Deploy);
+    let mut last_observation = Instant::now() - Duration::from_secs(1);
     let cli = process::run(
         Command::new(meta.deploy_package.join("bin/deploy"))
             .args([
@@ -505,11 +561,40 @@ pub fn switch(paths: &Paths, host: Host, approval: Option<&str>) -> Result<i32> 
                 &format!("{flake}#{}.system", host.name()),
                 "--",
                 "--no-write-lock-file",
+                "--log-format",
+                "internal-json",
+                "--verbose",
             ])
             .current_dir(&paths.source),
         Duration::from_secs(1200),
         false,
         || fence(paths, &op),
+        &mut progress,
+        |progress| {
+            if last_observation.elapsed() < Duration::from_secs(1) {
+                return;
+            }
+            last_observation = Instant::now();
+            // Read-only presentation: neither these observations nor Nix progress authorize activation.
+            if let Ok(Some(receipt)) = state::receipt(paths)
+                && state::same_operation(&receipt.operation, &op)
+            {
+                let phase = if receipt.confirmed {
+                    presentation::section(Step::Verification);
+                    Task::NativeCompletion
+                } else if receipt.child_pid > 1
+                    && state::snapshot().is_ok_and(|snapshot| snapshot == op.new)
+                {
+                    presentation::section(Step::Verification);
+                    Task::HealthAuthorization
+                } else if receipt.child_pid > 1 {
+                    Task::NativeActivation
+                } else {
+                    Task::Deploy
+                };
+                progress.phase(phase);
+            }
+        },
     );
     let cli_ok = cli
         .as_ref()
@@ -524,12 +609,13 @@ pub fn switch(paths: &Paths, host: Host, approval: Option<&str>) -> Result<i32> 
         "deploy",
         cli.as_ref().ok().map(|r| r.code),
     );
+    presentation::section(Step::Verification);
     match observe(paths, &op, cli_ok) {
         Ok(code) => Ok(code),
         Err(_) => {
             logging::event("blocked", host, Some(&commit), "recovery", Some(40));
-            eprintln!(
-                "Wave: activation/rollback is not proven safe; pending state retained. Inspect `wave recover`."
+            presentation::error(
+                "Wave: activation/rollback is not proven safe; pending state retained. Inspect `wave recover`.",
             );
             Ok(40)
         }

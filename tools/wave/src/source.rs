@@ -1,5 +1,6 @@
 use crate::{
     model::*,
+    presentation::{self, Progress, Task},
     process,
     state::{self, Paths},
 };
@@ -49,7 +50,25 @@ fn command(repo: &Path) -> Command {
 }
 
 fn git(repo: &Path, args: &[&str]) -> Result<String> {
-    let output = process::capture(command(repo).args(args), Duration::from_secs(120))?;
+    let output = match args.first() {
+        Some(&"fetch") | Some(&"clone") => {
+            let task = if args[0] == "fetch" {
+                Task::Fetch
+            } else {
+                Task::Clone
+            };
+            let mut progress = Progress::new(task);
+            process::run(
+                command(repo).args(args),
+                Duration::from_secs(120),
+                true,
+                || Ok(()),
+                &mut progress,
+                |_| {},
+            )?
+        }
+        _ => process::capture(command(repo).args(args), Duration::from_secs(120))?,
+    };
     ensure!(
         output.code == 0 && !output.interrupted && !output.timed_out,
         "source operation failed"
@@ -79,7 +98,8 @@ pub fn refresh(paths: &Paths) -> Result<String> {
     state::directory(&paths.source, state::owner_uid()?, 0o700)?;
     if fs::read_dir(&paths.source)?.next().is_none() {
         let parent = paths.source.parent().context("source parent missing")?;
-        let output = process::capture(
+        let mut progress = Progress::new(Task::Clone);
+        let output = process::run(
             command(parent)
                 .args([
                     "clone",
@@ -94,6 +114,10 @@ pub fn refresh(paths: &Paths) -> Result<String> {
                 ])
                 .arg(&paths.source),
             Duration::from_secs(120),
+            true,
+            || Ok(()),
+            &mut progress,
+            |_| {},
         )?;
         ensure!(
             output.code == 0 && !output.interrupted && !output.timed_out,
@@ -197,6 +221,7 @@ pub fn revision(system: &Path) -> Result<Option<String>> {
 }
 
 pub fn check(paths: &Paths, host: Host, json: bool) -> Result<i32> {
+    presentation::begin(host, "check");
     let _lock = state::operation_lock(paths, true)?;
     crate::logging::event("start", host, None, "source", None);
     let available = refresh(paths)?;
@@ -215,10 +240,15 @@ pub fn check(paths: &Paths, host: Host, json: bool) -> Result<i32> {
             serde_json::json!({"status": status, "current": current, "available": available})
         );
     } else {
-        println!("Wave: {status}; main={available}");
-        if let Some(current) = current {
-            println!("Active revision: {current}");
+        match code {
+            0 => presentation::success("System is up to date"),
+            1 => presentation::warning("An update is available on main"),
+            _ => presentation::warning("The active system revision is unknown"),
         }
+        if let Some(current) = current {
+            presentation::revision("Active revision", &current);
+        }
+        presentation::revision("Latest main", &available);
     }
     Ok(code)
 }
