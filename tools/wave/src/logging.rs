@@ -1,9 +1,9 @@
-use crate::model::{Host, sha40};
+use crate::model::sha40;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 static UNAVAILABLE_REPORTED: AtomicBool = AtomicBool::new(false);
 
-pub fn event(name: &str, host: Host, commit: Option<&str>, stage: &str, code: Option<i32>) {
+pub fn event(name: &str, host: &str, commit: Option<&str>, stage: &str, code: Option<i32>) {
     // Unknown labels are never forwarded: callers cannot turn this into a raw log sink.
     let name = if EVENTS.contains(&name) {
         name
@@ -16,7 +16,7 @@ pub fn event(name: &str, host: Host, commit: Option<&str>, stage: &str, code: Op
         "unknown"
     };
     let revision = commit.filter(|value| sha40(value));
-    let mut message = format!("wave: {name} host={} stage={stage}", host.name());
+    let mut message = format!("wave: {name} host={host} stage={stage}");
     if let Some(revision) = revision {
         message.push_str(&format!(" revision={revision}"));
     }
@@ -30,42 +30,21 @@ pub fn event(name: &str, host: Host, commit: Option<&str>, stage: &str, code: Op
     }
 }
 
-const EVENTS: &[&str] = &[
-    "start",
-    "complete",
-    "success",
-    "failed",
-    "blocked",
-    "health_passed",
-    "health_failed",
-    "deploy_started",
-    "deploy_finished",
-    "confirmed",
-    "restored",
-    "reconciled",
-    "heartbeat",
-    "activation_started",
-    "activation_finished",
-];
+const EVENTS: &[&str] = &["start", "complete", "success", "failed", "restored"];
 const STAGES: &[&str] = &[
     "source",
-    "preflight",
-    "validation",
-    "prepare",
-    "build",
-    "deploy",
-    "health",
-    "confirm",
-    "rollback",
-    "recovery",
     "status",
-    "supervisor",
+    "build",
+    "activation",
+    "health",
+    "rollback",
+    "deploy",
 ];
 
 #[cfg(target_os = "linux")]
 fn system_event(
     name: &str,
-    host: Host,
+    host: &str,
     revision: Option<&str>,
     stage: &str,
     code: Option<i32>,
@@ -73,8 +52,7 @@ fn system_event(
 ) -> bool {
     use std::os::unix::net::UnixDatagram;
     let mut fields = format!(
-        "MESSAGE={message}\nSYSLOG_IDENTIFIER=wave\nPRIORITY=5\nWAVE_EVENT={name}\nWAVE_HOST={}\nWAVE_STAGE={stage}\n",
-        host.name()
+        "MESSAGE={message}\nSYSLOG_IDENTIFIER=wave\nPRIORITY=5\nWAVE_EVENT={name}\nWAVE_HOST={host}\nWAVE_STAGE={stage}\n"
     );
     if let Some(revision) = revision {
         fields.push_str(&format!("WAVE_REVISION={revision}\n"));
@@ -96,7 +74,7 @@ fn system_event(
 #[cfg(target_os = "macos")]
 fn system_event(
     _name: &str,
-    _host: Host,
+    _host: &str,
     _revision: Option<&str>,
     _stage: &str,
     _code: Option<i32>,
@@ -114,7 +92,7 @@ fn system_event(
 #[cfg(not(any(target_os = "linux", target_os = "macos")))]
 fn system_event(
     _name: &str,
-    _host: Host,
+    _host: &str,
     _revision: Option<&str>,
     _stage: &str,
     _code: Option<i32>,

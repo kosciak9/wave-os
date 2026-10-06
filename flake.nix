@@ -183,25 +183,6 @@
       kanagawa-kvantum = pkgs.callPackage ./packages/kanagawa-kvantum.nix {
         src = inputs.kanagawa-kvantum;
       };
-      darwinDeployment = import ./tools/deploy-local.nix {
-        pkgs = darwinPkgs;
-        deployLib = inputs.deploy-rs.lib.${darwinSystem};
-        configuration = self.darwinConfigurations.renekton;
-        host = "renekton";
-      };
-      linuxDeployment = import ./tools/deploy-local.nix {
-        inherit pkgs;
-        deployLib = inputs.deploy-rs.lib.${system};
-        configuration = self.nixosConfigurations.jayce;
-        host = "jayce";
-      };
-      ahriDeployment = import ./tools/deploy-local.nix {
-        pkgs = ahriPkgs;
-        deployLib = inputs.deploy-rs.lib.${ahriSystem};
-        configuration = self.nixosConfigurations.ahri;
-        host = "ahri";
-        interactiveSudo = false;
-      };
     in
     {
       # TODO: Generated manuals remain enabled despite Determinate Nix's contextless options.json warning.
@@ -279,8 +260,6 @@
       packages = {
         ${system} = {
           deploy-rs = inputs.deploy-rs.packages.${system}.deploy-rs;
-          wave-deploy-sudo = linuxDeployment.sudoWrapper;
-          wave-deploy-root = linuxDeployment.rootStdio;
           inherit kanagawa-kvantum;
           inherit (pkgs)
             wave
@@ -294,8 +273,6 @@
         };
         ${darwinSystem} = {
           deploy-rs = inputs.deploy-rs.packages.${darwinSystem}.deploy-rs;
-          wave-deploy-sudo = darwinDeployment.sudoWrapper;
-          wave-deploy-root = darwinDeployment.rootStdio;
           inherit (darwinPkgs)
             wave
             herdr-auto-title
@@ -320,25 +297,7 @@
         };
         ${ahriSystem} = {
           deploy-rs = inputs.deploy-rs.packages.${ahriSystem}.deploy-rs;
-          wave-deploy-sudo = ahriDeployment.sudoWrapper;
-          wave-deploy-root = ahriDeployment.rootStdio;
           inherit (ahriPkgs) wave;
-        };
-      };
-      deploy.nodes = {
-        renekton = darwinDeployment.node;
-        jayce = linuxDeployment.node;
-        ahri = ahriDeployment.node;
-      };
-      checks = {
-        ${darwinSystem} = inputs.deploy-rs.lib.${darwinSystem}.deployChecks {
-          nodes.renekton = darwinDeployment.node;
-        };
-        ${system} = inputs.deploy-rs.lib.${system}.deployChecks {
-          nodes.jayce = linuxDeployment.node;
-        };
-        ${ahriSystem} = inputs.deploy-rs.lib.${ahriSystem}.deployChecks {
-          nodes.ahri = ahriDeployment.node;
         };
       };
     };

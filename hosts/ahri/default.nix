@@ -3,6 +3,7 @@
 {
   imports = [
     ./hardware.nix
+    ./health.nix
     ../../modules/wave/nixos.nix
     "${modulesPath}/profiles/all-hardware.nix"
   ];

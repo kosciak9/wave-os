@@ -1,23 +1,21 @@
-mod deploy;
 mod health;
 mod logging;
 mod model;
-mod native;
 mod presentation;
 mod process;
-mod recover;
 mod source;
 mod state;
+mod switch;
 
 use anyhow::{Result, ensure};
 use clap::{Parser, Subcommand};
-use model::Host;
+use std::path::PathBuf;
 
 #[derive(Parser)]
 #[command(
     name = "wave",
     version,
-    about = "Wave OS source and safe local deployments"
+    about = "Wave OS source, switches and deployments"
 )]
 struct Cli {
     #[command(subcommand)]
@@ -31,134 +29,83 @@ enum Action {
         #[arg(long)]
         json: bool,
     },
-    /// Fetch, validate and safely deploy the local host through deploy-rs
-    Switch {
-        #[arg(long, value_name = "FULL_SHA40")]
-        approve_rollback: Option<String>,
-    },
-    /// Inspect interrupted deployment; explicit acceptance requires its fingerprint
-    Recover {
-        #[arg(long, value_name = "PLAN_SHA256")]
-        accept_manual: Option<String>,
-    },
-    /// Read-only health checks for the local host
+    /// Build latest main for this host, activate it, and roll back if it is unhealthy
+    Switch,
+    /// Health checks declared by the active system
     Health {
         #[arg(long)]
         json: bool,
+        /// Wait until consecutive checks pass; exit 1 at the deadline
+        #[arg(long)]
+        wait: bool,
+        #[arg(long, value_name = "PATH", default_value = health::MANIFEST)]
+        manifest: PathBuf,
+        #[arg(long, value_name = "SECONDS", default_value_t = 120)]
+        timeout: u64,
+        #[arg(long, default_value_t = 3)]
+        streak: u32,
     },
-    #[command(name = "__native", hide = true)]
-    Native(native::NativeArgs),
-    #[command(name = "__confirm", hide = true)]
-    Confirm(native::ConfirmArgs),
 }
 
-fn local_host() -> Result<Host> {
+/// The short hostname names this host's configuration in the flake.
+fn hostname() -> Result<String> {
+    let mut buffer = [0u8; 256];
+    ensure!(
+        unsafe { libc::gethostname(buffer.as_mut_ptr().cast(), buffer.len()) } == 0,
+        "hostname unavailable"
+    );
+    let name = std::str::from_utf8(buffer.split(|b| *b == 0).next().unwrap_or_default())?;
+    let name = name.split('.').next().unwrap_or_default();
+    ensure!(
+        !name.is_empty() && name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-'),
+        "invalid hostname"
+    );
+    Ok(name.to_owned())
+}
+
+fn owner_paths() -> Result<state::Paths> {
     ensure!(
         unsafe { libc::geteuid() } == state::owner_uid()?,
-        "Wave requires the configured unprivileged owner"
+        "run Wave as its owner, not root"
     );
-    let host = if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
-        Host::Renekton
-    } else if cfg!(all(target_os = "linux", target_arch = "x86_64")) {
-        Host::Jayce
-    } else if cfg!(all(target_os = "linux", target_arch = "aarch64")) {
-        Host::Ahri
-    } else {
-        anyhow::bail!("unsupported Wave platform")
-    };
-    let mut hostname = [0u8; 256];
-    ensure!(
-        unsafe { libc::gethostname(hostname.as_mut_ptr().cast(), hostname.len()) } == 0,
-        "host identity unavailable"
-    );
-    let name = std::str::from_utf8(hostname.split(|b| *b == 0).next().unwrap_or_default())?;
-    ensure!(
-        name.split('.').next() == Some(host.name()),
-        "Wave host identity mismatch"
-    );
-    Ok(host)
+    state::Paths::installed()
 }
 
 fn run(action: Action) -> Result<i32> {
     match action {
-        Action::Native(args) => native::native(args),
-        Action::Confirm(args) => {
-            process::install_signals()?;
-            native::confirm(args)
-        }
-        action => {
-            let host = local_host()?;
-            process::install_signals()?;
-            match action {
-                Action::Health { json } => {
-                    let report = health::check(host);
-                    if json {
-                        println!("{}", serde_json::to_string(&report)?);
-                    } else {
-                        for (name, probe) in &report.checks {
-                            println!("{name:10} {}", probe.summary);
-                        }
-                        println!("summary: {}", report.summary);
-                    }
-                    Ok(if report.ok() { 0 } else { 1 })
-                }
-                action => {
-                    let paths = state::Paths::installed()?;
-                    match action {
-                        Action::Check { json } => source::check(&paths, host, json),
-                        Action::Switch { approve_rollback } => {
-                            deploy::switch(&paths, host, approve_rollback.as_deref())
-                        }
-                        Action::Recover { accept_manual } => {
-                            presentation::begin(host, "recover");
-                            recover::run(&paths, accept_manual.as_deref())
-                        }
-                        _ => unreachable!(),
-                    }
-                }
+        Action::Health {
+            json,
+            wait,
+            manifest,
+            timeout,
+            streak,
+        } => {
+            if wait {
+                let healthy =
+                    health::wait(&manifest, std::time::Duration::from_secs(timeout), streak);
+                return Ok(if healthy { 0 } else { 1 });
             }
+            let report = health::check_manifest(&manifest);
+            if json {
+                println!("{}", serde_json::to_string(&report)?);
+            } else {
+                health::print(&report);
+            }
+            Ok(if report.ok() { 0 } else { 1 })
         }
+        Action::Check { json } => {
+            presentation::enable(!json);
+            source::check(&owner_paths()?, &hostname()?, json)
+        }
+        Action::Switch => switch::switch(&owner_paths()?, &hostname()?),
     }
 }
 
 fn main() {
-    let cli = Cli::parse();
-    presentation::enable(!matches!(
-        &cli.command,
-        Action::Native(_)
-            | Action::Confirm(_)
-            | Action::Check { json: true }
-            | Action::Health { json: true }
-    ));
-    let internal = matches!(&cli.command, Action::Native(_) | Action::Confirm(_));
-    let (event_host, stage) = match &cli.command {
-        Action::Native(args) => (Some(args.host), "supervisor"),
-        Action::Confirm(args) => (Some(args.host), "confirm"),
-        Action::Check { .. } => (local_host().ok(), "source"),
-        Action::Switch { .. } => (local_host().ok(), "deploy"),
-        Action::Recover { .. } => (local_host().ok(), "recovery"),
-        Action::Health { .. } => (local_host().ok(), "health"),
-    };
-    let result = run(cli.command);
-    let code = match result {
-        Ok(code) => code,
-        Err(_) => {
-            // Error chains can contain subprocess output, paths or private metadata.
-            presentation::error(
-                "Operation failed or blocked; no raw diagnostic output was retained.",
-            );
-            let code = if internal {
-                1
-            } else if process::cancelled() {
-                130
-            } else {
-                10
-            };
-            if let Some(host) = event_host {
-                logging::event("failed", host, None, stage, Some(code));
-            }
-            code
-        }
-    };
+    let code = run(Cli::parse().command).unwrap_or_else(|error| {
+        presentation::enable(true);
+        presentation::error(&format!("{error:#}"));
+        10
+    });
     std::process::exit(code);
 }

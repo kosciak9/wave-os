@@ -1,16 +1,10 @@
 {
   lib,
   rustPlatform,
-  stdenv,
   makeWrapper,
-  curl,
   git,
   openssh,
-  iproute2,
-  procps,
-  glibc,
-  util-linux,
-  devenv,
+  nvd,
 }:
 rustPlatform.buildRustPackage {
   pname = "wave";
@@ -25,25 +19,16 @@ rustPlatform.buildRustPackage {
   postFixup = ''
     wrapProgram "$out/bin/wave" \
       --prefix PATH : "/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:${
-        lib.makeBinPath (
-          [
-            curl
-            git
-            openssh
-            devenv
-          ]
-          ++ lib.optionals stdenv.hostPlatform.isLinux [
-            iproute2
-            procps
-            glibc.bin
-            util-linux
-          ]
-        )
+        lib.makeBinPath [
+          git
+          openssh
+          nvd
+        ]
       }"
   '';
 
   meta = {
-    description = "Local Wave OS source and guarded deployment CLI";
+    description = "Wave OS source, switch and deployment CLI";
     mainProgram = "wave";
     platforms = [
       "x86_64-linux"

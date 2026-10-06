@@ -1,17 +1,13 @@
 use crate::{
+    logging,
     model::*,
-    presentation::{self, Progress, Task},
-    process,
+    presentation, process,
     state::{self, Paths},
 };
 use anyhow::{Context, Result, ensure};
 use std::{
     fs,
-    io::Read,
-    os::unix::{
-        fs::{MetadataExt, OpenOptionsExt},
-        process::CommandExt,
-    },
+    os::unix::process::CommandExt,
     path::Path,
     process::{Command, Stdio},
     time::Duration,
@@ -19,7 +15,7 @@ use std::{
 
 const UPSTREAM: &str = "https://github.com/kosciak9/wave-os.git";
 
-fn command(repo: &Path) -> Command {
+fn git(repo: &Path, args: &[&str]) -> Result<String> {
     let mut command = Command::new("git");
     command
         .args([
@@ -28,6 +24,7 @@ fn command(repo: &Path) -> Command {
             "-c",
             "core.fsmonitor=false",
         ])
+        .args(args)
         .current_dir(repo)
         .stdin(Stdio::null())
         .env("GIT_TERMINAL_PROMPT", "0");
@@ -46,101 +43,50 @@ fn command(repo: &Path) -> Command {
             Ok(())
         });
     }
-    command
-}
-
-fn git(repo: &Path, args: &[&str]) -> Result<String> {
-    let output = match args.first() {
-        Some(&"fetch") | Some(&"clone") => {
-            let task = if args[0] == "fetch" {
-                Task::Fetch
-            } else {
-                Task::Clone
-            };
-            let mut progress = Progress::new(task);
-            process::run(
-                command(repo).args(args),
-                Duration::from_secs(120),
-                true,
-                || Ok(()),
-                &mut progress,
-                |_| {},
-            )?
-        }
-        _ => process::capture(command(repo).args(args), Duration::from_secs(120))?,
-    };
-    ensure!(
-        output.code == 0 && !output.interrupted && !output.timed_out,
-        "source operation failed"
-    );
+    let output = process::capture(&mut command, Duration::from_secs(120))?;
+    ensure!(output.success(), "git {} failed", args[0]);
     Ok(String::from_utf8(output.stdout)?.trim().to_owned())
 }
 
+/// The deployment source must be exactly `commit`, without local edits.
 pub fn clean(repo: &Path, commit: &str) -> Result<()> {
     ensure!(
-        sha40(commit) && git(repo, &["rev-parse", "HEAD"])? == commit,
-        "source revision changed"
+        git(repo, &["rev-parse", "HEAD"])? == commit,
+        "deployment source moved away from {commit}"
     );
     ensure!(
         git(repo, &["status", "--porcelain", "--untracked-files=all"])?.is_empty(),
-        "deployment source is dirty"
+        "deployment source {} has local changes",
+        repo.display()
     );
-    for overlay in ["devenv.local.nix", "devenv.local.yaml"] {
-        ensure!(
-            !repo.join(overlay).try_exists()?,
-            "local deployment overlays are unsupported"
-        );
-    }
     Ok(())
 }
 
+/// Checks out the latest upstream main in the dedicated source copy.
 pub fn refresh(paths: &Paths) -> Result<String> {
-    state::directory(&paths.source, state::owner_uid()?, 0o700)?;
+    presentation::detail("Fetching latest main");
     if fs::read_dir(&paths.source)?.next().is_none() {
         let parent = paths.source.parent().context("source parent missing")?;
-        let mut progress = Progress::new(Task::Clone);
-        let output = process::run(
-            command(parent)
-                .args([
-                    "clone",
-                    "--depth",
-                    "1",
-                    "--single-branch",
-                    "--branch",
-                    "main",
-                    "--no-tags",
-                    "--no-checkout",
-                    UPSTREAM,
-                ])
-                .arg(&paths.source),
-            Duration::from_secs(120),
-            true,
-            || Ok(()),
-            &mut progress,
-            |_| {},
+        let source = paths.source.to_str().context("invalid source path")?;
+        git(
+            parent,
+            &[
+                "clone",
+                "--depth",
+                "1",
+                "--single-branch",
+                "--branch",
+                "main",
+                "--no-tags",
+                "--no-checkout",
+                UPSTREAM,
+                source,
+            ],
         )?;
-        ensure!(
-            output.code == 0 && !output.interrupted && !output.timed_out,
-            "cannot initialize deployment source"
-        );
     } else {
-        let git_dir = paths.source.join(".git");
-        let metadata = fs::symlink_metadata(&git_dir)?;
-        ensure!(
-            metadata.is_dir()
-                && metadata.uid() == state::owner_uid()?
-                && metadata.mode() & 0o022 == 0
-                && git_dir.canonicalize()? == git_dir,
-            "unsafe source repository"
-        );
-        ensure!(
-            git(&paths.source, &["rev-parse", "--show-toplevel"])?
-                == paths.source.to_string_lossy(),
-            "unexpected source repository"
-        );
         ensure!(
             git(&paths.source, &["config", "--get", "remote.origin.url"])? == UPSTREAM,
-            "unexpected deployment upstream"
+            "deployment source does not track {UPSTREAM}"
         );
         let current = git(&paths.source, &["rev-parse", "HEAD"])?;
         clean(&paths.source, &current)?;
@@ -158,82 +104,37 @@ pub fn refresh(paths: &Paths) -> Result<String> {
     }
     let commit = git(&paths.source, &["rev-parse", "refs/remotes/origin/main"])?;
     ensure!(sha40(&commit), "upstream revision is invalid");
-    git(&paths.source, &["checkout", "--detach", &commit])?;
-    let metadata = fs::symlink_metadata(paths.source.join(".git"))?;
-    ensure!(
-        metadata.is_dir() && metadata.uid() == state::owner_uid()? && metadata.mode() & 0o022 == 0,
-        "unsafe cloned repository"
-    );
+    git(&paths.source, &["checkout", "--quiet", "--detach", &commit])?;
     clean(&paths.source, &commit)?;
     Ok(commit)
 }
 
-pub fn validation_copy(repo: &Path, commit: &str, destination: &Path) -> Result<()> {
-    clean(repo, commit)?;
-    let url = format!("file://{}", repo.display());
-    git(
-        repo,
-        &[
-            "clone",
-            "--depth",
-            "1",
-            "--single-branch",
-            "--no-tags",
-            &url,
-            destination
-                .to_str()
-                .context("invalid validation directory")?,
-        ],
-    )?;
-    clean(destination, commit)
+pub fn flake(paths: &Paths, commit: &str) -> String {
+    format!("git+file://{}?rev={commit}", paths.source.display())
 }
 
+/// The Wave revision a system closure was built from, if recorded.
 pub fn revision(system: &Path) -> Result<Option<String>> {
     let marker = system.join("etc/wave-os/revision");
     if !marker.try_exists()? {
         return Ok(None);
     }
-    let resolved = marker.canonicalize()?;
-    ensure!(
-        resolved.starts_with("/nix/store"),
-        "revision marker is outside the store"
-    );
-    let file = fs::OpenOptions::new()
-        .read(true)
-        .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
-        .open(resolved)?;
-    let metadata = file.metadata()?;
-    ensure!(
-        metadata.is_file()
-            && metadata.uid() == 0
-            && metadata.mode() & 0o022 == 0
-            && metadata.len() <= 128,
-        "unsafe revision marker"
-    );
-    let mut value = String::new();
-    file.take(129).read_to_string(&mut value)?;
+    let value = fs::read_to_string(marker)?;
     let value = value.trim();
-    if value == "unknown" {
-        return Ok(None);
-    }
-    ensure!(sha40(value), "invalid active revision");
-    Ok(Some(value.into()))
+    Ok(sha40(value).then(|| value.to_owned()))
 }
 
-pub fn check(paths: &Paths, host: Host, json: bool) -> Result<i32> {
-    presentation::begin(host, "check");
-    let _lock = state::operation_lock(paths, true)?;
-    crate::logging::event("start", host, None, "source", None);
+pub fn check(paths: &Paths, host: &str, json: bool) -> Result<i32> {
+    presentation::heading(&format!("check · {host}"));
+    let _lock = state::operation_lock(paths)?;
     let available = refresh(paths)?;
-    let system = Path::new(CURRENT).canonicalize()?;
-    ensure!(state::valid_store_path(&system), "invalid active system");
-    let current = revision(&system)?;
+    let current = revision(&Path::new(CURRENT).canonicalize()?)?;
     let (status, code) = match current.as_deref() {
         Some(value) if value == available => ("current", 0),
         Some(_) => ("update_available", 1),
         None => ("active_revision_unknown", 2),
     };
-    crate::logging::event("complete", host, Some(&available), "status", Some(code));
+    logging::event("complete", host, Some(&available), "status", Some(code));
     if json {
         println!(
             "{}",
