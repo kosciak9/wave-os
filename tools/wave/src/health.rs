@@ -83,10 +83,13 @@ pub fn check() -> Health {
 }
 
 pub fn print(report: &Health) {
-    for (name, probe) in &report.checks {
-        eprintln!("{name:18} {}", probe.summary);
-    }
-    eprintln!("summary: {}", report.summary);
+    crate::presentation::health_table(
+        report
+            .checks
+            .iter()
+            .map(|(name, probe)| (name.as_str(), probe.ok)),
+        report.ok(),
+    );
 }
 
 /// Waits until the host passes `streak` consecutive checks, or fails at the deadline.
