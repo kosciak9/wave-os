@@ -62,6 +62,10 @@ in
             if [ ! -e "$keys" ]; then
               /usr/bin/install -m 0644 -o root -g wheel /dev/null "$keys"
             fi
+            # Remote Login limited to selected users admits only this group's members.
+            if /usr/bin/dscl . -read /Groups/com.apple.access_ssh >/dev/null 2>&1; then
+              /usr/sbin/dseditgroup -o edit -a deploy -t user com.apple.access_ssh
+            fi
           ''}
         ) || exit 1
       '';
