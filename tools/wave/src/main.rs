@@ -16,7 +16,7 @@ use std::path::PathBuf;
 #[command(
     name = "wave",
     version,
-    about = "Wave OS source, switches and deployments"
+    about = "wave-os source, switches and deployments"
 )]
 struct Cli {
     #[command(subcommand)]
@@ -72,7 +72,7 @@ fn hostname() -> Result<String> {
 fn owner_paths() -> Result<state::Paths> {
     ensure!(
         unsafe { libc::geteuid() } == state::owner_uid()?,
-        "run Wave as its owner, not root"
+        "run wave-os as its owner, not root"
     );
     state::Paths::installed()
 }

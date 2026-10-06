@@ -18,7 +18,7 @@ pub struct Paths {
 pub fn owner_uid() -> Result<u32> {
     let name = CString::new("kosciak")?;
     let entry = unsafe { libc::getpwnam(name.as_ptr()) };
-    ensure!(!entry.is_null(), "Wave owner is unavailable");
+    ensure!(!entry.is_null(), "wave-os owner is unavailable");
     Ok(unsafe { (*entry).pw_uid })
 }
 
@@ -57,7 +57,7 @@ impl Drop for Lock {
     }
 }
 
-/// One Wave operation at a time per host.
+/// One wave-os operation at a time per host.
 pub fn operation_lock(paths: &Paths) -> Result<Lock> {
     let file = OpenOptions::new()
         .read(true)
@@ -69,7 +69,7 @@ pub fn operation_lock(paths: &Paths) -> Result<Lock> {
         .open(paths.cli.join("operation.lock"))?;
     ensure!(
         unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } == 0,
-        "another Wave operation is running"
+        "another wave-os operation is running"
     );
     Ok(Lock(file))
 }

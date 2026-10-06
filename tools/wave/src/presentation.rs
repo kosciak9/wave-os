@@ -42,7 +42,7 @@ fn write(text: &str, style: Style) {
 }
 
 pub fn heading(text: &str) {
-    write(&format!("\nWave {text}"), Style::Heading);
+    write(&format!("\nwave-os {text}"), Style::Heading);
 }
 
 pub fn section(text: &str) {
