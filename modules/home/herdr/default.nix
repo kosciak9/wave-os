@@ -21,6 +21,24 @@ let
   };
   claudeDirectory =
     config.home.sessionVariables.CLAUDE_CONFIG_DIR or "${config.home.homeDirectory}/.claude";
+  claudeSettings = pkgs.writeText "claude-settings.json" (
+    builtins.toJSON {
+      "$schema" = "https://json.schemastore.org/claude-code-settings.json";
+      spinnerTipsEnabled = false;
+      spinnerVerbs = {
+        mode = "replace";
+        verbs = [ "Working" ];
+      };
+      showTurnDuration = false;
+      prefersReducedMotion = true;
+      terminalProgressBarEnabled = false;
+      promptSuggestionEnabled = false;
+      awaySummaryEnabled = false;
+      emojiCompletionEnabled = false;
+      tui = "fullscreen";
+      viewMode = "focus";
+    }
+  );
   codexDirectory = config.home.sessionVariables.CODEX_HOME or "${config.home.homeDirectory}/.codex";
   antigravityDirectory =
     config.home.sessionVariables.ANTIGRAVITY_CLI_CONFIG_DIR
@@ -190,7 +208,7 @@ in
     ];
 
     activation = {
-      # Upstream owns these mutable settings and hook assets, not Home Manager links.
+      # Settings and hook assets remain writable for upstream integrations.
       herdrIntegrations = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
         (
           claude=${lib.escapeShellArg claudeDirectory}
@@ -270,6 +288,19 @@ in
               ANTIGRAVITY_CLI_CONFIG_DIR="$antigravity" ${lib.getExe herdr} integration install "$integration" || exit $?
           done
         )
+      '';
+
+      claudeSettings = lib.hm.dag.entryAfter [ "herdrIntegrations" ] ''
+        run ${pkgs.python3}/bin/python3 - ${lib.escapeShellArg "${claudeDirectory}/settings.json"} ${claudeSettings} <<'PY'
+        import json
+        import pathlib
+        import sys
+
+        path = pathlib.Path(sys.argv[1])
+        settings = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+        settings.update(json.loads(pathlib.Path(sys.argv[2]).read_text(encoding="utf-8")))
+        path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
+        PY
       '';
 
       # Nix owns registration and enabled state; Herdr manages the mutable registry.
