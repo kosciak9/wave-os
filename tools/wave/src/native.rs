@@ -48,10 +48,14 @@ pub struct ConfirmArgs {
 fn identity(host: Host, profile: &Path, system: &Path, owner: &str) -> Result<()> {
     ensure!(owner == "kosciak", "unexpected helper owner");
     ensure!(
-        if cfg!(target_os = "macos") {
+        if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
             host == Host::Renekton
-        } else {
+        } else if cfg!(all(target_os = "linux", target_arch = "x86_64")) {
             host == Host::Jayce
+        } else if cfg!(all(target_os = "linux", target_arch = "aarch64")) {
+            host == Host::Ahri
+        } else {
+            false
         },
         "helper platform mismatch"
     );
@@ -509,8 +513,13 @@ pub fn confirm(args: ConfirmArgs) -> Result<i32> {
     } else {
         "/run/wrappers/bin/sudo"
     };
+    let sudo_args: &[&str] = if args.host == Host::Ahri {
+        &["-n", "-u", "root"]
+    } else {
+        &["-S", "-p", "", "-u", "root"]
+    };
     let error = Command::new(sudo)
-        .args(["-S", "-p", "", "-u", "root"])
+        .args(sudo_args)
         .arg(&args.root_wrapper)
         .arg("rm")
         .arg(&args.canary)

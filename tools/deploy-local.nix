@@ -3,6 +3,7 @@
   deployLib,
   configuration,
   host,
+  interactiveSudo ? true,
 }:
 let
   owner = "kosciak";
@@ -43,7 +44,7 @@ let
       fi
       exec ${pkgs.wave}/bin/wave __confirm ${context} --root-wrapper ${rootStdio} -- "$2"
     fi
-    exec ${sudo} -S -p "" -u root ${rootStdio} "$@"
+    exec ${sudo} ${if interactiveSudo then ''-S -p ""'' else "-n"} -u root ${rootStdio} "$@"
   '';
 
   node = {
@@ -62,7 +63,7 @@ let
     ];
     autoRollback = true;
     magicRollback = true;
-    interactiveSudo = true;
+    inherit interactiveSudo;
     fastConnection = true;
     confirmTimeout = 150;
     activationTimeout = 300;

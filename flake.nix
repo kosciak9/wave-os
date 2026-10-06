@@ -101,6 +101,7 @@
     let
       system = "x86_64-linux";
       darwinSystem = "aarch64-darwin";
+      ahriSystem = "aarch64-linux";
       packageOverlay =
         final: prev:
         {
@@ -175,6 +176,10 @@
           packageOverlay
         ];
       };
+      ahriPkgs = import inputs.nixpkgs-ahri {
+        system = ahriSystem;
+        overlays = [ packageOverlay ];
+      };
       kanagawa-kvantum = pkgs.callPackage ./packages/kanagawa-kvantum.nix {
         src = inputs.kanagawa-kvantum;
       };
@@ -189,6 +194,13 @@
         deployLib = inputs.deploy-rs.lib.${system};
         configuration = self.nixosConfigurations.jayce;
         host = "jayce";
+      };
+      ahriDeployment = import ./tools/deploy-local.nix {
+        pkgs = ahriPkgs;
+        deployLib = inputs.deploy-rs.lib.${ahriSystem};
+        configuration = self.nixosConfigurations.ahri;
+        host = "ahri";
+        interactiveSudo = false;
       };
     in
     {
@@ -228,8 +240,12 @@
       };
 
       nixosConfigurations.ahri = inputs.nixpkgs-ahri.lib.nixosSystem {
-        system = "aarch64-linux";
-        modules = [ ./hosts/ahri/default.nix ];
+        system = ahriSystem;
+        specialArgs.waveRevision = self.rev or "unknown";
+        modules = [
+          ./hosts/ahri/default.nix
+          (_: { nixpkgs.pkgs = ahriPkgs; })
+        ];
       };
 
       darwinConfigurations.renekton = nix-darwin.lib.darwinSystem {
@@ -260,56 +276,70 @@
         ];
       };
 
-      packages.${system} = {
-        deploy-rs = inputs.deploy-rs.packages.${system}.deploy-rs;
-        wave-deploy-sudo = linuxDeployment.sudoWrapper;
-        wave-deploy-root = linuxDeployment.rootStdio;
-        inherit kanagawa-kvantum;
-        inherit (pkgs)
-          wave
-          camofox-browser-cli
-          slack-mirror
-          slack-mirror-context
-          slack-mirror-image
-          herdr-auto-title
-          herdr-agent-usage
-          ;
-      };
-      packages.${darwinSystem} = {
-        deploy-rs = inputs.deploy-rs.packages.${darwinSystem}.deploy-rs;
-        wave-deploy-sudo = darwinDeployment.sudoWrapper;
-        wave-deploy-root = darwinDeployment.rootStdio;
-        inherit (darwinPkgs)
-          wave
-          herdr-auto-title
-          herdr-agent-usage
-          openclaw-sandbox-machine-check
-          slack-mirror
-          slack-mirror-context
-          slack-mirror-image
-          openclaw-languagetool-mcp-context
-          openclaw-languagetool-mcp-image
-          openclaw-embeddinggemma
-          openclaw-whisper-model
-          openclaw-llama-server
-          anytype-mcp
-          substack-mcp
-          workspace-mcp
-          camofox-browser-source
-          camofox-openclaw-plugin
-          browser-decision
-          camofox-browser-cli
-          ;
+      packages = {
+        ${system} = {
+          deploy-rs = inputs.deploy-rs.packages.${system}.deploy-rs;
+          wave-deploy-sudo = linuxDeployment.sudoWrapper;
+          wave-deploy-root = linuxDeployment.rootStdio;
+          inherit kanagawa-kvantum;
+          inherit (pkgs)
+            wave
+            camofox-browser-cli
+            slack-mirror
+            slack-mirror-context
+            slack-mirror-image
+            herdr-auto-title
+            herdr-agent-usage
+            ;
+        };
+        ${darwinSystem} = {
+          deploy-rs = inputs.deploy-rs.packages.${darwinSystem}.deploy-rs;
+          wave-deploy-sudo = darwinDeployment.sudoWrapper;
+          wave-deploy-root = darwinDeployment.rootStdio;
+          inherit (darwinPkgs)
+            wave
+            herdr-auto-title
+            herdr-agent-usage
+            openclaw-sandbox-machine-check
+            slack-mirror
+            slack-mirror-context
+            slack-mirror-image
+            openclaw-languagetool-mcp-context
+            openclaw-languagetool-mcp-image
+            openclaw-embeddinggemma
+            openclaw-whisper-model
+            openclaw-llama-server
+            anytype-mcp
+            substack-mcp
+            workspace-mcp
+            camofox-browser-source
+            camofox-openclaw-plugin
+            browser-decision
+            camofox-browser-cli
+            ;
+        };
+        ${ahriSystem} = {
+          deploy-rs = inputs.deploy-rs.packages.${ahriSystem}.deploy-rs;
+          wave-deploy-sudo = ahriDeployment.sudoWrapper;
+          wave-deploy-root = ahriDeployment.rootStdio;
+          inherit (ahriPkgs) wave;
+        };
       };
       deploy.nodes = {
         renekton = darwinDeployment.node;
         jayce = linuxDeployment.node;
+        ahri = ahriDeployment.node;
       };
-      checks.${darwinSystem} = inputs.deploy-rs.lib.${darwinSystem}.deployChecks {
-        nodes.renekton = darwinDeployment.node;
-      };
-      checks.${system} = inputs.deploy-rs.lib.${system}.deployChecks {
-        nodes.jayce = linuxDeployment.node;
+      checks = {
+        ${darwinSystem} = inputs.deploy-rs.lib.${darwinSystem}.deployChecks {
+          nodes.renekton = darwinDeployment.node;
+        };
+        ${system} = inputs.deploy-rs.lib.${system}.deployChecks {
+          nodes.jayce = linuxDeployment.node;
+        };
+        ${ahriSystem} = inputs.deploy-rs.lib.${ahriSystem}.deployChecks {
+          nodes.ahri = ahriDeployment.node;
+        };
       };
     };
 }

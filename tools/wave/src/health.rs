@@ -64,7 +64,7 @@ fn network(host: Host, deadline: Instant) -> bool {
             capture("/sbin/route", &["-n", "get", "default"], first).is_some()
                 || capture("/sbin/route", &["-n", "get", "-inet6", "default"], deadline).is_some()
         }
-        Host::Jayce => {
+        Host::Jayce | Host::Ahri => {
             let ip = tool("ip");
             let first = deadline.min(Instant::now() + Duration::from_millis(1500));
             let has_route = |bytes: Vec<u8>| !bytes.iter().all(u8::is_ascii_whitespace);
@@ -90,15 +90,14 @@ fn dns(host: Host, deadline: Instant) -> bool {
                 })
             })
         }),
-        Host::Jayce => {
-            capture(&tool("getent"), &["ahosts", "example.com"], deadline).is_some_and(|bytes| {
+        Host::Jayce | Host::Ahri => capture(&tool("getent"), &["ahosts", "example.com"], deadline)
+            .is_some_and(|bytes| {
                 String::from_utf8_lossy(&bytes).lines().any(|line| {
                     line.split_whitespace()
                         .next()
                         .is_some_and(|address| address.parse::<IpAddr>().is_ok())
                 })
-            })
-        }
+            }),
     }
 }
 
@@ -227,6 +226,125 @@ fn ssh(deadline: Instant) -> bool {
     false
 }
 
+fn caddy(deadline: Instant) -> bool {
+    capture(
+        &tool("curl"),
+        &[
+            "-q",
+            "-sS",
+            "-f",
+            "--noproxy",
+            "*",
+            "--connect-timeout",
+            "1",
+            "--max-time",
+            "3",
+            "--output",
+            "/dev/null",
+            "--write-out",
+            "%{http_code}",
+            "http://127.0.0.1:8080/healthz",
+        ],
+        deadline,
+    )
+    .is_some_and(|bytes| bytes == b"200")
+}
+
+fn usb_root(deadline: Instant) -> bool {
+    let Some(bytes) = capture(
+        &tool("findmnt"),
+        &[
+            "--json",
+            "--target",
+            "/",
+            "--output",
+            "FSTYPE,SOURCE,OPTIONS",
+        ],
+        deadline,
+    ) else {
+        return false;
+    };
+    let Ok(value) = serde_json::from_slice::<serde_json::Value>(&bytes) else {
+        return false;
+    };
+    let Some(mounts) = value.get("filesystems").and_then(|value| value.as_array()) else {
+        return false;
+    };
+    if mounts.len() != 1 {
+        return false;
+    }
+    let mount = &mounts[0];
+    if mount.get("fstype").and_then(|value| value.as_str()) != Some("btrfs") {
+        return false;
+    }
+    let Some(options) = mount.get("options").and_then(|value| value.as_str()) else {
+        return false;
+    };
+    if !options.split(',').any(|option| option == "rw")
+        || !options.split(',').any(|option| option == "subvol=/@root")
+    {
+        return false;
+    }
+    let Some(source) = mount.get("source").and_then(|value| value.as_str()) else {
+        return false;
+    };
+    let device = source.split('[').next().unwrap_or_default();
+    if !device.starts_with("/dev/") {
+        return false;
+    }
+    let Ok(device) = std::fs::canonicalize(device) else {
+        return false;
+    };
+    let Some(bytes) = capture(
+        &tool("lsblk"),
+        &["--json", "--tree", "--output", "PATH,TYPE,TRAN,FSTYPE,UUID"],
+        deadline,
+    ) else {
+        return false;
+    };
+    let Ok(value) = serde_json::from_slice::<serde_json::Value>(&bytes) else {
+        return false;
+    };
+    let Some(devices) = value.get("blockdevices").and_then(|value| value.as_array()) else {
+        return false;
+    };
+    fn collect_members<'a>(
+        devices: &'a [serde_json::Value],
+        parent_transport: Option<&'a str>,
+        members: &mut Vec<(&'a str, &'a str, Option<&'a str>)>,
+    ) {
+        for device in devices {
+            let transport = device
+                .get("tran")
+                .and_then(|value| value.as_str())
+                .or(parent_transport);
+            if device.get("fstype").and_then(|value| value.as_str()) == Some("btrfs")
+                && let Some(path) = device.get("path").and_then(|value| value.as_str())
+                && let Some(uuid) = device.get("uuid").and_then(|value| value.as_str())
+                && !uuid.is_empty()
+            {
+                members.push((path, uuid, transport));
+            }
+            if let Some(children) = device.get("children").and_then(|value| value.as_array()) {
+                collect_members(children, transport, members);
+            }
+        }
+    }
+    let mut members = Vec::new();
+    collect_members(devices, None, &mut members);
+    let Some((_, uuid, _)) = members
+        .iter()
+        .find(|(path, _, _)| std::path::Path::new(path) == device)
+    else {
+        return false;
+    };
+    // A missing mirror is allowed; every attached member must still be USB.
+    members
+        .iter()
+        .filter(|(_, candidate, _)| candidate == uuid)
+        .all(|(_, _, transport)| *transport == Some("usb"))
+}
+
 pub fn check(host: Host) -> Health {
     let deadline = Instant::now() + BUDGET;
     let mut checks = BTreeMap::new();
@@ -238,10 +356,18 @@ pub fn check(host: Host) -> Health {
         let tailscale = scope.spawn(|| tailscale(deadline));
         let management = scope.spawn(|| match host {
             Host::Renekton => openclaw("/healthz", deadline),
-            Host::Jayce => ssh(deadline),
+            Host::Jayce | Host::Ahri => ssh(deadline),
         });
         let startup = if host == Host::Renekton {
             Some(scope.spawn(|| openclaw("/startupz", deadline)))
+        } else {
+            None
+        };
+        let control_plane = if host == Host::Ahri {
+            Some((
+                scope.spawn(|| caddy(deadline)),
+                scope.spawn(|| usb_root(deadline)),
+            ))
         } else {
             None
         };
@@ -258,6 +384,10 @@ pub fn check(host: Host) -> Health {
             checks.insert("openclaw", result(management_ok && startup_ok));
         } else {
             checks.insert("management_ssh", result(management_ok));
+        }
+        if let Some((caddy, root)) = control_plane {
+            checks.insert("caddy", result(caddy.join().unwrap_or(false)));
+            checks.insert("usb_root", result(root.join().unwrap_or(false)));
         }
     });
     let ok = checks.values().all(|probe| probe.ok);

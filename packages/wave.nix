@@ -9,6 +9,7 @@
   iproute2,
   procps,
   glibc,
+  util-linux,
   devenv,
 }:
 rustPlatform.buildRustPackage {
@@ -35,6 +36,7 @@ rustPlatform.buildRustPackage {
             iproute2
             procps
             glibc.bin
+            util-linux
           ]
         )
       }"
@@ -46,6 +48,7 @@ rustPlatform.buildRustPackage {
     platforms = [
       "x86_64-linux"
       "aarch64-darwin"
+      "aarch64-linux"
     ];
   };
 }

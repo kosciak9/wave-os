@@ -3,6 +3,7 @@
 {
   imports = [
     ./hardware.nix
+    ../../modules/wave/nixos.nix
     "${modulesPath}/profiles/all-hardware.nix"
   ];
 
@@ -25,6 +26,14 @@
   };
   users.users.root.hashedPassword = "!";
   security.sudo.wheelNeedsPassword = false;
+
+  programs.ssh.extraConfig = ''
+    Host localhost
+      IdentityFile /var/lib/wave-os/keys/localhost
+      IdentitiesOnly yes
+      UserKnownHostsFile /var/lib/wave-os/localhost_known_hosts
+      StrictHostKeyChecking yes
+  '';
 
   services = {
     resolved.enable = true;
@@ -95,6 +104,8 @@
       "d /var/lib/wave 0755 root root -"
       "d /var/lib/wave/ssh 0755 root root -"
       "f /var/lib/wave/ssh/kosciak 0644 root root -"
+      "d /var/lib/wave-os/keys 0700 kosciak users -"
+      "f /var/lib/wave-os/localhost_known_hosts 0644 root root -"
     ];
     coredump.settings.Coredump = {
       Storage = "none";
@@ -108,7 +119,8 @@
         "nix-command"
         "flakes"
       ];
-      max-jobs = 0;
+      max-jobs = 1;
+      cores = 1;
       keep-outputs = false;
       keep-derivations = false;
     };
