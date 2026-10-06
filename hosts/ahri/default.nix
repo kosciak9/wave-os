@@ -90,10 +90,11 @@
       networkConfig.DHCP = "ipv4";
       linkConfig.RequiredForOnline = "routable";
     };
+    # sshd reads authorized keys as the login user; these are public keys.
     tmpfiles.rules = [
-      "d /var/lib/wave 0700 root root -"
-      "d /var/lib/wave/ssh 0700 root root -"
-      "f /var/lib/wave/ssh/kosciak 0600 root root -"
+      "d /var/lib/wave 0755 root root -"
+      "d /var/lib/wave/ssh 0755 root root -"
+      "f /var/lib/wave/ssh/kosciak 0644 root root -"
     ];
     coredump.settings.Coredump = {
       Storage = "none";
