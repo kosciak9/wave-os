@@ -110,10 +110,6 @@
             fi
           }
 
-          if (( $+commands[wt] )); then
-            eval "$(command wt config shell init zsh)"
-          fi
-
           cpu_count() {
             if (( $+commands[nproc] )); then
               nproc

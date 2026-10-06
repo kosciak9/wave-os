@@ -49,6 +49,12 @@ in
 {
   imports = [ ./federation.nix ];
 
+  programs.worktrunk = {
+    enable = true;
+    enableZshIntegration = true;
+    package = worktrunk;
+  };
+
   xdg.configFile."herdr/config.toml".text = ''
     onboarding = false
 
@@ -181,7 +187,6 @@ in
       fzf
       jq
       python3
-      worktrunk
     ];
 
     activation = {
