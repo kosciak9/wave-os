@@ -1,7 +1,7 @@
 use crate::{
     health, logging,
     model::*,
-    presentation, source,
+    presentation, process, source,
     state::{self, Paths},
 };
 use anyhow::{Context, Result, bail, ensure};
@@ -17,12 +17,31 @@ const SUDO: &str = if cfg!(target_os = "macos") {
     "/run/wrappers/bin/sudo"
 };
 
-fn system_attribute(host: &str) -> String {
-    if cfg!(target_os = "macos") {
+/// Deploy targets switch to their deploy-rs profile, so every generation
+/// carries the activation script deploy-rs needs to roll back to it.
+fn system_attribute(flake: &str, host: &str) -> Result<String> {
+    let output = process::capture(
+        Command::new("nix")
+            .args([
+                "--extra-experimental-features",
+                "nix-command flakes",
+                "eval",
+                "--json",
+                &format!("{flake}#deploy.nodes"),
+                "--apply",
+                &format!("nodes: nodes ? \"{host}\""),
+            ])
+            .stdin(Stdio::null()),
+        Duration::from_secs(600),
+    )?;
+    ensure!(output.success(), "cannot evaluate deploy nodes");
+    Ok(if output.stdout.trim_ascii() == b"true" {
+        format!("deploy.nodes.{host}.profiles.system.path")
+    } else if cfg!(target_os = "macos") {
         format!("darwinConfigurations.{host}.system")
     } else {
         format!("nixosConfigurations.{host}.config.system.build.toplevel")
-    }
+    })
 }
 
 /// sudo's secure_path may not contain Nix, so it receives an absolute nix-env.
@@ -47,7 +66,7 @@ fn build(flake: &str, host: &str) -> Result<PathBuf> {
             "--no-link",
             "--print-out-paths",
         ])
-        .arg(format!("{flake}#{}", system_attribute(host)))
+        .arg(format!("{flake}#{}", system_attribute(flake, host)?))
         .stdin(Stdio::null())
         .stderr(Stdio::inherit())
         .output()
@@ -119,12 +138,12 @@ pub fn switch(paths: &Paths, host: &str) -> Result<i32> {
         "built system does not record revision {commit}"
     );
     let current = Path::new(CURRENT).canonicalize()?;
-    if current == new {
+    let previous = Path::new(PROFILE).canonicalize()?;
+    if previous == new && source::revision(&current)?.as_deref() == Some(commit.as_str()) {
         presentation::success("System is already current; nothing to activate");
         logging::event("success", host, Some(&commit), "activation", Some(0));
         return Ok(0);
     }
-    let previous = Path::new(PROFILE).canonicalize()?;
     ensure!(
         state::valid_store_path(&previous),
         "current system profile is not a store path"

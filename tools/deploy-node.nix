@@ -38,6 +38,8 @@ assert config.wave.deployTarget.enable;
     "-o"
     "ConnectTimeout=10"
   ];
+  # The canary watcher compares event paths; on darwin /tmp is a symlink to /private/tmp.
+  tempPath = if isDarwin then "/private/tmp" else "/tmp";
   remoteBuild = true;
   autoRollback = true;
   magicRollback = true;
