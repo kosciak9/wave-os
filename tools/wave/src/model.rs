@@ -13,6 +13,7 @@ pub const ACTIVATION_TIMEOUT: u64 = 300;
 pub enum Host {
     Renekton,
     Jayce,
+    Ahri,
 }
 
 impl Host {
@@ -20,6 +21,7 @@ impl Host {
         match self {
             Self::Renekton => "renekton",
             Self::Jayce => "jayce",
+            Self::Ahri => "ahri",
         }
     }
 
@@ -27,6 +29,7 @@ impl Host {
         match self {
             Self::Renekton => "aarch64-darwin",
             Self::Jayce => "x86_64-linux",
+            Self::Ahri => "aarch64-linux",
         }
     }
 }

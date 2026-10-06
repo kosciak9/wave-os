@@ -61,6 +61,8 @@ fn local_host() -> Result<Host> {
         Host::Renekton
     } else if cfg!(all(target_os = "linux", target_arch = "x86_64")) {
         Host::Jayce
+    } else if cfg!(all(target_os = "linux", target_arch = "aarch64")) {
+        Host::Ahri
     } else {
         anyhow::bail!("unsupported Wave platform")
     };

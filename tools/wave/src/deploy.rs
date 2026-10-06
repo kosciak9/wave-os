@@ -60,6 +60,7 @@ fn runtime_flake(
     let system = match host {
         Host::Renekton => "source.darwinConfigurations.renekton.config.system.build.toplevel",
         Host::Jayce => "source.nixosConfigurations.jayce.config.system.build.toplevel",
+        Host::Ahri => "source.nixosConfigurations.ahri.config.system.build.toplevel",
     };
     let text = format!(
         r#"{{
@@ -140,7 +141,7 @@ fn passed(output: process::Output) -> Result<Vec<u8>> {
     Ok(output.stdout)
 }
 
-fn validate(meta: &Metadata, commit: &str, temp: &Path) -> Result<()> {
+fn validate(meta: &Metadata, commit: &str, temp: &Path, host: Host) -> Result<()> {
     ensure!(
         meta.hostname == "localhost"
             && meta.ssh_user == "kosciak"
@@ -158,7 +159,7 @@ fn validate(meta: &Metadata, commit: &str, temp: &Path) -> Result<()> {
             && meta.activation_timeout == ACTIVATION_TIMEOUT
             && meta.auto_rollback
             && meta.magic_rollback
-            && meta.interactive_sudo,
+            && meta.interactive_sudo == (host != Host::Ahri),
         "deployment protocol mismatch"
     );
     ensure!(
@@ -488,7 +489,7 @@ pub fn switch(paths: &Paths, host: Host, approval: Option<&str>) -> Result<i32> 
         true,
         Task::Metadata,
     )?)?)?;
-    validate(&meta, &commit, &temp)?;
+    validate(&meta, &commit, &temp, host)?;
     logging::event("start", host, Some(&commit), "build", None);
     presentation::section(Step::Build);
     let targets = [
