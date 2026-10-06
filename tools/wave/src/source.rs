@@ -110,7 +110,10 @@ pub fn refresh(paths: &Paths) -> Result<String> {
 }
 
 pub fn flake(paths: &Paths, commit: &str) -> String {
-    format!("git+file://{}?rev={commit}", paths.source.display())
+    format!(
+        "git+file://{}?ref=refs/remotes/origin/main&rev={commit}&shallow=1",
+        paths.source.display()
+    )
 }
 
 /// The Wave revision a system closure was built from, if recorded.
