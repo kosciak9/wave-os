@@ -25,6 +25,7 @@ let
     builtins.toJSON {
       "$schema" = "https://json.schemastore.org/claude-code-settings.json";
       disableAgentView = true;
+      theme = "custom:kanagawa";
       spinnerTipsEnabled = false;
       spinnerVerbs = {
         mode = "replace";
@@ -197,6 +198,11 @@ in
   };
 
   home = {
+    file."claude-kanagawa-theme" = {
+      target = "${claudeDirectory}/themes/kanagawa.json";
+      text = builtins.toJSON (import ./claude-kanagawa.nix);
+    };
+
     packages = with pkgs; [
       herdr
       antigravity-cli
