@@ -40,6 +40,8 @@ class WorkspacePolicy(Middleware):
                 description = "Create a text or HTML Gmail draft, optionally as a reply. Does not send mail or read host files, attachment URLs or account signatures."
                 for key in ("attachments", "from_email", "include_signature"):
                     properties.pop(key, None)
+            elif tool.name == "get_gmail_attachment_content":
+                description = "Download a Gmail attachment. Read it in the sandbox at /workspace/attachments/<Saved filename> using the Saved filename from the response, not the host-side Saved to path. Downloads expire after one hour; copy files elsewhere in /workspace to retain them."
             if "full" in properties:
                 properties["full"] = {
                     **properties["full"],

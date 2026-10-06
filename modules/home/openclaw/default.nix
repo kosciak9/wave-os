@@ -105,6 +105,7 @@ let
     "search_gmail_messages"
     "get_gmail_message_content"
     "get_gmail_messages_content_batch"
+    "get_gmail_attachment_content"
     "get_gmail_thread_content"
     "get_gmail_threads_content_batch"
     "list_gmail_labels"
@@ -119,7 +120,6 @@ let
   workspaceMcpDeniedTools = [
     "send_gmail_message"
     "start_google_auth"
-    "get_gmail_attachment_content"
     "batch_modify_gmail_message_labels"
     "manage_gmail_label"
     "manage_gmail_filter"
@@ -607,7 +607,8 @@ let
         printf '%s\n' "refusing to start Workspace MCP: invalid configured Google account" >&2
         exit 1
       fi
-      install -d -m 0700 -- "$state_directory" "$state_directory/credentials" "$state_directory/logs"
+      attachment_directory=${lib.escapeShellArg "${workspace}/attachments"}
+      install -d -m 0700 -- "$state_directory" "$state_directory/credentials" "$state_directory/logs" "$attachment_directory"
       cd "$state_directory"
       exec ${pkgs.coreutils}/bin/env -i \
         HOME="$state_directory" PATH="$PATH" \
@@ -615,6 +616,7 @@ let
         PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1 \
         GOOGLE_CLIENT_SECRET_PATH="$client_file" USER_GOOGLE_EMAIL="$email" \
         WORKSPACE_MCP_CREDENTIALS_DIR="$state_directory/credentials" \
+        WORKSPACE_ATTACHMENT_DIR="$attachment_directory" \
         WORKSPACE_MCP_LOG_DIR="$state_directory/logs" WORKSPACE_MCP_LOG_LEVEL=WARNING \
         ${pkgs.workspace-mcp.pythonEnvironment}/bin/python \
         ${../../../packages/workspace-mcp/launcher.py} ${workspaceMcpPolicy}
