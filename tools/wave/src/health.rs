@@ -92,10 +92,14 @@ pub fn print(report: &Health) {
     );
 }
 
+/// Services restarted by activation need a moment before the first probe.
+const SETTLE: Duration = Duration::from_secs(5);
+
 /// Waits until the host passes `streak` consecutive checks, or fails at the deadline.
 pub fn wait(manifest: &Path, timeout: Duration, streak: u32) -> bool {
     let deadline = Instant::now() + timeout;
     let mut passed = 0;
+    std::thread::sleep(SETTLE);
     loop {
         let sample = Instant::now() + Duration::from_secs(5);
         let report = check_manifest(manifest);
