@@ -1,4 +1,0 @@
-{
-  "$schema": "https://opencode.ai/tui.json",
-  "plugin": ["@slkiser/opencode-quota@4.9.0", "./herdr-tui-session.js"],
-}

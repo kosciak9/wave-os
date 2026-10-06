@@ -1,113 +1,67 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "lsp": true,
   "model": "openai/gpt-6.1-sol",
-  "small_model": "openai/gpt-6-luna",
   "default_agent": "ଚ",
-  "plugin": [
-    // [
-    //   "@plannotator/opencode@0.27.25",
-    //   {
-    //     "workflow": "plan-agent",
-    //     "planningAgents": ["brainstorm-planner"],
-    //     "runtime": "cli",
-    //   },
-    // ],
-    "opencode-websearch@0.6.0",
-    "@slkiser/opencode-quota@4.9.0",
-    "cc-safety-net@2.4.1",
-  ],
-  "tools": {
-    "quota_status": false,
-  },
+  // Nix owns the binary. Do not let the CLI replace it.
+  "update": "disable",
+  "plugins": ["cc-safety-net@2.6.0"],
+  // Use the anonymous Parallel MCP instead of a separate search provider.
+  "websearch": false,
   "mcp": {
-    "context7": {
-      "type": "local",
-      "command": [
-        "sh",
-        "-c",
-        "if CONTEXT7_API_KEY=$(pass show context7.com/api-key 2>/dev/null); then export CONTEXT7_API_KEY; else unset CONTEXT7_API_KEY; fi; exec npx -y @upstash/context7-mcp@4.1.1",
-      ],
-      "enabled": true,
+    "servers": {
+      "context7": {
+        "type": "local",
+        "command": [
+          "sh",
+          "-c",
+          "if CONTEXT7_API_KEY=$(pass show context7.com/api-key 2>/dev/null); then export CONTEXT7_API_KEY; else unset CONTEXT7_API_KEY; fi; exec npx -y @upstash/context7-mcp@4.1.1",
+        ],
+        "codemode": false,
+      },
+      // Anonymous free tier. OAuth is on by default for remote servers and this
+      // endpoint does not use it.
+      "parallel-search": {
+        "type": "remote",
+        "url": "https://search.parallel.ai/mcp",
+        "oauth": false,
+        "codemode": false,
+      },
     },
   },
-  "permission": {
-    "external_directory": {
-      "~/Developer/personal/wave-os/**": "allow",
-      "~/Developer/personal/wave-os.*/**": "allow",
-      "~/.local/state/wave/**": "allow",
-      "/nix/store/**": "allow",
-      "/nix/var/log/nix/**": "allow",
-    },
-    "bash": {
-      "*": "allow",
-      "git status *": "allow",
-      "git diff *": "allow",
-      "git show *": "allow",
-      "git log *": "allow",
-      "git ls-files *": "allow",
-      "git rev-parse *": "allow",
-      "git grep *": "allow",
-
-      "gh search *": "allow",
-      "gh repo view *": "allow",
-      "gh issue list *": "allow",
-      "gh issue view *": "allow",
-      "gh pr list *": "allow",
-      "gh pr view *": "allow",
-      "gh pr diff *": "allow",
-
-      "npm view *": "allow",
-      "npm info *": "allow",
-      "npm search *": "allow",
-    },
-    "edit": "deny",
-  },
-  "agent": {
+  "agents": {
     "title": {
-      "model": "openai/gpt-6-luna",
-      "variant": "low",
+      "model": "openai/gpt-6-luna#low",
     },
     "summary": {
-      "model": "openai/gpt-6.1-sol",
-      "variant": "medium",
+      "model": "openai/gpt-6.1-sol#medium",
     },
     "compaction": {
-      "model": "openai/gpt-6.1-sol",
-      "variant": "medium",
+      "model": "openai/gpt-6.1-sol#medium",
     },
     "ଚ": {
       "mode": "primary",
-      "model": "openai/gpt-6.1-sol-fast",
-      "variant": "medium",
-      "permission": {
-        "edit": "allow",
-        "question": "allow",
-      },
+      "model": "openai/gpt-6.1-sol-fast#medium",
     },
     "build": {
-      "disable": true,
+      "disabled": true,
     },
     "plan": {
-      "disable": true,
+      "disabled": true,
     },
     "general": {
-      "model": "openai/gpt-6.1-sol",
-      "variant": "medium",
-      "permission": {
-        "edit": "allow",
-        "task": "allow",
-      },
+      "model": "openai/gpt-6.1-sol#medium",
+      // The built-in general agent denies launching subagents.
+      "permissions": [{ "action": "subagent", "resource": "*", "effect": "allow" }],
     },
     "explore": {
       "description": "Codebase and documentation researcher with file reading/search, Bash, web search/fetch, and Context7. No edit or skill tools; include task-specific instructions and relevant context when delegating.",
-      "model": "openai/gpt-6-luna",
-      "variant": "low",
-      "permission": {
-        "edit": "deny",
-        "context7_*": "allow",
-        "skill": "deny",
-      },
+      "model": "openai/gpt-6-luna#low",
+      // The built-in explore agent denies everything except reads and web tools.
+      "permissions": [
+        { "action": "shell", "resource": "*", "effect": "allow" },
+        { "action": "context7_*", "resource": "*", "effect": "allow" },
+        { "action": "parallel-search_*", "resource": "*", "effect": "allow" },
+      ],
     },
   },
 }
