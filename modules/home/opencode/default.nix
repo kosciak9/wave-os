@@ -7,18 +7,13 @@
   ];
 
   xdg.configFile = {
-    "opencode/agent" = {
-      source = ./config/agent;
+    "opencode/agents" = {
+      source = ./config/agents;
       force = true;
       recursive = true;
     };
-    "opencode/command" = {
-      source = ./config/command;
-      force = true;
-      recursive = true;
-    };
-    "opencode/opencode-quota" = {
-      source = ./config/opencode-quota;
+    "opencode/commands" = {
+      source = ./config/commands;
       force = true;
       recursive = true;
     };
@@ -30,8 +25,8 @@
       inputs.herdr + "/src/integration/assets/opencode/herdr-agent-state.js";
     "opencode/herdr-tui-session.js".source =
       inputs.herdr + "/src/integration/assets/opencode/herdr-tui-session.js";
-    "opencode/tui.jsonc" = {
-      source = ./config/tui.jsonc;
+    "opencode/cli.json" = {
+      source = ./config/cli.json;
       force = true;
     };
   };
