@@ -24,6 +24,7 @@ let
   claudeSettings = pkgs.writeText "claude-settings.json" (
     builtins.toJSON {
       "$schema" = "https://json.schemastore.org/claude-code-settings.json";
+      disableAgentView = true;
       spinnerTipsEnabled = false;
       spinnerVerbs = {
         mode = "replace";
