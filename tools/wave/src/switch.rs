@@ -62,7 +62,9 @@ fn build(flake: &str, host: &str) -> Result<PathBuf> {
 }
 
 fn sudo(arguments: &[&std::ffi::OsStr]) -> Result<bool> {
+    // -H: root's HOME, which Nix and darwin activation expect.
     Ok(Command::new(SUDO)
+        .arg("-H")
         .args(arguments)
         .current_dir("/")
         .status()
@@ -83,8 +85,7 @@ fn activate(system: &Path) -> Result<bool> {
         return Ok(false);
     }
     if cfg!(target_os = "macos") {
-        // -H: darwin activation expects root's HOME.
-        sudo(&["-H".as_ref(), system.join("activate").as_os_str()])
+        sudo(&[system.join("activate").as_os_str()])
     } else {
         sudo(&[
             system.join("bin/switch-to-configuration").as_os_str(),
