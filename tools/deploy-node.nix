@@ -37,6 +37,11 @@ assert config.wave.deployTarget.enable;
     "BatchMode=yes"
     "-o"
     "ConnectTimeout=10"
+    # A silently dropped connection must fail the deploy instead of hanging it.
+    "-o"
+    "ServerAliveInterval=15"
+    "-o"
+    "ServerAliveCountMax=4"
   ];
   # The canary watcher compares event paths; on darwin /tmp is a symlink to /private/tmp.
   tempPath = if isDarwin then "/private/tmp" else "/tmp";
