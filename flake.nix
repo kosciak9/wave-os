@@ -154,6 +154,7 @@
           };
         }
         // prev.lib.optionalAttrs prev.stdenv.hostPlatform.isDarwin {
+          asr-benchmark = final.callPackage ./packages/asr-benchmark.nix { };
           browser-decision = final.callPackage ./packages/browser-decision.nix { };
           camofox-openclaw-plugin = final.callPackage ./packages/camofox-openclaw-plugin.nix { };
           openclawRuntimePlugins = (prev.openclawRuntimePlugins or { }) // {
@@ -299,6 +300,7 @@
             workspace-mcp
             camofox-browser-source
             camofox-openclaw-plugin
+            asr-benchmark
             browser-decision
             camofox-browser-cli
             ;
