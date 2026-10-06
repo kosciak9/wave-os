@@ -72,6 +72,7 @@ pub fn refresh(paths: &Paths) -> Result<String> {
             parent,
             &[
                 "clone",
+                "--quiet",
                 "--depth",
                 "1",
                 "--single-branch",
@@ -94,6 +95,7 @@ pub fn refresh(paths: &Paths) -> Result<String> {
             &paths.source,
             &[
                 "fetch",
+                "--quiet",
                 "--depth",
                 "1",
                 "--no-tags",
