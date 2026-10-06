@@ -5,11 +5,12 @@ let
 
   anchorRules = pkgs.writeText "wave-renekton-pf-anchor" ''
     # Tailscale ranges are required because utun interfaces are shared by tunnels.
-    pass in quick on utun* inet from 100.64.0.0/10 to any keep state label "wave tailscale ipv4"
-    pass in quick on utun* inet6 from fd7a:115c:a1e0::/48 to any keep state label "wave tailscale ipv6"
+    # `flags any` picks up connections established before a (re)load instead of dropping them.
+    pass in quick on utun* inet from 100.64.0.0/10 to any flags any keep state label "wave tailscale ipv4"
+    pass in quick on utun* inet6 from fd7a:115c:a1e0::/48 to any flags any keep state label "wave tailscale ipv6"
 
-    pass quick on lo0 all label "wave loopback"
-    pass out quick all keep state label "wave outbound"
+    pass quick on lo0 all flags any keep state label "wave loopback"
+    pass out quick all flags any keep state label "wave outbound"
 
     pass in quick inet proto udp from any port 5353 to 224.0.0.251 port 5353 keep state label "wave bonjour ipv4"
     pass in quick inet6 proto udp from any port 5353 to ff02::fb port 5353 keep state label "wave bonjour ipv6"
@@ -52,7 +53,8 @@ let
     # pfctl atomically replaces only this anchor; the stock /etc/pf.conf is untouched.
     /sbin/pfctl -a ${anchorName} -f ${anchorRules}
 
-    if ! enableOutput=$(/sbin/pfctl -E); then
+    # pfctl reports the enable token on stderr.
+    if ! enableOutput=$(/sbin/pfctl -E 2>&1); then
       /usr/bin/printf '%s\n' "pfctl -E failed" >&2
       exit 1
     fi
