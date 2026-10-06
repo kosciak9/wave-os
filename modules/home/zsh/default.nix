@@ -5,6 +5,11 @@
 }:
 
 {
+  home.language = {
+    base = "en_US.UTF-8";
+    ctype = "en_US.UTF-8";
+  };
+
   home.packages = [
     pkgs.mosh
     pkgs.zsh-completions
