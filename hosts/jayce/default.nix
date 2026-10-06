@@ -227,6 +227,7 @@ in
   virtualisation.podman.enable = true;
 
   programs = {
+    nix-ld.enable = true;
     fuse.enable = true;
     gnupg.agent = {
       enable = true;
