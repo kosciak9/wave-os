@@ -5,6 +5,7 @@
   git,
   openssh,
   nvd,
+  deploy-rs,
 }:
 rustPlatform.buildRustPackage {
   pname = "wave";
@@ -23,6 +24,7 @@ rustPlatform.buildRustPackage {
           git
           openssh
           nvd
+          deploy-rs
         ]
       }"
   '';

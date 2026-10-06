@@ -105,7 +105,9 @@
       packageOverlay =
         final: prev:
         {
-          wave = final.callPackage ./packages/wave.nix { };
+          wave = final.callPackage ./packages/wave.nix {
+            deploy-rs = inputs.deploy-rs.packages.${final.stdenv.hostPlatform.system}.deploy-rs;
+          };
           herdr-auto-title = final.callPackage ./packages/herdr-auto-title.nix {
             src = inputs.herdr-auto-title;
           };
@@ -182,6 +184,12 @@
       };
       kanagawa-kvantum = pkgs.callPackage ./packages/kanagawa-kvantum.nix {
         src = inputs.kanagawa-kvantum;
+      };
+      renektonNode = import ./tools/deploy-node.nix {
+        pkgs = darwinPkgs;
+        deployLib = inputs.deploy-rs.lib.${darwinSystem};
+        configuration = self.darwinConfigurations.renekton;
+        hostname = "renekton";
       };
     in
     {
@@ -299,6 +307,12 @@
           deploy-rs = inputs.deploy-rs.packages.${ahriSystem}.deploy-rs;
           inherit (ahriPkgs) wave;
         };
+      };
+      deploy.nodes = {
+        renekton = renektonNode;
+      };
+      checks.${darwinSystem} = inputs.deploy-rs.lib.${darwinSystem}.deployChecks {
+        nodes.renekton = renektonNode;
       };
     };
 }

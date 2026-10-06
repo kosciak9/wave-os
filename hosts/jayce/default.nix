@@ -87,6 +87,8 @@ in
     graphics.enable = true;
   };
 
+  wave.deployer.enable = true;
+
   services = {
     openssh = {
       enable = true;

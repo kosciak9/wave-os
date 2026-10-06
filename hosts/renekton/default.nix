@@ -94,6 +94,7 @@
   services.openssh.enable = true;
 
   wave = {
+    deployTarget.enable = true;
     health.checks = lib.listToAttrs (
       map
         (endpoint: {

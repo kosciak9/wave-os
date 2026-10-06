@@ -1,10 +1,14 @@
-{ lib, ... }:
+{ config, lib, ... }:
+let
+  cfg = config.wave;
+in
 {
   imports = [ ./common.nix ];
 
   config = lib.mkMerge [
     {
       wave = {
+        deployTarget.authorizedKeysDirectory = "/private/var/lib/wave-os/ssh";
         health.checks = {
           network = ''
             /sbin/route -n get default >/dev/null 2>&1 || /sbin/route -n get -inet6 default >/dev/null 2>&1
@@ -48,8 +52,42 @@
           wave_directory /private/var/lib/wave-os/source 0700 kosciak "$owner_group"
           wave_directory /private/var/lib/wave-os/state 0755 root wheel
           wave_directory /private/var/lib/wave-os/state/cli 0700 kosciak "$owner_group"
+          ${lib.optionalString cfg.deployTarget.enable ''
+            wave_directory ${cfg.deployTarget.authorizedKeysDirectory} 0755 root wheel
+            keys=${cfg.deployTarget.authorizedKeysDirectory}/deploy
+            if [ -L "$keys" ]; then
+              printf 'wave: unsafe file: %s\n' "$keys" >&2
+              exit 1
+            fi
+            if [ ! -e "$keys" ]; then
+              /usr/bin/install -m 0644 -o root -g wheel /dev/null "$keys"
+            fi
+          ''}
         ) || exit 1
       '';
     }
+
+    (lib.mkIf cfg.deployTarget.enable {
+      users = {
+        knownUsers = [ "deploy" ];
+        users.deploy = {
+          uid = 455;
+          gid = 20;
+          description = "Wave deployment";
+          home = "/var/empty";
+          createHome = false;
+          # zsh sources nix-darwin's /etc/zshenv, so non-interactive SSH commands find nix.
+          shell = "/bin/zsh";
+          isHidden = true;
+        };
+      };
+      security.sudo.extraConfig = ''
+        deploy ALL=(ALL) NOPASSWD: ALL
+      '';
+      determinateNix.customSettings.extra-trusted-users = [ "deploy" ];
+      services.openssh.extraConfig = ''
+        AuthorizedKeysFile .ssh/authorized_keys ${cfg.deployTarget.authorizedKeysDirectory}/%u
+      '';
+    })
   ];
 }

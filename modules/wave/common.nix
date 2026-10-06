@@ -32,6 +32,16 @@ in
       };
     };
 
+    deployer.enable = lib.mkEnableOption "deploying other hosts as their `deploy` user with ~/.ssh/wave-deploy";
+
+    deployTarget = {
+      enable = lib.mkEnableOption "the passwordless `deploy` user that deploy-rs connects as";
+      authorizedKeysDirectory = lib.mkOption {
+        type = lib.types.str;
+        readOnly = true;
+        description = "Root-owned directory with per-user authorized keys, provisioned outside the repository.";
+      };
+    };
   };
 
   config = {
@@ -61,6 +71,12 @@ in
         '';
       };
     };
+
+    programs.ssh.extraConfig = lib.mkIf cfg.deployer.enable ''
+      Match user deploy
+        IdentityFile ~/.ssh/wave-deploy
+        IdentitiesOnly yes
+    '';
 
     environment.systemPackages = [ pkgs.wave ];
     environment.etc = {

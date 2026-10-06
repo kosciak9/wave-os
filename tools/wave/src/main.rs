@@ -3,6 +3,7 @@ mod logging;
 mod model;
 mod presentation;
 mod process;
+mod remote;
 mod source;
 mod state;
 mod switch;
@@ -31,6 +32,11 @@ enum Action {
     },
     /// Build latest main for this host, activate it, and roll back if it is unhealthy
     Switch,
+    /// Deploy a node of the flake from latest main through deploy-rs over SSH
+    Deploy {
+        #[arg(value_name = "NODE")]
+        node: String,
+    },
     /// Health checks declared by the active system
     Health {
         #[arg(long)]
@@ -98,6 +104,7 @@ fn run(action: Action) -> Result<i32> {
             source::check(&owner_paths()?, &hostname()?, json)
         }
         Action::Switch => switch::switch(&owner_paths()?, &hostname()?),
+        Action::Deploy { node } => remote::deploy(&owner_paths()?, &node),
     }
 }
 
