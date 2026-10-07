@@ -58,6 +58,7 @@ stdenv.mkDerivation {
         ]
       } \
       --set PLANNOTATOR_BIN ${lib.getExe plannotator} \
+      --set CAMOFOX_USER_ID opencode \
       --set OPENCODE_DISABLE_AUTOUPDATE true
 
     runHook postInstall

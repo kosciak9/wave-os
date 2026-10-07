@@ -104,6 +104,11 @@
       ahriSystem = "aarch64-linux";
       packageOverlay =
         final: prev:
+        let
+          wrapAgentHarness = import ./packages/agent-harness.nix {
+            inherit (final) lib makeBinaryWrapper runCommand;
+          };
+        in
         {
           wave = final.callPackage ./packages/wave.nix {
             deploy-rs = inputs.deploy-rs.packages.${final.stdenv.hostPlatform.system}.deploy-rs;
@@ -139,9 +144,13 @@
           workspace-mcp = final.callPackage ./packages/workspace-mcp.nix { };
           camofox-browser-source = final.callPackage ./packages/camofox-browser-source.nix { };
           camofox-browser-cli = final.callPackage ./packages/camofox-browser-cli.nix { };
-          claude-code = final.callPackage ./packages/claude-code.nix { inherit prev; };
-          codex = final.callPackage ./packages/codex.nix { inherit prev; };
-          antigravity-cli = final.callPackage ./packages/antigravity-cli.nix { inherit prev; };
+          claude-code = wrapAgentHarness (final.callPackage ./packages/claude-code.nix {
+            inherit prev;
+          }) "claude-code";
+          codex = wrapAgentHarness (final.callPackage ./packages/codex.nix { inherit prev; }) "codex";
+          antigravity-cli = wrapAgentHarness (final.callPackage ./packages/antigravity-cli.nix {
+            inherit prev;
+          }) "antigravity";
         }
         // prev.lib.optionalAttrs prev.stdenv.hostPlatform.isLinux {
           wave-hyprland = prev.hyprland.overrideAttrs (old: {
