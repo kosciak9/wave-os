@@ -47,7 +47,7 @@ the normal conversation flow. Include the findings, context, and implications
 needed to understand your message and make the next decision. References support
 the explanation; they do not replace it.
 
-> Example: "The current module installs skills only under OpenCode's
+> Example: "The current module installs skills only under one harness's
 > configuration directory, so sharing them requires changing the installation
 > target."
 >

@@ -79,16 +79,18 @@ file. Replace `TAB_ID` with the ID returned by `open` or listed by `tabs`.
 Consult `camofox --help` before relying on optional flags or endpoint argument
 syntax. Get explicit user authorization before using generic destructive or
 administrative endpoints, or outputting sensitive data or files. Never
-circumvent OpenCode Bash permission prompts; let them gate every camofox
+circumvent the harness's shell permission prompts; let them gate every camofox
 command.
 
 ## Identity, sessions, and safety
 
-- Use a distinct, stable user identity for OpenCode (the CLI defaults to
-  `opencode`), separate from identities used by other agents or applications.
+- Use a distinct, stable user identity named after the harness (for example,
+  `opencode` or `claude-code`), separate from identities used by other agents or
+  applications. The CLI defaults to `opencode`; other harnesses pass their own
+  with `--user-id` on every command.
 - For concurrent or independent work, override both the identity and session key
   with global options (for example,
-  `camofox --user-id opencode-review --session-key task-123 open URL`) so
+  `camofox --user-id claude-code-review --session-key task-123 open URL`) so
   cookies, tabs, and page state cannot collide. Keep those overrides consistent
   for the whole task.
 - Never print, paste, log, or expose `CAMOFOX_ACCESS_KEY` (or any other auth
