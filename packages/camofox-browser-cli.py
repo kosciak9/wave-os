@@ -239,9 +239,12 @@ def tab(args):
 def main():
     parser = argparse.ArgumentParser(prog="camofox")
     parser.add_argument("--base-url", "-b", default=os.environ.get("CAMOFOX_BASE_URL", DEFAULT_URL))
-    parser.add_argument("--user", "--user-id", default=os.environ.get("CAMOFOX_USER_ID", "opencode"))
+    parser.add_argument("--user", "--user-id", default=os.environ.get("CAMOFOX_USER_ID", "manual"))
     parser.add_argument(
-        "--session", "--session-key", default=os.environ.get("CAMOFOX_SESSION_KEY", "opencode")
+        "--session",
+        "--session-key",
+        default=os.environ.get("CAMOFOX_SESSION_KEY"),
+        help="session key (defaults to the user ID)",
     )
     parser.add_argument("--tab", help="tab ID (otherwise use persisted current tab)")
     parser.add_argument("--timeout", type=float, default=30)
@@ -279,6 +282,7 @@ def main():
         command.add_argument("--tab", default=argparse.SUPPRESS, help=argparse.SUPPRESS)
 
     args = parser.parse_args()
+    args.session = args.session or args.user
     args.base_url = validate_base_url(args.base_url)
     command = args.command
     if command == "health":
