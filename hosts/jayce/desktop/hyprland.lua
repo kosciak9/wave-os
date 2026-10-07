@@ -859,8 +859,8 @@ hl.bind("CTRL + Print", hl.dsp.exec_cmd("hyprshot -m output -m active --raw | wa
 hl.bind("ALT + Print", hl.dsp.exec_cmd("hyprshot -m window -m active --raw | waytator --stdin " .. screenshotName), { description = "Capture window" })
 
 hl.bind(mod .. " + SHIFT + P", hl.dsp.dpms({ action = "disable" }), { description = "Turn displays off" })
-hl.bind("switch:on:Lid Switch", hl.dsp.exec_cmd("wave-display-reconciler notify lid-close"), { description = "Handle lid close" })
-hl.bind("switch:off:Lid Switch", hl.dsp.exec_cmd("wave-display-reconciler notify lid-open"), { description = "Handle lid open" })
+hl.bind("switch:on:Lid Switch", hl.dsp.exec_cmd("wave-display-reconciler notify lid-close"), { locked = true, description = "Handle lid close" })
+hl.bind("switch:off:Lid Switch", hl.dsp.exec_cmd("wave-display-reconciler notify lid-open"), { locked = true, description = "Handle lid open" })
 
 -- The panel already exposes a non-linear scale; use linear 2% steps with a safe raw cap of 64267.
 -- 62956 is the raw value reached by 2%- from that cap; clamp the next up step until a stable kernel fix.
@@ -875,10 +875,10 @@ hl.bind("XF86AudioMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ to
 hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"), { locked = true, description = "Toggle microphone mute" })
 hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd(brightnessUpCommand), { locked = true, repeating = true, description = "Increase brightness" })
 hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd(brightnessDownCommand), { locked = true, repeating = true, description = "Decrease brightness" })
-hl.bind("XF86AudioPlay", hl.dsp.exec_cmd("playerctl play-pause"), { description = "Play/pause media" })
-hl.bind("XF86AudioPause", hl.dsp.exec_cmd("playerctl pause"), { description = "Pause media" })
-hl.bind("XF86AudioNext", hl.dsp.exec_cmd("playerctl next"), { description = "Next track" })
-hl.bind("XF86AudioPrev", hl.dsp.exec_cmd("playerctl previous"), { description = "Previous track" })
+hl.bind("XF86AudioPlay", hl.dsp.exec_cmd("playerctl play-pause"), { locked = true, description = "Play/pause media" })
+hl.bind("XF86AudioPause", hl.dsp.exec_cmd("playerctl pause"), { locked = true, description = "Pause media" })
+hl.bind("XF86AudioNext", hl.dsp.exec_cmd("playerctl next"), { locked = true, description = "Next track" })
+hl.bind("XF86AudioPrev", hl.dsp.exec_cmd("playerctl previous"), { locked = true, description = "Previous track" })
 
 hl.bind(mod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true, description = "Drag window" })
 hl.bind(mod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true, description = "Resize window" })
