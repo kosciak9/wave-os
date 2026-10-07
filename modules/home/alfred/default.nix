@@ -18,7 +18,10 @@ let
   # MCP servers run on the host, where their data and logins are, each behind a loopback
   # Streamable HTTP bridge that only the holder of the generated token may use; every
   # container in the Podman machine can reach the host's loopback.
-  python = pkgs.workspace-mcp.pythonEnvironment;
+  # PyMuPDF renders the pages of PDF attachments for the model.
+  python = pkgs.workspace-mcp.pythonEnvironment.override (old: {
+    extraLibs = old.extraLibs ++ [ pkgs.workspace-mcp.python.pkgs.pymupdf ];
+  });
   bridges = {
     obsidian = {
       port = 18091;
@@ -44,6 +47,7 @@ let
         "get_gmail_messages_content_batch"
         "get_gmail_thread_content"
         "get_gmail_threads_content_batch"
+        "get_gmail_attachment_content"
         "list_gmail_labels"
         "list_calendars"
         "get_events"
@@ -86,7 +90,11 @@ let
   };
 
   googlePolicy = pkgs.writeText "alfred-google-mcp-policy.json" (
-    builtins.toJSON { allowedTools = bridges.google.tools; }
+    builtins.toJSON {
+      allowedTools = bridges.google.tools;
+      # The container cannot read files the server saves on the host.
+      inlineAttachments = true;
+    }
   );
   googleMcp = pkgs.writeShellApplication {
     name = "alfred-google-mcp";
