@@ -31,7 +31,11 @@ enum Action {
         json: bool,
     },
     /// Build latest main for this host, activate it, and roll back if it is unhealthy
-    Switch,
+    Switch {
+        /// Allow switching a deploy target in place, without the remote reachability check
+        #[arg(long)]
+        local: bool,
+    },
     /// Deploy a node of the flake from latest main through deploy-rs over SSH
     Deploy {
         #[arg(value_name = "NODE")]
@@ -103,7 +107,7 @@ fn run(action: Action) -> Result<i32> {
             presentation::enable(!json);
             source::check(&owner_paths()?, &hostname()?, json)
         }
-        Action::Switch => switch::switch(&owner_paths()?, &hostname()?),
+        Action::Switch { local } => switch::switch(&owner_paths()?, &hostname()?, local),
         Action::Deploy { node } => remote::deploy(&owner_paths()?, &node),
     }
 }

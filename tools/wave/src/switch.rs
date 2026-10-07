@@ -19,7 +19,7 @@ const SUDO: &str = if cfg!(target_os = "macos") {
 
 /// Deploy targets switch to their deploy-rs profile, so every generation
 /// carries the activation script deploy-rs needs to roll back to it.
-fn system_attribute(flake: &str, host: &str) -> Result<String> {
+fn deploy_target(flake: &str, host: &str) -> Result<bool> {
     let output = process::capture(
         Command::new("nix")
             .args([
@@ -35,13 +35,17 @@ fn system_attribute(flake: &str, host: &str) -> Result<String> {
         Duration::from_secs(600),
     )?;
     ensure!(output.success(), "cannot evaluate deploy nodes");
-    Ok(if output.stdout.trim_ascii() == b"true" {
+    Ok(output.stdout.trim_ascii() == b"true")
+}
+
+fn system_attribute(host: &str, deploy_target: bool) -> String {
+    if deploy_target {
         format!("deploy.nodes.{host}.profiles.system.path")
     } else if cfg!(target_os = "macos") {
         format!("darwinConfigurations.{host}.system")
     } else {
         format!("nixosConfigurations.{host}.config.system.build.toplevel")
-    })
+    }
 }
 
 /// sudo's secure_path may not contain Nix, so it receives an absolute nix-env.
@@ -56,7 +60,7 @@ fn nix_env() -> Result<PathBuf> {
     .context("nix-env is unavailable")
 }
 
-fn build(flake: &str, host: &str) -> Result<PathBuf> {
+fn build(flake: &str, attribute: &str) -> Result<PathBuf> {
     // Nix progress and errors stay on the terminal; only the out path is captured.
     let output = Command::new("nix")
         .args([
@@ -66,7 +70,7 @@ fn build(flake: &str, host: &str) -> Result<PathBuf> {
             "--no-link",
             "--print-out-paths",
         ])
-        .arg(format!("{flake}#{}", system_attribute(flake, host)?))
+        .arg(format!("{flake}#{attribute}"))
         .stdin(Stdio::null())
         .stderr(Stdio::inherit())
         .output()
@@ -121,7 +125,7 @@ fn show_changes(current: &Path, new: &Path) {
         .status();
 }
 
-pub fn switch(paths: &Paths, host: &str) -> Result<i32> {
+pub fn switch(paths: &Paths, host: &str, local: bool) -> Result<i32> {
     presentation::heading(&format!("switch · {host}"));
     let _lock = state::operation_lock(paths)?;
 
@@ -132,7 +136,21 @@ pub fn switch(paths: &Paths, host: &str) -> Result<i32> {
 
     presentation::section("Build");
     logging::event("start", host, Some(&commit), "build", None);
-    let new = build(&source::flake(paths, &commit), host)?;
+    let flake = source::flake(paths, &commit);
+    let target = deploy_target(&flake, host)?;
+    // Inside health checks cannot see a host cut off from the network; only a
+    // deployment confirmed over a fresh SSH connection from another host can.
+    if target && !local {
+        presentation::error(&format!(
+            "{host} is a deploy target: run `wave deploy {host}` from another host, \
+             or `wave switch --local` to switch without the remote reachability check"
+        ));
+        return Ok(2);
+    }
+    if local {
+        presentation::warning("Switching without the remote reachability check");
+    }
+    let new = build(&flake, &system_attribute(host, target))?;
     ensure!(
         source::revision(&new)?.as_deref() == Some(commit.as_str()),
         "built system does not record revision {commit}"
