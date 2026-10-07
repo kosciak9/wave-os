@@ -14,6 +14,10 @@ ShellRoot {
         id: caffeinate
     }
 
+    WatchService {
+        id: watch
+    }
+
     readonly property var primaryScreen: {
         const screens = Quickshell.screens
         let first = null
@@ -40,7 +44,6 @@ ShellRoot {
             Bar {
                 primary: modelData === root.primaryScreen
                 notificationService: notifications
-                caffeinateService: caffeinate
             }
         }
     }
@@ -64,9 +67,11 @@ ShellRoot {
         service: notifications
     }
 
-    NotificationCenter {
+    ControlCenter {
         targetScreen: root.primaryScreen
         service: notifications
+        caffeinateService: caffeinate
+        watchService: watch
     }
 
     OpenCodeToasts {}

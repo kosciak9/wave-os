@@ -66,4 +66,6 @@ in
     };
     Install.WantedBy = [ sessionTarget ];
   };
+
+  systemd.user.services.quickshell.Service.Environment = [ "WAVE_ITCTL=${lib.getExe itctl}" ];
 }

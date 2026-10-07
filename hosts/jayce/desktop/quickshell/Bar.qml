@@ -15,7 +15,6 @@ PanelWindow {
     required property var modelData
     required property bool primary
     required property var notificationService
-    required property var caffeinateService
 
     screen: modelData
     color: "transparent"
@@ -31,11 +30,10 @@ PanelWindow {
 
     mask: Region { item: barBackground }
 
-    component NetworkWidget: WidgetButton {
+    component NetworkWidget: Row {
         id: networkWidget
 
         property bool barVisible: true
-        property int mode: 0
         readonly property var wifiDevice: {
             const devices = Networking.devices.values
             for (const device of devices) {
@@ -57,32 +55,21 @@ PanelWindow {
         readonly property int strength: activeNetwork === null ? 0 : Math.round(activeNetwork.signalStrength * 100)
 
         visible: barVisible && wifiDevice !== null && Networking.wifiEnabled
-        inactiveOpacity: activeNetwork === null ? 0.5 : 1
+        leftPadding: 8
+        rightPadding: 8
         spacing: 5
 
-        onClicked: function(mouse) {
-            if (mouse.button === Qt.LeftButton)
-                mode = (mode + 1) % 2
-        }
-
         Image {
+            anchors.verticalCenter: parent.verticalCenter
             width: 15
             height: 15
-            source: Quickshell.shellDir + (networkWidget.activeNetwork === null ? "/assets/wifi-off.svg" : "/assets/wifi.svg")
+            source: Quickshell.shellDir + "/assets/" + (networkWidget.activeNetwork === null
+                ? "signal-wifi-off.svg"
+                : "signal-wifi-" + Math.max(1, Math.ceil(networkWidget.strength / 25)) + ".svg")
+            sourceSize.width: width
+            sourceSize.height: height
             fillMode: Image.PreserveAspectFit
-            opacity: 0.8
-        }
-
-        Text {
-            text: networkWidget.activeNetwork === null
-                ? "Not connected"
-                : networkWidget.mode === 0
-                    ? networkWidget.strength + "%"
-                    : networkWidget.strength + "% · " + networkWidget.activeNetwork.name
-            color: Theme.oldWhite
-            font.family: Theme.fontFamily
-            font.pixelSize: 11
-            font.weight: Font.Bold
+            opacity: networkWidget.activeNetwork === null ? 0.45 : 0.8
         }
     }
 
@@ -169,6 +156,8 @@ PanelWindow {
                     width: 15
                     height: 15
                     source: workspacesWidget.iconFor(workspaceButton.modelData.name)
+                    sourceSize.width: width
+                    sourceSize.height: height
                     fillMode: Image.PreserveAspectFit
                 }
 
@@ -189,7 +178,9 @@ PanelWindow {
         spacing: 4
 
         Repeater {
-            model: SystemTray.items
+            model: ScriptModel {
+                values: [...SystemTray.items.values].filter(item => !/spotify/i.test(item.id + " " + item.title))
+            }
 
             delegate: Rectangle {
                 id: trayItem
@@ -266,192 +257,68 @@ PanelWindow {
         }
     }
 
-    component BatteryWidget: WidgetButton {
+    component BatteryWidget: Item {
         id: batteryWidget
 
         property bool barVisible: true
-        property int mode: 0
         readonly property var battery: UPower.displayDevice
-        readonly property int percentage: Math.floor(battery.percentage * 100)
-        readonly property bool charging: battery.state === UPowerDeviceState.Charging
 
         visible: barVisible && battery.ready && battery.isPresent && battery.isLaptopBattery
-        spacing: 5
+        implicitWidth: batteryIcon.implicitWidth + 8
+        implicitHeight: batteryIcon.implicitHeight
 
-        function iconPath() {
-            if (charging)
-                return Quickshell.shellDir + "/assets/battery-charging.svg"
-            if (percentage < 10)
-                return Quickshell.shellDir + "/assets/battery-empty-red.svg"
-            if (percentage < 15)
-                return Quickshell.shellDir + "/assets/battery-25-red.svg"
-            if (percentage < 25)
-                return Quickshell.shellDir + "/assets/battery-25.svg"
-            if (percentage < 50)
-                return Quickshell.shellDir + "/assets/battery-50.svg"
-            if (percentage < 75)
-                return Quickshell.shellDir + "/assets/battery-75.svg"
-            return Quickshell.shellDir + "/assets/battery-full.svg"
-        }
-
-        function formatDuration(seconds) {
-            if (seconds <= 0)
-                return ""
-            const hours = Math.floor(seconds / 3600)
-            const minutes = Math.floor((seconds % 3600) / 60)
-            return hours + "h " + minutes + "m"
-        }
-
-        function statusText() {
-            if (battery.state === UPowerDeviceState.Charging) {
-                const remaining = formatDuration(battery.timeToFull)
-                return remaining ? remaining + " to full" : percentage + "%"
-            }
-            if (battery.state === UPowerDeviceState.Discharging) {
-                const remaining = formatDuration(battery.timeToEmpty)
-                return remaining ? remaining + " left" : percentage + "%"
-            }
-            return percentage + "%"
-        }
-
-        onClicked: function(mouse) {
-            if (mouse.button === Qt.LeftButton)
-                mode = (mode + 1) % 2
-        }
-
-        Image {
-            width: 18
-            height: 18
-            source: batteryWidget.iconPath()
-            fillMode: Image.PreserveAspectFit
+        BatteryIcon {
+            id: batteryIcon
+            anchors.centerIn: parent
+            level: batteryWidget.battery.percentage
+            charging: batteryWidget.battery.state === UPowerDeviceState.Charging
             opacity: 0.8
-        }
-
-        Text {
-            text: batteryWidget.mode === 0
-                ? batteryWidget.percentage + "%"
-                : batteryWidget.statusText()
-            color: batteryWidget.percentage < 15 ? Theme.waveRed : Theme.oldWhite
-            font.family: Theme.fontFamily
-            font.pixelSize: 11
-            font.weight: Font.Bold
         }
     }
 
-    component NotificationWidget: WidgetButton {
-        id: notificationWidget
+    component Indicator: Image {
+        anchors.verticalCenter: parent.verticalCenter
+        width: 13
+        height: 13
+        sourceSize.width: width
+        sourceSize.height: height
+        fillMode: Image.PreserveAspectFit
+        opacity: 0.8
+    }
 
-        property bool barVisible: true
-        readonly property string modeColor: root.notificationService.mode === root.notificationService.criticalMode
-            ? Theme.carpYellow
-            : root.notificationService.mode === root.notificationService.noneMode ? Theme.waveRed : Theme.oldWhite
+    component DndWidget: WidgetButton {
+        id: dndWidget
 
-        visible: barVisible
+        readonly property var service: root.notificationService
+
         height: 32
-        spacing: 4
-        horizontalPadding: 6
-        active: root.notificationService.centerOpen
-        activeColor: Theme.sumiInk3
-        border.width: active ? 1 : 0
-        border.color: notificationWidget.modeColor
-
-        function iconPath() {
-            if (root.notificationService.mode === root.notificationService.criticalMode)
-                return Quickshell.shellDir + "/assets/half-moon.svg"
-            if (root.notificationService.mode === root.notificationService.noneMode)
-                return Quickshell.shellDir + "/assets/xmark.svg"
-            return Quickshell.shellDir + "/assets/bell.svg"
-        }
+        horizontalPadding: 7
 
         onClicked: function(mouse) {
             if (mouse.button === Qt.LeftButton)
-                root.notificationService.toggle()
+                dndWidget.service.cycleMode()
         }
 
-        Image {
+        Indicator {
             width: 14
             height: 14
-            source: notificationWidget.iconPath()
-            fillMode: Image.PreserveAspectFit
-            opacity: 0.8
-        }
-
-        Rectangle {
-            visible: root.notificationService.history.count > 0
-            width: 5
-            height: 5
-            radius: 2.5
-            color: notificationWidget.modeColor
-        }
-    }
-
-    component CaffeinateWidget: WidgetButton {
-        id: caffeinateWidget
-
-        active: root.caffeinateService.known && root.caffeinateService.active
-        activeColor: Theme.waveBlue1
-        inactiveOpacity: root.caffeinateService.pending ? 0.65 : 1
-        border.width: root.caffeinateService.error.length > 0 ? 1 : 0
-        border.color: Theme.waveRed
-
-        onClicked: function(mouse) {
-            if (mouse.button === Qt.LeftButton)
-                root.caffeinateService.toggle()
-        }
-
-        Image {
-            width: 18
-            height: 18
-            source: Quickshell.shellDir + (caffeinateWidget.active ? "/assets/coffee-steaming.svg" : "/assets/coffee.svg")
-            fillMode: Image.PreserveAspectFit
-            opacity: root.caffeinateService.known ? 0.8 : 0.45
-        }
-
-        PopupWindow {
-            anchor.item: caffeinateWidget
-            anchor.edges: Edges.Bottom | Edges.Left
-            anchor.gravity: Edges.Bottom | Edges.Right
-            visible: caffeinateWidget.hovered
-            color: "transparent"
-            implicitWidth: 310
-            implicitHeight: caffeinateTooltip.implicitHeight + 20
-
-            Rectangle {
-                anchors.fill: parent
-                radius: 6
-                color: Theme.sumiInk1
-                border.width: 1
-                border.color: Theme.sumiInk3
-
-                Text {
-                    id: caffeinateTooltip
-                    anchors.centerIn: parent
-                    width: parent.width - 20
-                    text: "Caffeinate"
-                        + (root.caffeinateService.pending ? "\nChanging mode…"
-                            : !root.caffeinateService.known ? "\nChecking service state…"
-                            : caffeinateWidget.active ? "\nPerformance; tasks keep running.\nClick to allow automatic sleep."
-                            : "\nAutomatic sleep is allowed.\nClick to keep tasks running.")
-                        + "\nLock and display power-off remain enabled."
-                        + (root.caffeinateService.error.length > 0 ? "\n" + root.caffeinateService.error : "")
-                    color: Theme.oldWhite
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 11
-                    textFormat: Text.PlainText
-                    wrapMode: Text.Wrap
-                }
-            }
+            opacity: dndWidget.service.mode === dndWidget.service.allMode ? 0.55 : 0.9
+            source: Quickshell.shellDir + "/assets/" + (dndWidget.service.mode === dndWidget.service.criticalMode ? "half-moon.svg"
+                : dndWidget.service.mode === dndWidget.service.noneMode ? "bell-off.svg"
+                : "bell.svg")
         }
     }
 
     component ClockWidget: WidgetButton {
         id: clockWidget
 
-        property int mode: 0
+        height: 32
+        active: root.primary && root.notificationService.centerOpen
+        activeColor: Theme.sumiInk3
 
         onClicked: function(mouse) {
             if (mouse.button === Qt.LeftButton)
-                mode = (mode + 1) % 2
+                root.notificationService.toggle()
         }
 
         SystemClock {
@@ -460,14 +327,56 @@ PanelWindow {
         }
 
         Text {
-            text: Qt.formatDateTime(
-                clock.date,
-                clockWidget.mode === 0 ? "HH:mm" : "dddd, MMMM d, yyyy"
-            )
+            text: Qt.formatDateTime(clock.date, "HH:mm")
             color: Theme.oldWhite
             font.family: Theme.fontFamily
-            font.pixelSize: 11
+            font.pixelSize: 12
             font.weight: Font.Bold
+        }
+    }
+
+    component NotificationsWidget: WidgetButton {
+        id: notificationsWidget
+
+        readonly property var service: root.notificationService
+        readonly property bool hasNotifications: service.history.count > 0
+
+        height: 32
+        horizontalPadding: 7
+
+        onClicked: function(mouse) {
+            if (mouse.button === Qt.LeftButton)
+                notificationsWidget.service.clear()
+        }
+
+        Item {
+            anchors.verticalCenter: parent.verticalCenter
+            width: 16
+            height: 16
+
+            Indicator {
+                anchors.fill: parent
+                width: 16
+                height: 16
+                source: Quickshell.shellDir + "/assets/notifications.svg"
+                opacity: notificationsWidget.hasNotifications ? 0.9 : 0.35
+
+                Behavior on opacity {
+                    NumberAnimation { duration: Theme.normalDuration }
+                }
+            }
+
+            Rectangle {
+                visible: notificationsWidget.hasNotifications
+                x: parent.width - width / 2 - 1
+                y: -width / 2 + 2
+                width: 8
+                height: 8
+                radius: 4
+                color: Theme.surimiOrange
+                border.width: 1.5
+                border.color: Theme.sumiInk0
+            }
         }
     }
 
@@ -504,20 +413,22 @@ PanelWindow {
             anchors.leftMargin: 4
             anchors.rightMargin: 4
 
-            Row {
+            WorkspacesWidget {
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 8
-
-                NetworkWidget { barVisible: root.primary }
-
-                CaffeinateWidget { visible: root.primary }
+                screenName: root.modelData.name
             }
 
-            WorkspacesWidget {
+            Row {
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.verticalCenter: parent.verticalCenter
-                screenName: root.modelData.name
+                spacing: 13
+
+                DndWidget { visible: root.primary }
+
+                ClockWidget {}
+
+                NotificationsWidget { visible: root.primary }
             }
 
             Row {
@@ -530,11 +441,15 @@ PanelWindow {
                     panelWindow: root
                 }
 
-                BatteryWidget { barVisible: root.primary }
+                BatteryWidget {
+                    anchors.verticalCenter: parent.verticalCenter
+                    barVisible: root.primary
+                }
 
-                NotificationWidget { barVisible: root.primary }
-
-                ClockWidget {}
+                NetworkWidget {
+                    anchors.verticalCenter: parent.verticalCenter
+                    barVisible: root.primary
+                }
             }
         }
     }
