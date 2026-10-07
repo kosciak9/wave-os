@@ -423,6 +423,17 @@ in
       "gtk-4.0/gtk.css".source = "${pkgs.kanagawa-gtk-theme}/share/themes/Kanagawa-Dark/gtk-4.0/gtk.css";
       "gtk-4.0/gtk-dark.css".source =
         "${pkgs.kanagawa-gtk-theme}/share/themes/Kanagawa-Dark/gtk-4.0/gtk-dark.css";
+      # Remmina recreates its tray applet autostart entry whenever the file is missing.
+      "autostart/remmina-applet.desktop" = {
+        force = true;
+        text = ''
+          [Desktop Entry]
+          Type=Application
+          Name=Remmina Applet
+          Exec=remmina -i
+          Hidden=true
+        '';
+      };
     };
   };
 
