@@ -4,10 +4,11 @@ let
   anchorName = "com.apple/100.WaveRenekton";
 
   anchorRules = pkgs.writeText "wave-renekton-pf-anchor" ''
-    # Tailscale ranges are required because utun interfaces are shared by tunnels.
+    # Match Tailscale by its address ranges: macOS pf matches only exact interface
+    # names (no utun* or utun group), and Tailscale's utun number is not stable.
     # `flags any` picks up connections established before a (re)load instead of dropping them.
-    pass in quick on utun* inet from 100.64.0.0/10 to any flags any keep state label "wave tailscale ipv4"
-    pass in quick on utun* inet6 from fd7a:115c:a1e0::/48 to any flags any keep state label "wave tailscale ipv6"
+    pass in quick inet from 100.64.0.0/10 to any flags any keep state label "wave tailscale ipv4"
+    pass in quick inet6 from fd7a:115c:a1e0::/48 to any flags any keep state label "wave tailscale ipv6"
 
     pass quick on lo0 all flags any keep state label "wave loopback"
     pass out quick all flags any keep state label "wave outbound"
