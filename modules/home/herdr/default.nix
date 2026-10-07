@@ -7,7 +7,7 @@
 }:
 
 let
-  plugins = import ./plugins.nix { inherit pkgs lib; };
+  plugins = (import ./plugins.nix { inherit pkgs lib; }) // config.programs.herdr.extraPlugins;
   herdr = inputs.herdr.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs (old: {
     patches = (old.patches or [ ]) ++ [
       ./patches/worktrunk-context-menu.patch
@@ -67,7 +67,10 @@ let
   '';
 in
 {
-  imports = [ ./federation.nix ];
+  imports = [
+    ./federation.nix
+    ./plugin-options.nix
+  ];
 
   programs.worktrunk = {
     enable = true;

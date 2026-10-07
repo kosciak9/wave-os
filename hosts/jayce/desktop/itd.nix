@@ -9,6 +9,10 @@ let
           case sendWeatherCh <- struct{}{}:
           default:
           }'
+      substituteInPlace notifs.go --replace-fail \
+        '// Connect to dbus session bus' \
+        'if !k.Bool("notifs.enabled") { return nil }
+        // Connect to dbus session bus'
     '';
   });
   itctl = pkgs.writeShellScriptBin "itctl" ''
@@ -31,6 +35,8 @@ in
       };
     };
     notifs = {
+      # Only explicit itctl notifications should reach the watch.
+      enabled = false;
       translit.use = [
         "eASCII"
         "Emoji"
@@ -68,4 +74,6 @@ in
   };
 
   systemd.user.services.quickshell.Service.Environment = [ "WAVE_ITCTL=${lib.getExe itctl}" ];
+
+  programs.herdr.extraPlugins.watch-notify = pkgs.callPackage ./herdr-watch.nix { inherit itctl; };
 }
