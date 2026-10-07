@@ -304,8 +304,8 @@ in
     enable = lib.mkEnableOption "Alfred, the house-agents assistant on Telegram";
     image = lib.mkOption {
       type = lib.types.strMatching "[^@]+@sha256:[0-9a-f]{64}";
-      # house-agents c31ba38 (linux/amd64, linux/arm64)
-      default = "ghcr.io/kosciak9/house-agents@sha256:b35df5f1d4b476d1b8269ca08095d35c8b63b8a6754843e83aff2b4ed6a104ab";
+      # house-agents bba7a86 (linux/amd64, linux/arm64)
+      default = "ghcr.io/kosciak9/house-agents@sha256:e1b79e7109a7715524c6a915dc773c8d555e22f7db0e47cb85ee33bf59074ad7";
       description = "The house-agents image, pinned by digest.";
     };
     secretDirectory = lib.mkOption {
