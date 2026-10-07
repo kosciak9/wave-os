@@ -1,4 +1,8 @@
-"""Use performance on AC or with caffeinate, otherwise save battery power."""
+"""Use performance on AC or with caffeinate, otherwise save battery power.
+
+The policy applies a profile only when the power source or caffeinate changes,
+so a manual profile switch holds until the next such transition.
+"""
 
 import asyncio
 import logging
@@ -85,6 +89,7 @@ async def connect_and_run():
                     raise
 
         previous = None
+        applied_for = None
         while True:
             inhibitors = await login.call_list_inhibitors()
             active = any(
@@ -96,7 +101,9 @@ async def connect_and_run():
                 LOG.info("Caffeinate %s", "enabled" if active else "disabled")
                 previous = active
             on_battery = await upower.get_on_battery()
-            await apply_profile(active or not on_battery)
+            if (active, on_battery) != applied_for:
+                await apply_profile(active or not on_battery)
+                applied_for = (active, on_battery)
             # BlockInhibited changes only when the aggregate mask changes, so it
             # cannot identify our lock appearing alongside another sleep lock.
             await asyncio.sleep(2)
