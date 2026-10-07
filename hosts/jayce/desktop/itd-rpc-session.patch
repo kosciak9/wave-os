@@ -1,0 +1,27 @@
+diff --git a/vendor/go.elara.ws/drpc/muxserver/muxserver.go b/vendor/go.elara.ws/drpc/muxserver/muxserver.go
+--- a/vendor/go.elara.ws/drpc/muxserver/muxserver.go
++++ b/vendor/go.elara.ws/drpc/muxserver/muxserver.go
+@@ -2,7 +2,6 @@ package muxserver
+ 
+ import (
+ 	"context"
+-	"errors"
+ 	"io"
+ 	"net"
+ 
+@@ -52,12 +51,11 @@ func (s *Server) Serve(ctx context.Context, ln net.Listener) error {
+ }
+ 
+ func (s *Server) handleSession(ctx context.Context, sess *yamux.Session) {
++	defer sess.Close()
+ 	for {
+ 		conn, err := sess.Accept()
+-		if errors.Is(err, io.EOF) {
+-			break
+-		} else if err != nil {
+-			continue
++		if err != nil {
++			return
+ 		}
+ 
+ 		go s.srv.ServeOne(ctx, conn)

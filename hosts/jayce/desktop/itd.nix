@@ -3,6 +3,11 @@
 let
   sessionTarget = "wayland-session@hyprland.desktop.target";
   itd = pkgs.itd.overrideAttrs (old: {
+    postConfigure = (old.postConfigure or "") + ''
+      # Failed RPC sessions stay closed; retrying Accept spins indefinitely.
+      chmod u+w vendor/go.elara.ws/drpc/muxserver{,/muxserver.go}
+      patch -p1 < ${./itd-rpc-session.patch}
+    '';
     postPatch = (old.postPatch or "") + ''
       # A disabled weather worker never drains this channel; reconnect must not block.
       substituteInPlace main.go --replace-fail 'sendWeatherCh <- struct{}{}' 'select {
