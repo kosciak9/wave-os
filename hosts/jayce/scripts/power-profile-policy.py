@@ -1,7 +1,8 @@
 """Use performance on AC or with caffeinate, otherwise save battery power.
 
 The policy applies a profile only when the power source or caffeinate changes,
-so a manual profile switch holds until the next such transition.
+so a manual profile switch holds until the next such transition. It sleeps
+between logind and UPower property-change signals instead of polling.
 """
 
 import asyncio
@@ -24,11 +25,11 @@ async def connect_and_run():
     bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
     try:
         login_object = await bus.introspect(LOGIN, LOGIN_PATH)
-        login = bus.get_proxy_object(LOGIN, LOGIN_PATH, login_object).get_interface(
-            LOGIN + ".Manager"
-        )
+        login_proxy = bus.get_proxy_object(LOGIN, LOGIN_PATH, login_object)
+        login = login_proxy.get_interface(LOGIN + ".Manager")
         upower_object = await bus.introspect(UPOWER, UPOWER_PATH)
-        upower = bus.get_proxy_object(UPOWER, UPOWER_PATH, upower_object).get_interface(UPOWER)
+        upower_proxy = bus.get_proxy_object(UPOWER, UPOWER_PATH, upower_object)
+        upower = upower_proxy.get_interface(UPOWER)
         ppd_object = await bus.introspect(PPD, PPD_PATH)
         ppd = bus.get_proxy_object(PPD, PPD_PATH, ppd_object).get_interface(PPD)
 
@@ -88,9 +89,26 @@ async def connect_and_run():
                 else:
                     raise
 
+        changed = asyncio.Event()
+
+        def on_changed(_interface, _changed, _invalidated):
+            changed.set()
+
+        # logind signals every inhibitor start and stop through
+        # NCurrentInhibitors, even when the aggregate BlockInhibited mask stays
+        # the same; UPower signals OnBattery.
+        login_proxy.get_interface("org.freedesktop.DBus.Properties").on_properties_changed(
+            on_changed
+        )
+        upower_proxy.get_interface("org.freedesktop.DBus.Properties").on_properties_changed(
+            on_changed
+        )
+        disconnected = asyncio.ensure_future(bus.wait_for_disconnect())
+
         previous = None
         applied_for = None
         while True:
+            changed.clear()
             inhibitors = await login.call_list_inhibitors()
             active = any(
                 who == "wave-caffeinate" and "sleep" in what.split(":")
@@ -104,9 +122,11 @@ async def connect_and_run():
             if (active, on_battery) != applied_for:
                 await apply_profile(active or not on_battery)
                 applied_for = (active, on_battery)
-            # BlockInhibited changes only when the aggregate mask changes, so it
-            # cannot identify our lock appearing alongside another sleep lock.
-            await asyncio.sleep(2)
+            woken = asyncio.ensure_future(changed.wait())
+            await asyncio.wait({woken, disconnected}, return_when=asyncio.FIRST_COMPLETED)
+            if disconnected.done():
+                woken.cancel()
+                raise RuntimeError("System bus connection lost")
     finally:
         bus.disconnect()
 
