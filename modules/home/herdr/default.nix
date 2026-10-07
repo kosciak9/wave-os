@@ -39,13 +39,10 @@ let
       emojiCompletionEnabled = false;
       tui = "fullscreen";
       viewMode = "focus";
+      # Skills come from the shared Nix-managed set, not the claude.ai account.
+      syncClaudeAiSkills = false;
       # Agents browse through the camofox-browser skill instead.
-      skillOverrides = lib.genAttrs [
-        "claude-in-chrome"
-        "anthropic-skills:chrome-browser"
-        "anthropic-skills:built-in-browser"
-        "anthropic-skills:computer-use"
-      ] (_: "off");
+      skillOverrides.claude-in-chrome = "off";
     }
   );
   codexDirectory = config.home.sessionVariables.CODEX_HOME or "${config.home.homeDirectory}/.codex";
