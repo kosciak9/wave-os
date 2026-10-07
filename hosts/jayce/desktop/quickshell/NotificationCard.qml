@@ -1,7 +1,9 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Layouts
 import Quickshell
+import Quickshell.Widgets
 import "Theme.js" as Theme
 
 Rectangle {
@@ -10,12 +12,17 @@ Rectangle {
     required property var entry
     readonly property bool live: service.isLive(entry.entryKey)
     property bool compact: false
+    property string appName: ""
+    property string appIcon: ""
+    property int groupCount: 1
+    property bool expanded: false
+    signal toggleRequested()
     property string replyText: ""
     function localSource(value): string {
         const source = String(value || "").trim()
         return source.indexOf("/") === 0 || /^(file|image|qrc):/i.test(source) ? source : ""
     }
-    implicitHeight: content.implicitHeight + 16
+    implicitHeight: content.implicitHeight + 12
     radius: Theme.notificationSmallRadius
     color: "transparent"
     border.width: 0
@@ -38,6 +45,7 @@ Rectangle {
             .replace(/&gt;/g, ">")
             .replace(/&quot;/g, '"')
             .replace(/&#39;/g, "'")
+            .replace(/\n\s*\n+/g, "\n")
     }
     function stamp(): string {
         const date = new Date(Number(entry.timestamp) || 0)
@@ -47,6 +55,7 @@ Rectangle {
         return Qt.formatDateTime(date, "MMM d")
     }
 
+    HoverHandler { id: cardHover }
     MouseArea {
         anchors.fill: parent
         onClicked: root.service.invokeDefault(root.entry.entryKey)
@@ -55,49 +64,82 @@ Rectangle {
     Column {
         id: content
         anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top
-        anchors.margins: 8; spacing: 8
-        Row {
-            width: parent.width; spacing: 9
-            Item {
-                width: parent.width - 70 - 24 - 9 * 2
-                height: 24
-                Row {
-                    anchors.fill: parent
-                    spacing: 9
-                    Rectangle {
-                        visible: Number(root.entry.urgency) >= 2
-                        width: visible ? 4 : 0; height: 4; anchors.verticalCenter: parent.verticalCenter
-                        color: Theme.waveRed
-                    }
-                    Text { width: parent.width - (Number(root.entry.urgency) >= 2 ? 4 + 9 : 0); anchors.verticalCenter: parent.verticalCenter; text: String(root.entry.summary || ""); color: Theme.oldWhite; font.family: Theme.fontFamily; font.pixelSize: 11; font.weight: Font.DemiBold; textFormat: Text.PlainText; elide: Text.ElideRight; maximumLineCount: 1 }
+        anchors.topMargin: 6; spacing: 6
+        Item {
+            width: parent.width; height: 20
+            MouseArea {
+                anchors.fill: parent
+                enabled: root.groupCount > 1
+                onClicked: root.toggleRequested()
+            }
+            RowLayout {
+                anchors.fill: parent
+                spacing: 6
+                Image {
+                    visible: root.appName.length > 0
+                    Layout.preferredWidth: 14; Layout.preferredHeight: 14
+                    source: root.appIcon; fillMode: Image.PreserveAspectFit; smooth: true
+                    onStatusChanged: if (status === Image.Error) source = Quickshell.shellDir + "/assets/bell.svg"
+                }
+                Text {
+                    visible: root.appName.length > 0
+                    Layout.maximumWidth: root.width * 0.4
+                    text: root.appName; color: Theme.fujiGray; font.family: Theme.fontFamily; font.pixelSize: 11; elide: Text.ElideRight
+                }
+                Text { visible: root.appName.length > 0; text: "·"; color: Theme.fujiGray; font.family: Theme.fontFamily; font.pixelSize: 11 }
+                Rectangle {
+                    visible: Number(root.entry.urgency) >= 2
+                    Layout.preferredWidth: 4; Layout.preferredHeight: 4
+                    color: Theme.waveRed
+                }
+                Text {
+                    Layout.fillWidth: true
+                    text: String(root.entry.summary || ""); color: Theme.oldWhite; font.family: Theme.fontFamily; font.pixelSize: 11; font.weight: Font.DemiBold; textFormat: Text.PlainText; elide: Text.ElideRight; maximumLineCount: 1
+                }
+                Text {
+                    visible: cardHover.hovered
+                    Layout.preferredHeight: 20; verticalAlignment: Text.AlignVCenter
+                    text: root.stamp(); color: Theme.fujiGray; font.family: Theme.fontFamily; font.pixelSize: 11
+                }
+                Text {
+                    visible: root.groupCount > 1
+                    Layout.preferredHeight: 20; verticalAlignment: Text.AlignVCenter
+                    text: root.groupCount; color: Theme.fujiWhite; font.family: Theme.fontFamily; font.pixelSize: 11
+                }
+                Image {
+                    visible: root.groupCount > 1
+                    Layout.preferredWidth: 12; Layout.preferredHeight: 12; Layout.leftMargin: -3
+                    sourceSize.width: 12; sourceSize.height: 12
+                    source: Quickshell.shellDir + (root.expanded ? "/assets/chevron-down.svg" : "/assets/chevron-right.svg"); fillMode: Image.PreserveAspectFit
                 }
             }
-            Text { width: 70; text: root.stamp(); color: Theme.fujiGray; font.family: Theme.fontFamily; font.pixelSize: 11; elide: Text.ElideRight; horizontalAlignment: Text.AlignRight }
-            Item { width: 24; height: 24
-                Image { anchors.centerIn: parent; width: 12; height: 12; source: Quickshell.shellDir + "/assets/xmark.svg"; fillMode: Image.PreserveAspectFit; opacity: closePointer.containsMouse ? 1 : 0 }
-                MouseArea { id: closePointer; anchors.fill: parent; hoverEnabled: true; onClicked: root.service.dismissEntry(root.entry.entryKey) }
+        }
+        Row {
+            width: parent.width; spacing: 10
+            visible: notificationImageFrame.shown || bodyText.text.length > 0
+            ClippingRectangle {
+                id: notificationImageFrame
+                readonly property bool shown: root.imageSource().length > 0 && notificationImage.status === Image.Ready
+                visible: shown
+                width: shown ? 36 : 0; height: 36
+                radius: width / 2
+                color: "transparent"
+                Image {
+                    id: notificationImage
+                    anchors.fill: parent
+                    source: root.imageSource(); sourceSize.width: 72; sourceSize.height: 72
+                    fillMode: Image.PreserveAspectCrop; asynchronous: true; smooth: true
+                }
             }
-        }
-        Text {
-            width: parent.width
-            visible: text.length > 0
-            text: root.plainBody(root.entry.body)
-            color: Theme.fujiWhite; opacity: 0.82
-            font.family: Theme.fontFamily; font.pixelSize: 11
-            textFormat: Text.PlainText; wrapMode: Text.Wrap
-            maximumLineCount: root.compact ? 3 : 999999
-            elide: root.compact ? Text.ElideRight : Text.ElideNone
-        }
-        Item {
-            id: notificationImageFrame
-            width: Math.min(parent.width, root.compact ? 160 : 320)
-            height: root.compact ? 90 : 160
-            anchors.horizontalCenter: parent.horizontalCenter
-            visible: root.imageSource().length > 0 && notificationImage.status === Image.Ready
-            Image {
-                id: notificationImage
-                anchors.fill: parent
-                source: root.imageSource(); fillMode: Image.PreserveAspectFit; asynchronous: true
+            Text {
+                id: bodyText
+                width: parent.width - (notificationImageFrame.shown ? notificationImageFrame.width + parent.spacing : 0)
+                text: root.plainBody(root.entry.body)
+                color: Theme.fujiWhite; opacity: 0.82
+                font.family: Theme.fontFamily; font.pixelSize: 11
+                textFormat: Text.PlainText; wrapMode: Text.Wrap
+                maximumLineCount: root.compact ? 2 : 4
+                elide: Text.ElideRight
             }
         }
         Row {

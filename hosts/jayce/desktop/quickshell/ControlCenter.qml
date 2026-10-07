@@ -297,6 +297,7 @@ Scope {
             const key = String(row.appKey || "unknown")
             if (!byApp[key]) byApp[key] = { appKey: key, appName: row.appName, appIcon: row.appIcon, entries: [], newest: Number(row.timestamp) || 0 }
             byApp[key].entries.push({ entryKey: row.entryKey, notificationId: row.notificationId, appKey: row.appKey, appName: row.appName, appIcon: row.appIcon, desktopEntry: row.desktopEntry, image: row.image, summary: row.summary, body: row.body, urgency: row.urgency, timestamp: row.timestamp, unread: row.unread })
+            if (!byApp[key].appIcon) byApp[key].appIcon = row.appIcon || row.desktopEntry
             byApp[key].newest = Math.max(byApp[key].newest, Number(row.timestamp) || 0)
         }
         const result = Object.keys(byApp).map(function(key) {
@@ -750,40 +751,12 @@ Scope {
                                 required property var modelData
                                 property bool expandedState: !!modelData.expanded
                                 width: list.width; radius: 8; color: Theme.notificationSurfaceRaised
-                                height: groupContent.implicitHeight + Theme.notificationPadding * 2
+                                height: groupContent.implicitHeight + 8
                                 Behavior on height { NumberAnimation { duration: Theme.normalDuration; easing.type: Easing.OutCubic } }
                                 Column {
                                     id: groupContent
                                     anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top
-                                    anchors.margins: Theme.notificationPadding; spacing: 4
-                                    Item {
-                                        width: parent.width; height: 24
-                                        Image {
-                                            width: 16; height: 16; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
-                                            source: root.iconSource(modelData.appIcon); fillMode: Image.PreserveAspectFit; smooth: true
-                                            onStatusChanged: if (status === Image.Error) source = Quickshell.shellDir + "/assets/bell.svg"
-                                        }
-                                        Text {
-                                            anchors.left: parent.left; anchors.leftMargin: 23; anchors.right: groupControls.left; anchors.rightMargin: 9; anchors.verticalCenter: parent.verticalCenter
-                                             text: root.displayAppName(modelData.appName || modelData.appKey); color: Theme.fujiWhite; font.family: Theme.fontFamily; font.pixelSize: 11; font.weight: Font.DemiBold; elide: Text.ElideRight
-                                        }
-                                        Row {
-                                            id: groupControls
-                                            anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; spacing: 8; z: 2
-                                             Text { id: countLabel; text: String(modelData.entries.length); color: Theme.fujiGray; font.family: Theme.fontFamily; font.pixelSize: 11 }
-                                             Text { visible: modelData.entries.length > 1; text: groupDelegate.expandedState ? "⌄" : "›"; color: Theme.fujiGray; font.family: Theme.fontFamily; font.pixelSize: 11 }
-                                        }
-                                        MouseArea {
-                                            anchors.fill: parent
-                                            z: 0
-                                             onClicked: if (modelData.entries.length > 1) {
-                                                 groupDelegate.expandedState = !groupDelegate.expandedState
-                                                 const persisted = Object.assign({}, root.expanded)
-                                                 persisted[modelData.appKey] = groupDelegate.expandedState
-                                                 root.expanded = persisted
-                                             }
-                                        }
-                                    }
+                                    anchors.leftMargin: Theme.notificationPadding; anchors.rightMargin: Theme.notificationPadding; anchors.topMargin: 4; spacing: 0
                                     Repeater {
                                          model: modelData.entries
                                          delegate: Column {
@@ -798,7 +771,21 @@ Scope {
                                              Behavior on height { NumberAnimation { duration: Theme.normalDuration; easing.type: Easing.OutCubic } }
                                              Behavior on opacity { NumberAnimation { duration: Theme.normalDuration; easing.type: Easing.OutCubic } }
                                              Rectangle { visible: cardDelegate.index > 0; width: parent.width; height: 1; color: Theme.notificationBorder; opacity: 0.55 }
-                                             NotificationCard { id: card; width: parent.width; service: root.service; entry: cardDelegate.modelData; compact: groupDelegate.modelData.entries.length > 1 && !groupDelegate.expandedState }
+                                             NotificationCard {
+                                                 id: card
+                                                 width: parent.width; service: root.service; entry: cardDelegate.modelData
+                                                 compact: groupDelegate.modelData.entries.length > 1 && !groupDelegate.expandedState
+                                                 appName: cardDelegate.index === 0 ? root.displayAppName(groupDelegate.modelData.appName || groupDelegate.modelData.appKey) : ""
+                                                 appIcon: cardDelegate.index === 0 ? root.iconSource(groupDelegate.modelData.appIcon) : ""
+                                                 groupCount: cardDelegate.index === 0 ? groupDelegate.modelData.entries.length : 1
+                                                 expanded: groupDelegate.expandedState
+                                                 onToggleRequested: {
+                                                     groupDelegate.expandedState = !groupDelegate.expandedState
+                                                     const persisted = Object.assign({}, root.expanded)
+                                                     persisted[groupDelegate.modelData.appKey] = groupDelegate.expandedState
+                                                     root.expanded = persisted
+                                                 }
+                                             }
                                          }
                                     }
                                 }
