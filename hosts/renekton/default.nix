@@ -93,23 +93,8 @@
   services.tailscale.enable = true;
   services.openssh.enable = true;
 
-  wave = {
-    deployTarget.enable = true;
-    health.checks = lib.listToAttrs (
-      map
-        (endpoint: {
-          name = "openclaw-${endpoint}";
-          value = ''
-            ${lib.getExe pkgs.curl} -q -sSf --noproxy '*' --max-time 3 --max-filesize 65536 \
-              http://127.0.0.1:18789/${endpoint} | ${lib.getExe pkgs.jq} -e '.ok == true' >/dev/null
-          '';
-        })
-        [
-          "healthz"
-          "startupz"
-        ]
-    );
-  };
+  # The OpenClaw Gateway probes return with it; it is paused for Alfred.
+  wave.deployTarget.enable = true;
   # Tailscale 1.98+ manages /etc/resolver/ts.net itself and rejects nix-darwin's
   # symlink because it escapes os.Root("/etc/resolver").
   environment.etc."resolver/ts.net".enable = lib.mkForce false;

@@ -2,6 +2,7 @@
 {
   imports = [
     ../../modules/home/agents
+    ../../modules/home/alfred
     ../../modules/home/openclaw
     ../../modules/home/slack-mirror
     ../../modules/home/camofox
@@ -35,6 +36,11 @@
           >/dev/null 2>&1 </dev/null || true
       fi
     '';
+  };
+  services.alfred = {
+    enable = true;
+    # Podman permits one active VM; Alfred shares it with OpenClaw and Slack mirror.
+    machineName = "openclaw-sandbox";
   };
   services.slack-mirror = {
     enable = true;
