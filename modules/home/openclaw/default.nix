@@ -2044,6 +2044,8 @@ in
     };
   };
 
+  # Paused: Alfred answers on Telegram through house-agents (services.alfred) with the same bot.
+  launchd.agents."ai.openclaw.gateway".enable = lib.mkForce false;
   launchd.agents."ai.openclaw.gateway".config = {
     ProgramArguments = lib.mkForce [ "${gatewayWrapper}" ];
     EnvironmentVariables = {

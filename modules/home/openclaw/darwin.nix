@@ -159,7 +159,8 @@ in
   };
 
   launchd.agents.openclaw-app = {
-    enable = true;
+    # Paused with the Gateway it connects to.
+    enable = false;
     domain = "gui";
     config = {
       ProgramArguments = [ (lib.getExe appAgent) ];
