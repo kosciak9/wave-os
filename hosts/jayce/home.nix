@@ -119,6 +119,7 @@ let
 in
 {
   imports = [
+    ./desktop/itd.nix
     ./desktop/voxtype.nix
     ../../modules/home/agents
     ../../modules/home/cli
