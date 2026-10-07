@@ -39,6 +39,13 @@ let
       emojiCompletionEnabled = false;
       tui = "fullscreen";
       viewMode = "focus";
+      # Agents browse through the camofox-browser skill instead.
+      skillOverrides = lib.genAttrs [
+        "claude-in-chrome"
+        "anthropic-skills:chrome-browser"
+        "anthropic-skills:built-in-browser"
+        "anthropic-skills:computer-use"
+      ] (_: "off");
     }
   );
   codexDirectory = config.home.sessionVariables.CODEX_HOME or "${config.home.homeDirectory}/.codex";
