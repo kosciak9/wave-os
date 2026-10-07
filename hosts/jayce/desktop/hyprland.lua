@@ -858,7 +858,7 @@ hl.bind("Print", hl.dsp.exec_cmd("hyprshot -m region --raw | waytator --stdin " 
 hl.bind("CTRL + Print", hl.dsp.exec_cmd("hyprshot -m output -m active --raw | waytator --stdin " .. screenshotName), { description = "Capture monitor" })
 hl.bind("ALT + Print", hl.dsp.exec_cmd("hyprshot -m window -m active --raw | waytator --stdin " .. screenshotName), { description = "Capture window" })
 
-hl.bind(mod .. " + SHIFT + P", hl.dsp.dpms({ action = "disable" }), { description = "Turn displays off" })
+hl.bind(mod .. " + SHIFT + P", hl.dsp.exec_cmd([[loginctl lock-session && sleep 2 && hyprctl dispatch 'hl.dsp.dpms({ action = "disable" })']]), { description = "Lock session and turn displays off after 2 seconds" })
 hl.bind("switch:on:Lid Switch", hl.dsp.exec_cmd("wave-display-reconciler notify lid-close"), { locked = true, description = "Handle lid close" })
 hl.bind("switch:off:Lid Switch", hl.dsp.exec_cmd("wave-display-reconciler notify lid-open"), { locked = true, description = "Handle lid open" })
 
