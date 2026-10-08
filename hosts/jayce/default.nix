@@ -15,10 +15,19 @@ in
     ./user.nix
   ];
 
-  nix.settings.experimental-features = [
-    "nix-command"
-    "flakes"
-  ];
+  nix = {
+    settings.experimental-features = [
+      "nix-command"
+      "flakes"
+    ];
+    gc = {
+      automatic = true;
+      dates = "weekly";
+      options = "--delete-older-than 14d";
+      persistent = true;
+    };
+    optimise.automatic = true;
+  };
   nixpkgs.config.allowUnfree = true;
 
   boot = {
