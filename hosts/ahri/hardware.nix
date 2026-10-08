@@ -4,6 +4,24 @@
   boot = {
     initrd = {
       systemd.enable = true;
+      # udev keeps an incomplete btrfs unready forever, so "degraded" alone never mounts.
+      # After a grace period for slow USB members, mark WAVE_ROOT ready anyway.
+      services.udev.rules = ''
+        SUBSYSTEM=="block", ENV{ID_FS_LABEL}=="WAVE_ROOT", TEST=="/run/wave-root-degraded", ENV{SYSTEMD_READY}="1"
+      '';
+      systemd.services.wave-root-degraded = {
+        wantedBy = [ "initrd.target" ];
+        after = [ "systemd-udevd.service" ];
+        unitConfig.DefaultDependencies = false;
+        serviceConfig = {
+          Type = "oneshot";
+          ExecStart = [
+            "/bin/sleep 30"
+            "/bin/touch /run/wave-root-degraded"
+            "/bin/udevadm trigger --action=change --subsystem-match=block --property-match=ID_FS_LABEL=WAVE_ROOT"
+          ];
+        };
+      };
       availableKernelModules = [
         "btrfs"
         "usb_storage"
