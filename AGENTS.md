@@ -30,6 +30,8 @@
 - Do not add persistent scripts for one-time bootstrap, setup, or migrations;
   give the user sequential terminal commands and remove completed migration
   paths. Distinguish runtime, recovery, and upgrade behavior.
+- Deployment is automatic after merging to `main`, and status checks report its
+  progress.
 - The user's activation workflow requires intended configuration changes to be
   committed before any switch; agents commit only when explicitly requested and
   never run switch commands without an explicit activation request. The system
