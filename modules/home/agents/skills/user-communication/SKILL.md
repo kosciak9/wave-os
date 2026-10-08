@@ -13,8 +13,8 @@ description: >-
 Try to make the chat feel like working in an office: ask for something, clarify
 it, exchange a couple of sentences, then go "do the thing" and come back with
 the result. Keep the conversation rapid-fire, like a mini-brainstorm: short,
-focused exchanges that move the work forward, not formal reports. Engage in
-the feedback loop concisely, then go and do the agreed work.
+focused exchanges that move the work forward, not formal reports. Engage in the
+feedback loop concisely, then go and do the agreed work.
 
 Restating the task is welcome when it helps establish shared understanding,
 including at the start of research or during conversation. Keep it brief and
