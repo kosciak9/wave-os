@@ -17,7 +17,8 @@ let
 
   # MCP servers run on the host, where their data and logins are, each behind a loopback
   # Streamable HTTP bridge that only the holder of the generated token may use; every
-  # container in the Podman machine can reach the host's loopback.
+  # container in the Podman machine can reach the host's loopback. `agent` is the one who
+  # may use its tools: Alfred or a subagent.
   # PyMuPDF renders the pages of PDF attachments for the model.
   python = pkgs.workspace-mcp.pythonEnvironment.override (old: {
     extraLibs = old.extraLibs ++ [ pkgs.workspace-mcp.python.pkgs.pymupdf ];
@@ -25,6 +26,7 @@ let
   bridges = {
     obsidian = {
       port = 18091;
+      agent = "alfred";
       # In the GUI session, so macOS can ask once for access to the vault's folder.
       domain = "gui";
       command = lib.getExe obsidianMcp;
@@ -39,6 +41,7 @@ let
     };
     google = {
       port = 18092;
+      agent = "alfred";
       domain = "user";
       command = lib.getExe googleMcp;
       tools = [
@@ -56,7 +59,38 @@ let
         "manage_event"
       ];
     };
+    # The Camofox browser (modules/home/camofox); its snapshots stay out of Alfred's thread.
+    camofox = {
+      port = 18093;
+      agent = "browser";
+      domain = "user";
+      command = lib.getExe camofoxMcp;
+      tools = [
+        "camofox_create_tab"
+        "camofox_snapshot"
+        "camofox_navigate"
+        "camofox_click"
+        "camofox_type"
+        "camofox_scroll"
+        "camofox_screenshot"
+        "camofox_list_tabs"
+        "camofox_close_tab"
+      ];
+    };
   };
+  # Lightpanda ships in the image; each subagent run starts its own, so a fresh page and
+  # cookie jar. Only reading: Camofox interacts.
+  lightpanda = {
+    tools = [
+      "search"
+      "goto"
+      "markdown"
+      "links"
+    ];
+  };
+  policy =
+    agent:
+    lib.mapAttrs (_: bridge: bridge.tools) (lib.filterAttrs (_: bridge: bridge.agent == agent) bridges);
 
   requirePrivateFile = ''
     require_private_file() {
@@ -133,6 +167,23 @@ let
     '';
   };
 
+  # One Camofox session for all of Alfred's browser subagents; each works in tabs of its own.
+  camofoxMcp = pkgs.writeShellApplication {
+    name = "alfred-camofox-mcp";
+    runtimeInputs = [ pkgs.coreutils ];
+    text = ''
+      if ! access_key=$(${lib.getExe config.programs.openclaw.package} secrets store get CAMOFOX_ACCESS_KEY --plain 2>/dev/null) ||
+        [[ -z "$access_key" ]]; then
+        printf '%s\n' "could not retrieve CAMOFOX_ACCESS_KEY from the OpenClaw Secret Store" >&2
+        exit 1
+      fi
+      exec env -i HOME="$HOME" PATH="$PATH" \
+        CAMOFOX_BASE_URL=http://127.0.0.1:9377 CAMOFOX_ACCESS_KEY="$access_key" \
+        CAMOFOX_USER_ID=alfred \
+        ${lib.getExe (pkgs.callPackage ../../../packages/camofox-browser-mcp.nix { })}
+    '';
+  };
+
   bridgeAgent = name: bridge: {
     enable = true;
     inherit (bridge) domain;
@@ -155,6 +206,29 @@ let
     };
   };
 
+  browser = {
+    description = "Szuka i czyta w sieci, a w przeglądarce Camofox także klika i wypełnia formularze, również na stronach dynamicznych i chronionych przed botami.";
+    prompt = ''
+      Jesteś przeglądarką Alfreda. Dostajesz jedno zadanie w sieci i wykonujesz je dwiema
+      przeglądarkami.
+
+      Lightpanda jest szybka i tania, ale tylko czyta: search zwraca wyniki wyszukiwania, goto
+      otwiera stronę, markdown podaje jej treść (także renderowaną przez JavaScript), links jej
+      odnośniki. Zaczynaj od niej, gdy trzeba coś znaleźć albo przeczytać.
+
+      Camofox to Firefox odporny na wykrywanie botów: użyj go, gdy trzeba klikać lub pisać, albo
+      gdy Lightpanda zostaje zablokowana czy nie widzi treści. Otwórz kartę przez
+      camofox_create_tab, a stronę czytaj przez camofox_snapshot; jego odnośniki (e1, e2, …)
+      wskazują elementy dla camofox_click i camofox_type. Po każdej akcji zrób snapshot ponownie.
+
+      Nie wpisuj haseł ani kodów i niczego nie kupuj, nie wysyłaj ani nie publikuj, jeśli zadanie
+      wprost tego nie każe. Gdy strona wymaga logowania, przerwij i zgłoś to z adresem strony.
+
+      Na koniec zamknij swoje karty w Camofoksie i odpowiedz zwięźle: ustalenia z adresami źródeł, oddziel
+      fakty od wniosków i powiedz, czego nie udało się sprawdzić.
+    '';
+  };
+
   # Read by house-agents in the container; the secrets come from Podman secrets and the env file.
   agentConfig = pkgs.writeText "house-agents.config.ts" ''
     import { readFileSync } from "node:fs";
@@ -175,8 +249,19 @@ let
     ${lib.concatMapAttrsStringSep "\n" (
       name: bridge: "		${name}: bridge(${toString bridge.port}),"
     ) bridges}
+    		lightpanda: {
+    			command: "lightpanda",
+    			args: ["mcp", "--block-private-networks", "--block-cidrs", "100.64.0.0/10"],
+    		},
     	},
-    	mcp: ${builtins.toJSON (lib.mapAttrs (_: bridge: bridge.tools) bridges)},
+    	mcp: ${builtins.toJSON (policy "alfred")},
+    	subagents: {
+    		browser: {
+    			description: ${builtins.toJSON browser.description},
+    			prompt: ${builtins.toJSON browser.prompt},
+    			mcp: ${builtins.toJSON (policy "browser" // { lightpanda = lightpanda.tools; })},
+    		},
+    	},
     	stateDir: "/data/state",
     };
   '';
@@ -304,8 +389,8 @@ in
     enable = lib.mkEnableOption "Alfred, the house-agents assistant on Telegram";
     image = lib.mkOption {
       type = lib.types.strMatching "[^@]+@sha256:[0-9a-f]{64}";
-      # house-agents 71add23 (linux/amd64, linux/arm64)
-      default = "ghcr.io/kosciak9/house-agents@sha256:c7a670477c3e0d8c573daedfacfff29e7a1e204ffb1a990444747ffdf320776c";
+      # house-agents 4245f38 (linux/amd64, linux/arm64)
+      default = "ghcr.io/kosciak9/house-agents@sha256:abf581e1f934cde94d5b7ee24378c115c3a0520d7cd8fec71b3b617d3d9be128";
       description = "The house-agents image, pinned by digest.";
     };
     secretDirectory = lib.mkOption {
