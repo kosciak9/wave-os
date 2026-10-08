@@ -311,6 +311,7 @@ in
     # virsh defaults to the per-user session; VMs live in the system instance.
     variables.LIBVIRT_DEFAULT_URI = "qemu:///system";
     systemPackages = with pkgs; [
+      e2fsprogs
       gnupg
       pinentry-gnome3
       podman-compose
