@@ -167,8 +167,8 @@ in
 
   systemd = {
     sleep.settings.Sleep = {
-      HibernateDelaySec = "30min";
-      HibernateOnACPower = true;
+      HibernateDelaySec = "1h";
+      HibernateOnACPower = false;
     };
     services = {
       # Keep hibernation storage out of root snapshots; prepare this subvolume
