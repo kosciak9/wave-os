@@ -201,6 +201,12 @@
         configuration = self.darwinConfigurations.renekton;
         hostname = "renekton";
       };
+      ahriNode = import ./tools/deploy-node.nix {
+        pkgs = ahriPkgs;
+        deployLib = inputs.deploy-rs.lib.${ahriSystem};
+        configuration = self.nixosConfigurations.ahri;
+        hostname = "ahri";
+      };
     in
     {
       # TODO: Generated manuals remain enabled despite Determinate Nix's contextless options.json warning.
@@ -321,9 +327,13 @@
       };
       deploy.nodes = {
         renekton = renektonNode;
+        ahri = ahriNode;
       };
       checks.${darwinSystem} = inputs.deploy-rs.lib.${darwinSystem}.deployChecks {
         nodes.renekton = renektonNode;
+      };
+      checks.${ahriSystem} = inputs.deploy-rs.lib.${ahriSystem}.deployChecks {
+        nodes.ahri = ahriNode;
       };
     };
 }

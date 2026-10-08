@@ -28,13 +28,7 @@
   users.users.root.hashedPassword = "!";
   security.sudo.wheelNeedsPassword = false;
 
-  programs.ssh.extraConfig = ''
-    Host localhost
-      IdentityFile /var/lib/wave-os/keys/localhost
-      IdentitiesOnly yes
-      UserKnownHostsFile /var/lib/wave-os/localhost_known_hosts
-      StrictHostKeyChecking yes
-  '';
+  wave.deployTarget.enable = true;
 
   services = {
     resolved.enable = true;
@@ -105,8 +99,6 @@
       "d /var/lib/wave 0755 root root -"
       "d /var/lib/wave/ssh 0755 root root -"
       "f /var/lib/wave/ssh/kosciak 0644 root root -"
-      "d /var/lib/wave-os/keys 0700 kosciak users -"
-      "f /var/lib/wave-os/localhost_known_hosts 0644 root root -"
     ];
     coredump.settings.Coredump = {
       Storage = "none";
