@@ -113,7 +113,7 @@
         "flakes"
       ];
       max-jobs = 1;
-      cores = 1;
+      cores = 2;
       keep-outputs = false;
       keep-derivations = false;
     };
