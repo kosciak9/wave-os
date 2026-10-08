@@ -1,10 +1,14 @@
 {
   inputs,
+  lib,
   modulesPath,
   pkgs,
   ...
 }:
 
+let
+  herdr = inputs.herdr.packages.${pkgs.stdenv.hostPlatform.system}.default;
+in
 {
   imports = [
     ./hardware.nix
@@ -29,6 +33,8 @@
     isNormalUser = true;
     extraGroups = [ "wheel" ];
     hashedPassword = "!";
+    # Keeps the Herdr server reachable by the renekton coordinator without a login.
+    linger = true;
   };
   users.users.root.hashedPassword = "!";
   security.sudo.wheelNeedsPassword = false;
@@ -111,7 +117,29 @@
       "d /var/lib/wave 0755 root root -"
       "d /var/lib/wave/ssh 0755 root root -"
       "f /var/lib/wave/ssh/kosciak 0644 root root -"
+      "d /home/kosciak/.config 0755 kosciak users -"
+      "d /home/kosciak/.config/herdr 0700 kosciak users -"
+      # renekton pins this install identity in its saved-machine federation policy.
+      ''f+ /home/kosciak/.config/herdr/machine.json 0600 kosciak users - {"machine_id": "machine_9026bebb6184fc9965a24b867836dce9"}''
     ];
+    user.services.herdr = {
+      description = "Herdr default session";
+      wantedBy = [ "default.target" ];
+      restartTriggers = [ herdr ];
+      unitConfig.ConditionUser = "kosciak";
+      environment.SHELL = "${pkgs.bashInteractive}/bin/bash";
+      path = [ "/run/current-system/sw" ];
+      serviceConfig = {
+        ExecStartPre = "-${lib.getExe herdr} --session default server stop";
+        ExecStart = "${lib.getExe herdr} --session default server";
+        ExecStop = "${lib.getExe herdr} --session default server stop";
+        Restart = "on-failure";
+        RestartSec = 3;
+        KillSignal = "SIGINT";
+        KillMode = "mixed";
+        TimeoutStopSec = 30;
+      };
+    };
     coredump.settings.Coredump = {
       Storage = "none";
       ProcessSizeMax = 0;
@@ -132,7 +160,7 @@
   };
 
   environment.systemPackages = [
-    inputs.herdr.packages.${pkgs.stdenv.hostPlatform.system}.default
+    herdr
   ]
   ++ (with pkgs; [
     beamMinimalPackages.elixir
