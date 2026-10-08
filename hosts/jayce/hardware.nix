@@ -29,16 +29,16 @@
 
   fileSystems = {
     "/" = {
-      device = "/dev/mapper/luks-bc69f56b-c5a5-413e-b350-afd3ecd7aa1b";
+      device = "/dev/mapper/luks-3c161819-f22b-41cc-bea2-5be6baeb39bf";
       fsType = "btrfs";
     };
     "/home" = {
-      device = "/dev/mapper/luks-bc69f56b-c5a5-413e-b350-afd3ecd7aa1b";
+      device = "/dev/mapper/luks-3c161819-f22b-41cc-bea2-5be6baeb39bf";
       fsType = "btrfs";
       options = [ "subvol=home" ];
     };
     "/nix" = {
-      device = "/dev/mapper/luks-bc69f56b-c5a5-413e-b350-afd3ecd7aa1b";
+      device = "/dev/mapper/luks-3c161819-f22b-41cc-bea2-5be6baeb39bf";
       fsType = "btrfs";
       options = [ "subvol=nix" ];
     };
@@ -52,8 +52,8 @@
     };
   };
 
-  boot.initrd.luks.devices."luks-bc69f56b-c5a5-413e-b350-afd3ecd7aa1b".device =
-    "/dev/disk/by-uuid/bc69f56b-c5a5-413e-b350-afd3ecd7aa1b";
+  boot.initrd.luks.devices."luks-3c161819-f22b-41cc-bea2-5be6baeb39bf".device =
+    "/dev/disk/by-uuid/3c161819-f22b-41cc-bea2-5be6baeb39bf";
 
   swapDevices = [
     {
