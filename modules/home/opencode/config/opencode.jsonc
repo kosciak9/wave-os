@@ -40,7 +40,7 @@
     },
     "ଚ": {
       "mode": "primary",
-      "model": "openai/gpt-6.1-sol-fast#medium",
+      "model": "openai/gpt-6.1-sol#medium",
     },
     "build": {
       "disabled": true,
