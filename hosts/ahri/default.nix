@@ -28,7 +28,14 @@
   users.users.root.hashedPassword = "!";
   security.sudo.wheelNeedsPassword = false;
 
-  wave.deployTarget.enable = true;
+  wave = {
+    deployTarget.enable = true;
+    deployer.enable = true;
+    autoDeploy = {
+      enable = true;
+      nodes = [ "renekton" ];
+    };
+  };
 
   services = {
     resolved.enable = true;

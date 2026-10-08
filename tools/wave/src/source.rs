@@ -1,4 +1,5 @@
 use crate::{
+    github::{Ci, GitHub},
     logging,
     model::*,
     presentation, process,
@@ -129,32 +130,70 @@ pub fn revision(system: &Path) -> Result<Option<String>> {
     Ok(sha40(value).then(|| value.to_owned()))
 }
 
+/// Latest main, the revision this host runs, and whether CI passed on latest main.
+pub struct Update {
+    pub available: String,
+    pub current: Option<String>,
+    pub ci: Ci,
+}
+
+pub fn inspect(paths: &Paths, github: &GitHub) -> Result<Update> {
+    let available = refresh(paths)?;
+    let current = revision(&Path::new(CURRENT).canonicalize()?)?;
+    let ci = github.ci(&available)?;
+    Ok(Update {
+        available,
+        current,
+        ci,
+    })
+}
+
 pub fn check(paths: &Paths, host: &str, json: bool) -> Result<i32> {
     presentation::heading(&format!("check · {host}"));
     let _lock = state::operation_lock(paths)?;
-    let available = refresh(paths)?;
-    let current = revision(&Path::new(CURRENT).canonicalize()?)?;
-    let (status, code) = match current.as_deref() {
-        Some(value) if value == available => ("current", 0),
-        Some(_) => ("update_available", 1),
-        None => ("active_revision_unknown", 2),
+    let update = inspect(paths, &GitHub::from_credentials())?;
+    let (status, code) = match (update.current.as_deref(), update.ci) {
+        (Some(value), _) if value == update.available => ("current", 0),
+        (None, _) => ("active_revision_unknown", 2),
+        (Some(_), Ci::Passed) => ("update_available", 1),
+        (Some(_), Ci::Pending) => ("update_awaiting_ci", 3),
+        (Some(_), Ci::Failed) => ("update_failed_ci", 4),
     };
-    logging::event("complete", host, Some(&available), "status", Some(code));
+    let ci = match update.ci {
+        Ci::Passed => "passed",
+        Ci::Pending => "pending",
+        Ci::Failed => "failed",
+    };
+    logging::event(
+        "complete",
+        host,
+        Some(&update.available),
+        "status",
+        Some(code),
+    );
     if json {
         println!(
             "{}",
-            serde_json::json!({"status": status, "current": current, "available": available})
+            serde_json::json!({
+                "status": status,
+                "current": update.current,
+                "available": update.available,
+                "ci": ci,
+            })
         );
     } else {
         match code {
             0 => presentation::success("System is up to date"),
             1 => presentation::warning("An update is available on main"),
-            _ => presentation::warning("The active system revision is unknown"),
+            2 => presentation::warning("The active system revision is unknown"),
+            3 => presentation::warning("Main has changed; CI has not finished on it"),
+            _ => presentation::warning("Main has changed, but CI failed on it"),
         }
-        if let Some(current) = current {
-            presentation::revision("Active revision", &current);
+        if let Some(current) = &update.current {
+            presentation::revision("Active revision", current);
         }
-        presentation::revision("Latest main", &available);
+        presentation::revision("Latest main", &update.available);
+        presentation::detail(&format!("CI on latest main: {ci}"));
     }
     Ok(code)
 }

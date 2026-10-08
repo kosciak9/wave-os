@@ -7,9 +7,25 @@
 let
   cfg = config.wave;
   ip = lib.getExe' pkgs.iproute2 "ip";
+  # GitHub token for commit statuses, provisioned outside the repository; empty disables them.
+  tokenFile = "/var/lib/wave-os/github-token";
 in
 {
   imports = [ ./common.nix ];
+
+  options.wave.autoDeploy = {
+    enable = lib.mkEnableOption "deploying latest main from a timer once CI passes: this host first, then `nodes`";
+    nodes = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ ];
+      description = "Deploy nodes updated after this host, in parallel.";
+    };
+    interval = lib.mkOption {
+      type = lib.types.str;
+      default = "5min";
+      description = "Pause between runs.";
+    };
+  };
 
   config = lib.mkMerge [
     {
@@ -70,6 +86,44 @@ in
         "d ${cfg.deployTarget.authorizedKeysDirectory} 0755 root root - -"
         "f ${cfg.deployTarget.authorizedKeysDirectory}/deploy 0644 root root - -"
       ];
+    })
+
+    (lib.mkIf cfg.autoDeploy.enable {
+      assertions = [
+        {
+          assertion = cfg.autoDeploy.nodes == [ ] || cfg.deployer.enable;
+          message = "wave.autoDeploy.nodes requires wave.deployer.enable";
+        }
+      ];
+      systemd = {
+        tmpfiles.rules = [ "f ${tokenFile} 0600 root root - -" ];
+        services.wave-autodeploy = {
+          description = "Deploy latest main once CI passes";
+          wants = [ "network-online.target" ];
+          after = [ "network-online.target" ];
+          # The service activates this host itself; a restart would cut the switch short.
+          restartIfChanged = false;
+          serviceConfig = {
+            Type = "oneshot";
+            User = "kosciak";
+            ExecStart = lib.escapeShellArgs (
+              [
+                (lib.getExe pkgs.wave)
+                "autodeploy"
+              ]
+              ++ cfg.autoDeploy.nodes
+            );
+            LoadCredential = "github-token:${tokenFile}";
+          };
+        };
+        timers.wave-autodeploy = {
+          wantedBy = [ "timers.target" ];
+          timerConfig = {
+            OnBootSec = "5min";
+            OnUnitInactiveSec = cfg.autoDeploy.interval;
+          };
+        };
+      };
     })
   ];
 }

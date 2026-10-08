@@ -134,9 +134,14 @@ pub fn switch(paths: &Paths, host: &str, local: bool) -> Result<i32> {
     let commit = source::refresh(paths)?;
     presentation::revision("Latest main", &commit);
 
+    switch_to(paths, host, &commit, local)
+}
+
+/// Switches this host to `commit`, already checked out in the source copy.
+pub fn switch_to(paths: &Paths, host: &str, commit: &str, local: bool) -> Result<i32> {
     presentation::section("Build");
-    logging::event("start", host, Some(&commit), "build", None);
-    let flake = source::flake(paths, &commit);
+    logging::event("start", host, Some(commit), "build", None);
+    let flake = source::flake(paths, commit);
     let target = deploy_target(&flake, host)?;
     // Inside health checks cannot see a host cut off from the network; only a
     // deployment confirmed over a fresh SSH connection from another host can.
@@ -152,14 +157,14 @@ pub fn switch(paths: &Paths, host: &str, local: bool) -> Result<i32> {
     }
     let new = build(&flake, &system_attribute(host, target))?;
     ensure!(
-        source::revision(&new)?.as_deref() == Some(commit.as_str()),
+        source::revision(&new)?.as_deref() == Some(commit),
         "built system does not record revision {commit}"
     );
     let current = Path::new(CURRENT).canonicalize()?;
     let previous = Path::new(PROFILE).canonicalize()?;
-    if previous == new && source::revision(&current)?.as_deref() == Some(commit.as_str()) {
+    if previous == new && source::revision(&current)?.as_deref() == Some(commit) {
         presentation::success("System is already current; nothing to activate");
-        logging::event("success", host, Some(&commit), "activation", Some(0));
+        logging::event("success", host, Some(commit), "activation", Some(0));
         return Ok(0);
     }
     ensure!(
@@ -169,7 +174,7 @@ pub fn switch(paths: &Paths, host: &str, local: bool) -> Result<i32> {
     show_changes(&current, &new);
 
     presentation::section("Activation");
-    logging::event("start", host, Some(&commit), "activation", None);
+    logging::event("start", host, Some(commit), "activation", None);
     let activated = activate(&new)?;
     let healthy = if activated {
         presentation::section("Health");
@@ -179,15 +184,15 @@ pub fn switch(paths: &Paths, host: &str, local: bool) -> Result<i32> {
         false
     };
     if healthy {
-        logging::event("success", host, Some(&commit), "health", Some(0));
+        logging::event("success", host, Some(commit), "health", Some(0));
         presentation::success(&format!("Running {} and healthy", &commit[..8]));
         return Ok(0);
     }
 
     presentation::section("Rollback");
-    logging::event("start", host, Some(&commit), "rollback", None);
+    logging::event("start", host, Some(commit), "rollback", None);
     if !activate(&previous)? {
-        logging::event("failed", host, Some(&commit), "rollback", Some(1));
+        logging::event("failed", host, Some(commit), "rollback", Some(1));
         bail!(
             "rollback to {} failed; the system may be partially switched",
             previous.display()
@@ -195,7 +200,7 @@ pub fn switch(paths: &Paths, host: &str, local: bool) -> Result<i32> {
     }
     let report = health::check();
     health::print(&report);
-    logging::event("restored", host, Some(&commit), "rollback", Some(30));
+    logging::event("restored", host, Some(commit), "rollback", Some(30));
     if report.ok() {
         presentation::warning("Previous system restored and healthy");
     } else {

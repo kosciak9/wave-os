@@ -1,3 +1,5 @@
+mod autodeploy;
+mod github;
 mod health;
 mod logging;
 mod model;
@@ -25,7 +27,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Action {
-    /// Fetch main and detect updates; exit 0=current, 1=available, 2=unknown revision
+    /// Fetch main and detect updates that passed CI; exit 0=current, 1=available,
+    /// 2=unknown revision, 3=CI running on main, 4=CI failed on main
     Check {
         #[arg(long)]
         json: bool,
@@ -40,6 +43,11 @@ enum Action {
     Deploy {
         #[arg(value_name = "NODE")]
         node: String,
+    },
+    /// Deploy latest main once CI passes: this host first, the nodes on a later run
+    Autodeploy {
+        #[arg(value_name = "NODE")]
+        nodes: Vec<String>,
     },
     /// Health checks declared by the active system
     Health {
@@ -109,6 +117,7 @@ fn run(action: Action) -> Result<i32> {
         }
         Action::Switch { local } => switch::switch(&owner_paths()?, &hostname()?, local),
         Action::Deploy { node } => remote::deploy(&owner_paths()?, &node),
+        Action::Autodeploy { nodes } => autodeploy::run(&owner_paths()?, &hostname()?, &nodes),
     }
 }
 

@@ -2,6 +2,7 @@
   lib,
   rustPlatform,
   makeWrapper,
+  curl,
   git,
   openssh,
   nvd,
@@ -21,6 +22,7 @@ rustPlatform.buildRustPackage {
     wrapProgram "$out/bin/wave" \
       --prefix PATH : "/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:${
         lib.makeBinPath [
+          curl
           git
           openssh
           nvd
