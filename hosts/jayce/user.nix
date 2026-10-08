@@ -99,6 +99,7 @@ in
       shell = pkgs.zsh;
       extraGroups = [
         "audio"
+        "libvirtd"
         "networkmanager"
         "video"
         "wheel"

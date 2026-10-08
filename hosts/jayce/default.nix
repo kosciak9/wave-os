@@ -43,6 +43,14 @@ in
 
   networking = {
     hostName = "jayce";
+    # DHCP and DNS from libvirt's default NAT network.
+    firewall.interfaces.virbr0 = {
+      allowedUDPPorts = [
+        53
+        67
+      ];
+      allowedTCPPorts = [ 53 ];
+    };
     firewall.interfaces.tailscale0 = {
       allowedTCPPorts = [ 22 ];
       allowedUDPPortRanges = [
@@ -228,9 +236,23 @@ in
     };
   };
 
-  virtualisation.podman.enable = true;
+  virtualisation = {
+    podman.enable = true;
+    libvirtd = {
+      enable = true;
+      # Guests start only on request, also after a host reboot.
+      onBoot = "ignore";
+      onShutdown = "shutdown";
+      qemu = {
+        runAsRoot = false;
+        swtpm.enable = true;
+        vhostUserPackages = [ pkgs.virtiofsd ];
+      };
+    };
+  };
 
   programs = {
+    virt-manager.enable = true;
     obs-studio = {
       enable = true;
       enableVirtualCamera = true;
@@ -286,11 +308,15 @@ in
 
   environment = {
     sessionVariables.NIXOS_OZONE_WL = "1";
+    # virsh defaults to the per-user session; VMs live in the system instance.
+    variables.LIBVIRT_DEFAULT_URI = "qemu:///system";
     systemPackages = with pkgs; [
       gnupg
       pinentry-gnome3
       podman-compose
       qmk_hid
+      virt-viewer
+      vncdotool
     ];
   };
 
