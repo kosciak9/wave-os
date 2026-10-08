@@ -2,12 +2,26 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import Quickshell
+import Quickshell.Wayland
 
 ShellRoot {
     id: root
 
     NotificationService {
         id: notifications
+    }
+
+    readonly property bool slackFocused: {
+        const window = ToplevelManager.activeToplevel
+        const appId = window ? String(window.appId).toLowerCase() : ""
+        return appId === "slack" || appId === "com.slack.slack"
+    }
+
+    onSlackFocusedChanged: {
+        if (!slackFocused) return
+        // Slack does not reliably withdraw notifications after messages are read.
+        notifications.clearApp("slack")
+        notifications.clearApp("com.slack.slack")
     }
 
     Caffeinate {
