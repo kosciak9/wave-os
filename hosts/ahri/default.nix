@@ -65,10 +65,10 @@
     };
 
     journald.extraConfig = ''
-      Storage=volatile
-      RuntimeMaxUse=32M
-      RuntimeKeepFree=64M
-      MaxRetentionSec=1day
+      Storage=persistent
+      SystemMaxUse=256M
+      SystemKeepFree=1G
+      MaxRetentionSec=14day
       RateLimitIntervalSec=30s
       RateLimitBurst=1000
       ForwardToSyslog=no
