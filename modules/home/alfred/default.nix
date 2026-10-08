@@ -152,16 +152,6 @@ let
       exit 1
     fi
   '';
-  # Lightpanda ships in the image; each subagent run starts its own, so a fresh page and
-  # cookie jar. Only reading: Camofox interacts.
-  lightpanda = {
-    tools = [
-      "search"
-      "goto"
-      "markdown"
-      "links"
-    ];
-  };
   policy =
     agent:
     lib.mapAttrs (_: bridge: bridge.tools) (lib.filterAttrs (_: bridge: bridge.agent == agent) bridges);
@@ -395,6 +385,7 @@ let
     	telegram: { chatId: Number(process.env.TELEGRAM_CHAT_ID) },
     	// whisper-recording-proxy on the host.
     	whisperUrl: "http://host.containers.internal:18080/v1/audio/transcriptions",
+    	gotenbergUrl: "http://host.containers.internal:${toString gotenbergPort}",
     	mcpServers: {
     ${lib.concatMapAttrsStringSep "\n" (
       name: bridge: "		${name}: bridge(${toString bridge.port}),"
@@ -407,17 +398,15 @@ let
     			url: "http://host.containers.internal:${toString slackMirror.port}/mcp",
     			headers: { Authorization: `Bearer ''${process.env.SLACK_MIRROR_MCP_TOKEN}` },
     		},
-    		lightpanda: {
-    			command: "lightpanda",
-    			args: ["mcp", "--block-private-networks", "--block-cidrs", "100.64.0.0/10"],
-    		},
     	},
     	mcp: ${builtins.toJSON (policy "alfred" // lib.mapAttrs (_: remote: remote.tools) remotes)},
     	subagents: {
     		browser: {
     			description: ${builtins.toJSON browser.description},
     			prompt: ${builtins.toJSON browser.prompt},
-    			mcp: ${builtins.toJSON (policy "browser" // { lightpanda = lightpanda.tools; })},
+    			mcp: ${builtins.toJSON (policy "browser")},
+    			// Lightpanda from the image, a fresh one for each run; only reading: Camofox interacts.
+    			lightpanda: true,
     		},
     	},
     	stateDir: "/data/state",
@@ -560,8 +549,8 @@ in
     enable = lib.mkEnableOption "Alfred, the house-agents assistant on Telegram";
     image = lib.mkOption {
       type = lib.types.strMatching "[^@]+@sha256:[0-9a-f]{64}";
-      # house-agents 4245f38 (linux/amd64, linux/arm64)
-      default = "ghcr.io/kosciak9/house-agents@sha256:abf581e1f934cde94d5b7ee24378c115c3a0520d7cd8fec71b3b617d3d9be128";
+      # house-agents 203ff70 (linux/amd64, linux/arm64)
+      default = "ghcr.io/kosciak9/house-agents@sha256:6e8b2ed5c37f626428147ff1f0b68634aa55edc56ac3db7ea95706c1f29a40f8";
       description = "The house-agents image, pinned by digest.";
     };
     gotenbergImage = lib.mkOption {
