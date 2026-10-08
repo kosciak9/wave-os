@@ -25,6 +25,16 @@ in
         };
       };
 
+      nix = {
+        gc = {
+          automatic = true;
+          dates = "weekly";
+          options = "--delete-older-than 14d";
+          persistent = true;
+        };
+        optimise.automatic = true;
+      };
+
       systemd.tmpfiles.rules = [
         "d /var/lib/wave-os 0755 root root - -"
         "d /var/lib/wave-os/source 0700 kosciak ${config.users.users.kosciak.group} - -"

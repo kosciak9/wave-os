@@ -19,6 +19,22 @@ in
         };
       };
 
+      # Determinate Nix leaves nix-darwin's nix.gc unavailable, so prune generations directly.
+      launchd.daemons.nix-gc.serviceConfig = {
+        ProgramArguments = [
+          "/nix/var/nix/profiles/default/bin/nix-collect-garbage"
+          "--delete-older-than"
+          "14d"
+        ];
+        StartCalendarInterval = [
+          {
+            Weekday = 1;
+            Hour = 3;
+            Minute = 15;
+          }
+        ];
+      };
+
       system.activationScripts.postActivation.text = ''
         (
           set -eu

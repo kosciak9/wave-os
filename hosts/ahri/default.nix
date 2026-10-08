@@ -117,11 +117,6 @@
       keep-outputs = false;
       keep-derivations = false;
     };
-    gc = {
-      automatic = true;
-      dates = "weekly";
-      options = "--delete-older-than 14d";
-    };
   };
 
   environment.systemPackages = with pkgs; [

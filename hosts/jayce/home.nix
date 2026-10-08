@@ -194,14 +194,6 @@ in
 
   fonts.fontconfig.enable = true;
 
-  # System GC skips Home Manager generations in ~/.local/state/nix/profiles.
-  nix.gc = {
-    automatic = true;
-    dates = "weekly";
-    options = "--delete-older-than 14d";
-    persistent = true;
-  };
-
   home.pointerCursor = {
     enable = true;
     package = pkgs.adwaita-icon-theme;
