@@ -202,8 +202,48 @@ let
       allowedTools = bridges.google.tools;
       # The container cannot read files the server saves on the host.
       inlineAttachments = true;
+      gotenbergUrl = "http://127.0.0.1:${toString gotenbergPort}";
     }
   );
+
+  # Gotenberg renders attachments the model cannot read to PDF. It has no way out: an internal
+  # network, no downloads or webhooks, and Chromium loads nothing but the file it converts.
+  gotenbergPort = 18096;
+  gotenberg = pkgs.writeShellApplication {
+    name = "alfred-gotenberg";
+    runtimeInputs = [
+      pkgs.podman
+      pkgs.jq
+    ];
+    text = ''
+      transport=(podman --connection ${lib.escapeShellArg cfg.machineName})
+      deadline=$((SECONDS + 180))
+      until "''${transport[@]}" info --format json 2>/dev/null |
+        jq -e '.host.security.rootless == true' >/dev/null 2>&1; do
+        if (( SECONDS >= deadline )); then
+          printf '%s\n' "${cfg.machineName} rootless connection was not ready within 180 seconds" >&2
+          exit 1
+        fi
+        sleep 2
+      done
+      "''${transport[@]}" network exists ${containerName}-gotenberg ||
+        "''${transport[@]}" network create --internal --label io.wave-os.component=${component} \
+          ${containerName}-gotenberg >/dev/null
+      "''${transport[@]}" rm --force ${containerName}-gotenberg >/dev/null 2>&1 || true
+      exec "''${transport[@]}" run --rm --name ${containerName}-gotenberg \
+        --label io.wave-os.component=${component} \
+        --pull=missing --network ${containerName}-gotenberg --http-proxy=false \
+        --publish 127.0.0.1:${toString gotenbergPort}:3000 \
+        --cap-drop ALL --security-opt no-new-privileges --read-only \
+        --tmpfs /tmp:rw,nosuid,nodev,size=512m,mode=1777 \
+        --tmpfs /home/gotenberg:rw,nosuid,nodev,size=128m,mode=1777 \
+        --pids-limit 512 --memory 2g --cpus 2 \
+        ${lib.escapeShellArg cfg.gotenbergImage} gotenberg \
+        --api-disable-download-from --webhook-disable \
+        --chromium-disable-javascript --chromium-deny-public-ips --chromium-deny-private-ips \
+        --prometheus-disable-collect --log-level=warn
+    '';
+  };
   googleMcp = pkgs.writeShellApplication {
     name = "alfred-google-mcp";
     runtimeInputs = [
@@ -524,6 +564,11 @@ in
       default = "ghcr.io/kosciak9/house-agents@sha256:abf581e1f934cde94d5b7ee24378c115c3a0520d7cd8fec71b3b617d3d9be128";
       description = "The house-agents image, pinned by digest.";
     };
+    gotenbergImage = lib.mkOption {
+      type = lib.types.strMatching "[^@]+@sha256:[0-9a-f]{64}";
+      default = "docker.io/gotenberg/gotenberg:8.37.0@sha256:f29984bd1e226bf1b93ba90af06000afa8b315853e99d27b9aaa41b93f15c769";
+      description = "The Gotenberg image that renders attachments to PDF, pinned by digest.";
+    };
     secretDirectory = lib.mkOption {
       type = lib.types.str;
       default = "${home}/.config/secrets/alfred";
@@ -580,6 +625,20 @@ in
           Umask = 63;
           StandardOutPath = "${logDirectory}/launchd.log";
           StandardErrorPath = "${logDirectory}/launchd.error.log";
+        };
+      };
+      alfred-gotenberg = {
+        enable = true;
+        domain = "user";
+        config = {
+          ProgramArguments = [ (lib.getExe gotenberg) ];
+          RunAtLoad = true;
+          KeepAlive = true;
+          ProcessType = "Background";
+          ThrottleInterval = 30;
+          Umask = 63;
+          StandardOutPath = "/dev/null";
+          StandardErrorPath = "${logDirectory}/gotenberg.error.log";
         };
       };
     }

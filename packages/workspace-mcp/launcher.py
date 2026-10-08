@@ -15,45 +15,107 @@ PDF_PAGE_PIXELS = 1600
 MAX_TEXT_CHARS = 100_000
 MAX_IMAGE_BYTES = 10 * 1024 * 1024
 TEXT_TYPES = {"application/json", "application/xml", "application/x-yaml", "application/csv"}
+# The image formats models read; other images are converted like documents.
+MODEL_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+# What Gotenberg renders with Chromium, which keeps the look; LibreOffice takes the rest.
+CHROMIUM_TYPES = {"text/html", "application/xhtml+xml"}
+CHROMIUM_IMAGE_TYPES = {
+    "image/svg+xml",
+    "image/bmp",
+    "image/avif",
+    "image/x-icon",
+    "image/vnd.microsoft.icon",
+}
 
 
-def attachment_content(path, filename):
-    """The saved attachment as content a model reads: images, PDF pages as images, or text."""
+def pdf_pages(data, label):
+    import base64
+
+    import pymupdf
+
+    document = pymupdf.open(stream=data, filetype="pdf")
+    pages = []
+    for page in document.pages(0, min(document.page_count, MAX_PDF_PAGES)):
+        zoom = PDF_PAGE_PIXELS / max(page.rect.width, page.rect.height)
+        pixmap = page.get_pixmap(matrix=pymupdf.Matrix(zoom, zoom))
+        jpeg = base64.b64encode(pixmap.tobytes("jpeg", jpg_quality=80)).decode("ascii")
+        pages.append(ImageContent(type="image", data=jpeg, mimeType="image/jpeg"))
+    shown = f"pages 1–{len(pages)} of {document.page_count}"
+    return [TextContent(type="text", text=f"{label}, {shown}, as images:"), *pages]
+
+
+async def convert_to_pdf(data, filename, mime_type, gotenberg_url):
+    """The file rendered to PDF by Gotenberg, and the engine that rendered it.
+
+    Chromium takes HTML and the images it decodes, LibreOffice everything else,
+    picking the format by extension.
+    """
+    import html
+
+    import httpx
+
+    name = re.sub(r"[^\w.-]", "_", os.path.basename(filename or "")) or "attachment"
+    if not os.path.splitext(name)[1]:
+        name += mimetypes.guess_extension(mime_type) or ""
+    if mime_type in CHROMIUM_TYPES:
+        engine, route, files = "Chromium", "chromium/convert/html", [("files", ("index.html", data))]
+    elif mime_type in CHROMIUM_IMAGE_TYPES:
+        page = f'<img src="{html.escape(name)}" style="max-width:100%">'
+        engine, route = "Chromium", "chromium/convert/html"
+        files = [("files", ("index.html", page.encode())), ("files", (name, data))]
+    else:
+        engine, route, files = "LibreOffice", "libreoffice/convert", [("files", (name, data))]
+    async with httpx.AsyncClient(timeout=120) as client:
+        response = await client.post(f"{gotenberg_url}/forms/{route}", files=files)
+    response.raise_for_status()
+    return response.content, engine
+
+
+async def attachment_content(path, filename, gotenberg_url=None):
+    """The saved attachment as content a model reads: images, PDF pages as images, or text.
+
+    Any other file is rendered to PDF first when Gotenberg is configured, and says so.
+    """
     import base64
 
     mime_type = mimetypes.guess_type(filename or path)[0] or mimetypes.guess_type(path)[0] or ""
     with open(path, "rb") as source:
         data = source.read()
     if mime_type == "application/pdf":
-        import pymupdf
-
-        document = pymupdf.open(stream=data, filetype="pdf")
-        pages = []
-        for page in document.pages(0, min(document.page_count, MAX_PDF_PAGES)):
-            zoom = PDF_PAGE_PIXELS / max(page.rect.width, page.rect.height)
-            pixmap = page.get_pixmap(matrix=pymupdf.Matrix(zoom, zoom))
-            jpeg = base64.b64encode(pixmap.tobytes("jpeg", jpg_quality=80)).decode("ascii")
-            pages.append(ImageContent(type="image", data=jpeg, mimeType="image/jpeg"))
-        shown = f"pages 1–{len(pages)} of {document.page_count}"
-        return [TextContent(type="text", text=f"PDF, {shown}, as images:"), *pages]
-    if mime_type.startswith("image/"):
+        return pdf_pages(data, "PDF")
+    if mime_type in MODEL_IMAGE_TYPES:
         if len(data) > MAX_IMAGE_BYTES:
             return [TextContent(type="text", text=f"The image ({mime_type}) is too large to show.")]
         return [ImageContent(type="image", data=base64.b64encode(data).decode("ascii"), mimeType=mime_type)]
-    if mime_type.startswith("text/") or mime_type in TEXT_TYPES:
+    if (mime_type.startswith("text/") or mime_type in TEXT_TYPES) and not (
+        gotenberg_url and mime_type in CHROMIUM_TYPES
+    ):
         text = data.decode("utf-8", errors="replace")
         if len(text) > MAX_TEXT_CHARS:
             text = text[:MAX_TEXT_CHARS] + f"\n[… cut at {MAX_TEXT_CHARS} of {len(text)} characters]"
         return [TextContent(type="text", text=text)]
-    return [TextContent(type="text", text=f"The content of a {mime_type or 'binary'} file cannot be shown.")]
+    kind = mime_type or "binary"
+    if not gotenberg_url:
+        return [TextContent(type="text", text=f"The content of a {kind} file cannot be shown.")]
+    try:
+        pdf, engine = await convert_to_pdf(data, filename, mime_type, gotenberg_url)
+    except Exception:
+        logging.exception("Could not convert the attachment to PDF")
+        return [TextContent(type="text", text=f"The content of a {kind} file cannot be shown: converting it to PDF with Gotenberg failed.")]
+    label = (
+        f"Not the original file: this {kind} file was converted to PDF with Gotenberg ({engine}), "
+        "so it may look different from the original and anything that could not be rendered is missing; the PDF"
+    )
+    return pdf_pages(pdf, label)
 
 
 class WorkspacePolicy(Middleware):
-    def __init__(self, allowed_tools, email, inline_attachments=False):
+    def __init__(self, allowed_tools, email, inline_attachments=False, gotenberg_url=None):
         self.allowed_tools = frozenset(allowed_tools)
         self.email = email
         # Attachments come back as their content, for clients that cannot read the host's files.
         self.inline_attachments = inline_attachments
+        self.gotenberg_url = gotenberg_url
 
     async def on_list_tools(self, context, call_next):
         tools = await call_next(context)
@@ -84,7 +146,12 @@ class WorkspacePolicy(Middleware):
                 for key in ("attachments", "from_email", "include_signature"):
                     properties.pop(key, None)
             elif tool.name == "get_gmail_attachment_content" and self.inline_attachments:
-                description = f"Read a Gmail attachment: an image or the first {MAX_PDF_PAGES} pages of a PDF come back as images, a text file as text (up to {MAX_TEXT_CHARS} characters); other files cannot be read."
+                description = f"Read a Gmail attachment: an image or the first {MAX_PDF_PAGES} pages of a PDF come back as images, a text file as text (up to {MAX_TEXT_CHARS} characters); "
+                description += (
+                    "HTML and any other document (Word, Excel, PowerPoint, OpenDocument, RTF, other image formats…) is converted to PDF with Gotenberg and comes back as its page images, marked as a conversion that may differ from the original."
+                    if self.gotenberg_url
+                    else "other files cannot be read."
+                )
                 properties.pop("return_base64", None)
             elif tool.name == "get_gmail_attachment_content":
                 description = "Download a Gmail attachment. Read it in the sandbox at /workspace/attachments/<Saved filename> using the Saved filename from the response, not the host-side Saved to path. Downloads expire after one hour; copy files elsewhere in /workspace to retain them."
@@ -159,7 +226,9 @@ class WorkspacePolicy(Middleware):
             return result
         filename = re.search(r"^Filename: (.+)$", text, re.MULTILINE)
         try:
-            content = attachment_content(saved.group(1), filename and filename.group(1))
+            content = await attachment_content(
+                saved.group(1), filename and filename.group(1), self.gotenberg_url
+            )
         except Exception:
             logging.exception("Could not read the attachment")
             content = [TextContent(type="text", text="The attachment could not be read.")]
@@ -183,7 +252,12 @@ def main():
     import main as upstream
 
     upstream.server.add_middleware(
-        WorkspacePolicy(policy["allowedTools"], email, policy.get("inlineAttachments", False))
+        WorkspacePolicy(
+            policy["allowedTools"],
+            email,
+            policy.get("inlineAttachments", False),
+            policy.get("gotenbergUrl"),
+        )
     )
     sys.argv = [
         "workspace-mcp",
