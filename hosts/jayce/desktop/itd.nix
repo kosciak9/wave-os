@@ -116,50 +116,52 @@ in
     logging.level = "info";
   };
 
-  systemd.user.services.itd = {
-    Unit = {
-      Description = "InfiniTime notification and Bluetooth companion";
-      After = [ "wayland-session-waitenv.service" ];
-      PartOf = [ sessionTarget ];
-      StartLimitIntervalSec = 0;
+  systemd.user = {
+    services.itd = {
+      Unit = {
+        Description = "InfiniTime notification and Bluetooth companion";
+        After = [ "wayland-session-waitenv.service" ];
+        PartOf = [ sessionTarget ];
+        StartLimitIntervalSec = 0;
+      };
+      Service = {
+        ExecStart = "${itd}/bin/itd";
+        Environment = [ "ITD_SOCKET_PATH=%t/itd/socket" ];
+        RuntimeDirectory = "itd";
+        RuntimeDirectoryMode = "0700";
+        UMask = "0077";
+        Restart = "always";
+        RestartSec = 10;
+        TimeoutStopSec = 10;
+      };
+      Install.WantedBy = [ sessionTarget ];
     };
-    Service = {
-      ExecStart = "${itd}/bin/itd";
-      Environment = [ "ITD_SOCKET_PATH=%t/itd/socket" ];
-      RuntimeDirectory = "itd";
-      RuntimeDirectoryMode = "0700";
-      UMask = "0077";
-      Restart = "always";
-      RestartSec = 10;
-      TimeoutStopSec = 10;
-    };
-    Install.WantedBy = [ sessionTarget ];
-  };
 
-  systemd.user.services.itd-health = {
-    Unit = {
-      Description = "Check InfiniTime communication and recover itd";
-      After = [ "itd.service" ];
-      PartOf = [ sessionTarget ];
+    services.itd-health = {
+      Unit = {
+        Description = "Check InfiniTime communication and recover itd";
+        After = [ "itd.service" ];
+        PartOf = [ sessionTarget ];
+      };
+      Service = {
+        Type = "oneshot";
+        ExecStart = lib.getExe healthCheck;
+        TimeoutStartSec = 45;
+        RuntimeDirectory = "itd-health";
+        RuntimeDirectoryMode = "0700";
+        RuntimeDirectoryPreserve = "yes";
+        UMask = "0077";
+      };
     };
-    Service = {
-      Type = "oneshot";
-      ExecStart = lib.getExe healthCheck;
-      TimeoutStartSec = 45;
-      RuntimeDirectory = "itd-health";
-      RuntimeDirectoryMode = "0700";
-      RuntimeDirectoryPreserve = "yes";
-      UMask = "0077";
+    timers.itd-health = {
+      Unit.PartOf = [ sessionTarget ];
+      Timer = {
+        OnActiveSec = "30s";
+        OnUnitInactiveSec = "2min";
+        AccuracySec = "5s";
+      };
+      Install.WantedBy = [ sessionTarget ];
     };
-  };
-  systemd.user.timers.itd-health = {
-    Unit.PartOf = [ sessionTarget ];
-    Timer = {
-      OnActiveSec = "30s";
-      OnUnitInactiveSec = "2min";
-      AccuracySec = "5s";
-    };
-    Install.WantedBy = [ sessionTarget ];
   };
 
   programs.herdr.extraPlugins.watch-notify = pkgs.callPackage ./herdr-watch.nix { inherit itctl; };
