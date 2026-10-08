@@ -23,10 +23,13 @@ struct App {
     queries: Arc<Semaphore>,
 }
 
+// host.containers.internal: Podman containers reach the host's loopback by that name.
 fn local_host(value: &str) -> bool {
     url::Url::parse(&format!("http://{value}")).is_ok_and(|u| {
-        matches!(u.host_str(), Some("localhost" | "127.0.0.1" | "[::1]"))
-            && u.username().is_empty()
+        matches!(
+            u.host_str(),
+            Some("localhost" | "127.0.0.1" | "[::1]" | "host.containers.internal")
+        ) && u.username().is_empty()
             && u.password().is_none()
             && u.path() == "/"
     })
