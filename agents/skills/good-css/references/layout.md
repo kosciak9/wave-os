@@ -2,7 +2,11 @@
 
 ## Content grid with breakouts
 
-Use it wherever you would reach for a centered max-width container. One grid on the section replaces the `section > .container` wrapper pair, and any child can be content width, wider, or edge to edge. Put it on `main` for a page of flowing content, or on each section. It suits CMS content well, because an editor widens a block with one class and no extra wrapper.
+Use it wherever you would reach for a centered max-width container. One grid on
+the section replaces the `section > .container` wrapper pair, and any child can
+be content width, wider, or edge to edge. Put it on `main` for a page of flowing
+content, or on each section. It suits CMS content well, because an editor widens
+a block with one class and no extra wrapper.
 
 The container defines three nested widths with named grid lines:
 
@@ -25,8 +29,12 @@ The container defines three nested widths with named grid lines:
 Each child picks a width with `grid-column`. Content is the default:
 
 ```css
-:is(.content-grid, .full-width) > * { grid-column: content; }
-:is(.content-grid, .full-width) > .breakout { grid-column: breakout; }
+:is(.content-grid, .full-width) > * {
+  grid-column: content;
+}
+:is(.content-grid, .full-width) > .breakout {
+  grid-column: breakout;
+}
 :is(.content-grid, .full-width) > .full-width {
   grid-column: full-width;
   display: grid;
@@ -36,15 +44,22 @@ Each child picks a width with `grid-column`. Content is the default:
 
 Rules:
 
-- Every child must be placed. An unplaced child of the grid lands in the gutter track.
-- Every direct child is a grid item. Wrap a run of inline elements in one element.
-- Change a width by overriding `--content`, not by writing a new column template.
+- Every child must be placed. An unplaced child of the grid lands in the gutter
+  track.
+- Every direct child is a grid item. Wrap a run of inline elements in one
+  element.
+- Change a width by overriding `--content`, not by writing a new column
+  template.
 
-In other systems: the column template goes wherever the project defines reusable styles. Where child selectors are not available, as in StyleX or Tailwind without a custom variant, each child sets its own `grid-column` to `content`, `breakout` or `full-width`.
+In other systems: the column template goes wherever the project defines reusable
+styles. Where child selectors are not available, as in StyleX or Tailwind
+without a custom variant, each child sets its own `grid-column` to `content`,
+`breakout` or `full-width`.
 
 ## Intrinsic grid
 
-Use it for any set of equal cards or tiles. It replaces a column count per breakpoint.
+Use it for any set of equal cards or tiles. It replaces a column count per
+breakpoint.
 
 ```css
 .grid {
@@ -56,13 +71,15 @@ Use it for any set of equal cards or tiles. It replaces a column count per break
 
 Rules:
 
-- `auto-fit` stretches a short row to fill the width. Use `auto-fill` when the item count changes, such as a filtered list, so cards keep their size.
+- `auto-fit` stretches a short row to fill the width. Use `auto-fill` when the
+  item count changes, such as a filtered list, so cards keep their size.
 
 Support: Chrome 79, Firefox 76, Safari 11.1.
 
 ## Subgrid rows shared across cards
 
-Use it when cards in a row have parts that should line up, such as title, body and footer, whatever the length of their content.
+Use it when cards in a row have parts that should line up, such as title, body
+and footer, whatever the length of their content.
 
 ```css
 .cards {
@@ -81,14 +98,16 @@ Use it when cards in a row have parts that should line up, such as title, body a
 
 Rules:
 
-- The span must equal the number of parts in the card. Without `grid-row: span N` every part piles into one row.
+- The span must equal the number of parts in the card. Without
+  `grid-row: span N` every part piles into one row.
 - Set `row-gap` on the card, or it inherits the parent's gap between its parts.
 
 Support: Chrome 117, Firefox 71, Safari 16.
 
 ## Sidebar that wraps on its own
 
-Use it for any pair where one side has an ideal width and the other takes the rest, such as a media object, an input with a button, or a page with an aside.
+Use it for any pair where one side has an ideal width and the other takes the
+rest, such as a media object, an input with a button, or a page with an aside.
 
 ```css
 .with-sidebar {
@@ -111,21 +130,31 @@ Use it for any pair where one side has an ideal width and the other takes the re
 
 Rules:
 
-- The wrap point is a share of the container, not a length. Change `min-inline-size` to move it.
+- The wrap point is a share of the container, not a length. Change
+  `min-inline-size` to move it.
 - Drop the sidebar's `flex-basis` for a sidebar sized by its content.
-- For a sticky sidebar, add `align-self: start` beside `position: sticky` and its inset. The two sides stretch to the same height, and a stretched sidebar has no room to stick.
-- A bare `img` or `video` as one of the sides stretches to the height of the row and distorts. Set `align-items: start` on the container.
+- For a sticky sidebar, add `align-self: start` beside `position: sticky` and
+  its inset. The two sides stretch to the same height, and a stretched sidebar
+  has no room to stick.
+- A bare `img` or `video` as one of the sides stretches to the height of the row
+  and distorts. Set `align-items: start` on the container.
 
 Support: Chrome 84, Firefox 63, Safari 14.1.
 
 ## Container queries with container units
 
-Use it for any component that appears in slots of different widths. The component responds to the space it is given, where a media query only knows the viewport.
+Use it for any component that appears in slots of different widths. The
+component responds to the space it is given, where a media query only knows the
+viewport.
 
 ```css
-.slot { container-type: inline-size; }
+.slot {
+  container-type: inline-size;
+}
 
-.card h2 { font-size: clamp(1.25rem, 1rem + 2cqi, 2rem); }
+.card h2 {
+  font-size: clamp(1.25rem, 1rem + 2cqi, 2rem);
+}
 
 @container (width > 30rem) {
   .card {
@@ -138,34 +167,55 @@ Use it for any component that appears in slots of different widths. The componen
 Rules:
 
 - The container must be an ancestor. An element cannot query itself.
-- A container cannot take its width from its content. Never put `container-type` on a shrink-to-fit element, or it collapses to zero.
-- With no container ancestor the query never matches. Kevin Powell makes `header`, `main` and `footer` containers in his reset, so most components need none of their own.
-- A container cannot also be a subgrid. "Subgrid rows shared across cards" and this entry need separate elements.
-- Container units are different from queries. With no container above the element, `cqi` measures the viewport, so one token written with `cqi` serves the page and every slot.
-- Never register a fluid token that uses `cqi` with `@property`. A registered length computes once on `:root`, where there is no container, and every slot then gets the viewport's value.
+- A container cannot take its width from its content. Never put `container-type`
+  on a shrink-to-fit element, or it collapses to zero.
+- With no container ancestor the query never matches. Kevin Powell makes
+  `header`, `main` and `footer` containers in his reset, so most components need
+  none of their own.
+- A container cannot also be a subgrid. "Subgrid rows shared across cards" and
+  this entry need separate elements.
+- Container units are different from queries. With no container above the
+  element, `cqi` measures the viewport, so one token written with `cqi` serves
+  the page and every slot.
+- Never register a fluid token that uses `cqi` with `@property`. A registered
+  length computes once on `:root`, where there is no container, and every slot
+  then gets the viewport's value.
 
 Support: Chrome 105, Firefox 110, Safari 16.
 
 ## Stack layers with grid
 
-Use it whenever things sit on top of each other, such as text over an image, a badge on a card, or two icons that swap. It replaces `position: absolute` with its offsets, sizes and transforms.
+Use it whenever things sit on top of each other, such as text over an image, a
+badge on a card, or two icons that swap. It replaces `position: absolute` with
+its offsets, sizes and transforms.
 
 ```css
-.stack { display: grid; }
-.stack > * { grid-area: 1 / 1; }
+.stack {
+  display: grid;
+}
+.stack > * {
+  grid-area: 1 / 1;
+}
 
-.stack > .title { place-self: center; }
-.stack > .badge { place-self: start end; }
+.stack > .title {
+  place-self: center;
+}
+.stack > .badge {
+  place-self: start end;
+}
 ```
 
 Rules:
 
-- A layer later in the DOM paints on top. Use `z-index` only to change that order.
-- Keep `position: absolute` for a layer that must not affect the container's size.
+- A layer later in the DOM paints on top. Use `z-index` only to change that
+  order.
+- Keep `position: absolute` for a layer that must not affect the container's
+  size.
 
 ## Safe alignment
 
-Use it wherever content is centered or end-aligned in a container that can become too small, such as a tab row, a toolbar or a vertically centered modal.
+Use it wherever content is centered or end-aligned in a container that can
+become too small, such as a tab row, a toolbar or a vertically centered modal.
 
 ```css
 .tabs {
@@ -178,7 +228,9 @@ Use it wherever content is centered or end-aligned in a container that can becom
 Rules:
 
 - It works on every `align-*`, `justify-*` and `place-*` property.
-- Auto margins on the item center it the same way and are safe in every browser that has flexbox. "Push one item away with an auto margin" (`spacing-and-shape.md`) has them.
+- Auto margins on the item center it the same way and are safe in every browser
+  that has flexbox. "Push one item away with an auto margin"
+  (`spacing-and-shape.md`) has them.
 
 Support: Chrome 115, Firefox 63, Safari 17.6.
 
@@ -187,13 +239,16 @@ Support: Chrome 115, Firefox 63, Safari 17.6.
 Use it whenever you want to cut off overflow and do not need scrolling.
 
 ```css
-.hero { overflow-x: clip; }
+.hero {
+  overflow-x: clip;
+}
 ```
 
 Rules:
 
 - Put it on the element that overflows, not on `html` or `body`.
 - Keep `hidden` or `auto` for elements a script scrolls. `clip` blocks that too.
-- Keep `hidden` or `auto` on an element with `resize`. With `clip` the browser draws no resize handle.
+- Keep `hidden` or `auto` on an element with `resize`. With `clip` the browser
+  draws no resize handle.
 
 Support: Chrome 90, Firefox 81, Safari 16.
