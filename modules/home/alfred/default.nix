@@ -7,6 +7,7 @@
 
 let
   cfg = config.services.alfred;
+  slackMirror = config.services.slack-mirror;
   home = config.home.homeDirectory;
   component = "alfred";
   containerName = "wave-alfred";
@@ -77,7 +78,80 @@ let
         "camofox_close_tab"
       ];
     };
+    # Reads the publication and edits drafts; never creates, publishes or deletes.
+    substack = {
+      port = 18094;
+      agent = "alfred";
+      domain = "user";
+      command = lib.getExe substackMcp;
+      tools = [
+        "get_draft"
+        "list_drafts"
+        "list_scheduled_posts"
+        "preview_draft_body"
+        "get_sections"
+        "get_publication_settings"
+        "list_contributors"
+        "get_import_status"
+        "list_publication_tags"
+        "get_post_tags"
+        "list_templates"
+        "get_analytics"
+        "get_dashboard_summary"
+        "get_email_stats"
+        "get_growth_sources"
+        "get_revenue_summary"
+        "get_post_stats"
+        "rank_posts"
+        "get_subscriber_count"
+        "list_posts"
+        "search_posts"
+        "search_publications"
+        "get_publication_info"
+        "research_creator_posts"
+        "compare_publications"
+        "update_draft"
+      ];
+    };
+    languagetool = {
+      port = 18095;
+      agent = "alfred";
+      domain = "user";
+      command = lib.getExe languagetoolMcp;
+      tools = [ "lt_check_text" ];
+    };
   };
+  # Reached by the container itself; their credentials go in as Podman secrets.
+  remotes = {
+    # Twenty CRM; the URL and API key come from the OpenClaw Secret Store.
+    twenty.tools = [
+      "get_tool_catalog"
+      "learn_tools"
+      "execute_tool"
+      "list_object_metadata_names"
+      "list_skills"
+      "load_skills"
+      "search_help_center"
+    ];
+    # The read-only Slack mirror (modules/home/slack-mirror) on the host.
+    slack.tools = [
+      "status"
+      "list_conversations"
+      "unread"
+      "get_conversation"
+      "get_thread"
+      "search"
+      "users"
+      "describe_schema"
+    ];
+  };
+  openclawSecret = name: ''
+    if ! ${name}=$(${lib.getExe config.programs.openclaw.package} secrets store get ${name} --plain 2>/dev/null) ||
+      [[ -z "''$${name}" ]]; then
+      printf '%s\n' "could not retrieve ${name} from the OpenClaw Secret Store" >&2
+      exit 1
+    fi
+  '';
   # Lightpanda ships in the image; each subagent run starts its own, so a fresh page and
   # cookie jar. Only reading: Camofox interacts.
   lightpanda = {
@@ -184,6 +258,42 @@ let
     '';
   };
 
+  substackMcp = pkgs.writeShellApplication {
+    name = "alfred-substack-mcp";
+    runtimeInputs = [ pkgs.coreutils ];
+    text = ''
+      ${openclawSecret "SUBSTACK_PUBLICATION_URL"}
+      ${openclawSecret "SUBSTACK_SESSION_TOKEN"}
+      SUBSTACK_PUBLICATION_URL=$(tr '[:upper:]' '[:lower:]' <<<"$SUBSTACK_PUBLICATION_URL")
+      if [[ ! "$SUBSTACK_PUBLICATION_URL" =~ ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.substack\.com$ ]]; then
+        printf '%s\n' "SUBSTACK_PUBLICATION_URL is not a bare *.substack.com hostname" >&2
+        exit 1
+      fi
+      exec env -i HOME="$HOME" PATH="$PATH" \
+        SUBSTACK_PUBLICATION_URL="$SUBSTACK_PUBLICATION_URL" \
+        SUBSTACK_SESSION_TOKEN="$SUBSTACK_SESSION_TOKEN" \
+        SUBSTACK_READ_ONLY=0 SUBSTACK_ALLOW_DESTRUCTIVE=0 SUBSTACK_MCP_HOME=/dev/null \
+        ${lib.getExe pkgs.substack-mcp}
+    '';
+  };
+
+  # LanguageTool offline, in a container of its own without network.
+  languagetoolMcp = pkgs.writeShellApplication {
+    name = "alfred-languagetool-mcp";
+    runtimeInputs = [ pkgs.podman ];
+    text = ''
+      ${lib.getExe pkgs.openclaw-languagetool-mcp-image}
+      exec podman --connection ${lib.escapeShellArg cfg.machineName} run --rm -i \
+        --network none --pull never --read-only \
+        --cap-drop ALL --security-opt no-new-privileges --user 65532:65532 \
+        --tmpfs /tmp:rw,noexec,nosuid,nodev,size=128m --workdir /tmp \
+        --pids-limit 128 --memory 768m --memory-swap 768m --cpus 1 \
+        --http-proxy=false --log-driver none \
+        --label io.wave-os.component=${component}-languagetool \
+        ${lib.escapeShellArg pkgs.openclaw-languagetool-mcp-image.imageName}
+    '';
+  };
+
   bridgeAgent = name: bridge: {
     enable = true;
     inherit (bridge) domain;
@@ -249,12 +359,20 @@ let
     ${lib.concatMapAttrsStringSep "\n" (
       name: bridge: "		${name}: bridge(${toString bridge.port}),"
     ) bridges}
+    		twenty: {
+    			url: process.env.TWENTY_MCP_URL,
+    			headers: { Authorization: `Bearer ''${process.env.TWENTY_API_KEY}` },
+    		},
+    		slack: {
+    			url: "http://host.containers.internal:${toString slackMirror.port}/mcp",
+    			headers: { Authorization: `Bearer ''${process.env.SLACK_MIRROR_MCP_TOKEN}` },
+    		},
     		lightpanda: {
     			command: "lightpanda",
     			args: ["mcp", "--block-private-networks", "--block-cidrs", "100.64.0.0/10"],
     		},
     	},
-    	mcp: ${builtins.toJSON (policy "alfred")},
+    	mcp: ${builtins.toJSON (policy "alfred" // lib.mapAttrs (_: remote: remote.tools) remotes)},
     	subagents: {
     		browser: {
     			description: ${builtins.toJSON browser.description},
@@ -279,6 +397,7 @@ let
       env_file=${lib.escapeShellArg (secret "env")}
       prompt_file=${lib.escapeShellArg (secret "prompt.md")}
       token_file=${lib.escapeShellArg mcpTokenFile}
+      slack_token_file=${lib.escapeShellArg "${slackMirror.secretDirectory}/mcp-token"}
       volume=${lib.escapeShellArg cfg.dataVolume}
       image=${lib.escapeShellArg cfg.image}
 
@@ -286,6 +405,7 @@ let
       require_private_file "$env_file"
       require_private_file "$prompt_file"
       require_private_file "$token_file"
+      require_private_file "$slack_token_file"
       if ! grep -q '^TELEGRAM_BOT_TOKEN=.' "$env_file" ||
         ! grep -q '^TELEGRAM_CHAT_ID=-\?[0-9]\+$' "$env_file"; then
         printf '%s\n' "$env_file must set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID" >&2
@@ -314,7 +434,9 @@ let
         sleep 2
       done
       # The agent leaves out an MCP server it cannot reach at start.
-      for port in ${lib.concatMapAttrsStringSep " " (_: bridge: toString bridge.port) bridges}; do
+      for port in ${
+        lib.concatMapAttrsStringSep " " (_: bridge: toString bridge.port) bridges
+      } ${toString slackMirror.port}; do
         until [[ "$(curl -s -o /dev/null -w '%{http_code}' --max-time 3 "http://127.0.0.1:$port/mcp")" != 000 ]]; do
           if (( SECONDS >= deadline )); then
             printf '%s\n' "the MCP bridge on port $port was not ready" >&2
@@ -347,6 +469,12 @@ let
       put_secret wave-alfred-config ${agentConfig}
       put_secret wave-alfred-prompt "$prompt_file"
       put_secret wave-alfred-mcp-token "$token_file"
+      ${openclawSecret "TWENTY_MCP_URL"}
+      ${openclawSecret "TWENTY_API_KEY"}
+      printf '%s' "$TWENTY_MCP_URL" | put_secret wave-alfred-twenty-url -
+      printf '%s' "$TWENTY_API_KEY" | put_secret wave-alfred-twenty-key -
+      unset TWENTY_MCP_URL TWENTY_API_KEY
+      printf '%s' "$(< "$slack_token_file")" | put_secret wave-alfred-slack-token -
 
       instance=$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')
       child=""
@@ -378,6 +506,9 @@ let
         --secret source=wave-alfred-config,type=mount,target=/data/house-agents.config.ts,uid=1000,gid=1000,mode=0400 \
         --secret source=wave-alfred-prompt,type=mount,target=prompt.md,uid=1000,gid=1000,mode=0400 \
         --secret source=wave-alfred-mcp-token,type=env,target=ALFRED_MCP_TOKEN \
+        --secret source=wave-alfred-twenty-url,type=env,target=TWENTY_MCP_URL \
+        --secret source=wave-alfred-twenty-key,type=env,target=TWENTY_API_KEY \
+        --secret source=wave-alfred-slack-token,type=env,target=SLACK_MIRROR_MCP_TOKEN \
         "$image" &
       child=$!
       wait "$child"
@@ -419,6 +550,10 @@ in
       {
         assertion = pkgs.stdenv.hostPlatform.isDarwin;
         message = "Alfred launchd supervision requires Darwin.";
+      }
+      {
+        assertion = slackMirror.enable;
+        message = "Alfred reads Slack through services.slack-mirror.";
       }
       {
         assertion = lib.hasPrefix "/" cfg.secretDirectory;
