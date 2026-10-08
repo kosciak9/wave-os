@@ -13,16 +13,21 @@
 let
   version = "2.0.24";
   release =
-    if stdenv.hostPlatform.isDarwin then
-      {
+    {
+      "aarch64-darwin" = {
         target = "darwin-arm64";
         hash = "sha256-fwPN/ZC/DORdSmbxvtfnZ+I7VGetGTqEVefG+7HquaE=";
-      }
-    else
-      {
+      };
+      "aarch64-linux" = {
+        target = "linux-arm64";
+        hash = "sha256-nQzSv8Bg/Wwq/fbbaYN/hpDUao2DJ7uGRCGFHOAE9FM=";
+      };
+      "x86_64-linux" = {
         target = "linux-x64";
         hash = "sha256-IbHuBoOEFAXWlUH8REgfjldS6Vvqcui47DHbzbEC5/g=";
       };
+    }
+    .${stdenv.hostPlatform.system};
 in
 stdenv.mkDerivation {
   pname = "opencode";
@@ -57,7 +62,11 @@ stdenv.mkDerivation {
           sysctl
         ]
       } \
-      --set PLANNOTATOR_BIN ${lib.getExe plannotator} \
+      ${
+        lib.optionalString (
+          stdenv.hostPlatform.system != "aarch64-linux"
+        ) "--set PLANNOTATOR_BIN ${lib.getExe plannotator}"
+      } \
       --set CAMOFOX_USER_ID opencode \
       --set OPENCODE_DISABLE_AUTOUPDATE true
 
@@ -71,6 +80,7 @@ stdenv.mkDerivation {
     mainProgram = "opencode";
     platforms = [
       "aarch64-darwin"
+      "aarch64-linux"
       "x86_64-linux"
     ];
     sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];

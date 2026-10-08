@@ -246,7 +246,10 @@
 
       nixosConfigurations.ahri = inputs.nixpkgs-ahri.lib.nixosSystem {
         system = ahriSystem;
-        specialArgs.waveRevision = self.rev or "unknown";
+        specialArgs = {
+          inherit inputs;
+          waveRevision = self.rev or "unknown";
+        };
         modules = [
           ./hosts/ahri/default.nix
           (_: { nixpkgs.pkgs = ahriPkgs; })

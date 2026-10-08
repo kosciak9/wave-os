@@ -1,4 +1,9 @@
-{ modulesPath, pkgs, ... }:
+{
+  inputs,
+  modulesPath,
+  pkgs,
+  ...
+}:
 
 {
   imports = [
@@ -126,11 +131,15 @@
     };
   };
 
-  environment.systemPackages = with pkgs; [
+  environment.systemPackages = [
+    inputs.herdr.packages.${pkgs.stdenv.hostPlatform.system}.default
+  ]
+  ++ (with pkgs; [
     beamMinimalPackages.elixir
     beamMinimalPackages.erlang
     curl
-  ];
+    opencode
+  ]);
   documentation = {
     enable = false;
     nixos.enable = false;
