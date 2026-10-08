@@ -21,15 +21,15 @@ let
   });
   notificationSoundPath = "${pkgs.sound-theme-freedesktop}/share/sounds/freedesktop/stereo/message-new-instant.oga";
   waytator = pkgs.callPackage ../../packages/waytator.nix { };
-  backlightDim = pkgs.writeShellApplication {
-    name = "wave-backlight-dim";
+  dim = pkgs.writeShellApplication {
+    name = "wave-dim";
     runtimeInputs = with pkgs; [
       brightnessctl
       coreutils
       hyprland
       jq
     ];
-    text = builtins.readFile ./scripts/backlight-dim.sh;
+    text = builtins.readFile ./scripts/dim.sh;
   };
   caffeinateReady = pkgs.writeShellApplication {
     name = "wave-caffeinate-ready";
@@ -357,14 +357,14 @@ in
       settings = {
         general = {
           lock_cmd = "pidof hyprlock || hyprlock";
-          before_sleep_cmd = "systemctl --user stop wave-backlight-dim.service; loginctl lock-session";
+          before_sleep_cmd = "systemctl --user stop wave-dim.service; loginctl lock-session";
           after_sleep_cmd = "${displayReconcilerPath} notify resume";
         };
         listener = [
           {
             timeout = 240;
-            on-timeout = "systemctl --user start wave-backlight-dim.service";
-            on-resume = "systemctl --user stop wave-backlight-dim.service";
+            on-timeout = "systemctl --user start wave-dim.service";
+            on-resume = "systemctl --user stop wave-dim.service";
           }
           {
             timeout = 300;
@@ -497,9 +497,9 @@ in
       };
     };
 
-    wave-backlight-dim = {
+    wave-dim = {
       Unit = {
-        Description = "Cancellable idle backlight dimmer";
+        Description = "Cancellable idle dimmer for the screen and keyboard backlights";
         PartOf = [
           sessionTarget
           "hypridle.service"
@@ -507,7 +507,7 @@ in
       };
       Service = {
         Type = "simple";
-        ExecStart = lib.getExe backlightDim;
+        ExecStart = lib.getExe dim;
         TimeoutStopSec = 3;
       };
     };

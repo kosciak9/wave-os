@@ -558,7 +558,7 @@ class Reconciler:
         ]
         if internal_workspaces:
             self.blackout()
-            run("systemctl", "--user", "stop", "wave-backlight-dim.service")
+            run("systemctl", "--user", "stop", "wave-dim.service")
             for workspace_id in internal_workspaces:
                 self.move(workspace_id, target)
             remaining = json_query("hyprctl", "workspaces", "-j")
@@ -612,7 +612,7 @@ class Reconciler:
         # Only a lid closed without an external display locks and sleeps;
         # with one, the session carries on there.
         if policy == "suspend":
-            run("systemctl", "--user", "stop", "wave-backlight-dim.service")
+            run("systemctl", "--user", "stop", "wave-dim.service")
             run("loginctl", "lock-session")
             self.request_sleep()
             return

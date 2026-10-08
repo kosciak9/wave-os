@@ -23,6 +23,15 @@ if [[ -z $device || ! $current =~ ^[0-9]+$ || ! $maximum =~ ^[0-9]+$ ]]; then
 fi
 
 original=$current
+keyboard=""
+keyboard_original=""
+while IFS=, read -r candidate _ value _; do
+    if [[ $candidate == *::kbd_backlight && $value =~ ^[0-9]+$ ]]; then
+        keyboard=$candidate
+        keyboard_original=$value
+        break
+    fi
+done < <(brightnessctl --class leds --machine-readable)
 target=$((maximum / 10))
 if (( target < 1 )); then
     target=1
@@ -32,12 +41,19 @@ if (( original < target )); then
 fi
 
 restore() {
+    if [[ -n $keyboard && -e /sys/class/leds/$keyboard/brightness ]]; then
+        brightnessctl --quiet --device "$keyboard" set "$keyboard_original" || true
+    fi
     if [[ -e /sys/class/backlight/$device/brightness ]]; then
         brightnessctl --quiet --device "$device" set "$original" || true
     fi
 }
 trap restore EXIT
 trap 'exit 0' HUP INT TERM
+
+if [[ -n $keyboard ]]; then
+    brightnessctl --quiet --device "$keyboard" set 0
+fi
 
 steps=40
 for ((step = 1; step <= steps; step++)); do
