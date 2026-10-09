@@ -12,6 +12,33 @@ composed children and focused components to a universal component with unrelated
 configuration flags. Context is for genuinely shared subtree state, not a
 default replacement for explicit props.
 
+Many configuration props such as `isLink`, `isButton`, or `hasSearchBar` signal
+that a component should be split into smaller parts and composed. Pass shared
+values down through a provider for the composed subtree.
+
+> ```tsx
+> // Configuration: one monolithic component steered by props
+> <Composer
+>   isThread={true}
+>   channelID={'C12345'}
+>   disableAttachments={false}
+>   renderSubmit={renderThreadSubmitButton}
+>   actions={allActions}
+> />
+>
+> // Composition: the variant is built from smaller parts
+> <ThreadComposerProvider channelID={'C12345'}>
+>   <ComposerFrame>
+>     <ComposerInput />
+>     <ComposerFooter>
+>       <ComposerCommonActions />
+>       <ComposerSubmitButton />
+>       <AlsoSendToChannel />
+>     </ComposerFooter>
+>   </ComposerFrame>
+> </ThreadComposerProvider>
+> ```
+
 Let containers own spacing between their children. Use flex/grid and `gap` where
 appropriate rather than components with outside margins that assume a specific
 parent. Reuse the spacing scale. Prefer content-driven layouts to fixed heights,
