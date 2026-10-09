@@ -14,6 +14,11 @@ in
     "claude-skills" = skills // {
       target = "${claudeDirectory}/skills";
     };
+    "claude-instructions" = {
+      source = ./CLAUDE.md;
+      target = "${claudeDirectory}/CLAUDE.md";
+      force = true;
+    };
     ".gemini/antigravity-cli/skills" = skills;
   };
 }
