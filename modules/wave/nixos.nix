@@ -51,6 +51,12 @@ in
         optimise.automatic = true;
       };
 
+      # Hosts open Mosh's UDP range (60000-61000) next to SSH on their own interfaces.
+      programs.mosh = {
+        enable = true;
+        openFirewall = false;
+      };
+
       systemd.tmpfiles.rules = [
         "d /var/lib/wave-os 0755 root root - -"
         "d /var/lib/wave-os/source 0700 kosciak ${config.users.users.kosciak.group} - -"

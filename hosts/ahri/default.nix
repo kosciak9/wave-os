@@ -27,11 +27,22 @@ in
     hostName = "ahri";
     useDHCP = false;
     useNetworkd = true;
-    firewall.interfaces = {
-      end0.allowedTCPPorts = [ 22 ];
-      eth0.allowedTCPPorts = [ 22 ];
-      tailscale0.allowedTCPPorts = [ 22 ];
-    };
+    firewall.interfaces =
+      lib.genAttrs
+        [
+          "end0"
+          "eth0"
+          "tailscale0"
+        ]
+        (_: {
+          allowedTCPPorts = [ 22 ];
+          allowedUDPPortRanges = [
+            {
+              from = 60000;
+              to = 61000;
+            }
+          ];
+        });
   };
   time.timeZone = "Europe/Warsaw";
 

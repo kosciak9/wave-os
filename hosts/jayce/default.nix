@@ -83,11 +83,6 @@ in
   };
   console.keyMap = "pl2";
 
-  programs.mosh = {
-    enable = true;
-    openFirewall = false;
-  };
-
   hardware = {
     bluetooth = {
       enable = true;
