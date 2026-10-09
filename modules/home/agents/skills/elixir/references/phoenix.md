@@ -100,6 +100,9 @@ renaming them to match another application's `live/` or `test/` tree.
   [UI implementation](phoenix-ui.md).
 - Behavior-focused LiveView validation and test-helper boundaries:
   [LiveView testing](phoenix-testing.md).
+- LiveView lifecycle, async data, streams, forms and JS interop:
+  [LiveView patterns](liveview.md). Web security and authorization checks:
+  [Security](security.md).
 
 These references do not override repository restrictions on adding tests or
 documentation, or mandate another project's fixtures and infrastructure.
