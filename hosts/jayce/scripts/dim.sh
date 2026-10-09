@@ -23,15 +23,12 @@ if [[ -z $device || ! $current =~ ^[0-9]+$ || ! $maximum =~ ^[0-9]+$ ]]; then
 fi
 
 original=$current
-keyboard=""
+# The Framework 16 keyboard module drives its own backlight through QMK; the
+# EC's kbd_backlight LED does not reach it.
 keyboard_original=""
-while IFS=, read -r candidate _ value _; do
-    if [[ $candidate == *::kbd_backlight && $value =~ ^[0-9]+$ ]]; then
-        keyboard=$candidate
-        keyboard_original=$value
-        break
-    fi
-done < <(brightnessctl --class leds --machine-readable)
+if output=$(qmk_hid via --backlight 2>/dev/null) && [[ $output =~ Brightness:\ ([0-9]+)% ]]; then
+    keyboard_original=${BASH_REMATCH[1]}
+fi
 target=$((maximum / 10))
 if (( target < 1 )); then
     target=1
@@ -41,8 +38,8 @@ if (( original < target )); then
 fi
 
 restore() {
-    if [[ -n $keyboard && -e /sys/class/leds/$keyboard/brightness ]]; then
-        brightnessctl --quiet --device "$keyboard" set "$keyboard_original" || true
+    if [[ -n $keyboard_original ]]; then
+        qmk_hid via --backlight "$keyboard_original" >/dev/null 2>&1 || true
     fi
     if [[ -e /sys/class/backlight/$device/brightness ]]; then
         brightnessctl --quiet --device "$device" set "$original" || true
@@ -51,8 +48,8 @@ restore() {
 trap restore EXIT
 trap 'exit 0' HUP INT TERM
 
-if [[ -n $keyboard ]]; then
-    brightnessctl --quiet --device "$keyboard" set 0
+if [[ -n $keyboard_original ]]; then
+    qmk_hid via --backlight 0 >/dev/null 2>&1 || true
 fi
 
 steps=40

@@ -28,6 +28,7 @@ let
       coreutils
       hyprland
       jq
+      qmk_hid
     ];
     text = builtins.readFile ./scripts/dim.sh;
   };
