@@ -39,6 +39,10 @@ let
       emojiCompletionEnabled = false;
       tui = "fullscreen";
       viewMode = "focus";
+      attribution = {
+        commit = false;
+        pr = false;
+      };
       # Skills come from the shared Nix-managed set, not the claude.ai account.
       syncClaudeAiSkills = false;
       # Agents browse through the camofox-browser skill instead.
