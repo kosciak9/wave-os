@@ -37,7 +37,7 @@ stdenvNoCC.mkDerivation {
     cp -a ./. "$out/adapter/"
     install -Dm644 "$languageToolZip" "$out/languagetool/LanguageTool-${languageToolVersion}.zip"
     cat > "$out/Dockerfile" <<'EOF'
-    FROM debian:bookworm-slim@sha256:abd67ffcfa541b485a3dff59865ab629aa048a6c613e639d36e7456b0b229241 AS build
+    FROM debian:bookworm-slim@sha256:7c7b2c966bc9ee8cedfeef67e0e279108992c77681fa595db4a9d65c06ccc587 AS build
 
     ENV DEBIAN_FRONTEND=noninteractive
 
@@ -63,7 +63,7 @@ stdenvNoCC.mkDerivation {
       && unzip -q /tmp/LanguageTool-${languageToolVersion}.zip -d /opt/languagetool \
       && rm /tmp/LanguageTool-${languageToolVersion}.zip
 
-    FROM debian:bookworm-slim@sha256:abd67ffcfa541b485a3dff59865ab629aa048a6c613e639d36e7456b0b229241
+    FROM debian:bookworm-slim@sha256:7c7b2c966bc9ee8cedfeef67e0e279108992c77681fa595db4a9d65c06ccc587
 
     ENV DEBIAN_FRONTEND=noninteractive \
         LANG=C.UTF-8 \

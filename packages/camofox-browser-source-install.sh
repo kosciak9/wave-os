@@ -2,7 +2,7 @@ runHook preInstall
 substituteInPlace Dockerfile \
   --replace-fail \
     'FROM node:22-trixie-slim AS camofox-browser' \
-    'FROM docker.io/library/node:22-trixie-slim@sha256:7b8a0c89c54499bee567618f96578e1a12a800f062fbdbfd1fb6a443fa6f6284 AS camofox-browser'
+    'FROM docker.io/library/node:22-trixie-slim@sha256:154ba2f4d6fec323d28e4f4bb86bba4677f1223391a1979cf521304e03a98dfa AS camofox-browser'
 substituteInPlace Dockerfile \
   --replace-fail \
     'amd64) CAMOUFOX_ARCH="x86_64" ;; \' \
