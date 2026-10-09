@@ -152,6 +152,8 @@ in
         "nix-command"
         "flakes"
       ];
+      extra-substituters = [ "https://wave-os.cachix.org" ];
+      extra-trusted-public-keys = [ "wave-os.cachix.org-1:cwQ73uY7ZSe7Rqb8jWzu2/fYWXfe0An7DjsSPXNVgRw=" ];
       max-jobs = 1;
       cores = 2;
       keep-outputs = false;

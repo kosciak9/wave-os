@@ -34,6 +34,32 @@ jobs:
       - name: Run nix-eval ahri
         run: devenv shell -- nix-eval ahri
 
+  ahri-build:
+    name: ahri-build
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build ahri
+        uses: ./.github/actions/build-ahri
+
+  ahri-cache:
+    name: ahri-cache
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04-arm
+    # The cache token lives here; the environment admits only main.
+    environment: cachix
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build ahri
+        uses: ./.github/actions/build-ahri
+        with:
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+      - name: Push ahri's runtime closure
+        run: cachix push wave-os ./ahri
+
   betterleaks:
     name: betterleaks
     runs-on: ubuntu-latest
