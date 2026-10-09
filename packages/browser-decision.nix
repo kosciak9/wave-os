@@ -2,12 +2,12 @@
   fetchurl,
   cctools,
   lib,
-  python312,
+  python313,
   runCommand,
   writeShellApplication,
 }:
 let
-  py = python312.pkgs;
+  py = python313.pkgs;
 
   # Use the upstream wheels matched to renekton's macOS 26 arm64.
   mlxMetal = py.buildPythonPackage {
@@ -29,14 +29,14 @@ let
     version = "0.32.3";
     format = "wheel";
     src = fetchurl {
-      url = "https://files.pythonhosted.org/packages/4a/c1/13ff85d72f7cf01239c1031688b11cf1c7a3f0c7380636728976e510bfbd/mlx-0.32.3-cp312-cp312-macosx_26_0_arm64.whl";
-      sha256 = "72711cb23cc6dccc5a460f63f39c11931a00b2c6dcd6fba253921090072e21bc";
+      url = "https://files.pythonhosted.org/packages/53/a9/70bf746c2cd13a198a429e33244d2f072ecd0c89508299a636529d3317cb/mlx-0.32.3-cp313-cp313-macosx_26_0_arm64.whl";
+      sha256 = "75333afef55819afd2a31e87ffbed0bf59f379bca21771e6b13a95a675e4c85b";
     };
     propagatedBuildInputs = [ mlxMetal ];
     nativeBuildInputs = [ cctools ];
     postInstall = ''
-      for binary in "$out"/${python312.sitePackages}/mlx/*.so; do
-        install_name_tool -add_rpath "${mlxMetal}/${python312.sitePackages}/mlx/lib" "$binary"
+      for binary in "$out"/${python313.sitePackages}/mlx/*.so; do
+        install_name_tool -add_rpath "${mlxMetal}/${python313.sitePackages}/mlx/lib" "$binary"
       done
     '';
     pythonImportsCheck = [ "mlx.core" ];
@@ -90,7 +90,7 @@ let
     install -m644 ${stock "tokenizer/tokenizer_config.json" "f2ff584a8f78ac9f3b6fd0afcf9ab310e41c2d445ef628f9ab4b0d594e992b7a"} "$out/tokenizer/tokenizer_config.json"
   '';
 
-  runtimePython = python312.withPackages (_: [
+  runtimePython = python313.withPackages (_: [
     layaMlx
   ]);
 in

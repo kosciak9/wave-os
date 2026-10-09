@@ -25,7 +25,7 @@
       flake = false;
     };
     deploy-rs.url = "github:serokell/deploy-rs/cf64c8cbadd9b13ea79ba7720aa2930500f2ece7";
-    devenv-nixpkgs.url = "github:NixOS/nixpkgs/c59305bab2065cfecc4944690d9eedbb56f3a9fa";
+    devenv-nixpkgs.url = "github:NixOS/nixpkgs/e7439b6b14ad3cc35d05608ebca9bce01a25f5f8";
     # Keep the release-tested pin for Darwin's qtkeychain; Linux uses system packages in the home module.
     vicinae = {
       url = "github:vicinaehq/vicinae/v0.29.1";
