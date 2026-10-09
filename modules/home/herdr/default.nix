@@ -39,9 +39,10 @@ let
       emojiCompletionEnabled = false;
       tui = "fullscreen";
       viewMode = "focus";
+      # Empty strings hide the trailers; booleans fail the schema and are ignored.
       attribution = {
-        commit = false;
-        pr = false;
+        commit = "";
+        pr = "";
       };
       # Smaller-context models otherwise drop rarely used skill descriptions.
       skillListingBudgetFraction = 0.02;
