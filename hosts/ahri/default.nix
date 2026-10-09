@@ -50,7 +50,7 @@ in
     isNormalUser = true;
     extraGroups = [ "wheel" ];
     hashedPassword = "!";
-    # Keeps the Herdr server reachable by the renekton coordinator without a login.
+    # Keeps the Herdr server reachable by the jayce and renekton coordinators without a login.
     linger = true;
   };
   users.users.root.hashedPassword = "!";
@@ -136,7 +136,7 @@ in
       "f /var/lib/wave/ssh/kosciak 0644 root root -"
       "d /home/kosciak/.config 0755 kosciak users -"
       "d /home/kosciak/.config/herdr 0700 kosciak users -"
-      # renekton pins this install identity in its saved-machine federation policy.
+      # jayce and renekton pin this install identity in their saved-machine federation policies.
       ''f+ /home/kosciak/.config/herdr/machine.json 0600 kosciak users - {"machine_id": "machine_9026bebb6184fc9965a24b867836dce9"}''
     ];
     user.services.herdr = {
