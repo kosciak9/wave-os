@@ -38,7 +38,9 @@
     "compaction": {
       "model": "openai/gpt-6.1-sol#medium",
     },
+    // No custom system prompt keeps OpenCode's built-in per-model prompts.
     "⩀": {
+      "description": "Programming assistant for planning, exploration, and implementation",
       "mode": "primary",
       "model": "openai/gpt-6.1-sol#medium",
     },

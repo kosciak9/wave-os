@@ -7,11 +7,6 @@
   ];
 
   xdg.configFile = {
-    "opencode/agents" = {
-      source = ./config/agents;
-      force = true;
-      recursive = true;
-    };
     "opencode/commands" = {
       source = ./config/commands;
       force = true;
@@ -19,15 +14,6 @@
     };
     "opencode/opencode.jsonc" = {
       source = ./config/opencode.jsonc;
-      force = true;
-    };
-    "opencode/model-prompts" = {
-      source = ./config/model-prompts;
-      force = true;
-      recursive = true;
-    };
-    "opencode/plugins/model-prompts.js" = {
-      source = ./config/plugins/model-prompts.js;
       force = true;
     };
     "opencode/plugins/herdr-agent-state.js".source =
