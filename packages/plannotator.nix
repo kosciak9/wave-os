@@ -8,16 +8,16 @@
 }:
 
 let
-  version = "0.27.25";
+  version = "0.28.8";
   release =
     {
       "x86_64-linux" = {
         asset = "plannotator-linux-x64";
-        hash = "sha256-ABr3dS+FQgJFifr8RK7DvifHMTOiw33zjwtZHCwUXdg=";
+        hash = "sha256-7uLtpL84VEbjP5VOetY0G7yZ58ZxdnsQE4L1iza6vbE=";
       };
       "aarch64-darwin" = {
         asset = "plannotator-darwin-arm64";
-        hash = "sha256-JN5g+/jjvatRl88635zjgeioGPLVSyoFX2EpHHsiYOo=";
+        hash = "sha256-YS4jHMrBx1+in5/Zbg89aB3PDbOAQukpWAjtcrHTMog=";
       };
     }
     .${stdenvNoCC.hostPlatform.system}
