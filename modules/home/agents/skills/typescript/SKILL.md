@@ -26,6 +26,10 @@ stack as an incidental part of implementation.
   that conceal a contract mismatch. Handle absence deliberately rather than
   letting `null`, `undefined`, and empty collections mean interchangeable
   things.
+- Discard unwanted shapes early. Fetch a single record with the library's
+  single-record query rather than taking the first element of an array, and
+  throw when the shape does not match instead of passing arrays or `null`
+  onward.
 - Use generics to preserve a real relationship between inputs and outputs, not
   to make a one-purpose function appear universal.
 - Keep transformations pure where practical. Avoid mutating shared inputs or
@@ -53,6 +57,8 @@ dependencies and implementation, not from the `.tsx` extension alone. Read only
 the relevant entrypoint below, then only its task-specific references.
 
 - React components, hooks, and rendering: [React](references/react.md).
+- Starting a project or choosing a new dependency or framework:
+  [Stack](references/stack.md).
 
 For other frameworks, retain this language core and consult documentation for
 the installed version instead of applying React-specific patterns.

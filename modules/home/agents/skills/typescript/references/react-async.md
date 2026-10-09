@@ -9,10 +9,78 @@ router/data/cache solution is established, follow it for the requested change.
 Propose replacement separately with benefits, costs, and integration risks;
 operator confirmation is required before migration or a new dependency.
 
-Use the correct owner for the operation: server reads belong in the data layer,
-user commands in mutations/actions, and device permissions or long-running flows
-in the established interaction architecture. Do not force every timer,
-animation, or permission prompt into an automatically refetching server query.
+Every asynchronous operation is a state machine: idle, loading, error, success,
+and reloading while stale data is shown. Never hand-roll that machine with
+`useEffect` and `useState`; it inevitably misses races, cleanup on unmount,
+deduplication, retries, and cache invalidation. Always use the project's async
+state manager, whichever one is established.
+
+> ```tsx
+> // Hand-rolled: ~30 lines for one fetch, and still incomplete
+> function UserProfile({ userId }: { userId: string }) {
+>   const [user, setUser] = useState<User | null>(null);
+>   const [loading, setLoading] = useState(true);
+>   const [error, setError] = useState<Error | null>(null);
+>
+>   useEffect(() => {
+>     let cancelled = false;
+>     setLoading(true);
+>     setError(null);
+>     fetchUser(userId)
+>       .then((data) => {
+>         if (!cancelled) {
+>           setUser(data);
+>           setLoading(false);
+>         }
+>       })
+>       .catch((err) => {
+>         if (!cancelled) {
+>           setError(err);
+>           setLoading(false);
+>         }
+>       });
+>     return () => {
+>       cancelled = true;
+>     };
+>   }, [userId]);
+>   // Still missing: retry, refetch on focus, deduplication, cache,
+>   // stale-while-revalidate...
+> }
+>
+> // Query: complete and declarative
+> function UserProfile({ userId }: { userId: string }) {
+>   const query = useQuery({
+>     queryKey: ["user", userId],
+>     queryFn: () => fetchUser(userId),
+>   });
+>
+>   if (query.isPending) return <Spinner />;
+>   if (query.isError) return <ErrorMessage error={query.error} />;
+>   return <Profile user={query.data} />;
+> }
+> ```
+
+Do not destructure the query result. Keeping the object lets TypeScript narrow
+it: after checking `query.isPending` or `query.isError`, `query.data` and
+`query.error` have the correct types.
+
+This applies to any asynchronous operation, not only HTTP: browser permissions,
+geolocation, file operations, debounced searches and polling, device APIs, and
+authentication flows. Treat them as queries or mutations with deliberate
+configuration: set `staleTime`, `enabled`, and refetch options so a permission
+prompt or a device read runs only when intended rather than refetching
+automatically. User commands belong in mutations or actions.
+
+> ```tsx
+> const locationQuery = useQuery({
+>   queryKey: ["geolocation"],
+>   queryFn: () =>
+>     new Promise<GeolocationPosition>((resolve, reject) =>
+>       navigator.geolocation.getCurrentPosition(resolve, reject),
+>     ),
+>   staleTime: 30_000,
+> });
+> ```
 
 Model initial loading, empty success, errors, successful data, and background
 refresh distinctly. Keep useful prior data visible when appropriate, and show
