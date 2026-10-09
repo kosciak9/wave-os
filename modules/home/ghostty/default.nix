@@ -28,6 +28,7 @@
       cursor-style = "underline";
       custom-shader = [ "${config.xdg.configHome}/ghostty/shaders/cursor_warp.glsl" ];
       shell-integration-features = "no-cursor,ssh-env,ssh-terminfo,sudo,title";
+      keybind = [ "ctrl+enter=unbind" ];
     };
     themes.kanagawa = {
       palette = [
