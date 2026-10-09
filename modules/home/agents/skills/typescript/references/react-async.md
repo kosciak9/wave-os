@@ -49,14 +49,14 @@ state manager, whichever one is established.
 >
 > // Query: complete and declarative
 > function UserProfile({ userId }: { userId: string }) {
->   const query = useQuery({
+>   const { data, error, isPending, isError } = useQuery({
 >     queryKey: ["user", userId],
 >     queryFn: () => fetchUser(userId),
 >   });
 >
->   if (query.isPending) return <Spinner />;
->   if (query.isError) return <ErrorMessage error={query.error} />;
->   return <Profile user={query.data} />;
+>   if (isPending) return <Spinner />;
+>   if (isError) return <ErrorMessage error={error} />;
+>   return <Profile user={data} />;
 > }
 > ```
 
