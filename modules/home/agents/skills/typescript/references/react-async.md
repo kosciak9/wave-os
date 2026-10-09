@@ -60,9 +60,10 @@ state manager, whichever one is established.
 > }
 > ```
 
-Do not destructure the query result. Keeping the object lets TypeScript narrow
-it: after checking `query.isPending` or `query.isError`, `query.data` and
-`query.error` have the correct types.
+Rely on the result's discriminated union: after checking `isPending`, `isError`,
+or `isSuccess`, `data` and `error` have the correct types, whether the result is
+kept as an object or destructured with `const`. Do not add non-null assertions
+or manual casts for states the status checks already exclude.
 
 This applies to any asynchronous operation, not only HTTP: browser permissions,
 geolocation, file operations, debounced searches and polling, device APIs, and
