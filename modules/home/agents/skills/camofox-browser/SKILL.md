@@ -1,10 +1,11 @@
 ---
 name: camofox-browser
 description:
-  Use the camofox CLI for browser automation, web research, and page interaction
-  when the user asks to browse, inspect, click, type, navigate, evaluate,
-  screenshot, or close a Camofox tab; always use this skill for camofox commands
-  and Camofox browser sessions.
+  "Browser automation through the camofox CLI. Use whenever you need to open,
+  read, click or screenshot a web page."
+when_to_use:
+  "'otwórz stronę', 'sprawdź w przeglądarce', 'kliknij', web research that needs
+  a real browser, any camofox command."
 ---
 
 # Camofox browser

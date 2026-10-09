@@ -1,11 +1,12 @@
 ---
 name: experimental-discovery
-description: >-
-  Explore genuinely new or poorly understood territory through experiments
-  across substantially different approaches. Use for explicitly requested
-  exploratory R&D, core uncertainty that code and documentation cannot resolve,
-  or repeated ineffective fixes that call the underlying model into question.
-  Not for routine implementation, API lookup, or every focused trial.
+description:
+  "Structured experiments across different approaches for poorly understood
+  problems. Use when the user asks for exploratory R&D, or after repeated fixes
+  failed."
+when_to_use:
+  "'eksperymentuj', 'nie wiemy czemu', 'próbowaliśmy już kilku poprawek',
+  open-ended research with no known answer in docs."
 ---
 
 # Experimental Discovery

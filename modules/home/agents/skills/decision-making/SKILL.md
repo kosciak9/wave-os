@@ -1,11 +1,12 @@
 ---
 name: decision-making
-description: >-
-  Resolve working assumptions and material choices, evaluate alternatives and
-  speed-versus-thoroughness trade-offs, and preserve agreed decisions. Use when
-  planning or implementing a change requires a provisional choice, user input on
-  scope, behavior, security, cost, or reversibility, or evaluation of competing
-  approaches.
+description:
+  "Procedure for choosing between alternatives and recording agreed decisions.
+  Use when the user asks for your opinion on an approach, or when a task needs a
+  choice about scope, behavior, security, cost or reversibility."
+when_to_use:
+  "'co sądzisz o X?', 'X czy Y?', 'warto?', 'czy zrezygnować z X na rzecz Y',
+  trade-off questions."
 ---
 
 # Decision Making

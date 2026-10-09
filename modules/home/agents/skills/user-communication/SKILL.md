@@ -1,9 +1,12 @@
 ---
 name: user-communication
-description: >-
-  Keep user-facing conversations focused, self-contained, and useful for
-  decisions. Use at workflow entry when clarifying intent, discussing findings
-  or trade-offs, asking questions, or reporting outcomes.
+description:
+  "Load before your first reply in every conversation with the user, and again
+  before reporting results. Sets reply language, tone, length and format of
+  everything you say to the user."
+when_to_use:
+  "Any user message: questions, requests, discussion, status updates, final
+  reports. Example: 'co sądzisz?', 'zrób X', 'dlaczego Y?'"
 ---
 
 # User Communication

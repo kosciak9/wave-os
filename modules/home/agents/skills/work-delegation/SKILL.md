@@ -1,9 +1,11 @@
 ---
 name: work-delegation
-description: >-
-  Assign cohesive work to capable subagents and coordinate independent batches.
-  Use when delegating research or implementation, especially when multiple
-  assignments can proceed concurrently without conflicts.
+description:
+  "How to split work across subagents (Agent tool). Use before launching any
+  subagent or when a task can be parallelised."
+when_to_use:
+  "'podziel na zadania', 'równolegle', 'odpal agentów', audits or research
+  across many files/modules."
 ---
 
 # Work Delegation
