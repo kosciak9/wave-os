@@ -19,6 +19,11 @@ the evidence.
 
 ## 1. Scope
 
+By default, review only the sessions that worked in the current repository,
+including its other worktrees. When run in `wave-os`, the repository that
+manages the agent setup itself, review all sessions globally, across every
+repository and including `wave-os`.
+
 Agree on the period (usually since the last change to the agent setup), the
 harnesses, and the hosts. Find the setup change in the configuration
 repository's history and use its timestamp as the cut-off. Include every host
