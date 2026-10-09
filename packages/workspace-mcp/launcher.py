@@ -109,6 +109,34 @@ async def attachment_content(path, filename, gotenberg_url=None):
     return pdf_pages(pdf, label)
 
 
+def draft_attachments(attachments):
+    """Only base64 content: the upstream draft tool also reads host paths and fetches URLs."""
+    import base64
+    import binascii
+
+    if isinstance(attachments, str):
+        try:
+            attachments = json.loads(attachments)
+        except ValueError:
+            raise ToolError("Draft attachments must be a list of files.") from None
+    if not isinstance(attachments, list):
+        raise ToolError("Draft attachments must be a list of files.")
+    for attachment in attachments:
+        if not isinstance(attachment, dict) or not attachment.keys() <= {"content", "filename", "mime_type"}:
+            raise ToolError("Draft attachments may only carry base64 content, a file name and a MIME type; host files and URLs are not permitted.")
+        content, filename = attachment.get("content"), attachment.get("filename")
+        mime_type = attachment.get("mime_type")
+        if not isinstance(content, str) or not content or not isinstance(filename, str) or not filename:
+            raise ToolError("Every draft attachment needs base64 content and a file name.")
+        if mime_type is not None and not isinstance(mime_type, str):
+            raise ToolError("A draft attachment's MIME type must be a string.")
+        try:
+            base64.b64decode(content, validate=True)
+        except binascii.Error:
+            raise ToolError(f"The content of {filename} is not standard base64.") from None
+    return attachments
+
+
 class WorkspacePolicy(Middleware):
     def __init__(self, allowed_tools, email, inline_attachments=False, gotenberg_url=None):
         self.allowed_tools = frozenset(allowed_tools)
@@ -142,9 +170,23 @@ class WorkspacePolicy(Middleware):
                         "description": "System-label IDs to add or remove.",
                     }
             elif tool.name == "draft_gmail_message":
-                description = "Create a text or HTML Gmail draft, optionally as a reply. Does not send mail or read host files, attachment URLs or account signatures."
-                for key in ("attachments", "from_email", "include_signature"):
+                description = "Create a text or HTML Gmail draft, optionally as a reply, with attachments passed as base64 content. Does not send mail or read host files, attachment URLs or account signatures."
+                for key in ("from_email", "include_signature"):
                     properties.pop(key, None)
+                properties["attachments"] = {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "content": {"type": "string", "description": "The file's bytes as standard base64, not URL-safe."},
+                            "filename": {"type": "string"},
+                            "mime_type": {"type": "string"},
+                        },
+                        "required": ["content", "filename"],
+                        "additionalProperties": False,
+                    },
+                    "description": "Files to attach, each as base64 content with a file name.",
+                }
             elif tool.name == "get_gmail_attachment_content" and self.inline_attachments:
                 description = f"Read a Gmail attachment: an image or the first {MAX_PDF_PAGES} pages of a PDF come back as images, a text file as text (up to {MAX_TEXT_CHARS} characters); "
                 description += (
@@ -205,9 +247,9 @@ class WorkspacePolicy(Middleware):
                     raise ToolError("Only inbox, read, star and importance flags may be changed.")
                 arguments[key] = labels
         elif name == "draft_gmail_message":
-            # The upstream draft tool can read server-side paths for attachments.
-            if arguments.get("attachments"):
-                raise ToolError("Reading host files or URLs for draft attachments is not permitted.")
+            attachments = arguments.get("attachments")
+            if attachments:
+                arguments["attachments"] = draft_attachments(attachments)
             if arguments.get("from_email") not in (None, "", self.email):
                 raise ToolError("Drafts must use the configured Google account.")
             arguments["include_signature"] = False
