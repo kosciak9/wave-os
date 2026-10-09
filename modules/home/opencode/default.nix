@@ -21,6 +21,15 @@
       source = ./config/opencode.jsonc;
       force = true;
     };
+    "opencode/model-prompts" = {
+      source = ./config/model-prompts;
+      force = true;
+      recursive = true;
+    };
+    "opencode/plugins/model-prompts.js" = {
+      source = ./config/plugins/model-prompts.js;
+      force = true;
+    };
     "opencode/plugins/herdr-agent-state.js".source =
       inputs.herdr + "/src/integration/assets/opencode/herdr-agent-state.js";
     "opencode/herdr-tui-session.js".source =
