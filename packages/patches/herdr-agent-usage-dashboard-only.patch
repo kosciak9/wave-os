@@ -1,6 +1,6 @@
 --- a/src/refresh.rs
 +++ b/src/refresh.rs
-@@ -388,8 +388,11 @@
+@@ -389,9 +389,12 @@
      topic_pane: Option<&str>,
  ) -> Result<()> {
      let cache = CacheStore::from_env()?;
@@ -15,7 +15,8 @@
 +        }
      }
      // Agent inventory is metadata-only. Reusing it for both the fetch and the
-@@ -1511,7 +1514,10 @@
+     // publish pass lets local Codex/Grok diagnostics target the exact pane
+@@ -1624,7 +1627,10 @@
      force: bool,
      allow_icon_while_scrolled: bool,
  ) -> Result<()> {
@@ -27,7 +28,7 @@
      if let Some(pane) =
          topic_pane.and_then(|pane_id| panes.iter_mut().find(|pane| pane.pane_id == pane_id))
      {
-@@ -1542,6 +1548,9 @@
+@@ -1655,6 +1661,9 @@
              ),
          );
      }
@@ -36,13 +37,4 @@
 +    }
      notify_low_quota(cache, &tokens);
      let mut publish_panes = panes.to_vec();
-     sync_vendor_row_siblings(&mut tokens, &mut publish_panes);
-@@ -2185,7 +2194,7 @@
-             ] {
-                 let mut snapshot = ProviderSnapshot::new(
-                     Provider::Kilo,
--                    vec![window(WindowKind::Monthly, 20.6, 1_790_950_387)],
-+                    vec![window(WindowKind::Monthly, 20.6, CacheStore::now_unix() + 3600)],
-                     1,
-                 );
-                 snapshot.account_id = Some(owner.to_string());
+     sync_vendor_row_siblings(cache, row, &mut tokens, &mut publish_panes)?;

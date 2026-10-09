@@ -5,23 +5,23 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     nixpkgs-ahri.url = "github:NixOS/nixpkgs/825e2028c29b702a4a5f085f08095d12099784f2";
     herdr = {
-      url = "github:jerryfane/herdr/f9ae2a132fced4f314a6b1421aadf6f15b6f3761";
+      url = "github:jerryfane/herdr/6e165d6e9111a8b4863c26d627c49441a22528f9";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     herdr-gpui = {
-      url = "github:penso/herdr-gpui/v20261005.1";
+      url = "github:penso/herdr-gpui/v20261008.1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     herdr-worktrunk = {
-      url = "github:devashish2203/herdr-worktrunk/77e91a9b5429c0296cd883300b4b1d4664e9edd6";
+      url = "github:devashish2203/herdr-worktrunk/f9df9ba700b8a4f4d97ddfe3ea3eb345e80b880b";
       flake = false;
     };
     herdr-auto-title = {
-      url = "github:kryptamine/herdr-auto-title/1ffa8292c424cf679ed632275750819c234e610b";
+      url = "github:kryptamine/herdr-auto-title/9de68183c8a95141871cd3c0eff0c5be4e3fc6af";
       flake = false;
     };
     herdr-agent-usage = {
-      url = "github:levi-qiao/herdr-agent-usage/1b21311ec3fa2b46c2c715a8490f104fbde857e0";
+      url = "github:levi-qiao/herdr-agent-usage/4d6e54bcde2b49ec78c531f8111d12228c87076d";
       flake = false;
     };
     deploy-rs.url = "github:serokell/deploy-rs/cf64c8cbadd9b13ea79ba7720aa2930500f2ece7";

@@ -264,51 +264,51 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1791024091,
-        "narHash": "sha256-EpO/zOZW4QxP/uRXYkp4UJS9ZhuZ7g/n74iK8LJJMnQ=",
+        "lastModified": 1791532139,
+        "narHash": "sha256-PXBghJDuN53n6s7WqW1uoBES9+1hZM46fU1QBpBsFAk=",
         "owner": "jerryfane",
         "repo": "herdr",
-        "rev": "f9ae2a132fced4f314a6b1421aadf6f15b6f3761",
+        "rev": "6e165d6e9111a8b4863c26d627c49441a22528f9",
         "type": "github"
       },
       "original": {
         "owner": "jerryfane",
         "repo": "herdr",
-        "rev": "f9ae2a132fced4f314a6b1421aadf6f15b6f3761",
+        "rev": "6e165d6e9111a8b4863c26d627c49441a22528f9",
         "type": "github"
       }
     },
     "herdr-agent-usage": {
       "flake": false,
       "locked": {
-        "lastModified": 1790737217,
-        "narHash": "sha256-NeVgHH6qDa0FIy3Ll2kRk7yCNK8QMBEdLwQkwK4g0H4=",
+        "lastModified": 1791414083,
+        "narHash": "sha256-J7pDvMgy0ubP3Uq7ru2XoSOmC/FQDkjrOnUaS6jy2qk=",
         "owner": "levi-qiao",
         "repo": "herdr-agent-usage",
-        "rev": "1b21311ec3fa2b46c2c715a8490f104fbde857e0",
+        "rev": "4d6e54bcde2b49ec78c531f8111d12228c87076d",
         "type": "github"
       },
       "original": {
         "owner": "levi-qiao",
         "repo": "herdr-agent-usage",
-        "rev": "1b21311ec3fa2b46c2c715a8490f104fbde857e0",
+        "rev": "4d6e54bcde2b49ec78c531f8111d12228c87076d",
         "type": "github"
       }
     },
     "herdr-auto-title": {
       "flake": false,
       "locked": {
-        "lastModified": 1791018563,
-        "narHash": "sha256-agmoOgEBEl2m52wTcpsY/LegXqUanrlS2p7zIBD9fP0=",
+        "lastModified": 1791543435,
+        "narHash": "sha256-DfVdEru9AbDjy1we0GJPkVpXaeirUNaruYQkZ1gbzn4=",
         "owner": "kryptamine",
         "repo": "herdr-auto-title",
-        "rev": "1ffa8292c424cf679ed632275750819c234e610b",
+        "rev": "9de68183c8a95141871cd3c0eff0c5be4e3fc6af",
         "type": "github"
       },
       "original": {
         "owner": "kryptamine",
         "repo": "herdr-auto-title",
-        "rev": "1ffa8292c424cf679ed632275750819c234e610b",
+        "rev": "9de68183c8a95141871cd3c0eff0c5be4e3fc6af",
         "type": "github"
       }
     },
@@ -320,16 +320,16 @@
         "rust-overlay": "rust-overlay_2"
       },
       "locked": {
-        "lastModified": 1791182698,
-        "narHash": "sha256-EuBi0X0XQGVZjzHh5Wmv5Ssgsp/xFQvOx6xr8mnu/60=",
+        "lastModified": 1791482821,
+        "narHash": "sha256-g6a4PRZ1ebu0Y6nzGUJ+nHU6JrpZba3Fb0XWWLlToTo=",
         "owner": "penso",
         "repo": "herdr-gpui",
-        "rev": "37f51423039795c1a405240eb0df0dd9f2278447",
+        "rev": "87f4dc05c5f6b6deb0a821a741e742abaa8eff16",
         "type": "github"
       },
       "original": {
         "owner": "penso",
-        "ref": "v20261005.1",
+        "ref": "v20261008.1",
         "repo": "herdr-gpui",
         "type": "github"
       }
@@ -337,17 +337,17 @@
     "herdr-worktrunk": {
       "flake": false,
       "locked": {
-        "lastModified": 1790931822,
-        "narHash": "sha256-+dxQPMAjeQlsnJJJbMBQCsbjd7p5PRlojJqITAq+f6U=",
+        "lastModified": 1791287192,
+        "narHash": "sha256-puZWyvtBt2svov0NIVJTzdfHzm/k1EglbXsTGsm8N7I=",
         "owner": "devashish2203",
         "repo": "herdr-worktrunk",
-        "rev": "77e91a9b5429c0296cd883300b4b1d4664e9edd6",
+        "rev": "f9df9ba700b8a4f4d97ddfe3ea3eb345e80b880b",
         "type": "github"
       },
       "original": {
         "owner": "devashish2203",
         "repo": "herdr-worktrunk",
-        "rev": "77e91a9b5429c0296cd883300b4b1d4664e9edd6",
+        "rev": "f9df9ba700b8a4f4d97ddfe3ea3eb345e80b880b",
         "type": "github"
       }
     },
@@ -975,11 +975,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1789289402,
-        "narHash": "sha256-7HHAIxdoDAJv09/I6DrMsAJFgol2cqJumaPCCZ+XdAU=",
+        "lastModified": 1791457665,
+        "narHash": "sha256-SBP+XEJ336/HkV4RRDLdJJ9MeWokE5K+lppnTo4SFoA=",
         "owner": "youwen5",
         "repo": "zen-browser-flake",
-        "rev": "4036109214cf20632000558935bd823b901fa886",
+        "rev": "0ae74880377f493555038d52edd9c90178e05186",
         "type": "github"
       },
       "original": {
