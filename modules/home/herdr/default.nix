@@ -43,6 +43,8 @@ let
         commit = false;
         pr = false;
       };
+      # Smaller-context models otherwise drop rarely used skill descriptions.
+      skillListingBudgetFraction = 0.02;
       # Skills come from the shared Nix-managed set, not the claude.ai account.
       syncClaudeAiSkills = false;
       # Agents browse through the camofox-browser skill instead.
