@@ -549,8 +549,8 @@ in
     enable = lib.mkEnableOption "Alfred, the house-agents assistant on Telegram";
     image = lib.mkOption {
       type = lib.types.strMatching "[^@]+@sha256:[0-9a-f]{64}";
-      # house-agents e10eddf (linux/amd64, linux/arm64)
-      default = "ghcr.io/kosciak9/house-agents@sha256:75e839482f9a271f5fca8846a8e7f496e90022df728395cd8daa57203cd5b2cf";
+      # house-agents 56ffe61 (linux/amd64, linux/arm64)
+      default = "ghcr.io/kosciak9/house-agents@sha256:994f6a2035f3600144b62ab13351abccf30116d29dc4617cf31ec56f9d98d6cc";
       description = "The house-agents image, pinned by digest.";
     };
     gotenbergImage = lib.mkOption {
