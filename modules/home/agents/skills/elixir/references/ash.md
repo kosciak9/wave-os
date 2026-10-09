@@ -20,6 +20,21 @@ atomic action requirements to accommodate avoidable hook code. Inspect generated
 migrations and database constraints rather than assume a relationship
 declaration enforces every invariant under concurrency.
 
+## Ash first
+
+Reach for Ash's built-in mechanisms before writing custom processes: changes,
+validations, notifiers, calculations, aggregates, atomic updates, and the job
+integration the project already uses, such as AshOban. Do not add a custom
+GenServer, worker, lock, or polling loop beside them unless they demonstrably
+cannot express the behavior; name the missing capability first.
+
+One PostgreSQL instance goes very far, including queues and background jobs.
+Exhaust it before adding new infrastructure.
+
+> Send a confirmation email after an invoice is issued from an `after_action`
+> change that enqueues a job through the existing job integration, not from a
+> GenServer polling for newly issued invoices.
+
 ## Domain and resource ownership
 
 Organize **vertical slices by business capability**, using the established Ash
