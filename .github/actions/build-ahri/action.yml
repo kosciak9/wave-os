@@ -1,0 +1,22 @@
+name: Build ahri
+description: Build ahri's system closure, substituting from the wave-os cache.
+inputs:
+  cachix-auth-token:
+    description: Token for pushing to the wave-os cache; pull-only when empty.
+    default: ""
+runs:
+  using: composite
+  steps:
+    - name: Install Nix
+      uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31
+    - name: Configure Wave cache
+      uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
+      with:
+        name: wave-os
+        authToken: ${{ inputs.cachix-auth-token }}
+        # Only the runtime closure is pushed; build-only inputs would fill the cache.
+        skipPush: true
+        installCommand: nix profile add github:NixOS/nixpkgs/34ab99075ac4f7e40cf037eef32cb1c360bb85e9#cachix
+    - name: Build ahri
+      shell: bash
+      run: nix build --out-link ahri --print-build-logs .#nixosConfigurations.ahri.config.system.build.toplevel
