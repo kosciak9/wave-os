@@ -1,9 +1,12 @@
 ---
 name: technical-investigation
-description: >-
-  Gather and evaluate factual evidence from code and documentation. Use when
-  investigating behavior, resolving factual uncertainties, or supporting a
-  planning or implementation decision with checkable findings.
+description:
+  "Evidence-gathering procedure for answering 'why/how/does it' questions from
+  code, logs and docs. Use before answering any question about how something
+  works, why it breaks, or whether something is possible."
+when_to_use:
+  "'zrób research czy da się X', 'dlaczego X nie działa', 'sprawdź jak działa
+  Y', 'zbadaj', debugging a symptom, feasibility checks."
 ---
 
 # Technical Investigation

@@ -1,10 +1,11 @@
 ---
 name: build-orchestration
-description: >-
-  Coordinate ambitious, multi-stage implementation tasks and track dependencies
-  and progress. Use for larger production changes, prototypes, or research
-  apparatus with a sufficiently clear goal and approach that benefit from
-  organized batches of work. Not required for every small fix.
+description:
+  "Runs larger multi-step implementations in tracked batches. Use when an agreed
+  change touches many files/modules or needs several stages."
+when_to_use:
+  "'zaimplementuj cały plan', 'przebuduj moduł', migrations, multi-PR or
+  multi-stage work. Not for small fixes."
 ---
 
 # Build Orchestration

@@ -1,9 +1,9 @@
 ---
 name: typescript
-description: >-
-  Implement and assess TypeScript code in .ts and .tsx files. Use for typed
-  boundaries, data modeling, asynchronous behavior, and maintainable language
-  patterns; identify the actual framework before loading local references.
+description:
+  "TypeScript/TSX coding rules. Use whenever you read or edit .ts/.tsx files,
+  including React components."
+when_to_use: "'komponent React', 'popraw w TS', Next.js, Node, frontend code."
 ---
 
 # TypeScript

@@ -1,10 +1,11 @@
 ---
 name: prototyping
-description: >-
-  Quickly realize a chosen idea or minimal end-to-end integration to examine
-  behavior and feasibility. Use when runnable evidence is more useful than
-  further discussion, for known-direction integration or comparing approaches.
-  Not inherently exploratory research or production-ready implementation.
+description:
+  "Builds a quick runnable spike to check feasibility. Use when the user asks to
+  quickly try, test or wire something up end-to-end rather than discuss it."
+when_to_use:
+  "'przetestuj szybko czy da się', 'zrób szkic', 'spike', 'proof of concept',
+  'podepnij X do Y na próbę'."
 ---
 
 # Prototyping

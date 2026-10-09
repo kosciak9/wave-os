@@ -1,9 +1,11 @@
 ---
 name: elixir
-description: >-
-  Implement and assess Elixir code in .ex and .exs files. Use for pattern
-  matching, explicit errors, domain boundaries, process ownership, and data
-  consistency; identify the actual framework before loading local references.
+description:
+  "Elixir coding rules. Use whenever you read or edit .ex/.exs files, including
+  Ash, Phoenix and Ecto code."
+when_to_use:
+  "'moduł Elixir', Ash resources and actions, GenServer, Phoenix, LiveView,
+  Ecto."
 ---
 
 # Elixir

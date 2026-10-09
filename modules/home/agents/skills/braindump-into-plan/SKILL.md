@@ -1,11 +1,12 @@
 ---
 name: braindump-into-plan
-description: >-
-  Turn rough ideas, RFCs, and brain dumps into agreed requirements and an
-  actionable plan. Use when the user wants to explore a change, compare
-  approaches, refine a plan, or resolve material ambiguities before or during
-  implementation. Scale planning to the change; do not use for ceremonial
-  planning of obvious fixes or merely to revisit an already agreed plan.
+description:
+  "Turns a rough idea into agreed requirements and a plan before implementation.
+  Use when the user wants to plan, redesign, rebuild or migrate something, or
+  shares a brain dump or RFC."
+when_to_use:
+  "'zaplanujmy przebudowę X', 'chcę przenieść X do Y', 'mam pomysł', 'jak byś to
+  zrobił', any non-trivial change whose scope is not yet agreed."
 ---
 
 # Braindump into Plan

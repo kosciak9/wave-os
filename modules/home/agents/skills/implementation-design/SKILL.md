@@ -1,10 +1,13 @@
 ---
 name: implementation-design
-description: >-
-  Apply general implementation design principles when adding or changing code,
-  configuration, or infrastructure: reuse of the platform, libraries, and
-  existing mechanisms, scope, cognitive load, state ownership, naming, and
-  comments. Use for implementation choices independent of language.
+description:
+  "Code design rules: reuse the platform, installed libraries and existing
+  mechanisms before writing new ones; scope, state ownership, naming, comments.
+  Use whenever you write or change code, configuration or infrastructure in any
+  language."
+when_to_use:
+  "'popraw', 'zaimplementuj', 'dodaj', 'refaktor', 'skonfiguruj', any edit to
+  source or configuration files."
 ---
 
 # Implementation Design
