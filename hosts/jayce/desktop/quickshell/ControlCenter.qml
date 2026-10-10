@@ -12,6 +12,7 @@ Scope {
     id: root
     required property var service
     required property var caffeinateService
+    required property var lidOverrideService
     required property var watchService
     required property var targetScreen
     property string section: ""
@@ -494,6 +495,20 @@ Scope {
                             alert: root.caffeinateService.error.length > 0
                             opacity: root.caffeinateService.pending ? 0.65 : 1
                             onToggled: root.caffeinateService.toggle()
+                        }
+
+                        Tile {
+                            width: tiles.width
+                            visible: root.lidOverrideService.shown
+                            icon: Quickshell.shellDir + "/assets/laptop.svg"
+                            title: "Lid closed"
+                            subtitle: root.lidOverrideService.error.length > 0 ? root.lidOverrideService.error
+                                : root.lidOverrideService.pending ? "Changing mode…"
+                                : root.lidOverrideService.active ? "Laptop screen off" : "Laptop screen on"
+                            checked: root.lidOverrideService.active
+                            alert: root.lidOverrideService.error.length > 0
+                            opacity: root.lidOverrideService.pending ? 0.65 : 1
+                            onToggled: root.lidOverrideService.toggle()
                         }
 
                         Tile {

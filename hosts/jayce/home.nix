@@ -49,21 +49,7 @@ let
         --why='Keep background tasks running' ${lib.getExe caffeinateReady}
     '';
   };
-  displayReconciler = pkgs.writeShellApplication {
-    name = "wave-display-reconciler";
-    runtimeInputs = with pkgs; [
-      coreutils
-      hyprland
-      quickshell
-      systemd
-      python3
-    ];
-    text = ''
-      exec ${pkgs.python3}/bin/python3 ${pkgs.writeText "wave-display-reconciler.py" (builtins.readFile ./scripts/display-reconciler.py)} "$@"
-    '';
-  };
-  displayReconcilerPath = lib.getExe displayReconciler;
-  displayReconcilerRuntime = [ displayReconciler ];
+  waveDisplay = "${lib.getExe pkgs.wave} display";
   nightLight = pkgs.writeShellApplication {
     name = "wave-night-light";
     runtimeInputs = with pkgs; [
@@ -153,39 +139,37 @@ in
       _JAVA_AWT_WM_NONREPARENTING = "1";
       QT_STYLE_OVERRIDE = "kvantum";
     };
-    packages =
-      (with pkgs; [
-        brightnessctl
-        chromium
-        fd
-        gimp
-        hyprsunset
-        hyprshot
-        (iosevka-bin.override { variant = "SGr-IosevkaTerm"; })
-        jq
-        kanagawa-kvantum
-        karla
-        kdePackages.qtstyleplugin-kvantum
-        nerd-fonts.iosevka
-        nerd-fonts.overpass
-        nerd-fonts.symbols-only
-        neovide
-        nodejs
-        noto-fonts
-        noto-fonts-color-emoji
-        obsidian
-        playerctl
-        pulseaudio
-        pwvucontrol
-        remmina
-        ripgrep
-        trash-cli
-        tesseract
-        waytator
-        wl-clipboard
-        zenBrowser
-      ])
-      ++ displayReconcilerRuntime;
+    packages = with pkgs; [
+      brightnessctl
+      chromium
+      fd
+      gimp
+      hyprsunset
+      hyprshot
+      (iosevka-bin.override { variant = "SGr-IosevkaTerm"; })
+      jq
+      kanagawa-kvantum
+      karla
+      kdePackages.qtstyleplugin-kvantum
+      nerd-fonts.iosevka
+      nerd-fonts.overpass
+      nerd-fonts.symbols-only
+      neovide
+      nodejs
+      noto-fonts
+      noto-fonts-color-emoji
+      obsidian
+      playerctl
+      pulseaudio
+      pwvucontrol
+      remmina
+      ripgrep
+      trash-cli
+      tesseract
+      waytator
+      wl-clipboard
+      zenBrowser
+    ];
   };
 
   fonts.fontconfig.enable = true;
@@ -361,7 +345,6 @@ in
         general = {
           lock_cmd = "pidof hyprlock || hyprlock";
           before_sleep_cmd = "systemctl --user stop wave-dim.service; loginctl lock-session";
-          after_sleep_cmd = "${displayReconcilerPath} notify resume";
         };
         listener = [
           {
@@ -376,12 +359,12 @@ in
           {
             timeout = 600;
             on-timeout = "hyprctl dispatch 'hl.dsp.dpms({ action = \"disable\" })'";
-            on-resume = "${displayReconcilerPath} notify display-on";
+            on-resume = "${waveDisplay} notify display-on";
           }
           {
             timeout = 900;
-            on-timeout = "${displayReconcilerPath} notify idle-start";
-            on-resume = "${displayReconcilerPath} notify idle-end";
+            on-timeout = "${waveDisplay} notify idle-start";
+            on-resume = "${waveDisplay} notify idle-end";
           }
         ];
       };
@@ -473,8 +456,6 @@ in
         # A weak sleep lock allows root's critical-battery hibernation. The
         # session sleep policy explicitly respects it even for its owning UID.
         ExecStart = lib.getExe caffeinate;
-        ExecStartPost = "${displayReconcilerPath} notify policy-changed";
-        ExecStopPost = "${displayReconcilerPath} notify policy-changed";
         TimeoutStartSec = 10;
         TimeoutStopSec = 5;
       };
@@ -515,9 +496,9 @@ in
       };
     };
 
-    wave-display-reconciler = {
+    wave-display = {
       Unit = {
-        Description = "Event-driven Hyprland display reconciler";
+        Description = "Wave session display policy for the lid, outputs, workspaces and sleep";
         After = [
           "wayland-session-waitenv.service"
           "quickshell.service"
@@ -526,27 +507,13 @@ in
         ConditionEnvironment = "WAYLAND_DISPLAY";
       };
       Service = {
-        ExecStart = "${displayReconcilerPath} daemon";
-        Restart = "on-failure";
-        RestartSec = 1;
-      };
-      Install.WantedBy = [ sessionTarget ];
-    };
-
-    wave-lid-inhibit = {
-      Unit = {
-        Description = "Keep lid ownership with the Wave session";
-        After = [ "wave-display-reconciler.service" ];
-        BindsTo = [ "wave-display-reconciler.service" ];
-        PartOf = [ sessionTarget ];
-        ConditionEnvironment = "WAYLAND_DISPLAY";
-      };
-      Service = {
-        ExecStart = "${pkgs.systemd}/bin/systemd-inhibit --what=handle-lid-switch --mode=block --who=wave-display-reconciler --why='Wave display policy owns lid actions' ${pkgs.coreutils}/bin/sleep infinity";
+        ExecStart = "${waveDisplay} daemon";
+        # Blackout goes through the Quickshell IPC client.
+        Environment = [ "PATH=${lib.makeBinPath [ pkgs.quickshell ]}" ];
         Restart = "always";
         RestartSec = 1;
       };
-      Install.WantedBy = [ "wave-display-reconciler.service" ];
+      Install.WantedBy = [ sessionTarget ];
     };
 
     hyprsunset = {

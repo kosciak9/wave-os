@@ -28,6 +28,10 @@ ShellRoot {
         id: caffeinate
     }
 
+    LidOverride {
+        id: lidOverride
+    }
+
     WatchService {
         id: watch
     }
@@ -85,6 +89,7 @@ ShellRoot {
         targetScreen: root.primaryScreen
         service: notifications
         caffeinateService: caffeinate
+        lidOverrideService: lidOverride
         watchService: watch
     }
 

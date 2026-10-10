@@ -1,5 +1,9 @@
 mod autodeploy;
 mod dashboard;
+#[cfg(target_os = "linux")]
+mod dbus;
+#[cfg(target_os = "linux")]
+mod display;
 mod github;
 mod health;
 mod logging;
@@ -72,6 +76,12 @@ enum Action {
     /// Print the shell completion script
     #[command(hide = true)]
     Completion { shell: clap_complete::Shell },
+    /// Session display policy: lid, outputs, workspaces and sleep
+    #[cfg(target_os = "linux")]
+    Display {
+        #[command(subcommand)]
+        command: display::Command,
+    },
 }
 
 #[derive(Subcommand)]
@@ -152,6 +162,8 @@ fn run(action: Action) -> Result<i32> {
             } => dashboard::add(&project, &branch, port),
             DashboardAction::Remove { project, branch } => dashboard::remove(&project, &branch),
         },
+        #[cfg(target_os = "linux")]
+        Action::Display { command } => display::run(command),
     }
 }
 

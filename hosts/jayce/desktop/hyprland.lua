@@ -1,11 +1,19 @@
 local mod = "SUPER"
 
+-- `wave display` keeps this marker while the lid is closed or overridden, so
+-- a config reload never turns the laptop screen back on behind its back.
+local internalOffMarker = io.open((os.getenv("XDG_RUNTIME_DIR") or "") .. "/wave-display/internal-off", "r")
+if internalOffMarker then
+    internalOffMarker:close()
+end
+
 hl.monitor({
     output = "eDP-1",
     mode = "2560x1600@165.000",
     position = "auto",
     scale = 1.6,
     vrr = 2,
+    disabled = internalOffMarker ~= nil,
 })
 
 hl.monitor({
@@ -859,8 +867,8 @@ hl.bind("CTRL + Print", hl.dsp.exec_cmd("hyprshot -m output -m active --raw | wa
 hl.bind("ALT + Print", hl.dsp.exec_cmd("hyprshot -m window -m active --raw | waytator --stdin " .. screenshotName), { description = "Capture window" })
 
 hl.bind(mod .. " + SHIFT + P", hl.dsp.exec_cmd([[loginctl lock-session && sleep 2 && hyprctl dispatch 'hl.dsp.dpms({ action = "disable" })']]), { description = "Lock session and turn displays off after 2 seconds" })
-hl.bind("switch:on:Lid Switch", hl.dsp.exec_cmd("wave-display-reconciler notify lid-close"), { locked = true, description = "Handle lid close" })
-hl.bind("switch:off:Lid Switch", hl.dsp.exec_cmd("wave-display-reconciler notify lid-open"), { locked = true, description = "Handle lid open" })
+hl.bind("switch:on:Lid Switch", hl.dsp.exec_cmd("wave display notify lid-close"), { locked = true, description = "Handle lid close" })
+hl.bind("switch:off:Lid Switch", hl.dsp.exec_cmd("wave display notify lid-open"), { locked = true, description = "Handle lid open" })
 
 -- The panel already exposes a non-linear scale; use linear 2% steps with a safe raw cap of 64267.
 -- 62956 is the raw value reached by 2%- from that cap; clamp the next up step until a stable kernel fix.
