@@ -27,28 +27,6 @@ let
     ];
     text = builtins.readFile ./scripts/dim.sh;
   };
-  caffeinateReady = pkgs.writeShellApplication {
-    name = "wave-caffeinate-ready";
-    runtimeInputs = [
-      pkgs.coreutils
-      pkgs.systemd
-    ];
-    text = ''
-      export NOTIFY_SOCKET="$WAVE_CAFFEINATE_NOTIFY_SOCKET"
-      systemd-notify --ready
-      exec sleep infinity
-    '';
-  };
-  caffeinate = pkgs.writeShellApplication {
-    name = "wave-caffeinate";
-    runtimeInputs = [ pkgs.systemd ];
-    text = ''
-      # systemd-inhibit strips NOTIFY_SOCKET from its child environment.
-      export WAVE_CAFFEINATE_NOTIFY_SOCKET="$NOTIFY_SOCKET"
-      exec systemd-inhibit --what=sleep --mode=block-weak --who=wave-caffeinate \
-        --why='Keep background tasks running' ${lib.getExe caffeinateReady}
-    '';
-  };
   waveDisplay = "${lib.getExe pkgs.wave} display";
   nightLight = pkgs.writeShellApplication {
     name = "wave-night-light";
@@ -452,10 +430,9 @@ in
       };
       Service = {
         Type = "notify";
-        NotifyAccess = "all";
         # A weak sleep lock allows root's critical-battery hibernation. The
         # session sleep policy explicitly respects it even for its owning UID.
-        ExecStart = lib.getExe caffeinate;
+        ExecStart = "${lib.getExe pkgs.wave} caffeinate hold";
         TimeoutStartSec = 10;
         TimeoutStopSec = 5;
       };

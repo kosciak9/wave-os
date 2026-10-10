@@ -3,8 +3,8 @@
     oh-my-zsh.plugins = [ "systemd" ];
 
     shellAliases = {
-      caffeinate = "systemctl --user start wave-caffeinate.service";
-      decaffeinate = "systemctl --user stop wave-caffeinate.service";
+      caffeinate = "wave caffeinate on";
+      decaffeinate = "wave caffeinate off";
       cp = "cp -rv --reflink=auto";
       sc-suspend = "systemctl suspend";
     };

@@ -1,4 +1,6 @@
 mod autodeploy;
+#[cfg(target_os = "linux")]
+mod caffeinate;
 mod dashboard;
 #[cfg(target_os = "linux")]
 mod dbus;
@@ -76,6 +78,12 @@ enum Action {
     /// Print the shell completion script
     #[command(hide = true)]
     Completion { shell: clap_complete::Shell },
+    /// Keep background tasks running without preventing lock or DPMS
+    #[cfg(target_os = "linux")]
+    Caffeinate {
+        #[command(subcommand)]
+        command: caffeinate::Command,
+    },
     /// Session display policy: lid, outputs, workspaces and sleep
     #[cfg(target_os = "linux")]
     Display {
@@ -162,6 +170,8 @@ fn run(action: Action) -> Result<i32> {
             } => dashboard::add(&project, &branch, port),
             DashboardAction::Remove { project, branch } => dashboard::remove(&project, &branch),
         },
+        #[cfg(target_os = "linux")]
+        Action::Caffeinate { command } => caffeinate::run(command),
         #[cfg(target_os = "linux")]
         Action::Display { command } => display::run(command),
     }

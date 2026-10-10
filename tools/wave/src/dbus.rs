@@ -1,7 +1,7 @@
 //! D-Bus interfaces of the Linux system services wave talks to.
 
 use zbus::proxy;
-use zbus::zvariant::{OwnedFd, OwnedObjectPath};
+use zbus::zvariant::{ObjectPath, OwnedFd, OwnedObjectPath};
 
 /// (what, who, why, mode, uid, pid)
 pub type Inhibitor = (String, String, String, String, u32, u32);
@@ -36,5 +36,26 @@ pub trait Session {
     default_path = "/org/freedesktop/systemd1"
 )]
 pub trait SystemdManager {
+    fn start_unit(&self, name: &str, mode: &str) -> zbus::Result<OwnedObjectPath>;
     fn stop_unit(&self, name: &str, mode: &str) -> zbus::Result<OwnedObjectPath>;
+    fn load_unit(&self, name: &str) -> zbus::Result<OwnedObjectPath>;
+    /// Unit and job signals are only emitted to subscribed clients.
+    fn subscribe(&self) -> zbus::Result<()>;
+    #[zbus(signal)]
+    fn job_removed(
+        &self,
+        id: u32,
+        job: ObjectPath<'_>,
+        unit: &str,
+        result: &str,
+    ) -> zbus::Result<()>;
+}
+
+#[proxy(
+    interface = "org.freedesktop.systemd1.Unit",
+    default_service = "org.freedesktop.systemd1"
+)]
+pub trait SystemdUnit {
+    #[zbus(property)]
+    fn active_state(&self) -> zbus::Result<String>;
 }
