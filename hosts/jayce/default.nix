@@ -39,6 +39,11 @@
     kernel.sysctl = {
       "vm.dirty_writeback_centisecs" = 6000;
       "vm.laptop_mode" = 5;
+      # Turn silent CPU lockups into panics, which efi-pstore records, and
+      # reboot after the dump instead of leaving a frozen machine.
+      "kernel.softlockup_panic" = 1;
+      "kernel.hardlockup_panic" = 1;
+      "kernel.panic" = 10;
     };
   };
 
