@@ -2,7 +2,10 @@
 {
   home.packages = [
     (inputs.herdr-gpui.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs (old: {
-      patches = (old.patches or [ ]) ++ [ ./patches/gpui-shortcut-hints.patch ];
+      patches = (old.patches or [ ]) ++ [
+        ./patches/gpui-shortcut-hints.patch
+        ./patches/gpui-worktree-no-branch.patch
+      ];
     }))
   ];
 
