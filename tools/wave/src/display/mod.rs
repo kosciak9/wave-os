@@ -47,6 +47,8 @@ pub enum NotifyEvent {
     IdleStart,
     IdleEnd,
     DisplayOn,
+    DimStart,
+    DimEnd,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -313,6 +315,7 @@ fn daemon(paths: &Paths) -> Result<()> {
                 }
             }
             Ok(Event::Logind(logind::Event::Changed)) => reconciler.logind_changed(),
+            Ok(Event::Logind(logind::Event::Suspending)) => reconciler.suspending(),
             Ok(Event::Logind(logind::Event::Resumed)) => reconciler.resumed(),
             Ok(Event::Logind(logind::Event::Lost(reason))) => bail!("{reason}"),
             Ok(Event::Request(line, reply_to)) => {

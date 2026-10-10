@@ -22,9 +22,19 @@ pub struct State {
     /// instance means a new session, which starts without the override.
     #[serde(default)]
     pub lid_override: Option<String>,
-    /// Keyboard backlight level to restore once the laptop screen is back.
+    /// Keyboard backlight level to restore once the laptop screen is back
+    /// and undimmed.
     #[serde(default)]
     pub keyboard_backlight: Option<u8>,
+    /// Laptop screen backlight before the idle dim, restored on activity.
+    #[serde(default)]
+    pub dimmed_backlight: Option<Backlight>,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct Backlight {
+    pub device: String,
+    pub brightness: u32,
 }
 
 #[derive(Default, Serialize, Deserialize)]

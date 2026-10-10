@@ -5,7 +5,7 @@ use zbus::blocking::fdo::PropertiesProxy;
 use zbus::names::InterfaceName;
 use zbus::zvariant::OwnedFd;
 
-use crate::dbus::{LoginManagerProxyBlocking, SessionProxyBlocking, SystemdManagerProxyBlocking};
+use crate::dbus::{LoginManagerProxyBlocking, SessionProxyBlocking};
 
 /// Logind properties whose change can alter the lid or sleep decision.
 const WATCHED_PROPERTIES: &[&str] = &["LidClosed", "BlockInhibited", "BlockWeakInhibited"];
@@ -13,20 +13,19 @@ const WATCHED_PROPERTIES: &[&str] = &["LidClosed", "BlockInhibited", "BlockWeakI
 #[derive(Debug)]
 pub enum Event {
     Changed,
+    Suspending,
     Resumed,
     Lost(String),
 }
 
 pub struct Logind {
     system: Connection,
-    session: Connection,
 }
 
 impl Logind {
     pub fn connect() -> Result<Self> {
         Ok(Self {
             system: Connection::system().context("system bus unavailable")?,
-            session: Connection::session().context("session bus unavailable")?,
         })
     }
 
@@ -77,8 +76,9 @@ impl Logind {
         Ok(())
     }
 
-    pub fn stop_user_unit(&self, unit: &str) -> Result<()> {
-        SystemdManagerProxyBlocking::new(&self.session)?.stop_unit(unit, "replace")?;
+    /// Logind lets the active session set its backlight without privileges.
+    pub fn set_backlight(&self, device: &str, brightness: u32) -> Result<()> {
+        SessionProxyBlocking::new(&self.system)?.set_brightness("backlight", device, brightness)?;
         Ok(())
     }
 
@@ -90,8 +90,13 @@ impl Logind {
         let sleep_events = events.clone();
         std::thread::spawn(move || {
             for signal in sleeps {
-                let resumed = signal.args().is_ok_and(|args| !args.start);
-                if resumed && sleep_events.send(Event::Resumed.into()).is_err() {
+                let Ok(args) = signal.args() else { continue };
+                let event = if args.start {
+                    Event::Suspending
+                } else {
+                    Event::Resumed
+                };
+                if sleep_events.send(event.into()).is_err() {
                     return;
                 }
             }

@@ -1,6 +1,6 @@
 use super::hyprland::{Hyprland, Monitor, Notice};
 use super::logind::Logind;
-use super::ownership::{EVENT_DELAY, Ownership, description_identity};
+use super::ownership::{Backlight, EVENT_DELAY, Ownership, description_identity};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
@@ -18,6 +18,10 @@ const MOVE_CONFIRM_ATTEMPTS: u32 = 15;
 const MOVE_CONFIRM_INTERVAL: Duration = Duration::from_millis(80);
 const INTERNAL_RETURN_ATTEMPTS: u32 = 40;
 const INTERNAL_RETURN_INTERVAL: Duration = Duration::from_millis(100);
+const DIM_STEPS: u32 = 40;
+const DIM_STEP_INTERVAL: Duration = Duration::from_millis(50);
+/// Idle dim target as a fraction of the panel's maximum brightness.
+const DIM_FRACTION: u32 = 10;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Lid {
@@ -61,6 +65,8 @@ pub enum Action {
     IdleStart,
     IdleEnd,
     DisplayOn,
+    DimStart,
+    DimEnd,
 }
 
 impl Action {
@@ -71,6 +77,8 @@ impl Action {
             "idle-start" => Self::IdleStart,
             "idle-end" => Self::IdleEnd,
             "display-on" => Self::DisplayOn,
+            "dim-start" => Self::DimStart,
+            "dim-end" => Self::DimEnd,
             _ => return None,
         })
     }
@@ -111,6 +119,30 @@ fn set_keyboard_backlight(level: u8) {
     qmk_backlight(Some(level));
 }
 
+/// The laptop panel's backlight device and its current and maximum levels.
+fn panel_backlight() -> Option<(String, u32, u32)> {
+    let read = |path: std::path::PathBuf| -> Option<u32> {
+        std::fs::read_to_string(path).ok()?.trim().parse().ok()
+    };
+    let entry = std::fs::read_dir("/sys/class/backlight")
+        .ok()?
+        .flatten()
+        .next()?;
+    let device = entry.file_name().into_string().ok()?;
+    Some((
+        device,
+        read(entry.path().join("brightness"))?,
+        read(entry.path().join("max_brightness"))?,
+    ))
+}
+
+/// Progress of the idle dim's fade towards its target.
+struct Fade {
+    target: u32,
+    step: u32,
+    next_at: Instant,
+}
+
 fn lua_string(value: &str) -> String {
     serde_json::to_string(value).expect("strings serialize")
 }
@@ -142,6 +174,9 @@ pub struct Reconciler {
     suspend_delay: Duration,
     idle_requested: bool,
     deferred_snapshot_at: Option<Instant>,
+    /// Whether the last convergence left eDP-1 off for a closed lid or the override.
+    internal_off: bool,
+    fade: Option<Fade>,
 }
 
 impl Reconciler {
@@ -166,6 +201,8 @@ impl Reconciler {
             suspend_delay: Duration::from_secs(1),
             idle_requested: false,
             deferred_snapshot_at: None,
+            internal_off: false,
+            fade: None,
         }
     }
 
@@ -231,7 +268,13 @@ impl Reconciler {
                 }
             }
             Action::DisplayOn => self.converge(true),
+            Action::DimStart => self.dim(),
+            Action::DimEnd => self.undim(),
         }
+    }
+
+    pub fn suspending(&mut self) {
+        self.undim();
     }
 
     pub fn resumed(&mut self) {
@@ -307,6 +350,7 @@ impl Reconciler {
                 self.settle_sleep();
             }
         }
+        self.advance_fade(now);
         self.ownership.flush();
         self.generated
             .retain(|_, (_, stamp)| stamp.elapsed() <= GENERATED_EVENT_TIMEOUT);
@@ -318,6 +362,7 @@ impl Reconciler {
             .min();
         let retry = self.suspend_retry_at.filter(|_| !self.suspend_requested);
         [
+            self.fade.as_ref().map(|fade| fade.next_at),
             self.deferred_snapshot_at,
             retry,
             self.ownership.next_flush(),
@@ -434,7 +479,7 @@ impl Reconciler {
         // with one, the session carries on there.
         if !has_external(monitors) {
             if lid == Lid::Closed {
-                self.stop_dim();
+                self.undim();
                 if let Err(error) = self.logind.lock_session() {
                     eprintln!("wave display: lock failed: {error:#}");
                 }
@@ -451,7 +496,9 @@ impl Reconciler {
             self.mark_internal_off();
             self.restore_outputs(monitors);
         }
-        self.darken_keyboard();
+        self.internal_off = true;
+        self.undim();
+        self.sync_keyboard();
         self.settle_sleep();
     }
 
@@ -468,7 +515,8 @@ impl Reconciler {
                 }
             }
         };
-        self.restore_keyboard();
+        self.internal_off = false;
+        self.sync_keyboard();
         self.restore_outputs(&monitors);
         if wake_displays {
             for monitor in &monitors {
@@ -520,7 +568,7 @@ impl Reconciler {
         };
         if !internal_workspaces.is_empty() {
             self.blackout();
-            self.stop_dim();
+            self.undim();
             for id in internal_workspaces {
                 self.move_workspace(id, &target);
             }
@@ -720,33 +768,89 @@ impl Reconciler {
         }
     }
 
-    /// The keyboard backlight goes dark with the laptop screen; the level it
-    /// had is kept in the session state so a daemon restart still restores it.
-    fn darken_keyboard(&mut self) {
-        if self.ownership.state.keyboard_backlight.is_some() {
+    /// The keyboard backlight is dark while the laptop screen is off or
+    /// dimmed; its level is kept in the session state so a daemon restart
+    /// still restores it.
+    fn sync_keyboard(&mut self) {
+        let dark = self.internal_off || self.ownership.state.dimmed_backlight.is_some();
+        let saved = self.ownership.state.keyboard_backlight;
+        match (dark, saved) {
+            (true, None) => {
+                let Some(level) = keyboard_backlight() else {
+                    return;
+                };
+                self.ownership.state.keyboard_backlight = Some(level);
+                if level > 0 {
+                    set_keyboard_backlight(0);
+                }
+            }
+            (false, Some(level)) => {
+                self.ownership.state.keyboard_backlight = None;
+                if level > 0 {
+                    set_keyboard_backlight(level);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// Fades the laptop screen to a tenth of its range on idle; the keyboard
+    /// goes dark at once.
+    fn dim(&mut self) {
+        if self.ownership.state.dimmed_backlight.is_some()
+            || self.internal_off
+            || lid_state() == Lid::Closed
+        {
             return;
         }
-        let Some(level) = keyboard_backlight() else {
+        let Some((device, brightness, maximum)) = panel_backlight() else {
             return;
         };
-        self.ownership.state.keyboard_backlight = Some(level);
-        if level > 0 {
-            set_keyboard_backlight(0);
+        let target = (maximum / DIM_FRACTION).max(1).min(brightness);
+        self.ownership.state.dimmed_backlight = Some(Backlight { device, brightness });
+        self.fade = Some(Fade {
+            target,
+            step: 0,
+            next_at: Instant::now(),
+        });
+        self.sync_keyboard();
+        self.advance_fade(Instant::now());
+    }
+
+    fn advance_fade(&mut self, now: Instant) {
+        let Some(original) = self.ownership.state.dimmed_backlight.clone() else {
+            self.fade = None;
+            return;
+        };
+        let Some(fade) = self.fade.as_mut().filter(|fade| now >= fade.next_at) else {
+            return;
+        };
+        fade.step += 1;
+        fade.next_at = now + DIM_STEP_INTERVAL;
+        let span = i64::from(fade.target) - i64::from(original.brightness);
+        let value =
+            i64::from(original.brightness) + span * i64::from(fade.step) / i64::from(DIM_STEPS);
+        if fade.step >= DIM_STEPS {
+            self.fade = None;
+        }
+        if let Err(error) = self.logind.set_backlight(&original.device, value as u32) {
+            eprintln!("wave display: cannot dim the backlight: {error:#}");
+            self.fade = None;
         }
     }
 
-    fn restore_keyboard(&mut self) {
-        if let Some(level) = self.ownership.state.keyboard_backlight.take()
-            && level > 0
+    fn undim(&mut self) {
+        self.fade = None;
+        let Some(original) = self.ownership.state.dimmed_backlight.take() else {
+            return;
+        };
+        if let Err(error) = self
+            .logind
+            .set_backlight(&original.device, original.brightness)
         {
-            set_keyboard_backlight(level);
+            eprintln!("wave display: cannot restore the backlight: {error:#}");
         }
-    }
-
-    fn stop_dim(&self) {
-        if let Err(error) = self.logind.stop_user_unit("wave-dim.service") {
-            eprintln!("wave display: cannot stop wave-dim: {error:#}");
-        }
+        self.sync_keyboard();
     }
 
     fn defer_sleep(&mut self) {

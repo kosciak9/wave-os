@@ -16,17 +16,6 @@ let
   });
   notificationSoundPath = "${pkgs.sound-theme-freedesktop}/share/sounds/freedesktop/stereo/message-new-instant.oga";
   waytator = pkgs.callPackage ../../packages/waytator.nix { };
-  dim = pkgs.writeShellApplication {
-    name = "wave-dim";
-    runtimeInputs = with pkgs; [
-      brightnessctl
-      coreutils
-      hyprland
-      jq
-      qmk_hid
-    ];
-    text = builtins.readFile ./scripts/dim.sh;
-  };
   waveDisplay = "${lib.getExe pkgs.wave} display";
   nightLight = pkgs.writeShellApplication {
     name = "wave-night-light";
@@ -322,13 +311,13 @@ in
       settings = {
         general = {
           lock_cmd = "pidof hyprlock || hyprlock";
-          before_sleep_cmd = "systemctl --user stop wave-dim.service; loginctl lock-session";
+          before_sleep_cmd = "loginctl lock-session";
         };
         listener = [
           {
             timeout = 240;
-            on-timeout = "systemctl --user start wave-dim.service";
-            on-resume = "systemctl --user stop wave-dim.service";
+            on-timeout = "${waveDisplay} notify dim-start";
+            on-resume = "${waveDisplay} notify dim-end";
           }
           {
             timeout = 300;
@@ -455,21 +444,6 @@ in
       Service = {
         Type = "oneshot";
         ExecStart = "${lib.getExe pkgs.quickshell} -c wave ipc call blackout trigger";
-      };
-    };
-
-    wave-dim = {
-      Unit = {
-        Description = "Cancellable idle dimmer for the screen and keyboard backlights";
-        PartOf = [
-          sessionTarget
-          "hypridle.service"
-        ];
-      };
-      Service = {
-        Type = "simple";
-        ExecStart = lib.getExe dim;
-        TimeoutStopSec = 3;
       };
     };
 
