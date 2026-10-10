@@ -2,47 +2,23 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import Quickshell
-import Quickshell.Io
+import Quickshell.Bluetooth
 
+// The paired InfiniTime as BlueZ reports it; `wave watch` keeps it connected.
 Scope {
     id: root
 
-    property bool known: false
-    property bool connected: false
-    property int battery: -1
-    readonly property string status: !known ? "Checking…"
+    readonly property var device: {
+        for (const candidate of Bluetooth.devices.values) {
+            if (candidate.name === "InfiniTime" && (candidate.paired || candidate.bonded))
+                return candidate
+        }
+        return null
+    }
+    readonly property bool known: device !== null
+    readonly property bool connected: known && device.connected
+    readonly property int battery: connected && device.batteryAvailable ? Math.round(device.battery * 100) : -1
+    readonly property string status: !known ? "Not paired"
         : connected ? (battery >= 0 ? battery + "%" : "Connected")
         : "Disconnected"
-
-    function refresh(): void {
-        batteryFile.reload()
-    }
-
-    Component.onCompleted: refresh()
-
-    Timer {
-        interval: 60000
-        running: true
-        repeat: true
-        onTriggered: root.refresh()
-    }
-
-    FileView {
-        id: batteryFile
-        path: Quickshell.env("XDG_RUNTIME_DIR") + "/itd-health/battery"
-        watchChanges: true
-        printErrors: false
-        onFileChanged: reload()
-        onLoaded: {
-            const level = parseInt(text().trim(), 10)
-            root.known = true
-            root.connected = !isNaN(level) && level >= 0
-            root.battery = root.connected ? level : -1
-        }
-        onLoadFailed: {
-            root.known = false
-            root.connected = false
-            root.battery = -1
-        }
-    }
 }

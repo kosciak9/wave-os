@@ -22,6 +22,8 @@ mod remote;
 mod source;
 mod state;
 mod switch;
+#[cfg(target_os = "linux")]
+mod watch;
 
 use anyhow::{Result, ensure};
 use clap::{CommandFactory, Parser, Subcommand};
@@ -102,6 +104,9 @@ enum Action {
     /// Run the power profile policy: performance on AC or with caffeinate
     #[cfg(target_os = "linux")]
     PowerProfilePolicy,
+    /// Keep the paired InfiniTime watch connected, its clock set and its weather fresh
+    #[cfg(target_os = "linux")]
+    Watch,
 }
 
 #[derive(Subcommand)]
@@ -190,6 +195,8 @@ fn run(action: Action) -> Result<i32> {
         Action::NightLight => night_light::run(),
         #[cfg(target_os = "linux")]
         Action::PowerProfilePolicy => power_profile::run(),
+        #[cfg(target_os = "linux")]
+        Action::Watch => watch::run(),
     }
 }
 

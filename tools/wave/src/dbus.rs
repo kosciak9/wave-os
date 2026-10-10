@@ -121,3 +121,30 @@ pub trait GeoClueLocation {
     #[zbus(property)]
     fn longitude(&self) -> zbus::Result<f64>;
 }
+
+#[proxy(interface = "org.bluez.Device1", default_service = "org.bluez")]
+pub trait BluezDevice {
+    fn connect(&self) -> zbus::Result<()>;
+    #[zbus(property)]
+    fn connected(&self) -> zbus::Result<bool>;
+    #[zbus(property)]
+    fn services_resolved(&self) -> zbus::Result<bool>;
+}
+
+#[proxy(interface = "org.bluez.Adapter1", default_service = "org.bluez")]
+pub trait BluezAdapter {
+    #[zbus(property)]
+    fn powered(&self) -> zbus::Result<bool>;
+}
+
+#[proxy(
+    interface = "org.bluez.GattCharacteristic1",
+    default_service = "org.bluez"
+)]
+pub trait GattCharacteristic {
+    fn write_value(
+        &self,
+        value: &[u8],
+        options: HashMap<&str, zbus::zvariant::Value<'_>>,
+    ) -> zbus::Result<()>;
+}

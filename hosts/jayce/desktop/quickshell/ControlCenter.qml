@@ -517,7 +517,6 @@ Scope {
                             title: "Watch"
                             subtitle: root.watchService.status
                             checked: root.watchService.connected
-                            onToggled: root.watchService.refresh()
                         }
                     }
 

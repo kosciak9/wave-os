@@ -53,7 +53,7 @@ let
 in
 {
   imports = [
-    ./desktop/itd.nix
+    ./desktop/watch.nix
     ./desktop/voxtype.nix
     ./pimalaya.nix
     ../../modules/home/agents
