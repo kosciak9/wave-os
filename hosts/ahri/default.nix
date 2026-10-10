@@ -27,8 +27,8 @@ in
     hostName = "ahri";
     useDHCP = false;
     useNetworkd = true;
-    firewall.interfaces =
-      lib.genAttrs
+    firewall.interfaces = lib.mkMerge [
+      (lib.genAttrs
         [
           "end0"
           "eth0"
@@ -42,7 +42,15 @@ in
               to = 61000;
             }
           ];
-        });
+        })
+      )
+      {
+        tailscale0 = {
+          allowedTCPPorts = [ 22000 ];
+          allowedUDPPorts = [ 22000 ];
+        };
+      }
+    ];
   };
   time.timeZone = "Europe/Warsaw";
 
@@ -78,6 +86,16 @@ in
       };
     };
     tailscale.enable = true;
+    # Devices and folders are configured at runtime through `syncthing cli`; peers connect over the tailnet.
+    syncthing = {
+      enable = true;
+      user = "kosciak";
+      group = "users";
+      dataDir = "/home/kosciak";
+      configDir = "/home/kosciak/.config/syncthing";
+      overrideDevices = false;
+      overrideFolders = false;
+    };
 
     caddy = {
       enable = true;
