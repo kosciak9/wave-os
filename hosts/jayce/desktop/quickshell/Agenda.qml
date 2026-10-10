@@ -310,12 +310,6 @@ Scope {
             border.color: Theme.notificationBorder
             focus: true
             Keys.onEscapePressed: root.opened = false
-            Keys.onPressed: function(event) {
-                if (event.key === Qt.Key_R) {
-                    root.refresh()
-                    event.accepted = true
-                }
-            }
             MouseArea { anchors.fill: parent; onClicked: function(mouse) { mouse.accepted = true } }
             states: State {
                 name: "shown"
@@ -348,11 +342,6 @@ Scope {
                             text: Qt.formatDate(clock.date, "dddd, d MMMM") + " · " + Qt.formatTime(clock.date, "HH:mm")
                             color: Theme.oldWhite; font.pixelSize: 10
                         }
-                    }
-                    Label {
-                        anchors.right: parent.right; anchors.top: parent.top
-                        text: root.loading ? "…" : "r ⟳  esc ×"
-                        color: Theme.fujiGray; font.pixelSize: 10
                     }
                 }
 
