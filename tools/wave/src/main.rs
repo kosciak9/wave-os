@@ -12,7 +12,7 @@ mod state;
 mod switch;
 
 use anyhow::{Result, ensure};
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -69,6 +69,9 @@ enum Action {
         #[command(subcommand)]
         action: DashboardAction,
     },
+    /// Print the shell completion script
+    #[command(hide = true)]
+    Completion { shell: clap_complete::Shell },
 }
 
 #[derive(Subcommand)]
@@ -137,6 +140,10 @@ fn run(action: Action) -> Result<i32> {
         Action::Switch { local } => switch::switch(&owner_paths()?, &hostname()?, local),
         Action::Deploy { node } => remote::deploy(&owner_paths()?, &node),
         Action::Autodeploy { nodes } => autodeploy::run(&owner_paths()?, &hostname()?, &nodes),
+        Action::Completion { shell } => {
+            clap_complete::generate(shell, &mut Cli::command(), "wave", &mut std::io::stdout());
+            Ok(0)
+        }
         Action::Dashboard { action } => match action {
             DashboardAction::Add {
                 project,

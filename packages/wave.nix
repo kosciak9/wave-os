@@ -2,6 +2,7 @@
   lib,
   rustPlatform,
   makeWrapper,
+  installShellFiles,
   curl,
   git,
   openssh,
@@ -17,7 +18,16 @@ rustPlatform.buildRustPackage {
   };
   cargoLock.lockFile = ../tools/wave/Cargo.lock;
 
-  nativeBuildInputs = [ makeWrapper ];
+  nativeBuildInputs = [
+    makeWrapper
+    installShellFiles
+  ];
+  postInstall = ''
+    installShellCompletion --cmd wave \
+      --bash <($out/bin/wave completion bash) \
+      --fish <($out/bin/wave completion fish) \
+      --zsh <($out/bin/wave completion zsh)
+  '';
   postFixup = ''
     wrapProgram "$out/bin/wave" \
       --prefix PATH : "/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:${
