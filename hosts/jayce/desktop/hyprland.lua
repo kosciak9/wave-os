@@ -696,6 +696,7 @@ hl.bind(mod .. " + slash", hl.dsp.exec_cmd("qs -c wave ipc call keybinds toggle"
 hl.bind(mod .. " + RETURN", hl.dsp.exec_cmd("ghostty"), { description = "Open terminal" })
 hl.bind(mod .. " + SPACE", hl.dsp.exec_cmd("vicinae toggle"), { description = "Toggle launcher" })
 hl.bind(mod .. " + C", hl.dsp.exec_cmd("qs -c wave ipc call notifications toggle"), { description = "Toggle control center" })
+hl.bind(mod .. " + A", hl.dsp.exec_cmd("qs -c wave ipc call agenda toggle"), { description = "Toggle agenda" })
 hl.bind(mod .. " + D", hl.dsp.exec_cmd("voxtype record toggle"), { description = "Toggle dictation" })
 hl.bind(mod .. " + CTRL + D", hl.dsp.exec_cmd("voxtype record cancel"), { description = "Cancel dictation" })
 hl.bind(mod .. " + ALT + L", hl.dsp.exec_cmd("loginctl lock-session"), { description = "Lock session" })

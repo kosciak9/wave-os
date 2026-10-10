@@ -80,6 +80,10 @@ ShellRoot {
         fallbackScreen: root.primaryScreen
     }
 
+    Agenda {
+        fallbackScreen: root.primaryScreen
+    }
+
     NotificationToasts {
         targetScreen: root.primaryScreen
         service: notifications
