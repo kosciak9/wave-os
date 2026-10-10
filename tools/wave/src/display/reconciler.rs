@@ -76,6 +76,41 @@ impl Action {
     }
 }
 
+/// The Framework 16 keyboard module drives its own backlight through QMK;
+/// the EC's kbd_backlight LED does not reach it.
+fn qmk_backlight(level: Option<u8>) -> Option<String> {
+    let mut command = std::process::Command::new("qmk_hid");
+    command
+        .args(["via", "--backlight"])
+        .args(level.map(|level| level.to_string()))
+        .stderr(std::process::Stdio::null());
+    match crate::process::capture(&mut command, Duration::from_secs(2)) {
+        Ok(output) if output.success() => Some(String::from_utf8_lossy(&output.stdout).into()),
+        Ok(output) => {
+            eprintln!("wave display: qmk_hid failed ({})", output.code);
+            None
+        }
+        Err(error) => {
+            eprintln!("wave display: qmk_hid failed: {error:#}");
+            None
+        }
+    }
+}
+
+fn keyboard_backlight() -> Option<u8> {
+    let output = qmk_backlight(None)?;
+    let percent = output
+        .split("Brightness:")
+        .nth(1)?
+        .trim()
+        .strip_suffix('%')?;
+    percent.trim().parse().ok()
+}
+
+fn set_keyboard_backlight(level: u8) {
+    qmk_backlight(Some(level));
+}
+
 fn lua_string(value: &str) -> String {
     serde_json::to_string(value).expect("strings serialize")
 }
@@ -416,6 +451,7 @@ impl Reconciler {
             self.mark_internal_off();
             self.restore_outputs(monitors);
         }
+        self.darken_keyboard();
         self.settle_sleep();
     }
 
@@ -432,6 +468,7 @@ impl Reconciler {
                 }
             }
         };
+        self.restore_keyboard();
         self.restore_outputs(&monitors);
         if wake_displays {
             for monitor in &monitors {
@@ -680,6 +717,29 @@ impl Reconciler {
             Ok(output) if output.success() => std::thread::sleep(BLACKOUT_SETTLE),
             Ok(output) => eprintln!("wave display: blackout failed ({})", output.code),
             Err(error) => eprintln!("wave display: blackout failed: {error:#}"),
+        }
+    }
+
+    /// The keyboard backlight goes dark with the laptop screen; the level it
+    /// had is kept in the session state so a daemon restart still restores it.
+    fn darken_keyboard(&mut self) {
+        if self.ownership.state.keyboard_backlight.is_some() {
+            return;
+        }
+        let Some(level) = keyboard_backlight() else {
+            return;
+        };
+        self.ownership.state.keyboard_backlight = Some(level);
+        if level > 0 {
+            set_keyboard_backlight(0);
+        }
+    }
+
+    fn restore_keyboard(&mut self) {
+        if let Some(level) = self.ownership.state.keyboard_backlight.take()
+            && level > 0
+        {
+            set_keyboard_backlight(level);
         }
     }
 

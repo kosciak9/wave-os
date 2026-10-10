@@ -485,8 +485,16 @@ in
       };
       Service = {
         ExecStart = "${waveDisplay} daemon";
-        # Blackout goes through the Quickshell IPC client.
-        Environment = [ "PATH=${lib.makeBinPath [ pkgs.quickshell ]}" ];
+        # Blackout goes through the Quickshell IPC client; qmk_hid drives the
+        # keyboard backlight.
+        Environment = [
+          "PATH=${
+            lib.makeBinPath [
+              pkgs.qmk_hid
+              pkgs.quickshell
+            ]
+          }"
+        ];
         Restart = "always";
         RestartSec = 1;
       };

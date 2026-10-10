@@ -22,6 +22,9 @@ pub struct State {
     /// instance means a new session, which starts without the override.
     #[serde(default)]
     pub lid_override: Option<String>,
+    /// Keyboard backlight level to restore once the laptop screen is back.
+    #[serde(default)]
+    pub keyboard_backlight: Option<u8>,
 }
 
 #[derive(Default, Serialize, Deserialize)]
