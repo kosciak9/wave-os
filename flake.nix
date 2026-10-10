@@ -118,6 +118,7 @@
             src = inputs.herdr-auto-title;
           };
           plannotator = final.callPackage ./packages/plannotator.nix { };
+          wave-dashboard = final.callPackage ./packages/wave-dashboard.nix { };
           slack-mirror = final.callPackage ./packages/slack-mirror.nix { };
           slack-mirror-context = final.callPackage ./packages/slack-mirror-context.nix { };
           slack-mirror-image = final.callPackage ./packages/slack-mirror-image.nix {
