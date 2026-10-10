@@ -506,10 +506,10 @@ Scope {
                         Tile {
                             visible: root.lidOverrideService.shown
                             icon: Quickshell.shellDir + "/assets/laptop.svg"
-                            title: "Lid closed"
+                            title: "External only"
                             subtitle: root.lidOverrideService.error.length > 0 ? root.lidOverrideService.error
-                                : root.lidOverrideService.pending ? "Changing mode…"
-                                : root.lidOverrideService.active ? "Laptop screen off" : "Laptop screen on"
+                                : root.lidOverrideService.pending ? "Switching…"
+                                : root.lidOverrideService.active ? "Laptop screen off" : "Off"
                             checked: root.lidOverrideService.active
                             alert: root.lidOverrideService.error.length > 0
                             opacity: root.lidOverrideService.pending ? 0.65 : 1
