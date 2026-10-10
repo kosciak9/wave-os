@@ -16,6 +16,8 @@ substituteInPlace server.js \
     '        humanize: true,' \
     '        humanize: true,
         block_webrtc: true,'
+# Keep the APT snapshot at least as recent as the pinned base image so its
+# preinstalled packages remain compatible with dependencies installed below.
 substituteInPlace Dockerfile \
   --replace-fail \
     '# Install dependencies for Camoufox (Firefox-based)
@@ -24,11 +26,11 @@ RUN apt-get update && apt-get install -y \' \
 RUN printf "%s\n" \
   "Acquire::Check-Valid-Until \"false\";" > /etc/apt/apt.conf.d/99snapshot \
   && printf "%s\n" \
-  "Types: deb" "URIs: http://snapshot.debian.org/archive/debian/20260901T000000Z/" \
+  "Types: deb" "URIs: http://snapshot.debian.org/archive/debian/20261009T000000Z/" \
   "Suites: trixie trixie-updates" "Components: main" "Check-Valid-Until: false" \
   > /etc/apt/sources.list.d/debian.sources \
   && printf "%s\n" \
-  "Types: deb" "URIs: http://snapshot.debian.org/archive/debian-security/20260901T000000Z/" \
+  "Types: deb" "URIs: http://snapshot.debian.org/archive/debian-security/20261009T000000Z/" \
   "Suites: trixie-security" "Components: main" "Check-Valid-Until: false" \
   > /etc/apt/sources.list.d/debian-security.sources \
   && apt-get update && apt-get install -y \'
