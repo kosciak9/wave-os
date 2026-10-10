@@ -7,20 +7,10 @@ let
       mkdir -p "$out"
       cp ${toml.generate "herdr-plugin.toml" manifest} "$out/herdr-plugin.toml"
     '';
-  openPane = plugin: entrypoint: [
-    "${pkgs.bash}/bin/bash"
-    "-c"
-    ''exec "$HERDR_BIN_PATH" plugin pane open --plugin ${plugin} --entrypoint ${entrypoint} --focus''
-  ];
   autoTitle = pkgs.writeShellScript "herdr-auto-title" ''
     export HERDR_AUTO_TITLE_PANES=true
     export HERDR_AUTO_TITLE_WORKSPACES=false
     exec ${lib.getExe pkgs.herdr-auto-title} "$@"
-  '';
-  usageDashboard = pkgs.writeShellScript "herdr-usage-dashboard" ''
-    export HERDR_AGENT_USAGE_DASHBOARD_ONLY=1
-    ${lib.getExe pkgs.herdr-agent-usage} refresh --provider all || true
-    exec ${lib.getExe pkgs.herdr-agent-usage} dashboard
   '';
 in
 {
@@ -43,33 +33,6 @@ in
           (toString autoTitle)
           "restart"
         ];
-      }
-    ];
-  };
-  usage = stage "herdr-agent-usage-plugin" {
-    id = "herdr-agent-usage";
-    name = "Agent Usage";
-    version = pkgs.herdr-agent-usage.version;
-    min_herdr_version = "0.9.0";
-    platforms = [
-      "linux"
-      "macos"
-    ];
-    actions = [
-      {
-        id = "open";
-        title = "Open agent limits";
-        command = openPane "herdr-agent-usage" "dashboard";
-      }
-    ];
-    panes = [
-      {
-        id = "dashboard";
-        title = "Agent limits";
-        placement = "popup";
-        width = "80%";
-        height = "80%";
-        command = [ (toString usageDashboard) ];
       }
     ];
   };

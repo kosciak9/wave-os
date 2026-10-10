@@ -20,10 +20,6 @@
       url = "github:kryptamine/herdr-auto-title/9de68183c8a95141871cd3c0eff0c5be4e3fc6af";
       flake = false;
     };
-    herdr-agent-usage = {
-      url = "github:levi-qiao/herdr-agent-usage/4d6e54bcde2b49ec78c531f8111d12228c87076d";
-      flake = false;
-    };
     deploy-rs.url = "github:serokell/deploy-rs/cf64c8cbadd9b13ea79ba7720aa2930500f2ece7";
     devenv-nixpkgs.url = "github:NixOS/nixpkgs/e7439b6b14ad3cc35d05608ebca9bce01a25f5f8";
     # Keep the release-tested pin for Darwin's qtkeychain; Linux uses system packages in the home module.
@@ -120,9 +116,6 @@
           };
           herdr-auto-title = final.callPackage ./packages/herdr-auto-title.nix {
             src = inputs.herdr-auto-title;
-          };
-          herdr-agent-usage = final.callPackage ./packages/herdr-agent-usage.nix {
-            src = inputs.herdr-agent-usage;
           };
           plannotator = final.callPackage ./packages/plannotator.nix { };
           slack-mirror = final.callPackage ./packages/slack-mirror.nix { };
@@ -302,7 +295,6 @@
             slack-mirror-context
             slack-mirror-image
             herdr-auto-title
-            herdr-agent-usage
             ;
         };
         ${darwinSystem} = {
@@ -310,7 +302,6 @@
           inherit (darwinPkgs)
             wave
             herdr-auto-title
-            herdr-agent-usage
             openclaw-sandbox-machine-check
             slack-mirror
             slack-mirror-context

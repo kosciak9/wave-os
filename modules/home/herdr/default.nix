@@ -127,12 +127,6 @@ in
     type = "plugin_action"
     command = "worktrunk.remove"
     description = "Worktree: remove"
-
-    [[keys.command]]
-    key = "prefix+shift+u"
-    type = "plugin_action"
-    command = "herdr-agent-usage.open"
-    description = "Agent limits dashboard"
   '';
 
   assertions = [

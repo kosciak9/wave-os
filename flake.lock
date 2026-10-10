@@ -278,23 +278,6 @@
         "type": "github"
       }
     },
-    "herdr-agent-usage": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1791414083,
-        "narHash": "sha256-J7pDvMgy0ubP3Uq7ru2XoSOmC/FQDkjrOnUaS6jy2qk=",
-        "owner": "levi-qiao",
-        "repo": "herdr-agent-usage",
-        "rev": "4d6e54bcde2b49ec78c531f8111d12228c87076d",
-        "type": "github"
-      },
-      "original": {
-        "owner": "levi-qiao",
-        "repo": "herdr-agent-usage",
-        "rev": "4d6e54bcde2b49ec78c531f8111d12228c87076d",
-        "type": "github"
-      }
-    },
     "herdr-auto-title": {
       "flake": false,
       "locked": {
@@ -724,7 +707,6 @@
         "devenv-nixpkgs": "devenv-nixpkgs",
         "ghostty-cursor-shaders": "ghostty-cursor-shaders",
         "herdr": "herdr",
-        "herdr-agent-usage": "herdr-agent-usage",
         "herdr-auto-title": "herdr-auto-title",
         "herdr-gpui": "herdr-gpui",
         "herdr-worktrunk": "herdr-worktrunk",
