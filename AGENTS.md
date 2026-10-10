@@ -43,6 +43,30 @@
   `nixd`, `nil`, `nix-output-monitor`, `nix-tree`, `nix-diff`, `nix-eval-jobs`,
   `nix-fast-build`, `nix-inspect`, `nix-melt`, and `nvd`.
 
+## Secrets (sops-nix)
+
+- Host secrets live outside the repository in `~/.config/secrets/<host>.yaml`
+  (Syncthing), encrypted with sops to the host's SSH host key and the owner's
+  admin key; recipients are in `~/.config/secrets/.sops.yaml`. Hosts decrypt
+  them at activation into `/run/secrets/<name>` (`modules/sops.nix`).
+- To use a secret, declare `sops.secrets."<group>/<name>"` in a system module
+  (`owner = "kosciak"` for Home Manager services, which read
+  `osConfig.sops.secrets.<name>.path`) and reference only its `path`.
+- Agents never handle secret values: do not decrypt files, read `/run/secrets`,
+  or put values in commands, files, logs or chat. Key names are plaintext; list
+  them without decryption with
+  `yq 'del(.sops) | .. | select(tag != "!!map") | path | join("/")' <file>`.
+- Changing values needs the owner's admin key: give the owner commands for their
+  own terminal: `sops set --value-stdin <file> '["group"]["name"]'`,
+  `sops unset <file> '["group"]["name"]'` or `sops edit <file>`. A new host
+  needs its `ssh-to-age` key and a creation rule in `.sops.yaml`, then
+  `sops updatekeys`.
+- `validateSopsFiles = false` leaves no evaluation-time check: before
+  committing, confirm every declared key exists in the host file; one missing
+  key fails all secrets on that host at activation.
+- After a value changes, NixOS restarts the `restartUnits` on the next
+  activation; darwin needs re-activation and a restart of affected agents.
+
 ## Parallel work with Worktrunk
 
 - By default, before editing require a clean dedicated linked `wt` worktree. If
