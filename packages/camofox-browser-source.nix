@@ -33,7 +33,10 @@ stdenvNoCC.mkDerivation {
     hash = "sha256-ZB9K8bZxvyW+wodLMFGvAY2FlyJX8etQ4Wu8vKJFbLs=";
   };
 
-  patches = [ ./patches/camofox-click-outcome.patch ];
+  patches = [
+    ./patches/camofox-click-outcome.patch
+    ./patches/camofox-client-errors.patch
+  ];
   patchFlags = [
     "-p1"
     "--no-backup-if-mismatch"
