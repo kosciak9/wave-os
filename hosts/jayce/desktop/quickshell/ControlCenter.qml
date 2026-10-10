@@ -188,6 +188,12 @@ Scope {
         default property alias iconContent: tileIcon.data
         signal toggled()
         signal expandToggled()
+        // Two tiles per row; an odd last visible tile spans the whole row.
+        width: {
+            const shown = Array.prototype.filter.call(parent.children, item => item.visible)
+            const alone = shown.length % 2 === 1 && shown[shown.length - 1] === tile
+            return alone ? parent.width : (parent.width - parent.spacing) / 2
+        }
         height: 46
         radius: 8
         color: tile.checked ? Theme.waveBlue1 : Theme.notificationSurfaceRaised
@@ -443,10 +449,8 @@ Scope {
                         id: tiles
                         width: parent.width
                         spacing: 8
-                        readonly property real tileWidth: (width - spacing) / 2
 
                         Tile {
-                            width: tiles.tileWidth
                             icon: root.wifiIcon(root.activeNetwork === null ? 1 : root.activeNetwork.signalStrength)
                             title: "Wi-Fi"
                             subtitle: root.wifiDevice === null ? "Unavailable"
@@ -461,7 +465,6 @@ Scope {
                         }
 
                         Tile {
-                            width: tiles.tileWidth
                             icon: Quickshell.shellDir + (root.connectedBluetooth.length > 0 ? "/assets/bluetooth-connect.svg" : "/assets/bluetooth.svg")
                             title: "Bluetooth"
                             subtitle: root.adapter === null ? "Unavailable"
@@ -476,7 +479,6 @@ Scope {
                         }
 
                         Tile {
-                            width: tiles.tileWidth
                             title: root.hasBattery ? "Battery" : "Power"
                             subtitle: (root.hasBattery ? root.batteryStatus() + " · " : "") + root.profileName()
                             checked: PowerProfiles.profile === PowerProfile.Performance
@@ -492,7 +494,6 @@ Scope {
                         }
 
                         Tile {
-                            width: tiles.tileWidth
                             icon: Quickshell.shellDir + (root.caffeinateService.active ? "/assets/coffee-steaming.svg" : "/assets/coffee.svg")
                             title: "Caffeinate"
                             subtitle: root.caffeinateStatus()
@@ -503,7 +504,6 @@ Scope {
                         }
 
                         Tile {
-                            width: tiles.width
                             visible: root.lidOverrideService.shown
                             icon: Quickshell.shellDir + "/assets/laptop.svg"
                             title: "Lid closed"
@@ -517,7 +517,6 @@ Scope {
                         }
 
                         Tile {
-                            width: tiles.width
                             icon: Quickshell.shellDir + "/assets/watch.svg"
                             title: "Watch"
                             subtitle: root.watchService.status
