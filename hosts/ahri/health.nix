@@ -5,10 +5,6 @@ let
 in
 {
   wave.health.checks = {
-    caddy = ''
-      [[ $(${lib.getExe pkgs.curl} -q -sSf --noproxy '*' --max-time 3 --output /dev/null \
-        --write-out '%{http_code}' http://127.0.0.1:8080/healthz) == 200 ]]
-    '';
     # The root filesystem stays on USB members of its btrfs; a missing mirror is allowed.
     usb-root = ''
       mount=$(${util "findmnt"} --json --target / --output FSTYPE,SOURCE,OPTIONS)

@@ -251,6 +251,7 @@
           waveRevision = self.rev or "unknown";
         };
         modules = [
+          inputs.sops-nix.nixosModules.sops
           ./hosts/ahri/default.nix
           (_: { nixpkgs.pkgs = ahriPkgs; })
         ];

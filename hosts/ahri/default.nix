@@ -19,7 +19,9 @@ in
   imports = [
     ./hardware.nix
     ./health.nix
+    ./dashboard.nix
     ../../modules/wave/nixos.nix
+    ../../modules/sops.nix
     "${modulesPath}/profiles/all-hardware.nix"
   ];
 
@@ -95,19 +97,6 @@ in
       configDir = "/home/kosciak/.config/syncthing";
       overrideDevices = false;
       overrideFolders = false;
-    };
-
-    caddy = {
-      enable = true;
-      globalConfig = ''
-        admin off
-        auto_https off
-      '';
-      virtualHosts."http://127.0.0.1:8080".extraConfig = ''
-        bind 127.0.0.1
-        respond /healthz "ahri bootstrap" 200
-        respond 404
-      '';
     };
 
     journald.extraConfig = ''
