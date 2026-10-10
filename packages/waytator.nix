@@ -5,6 +5,8 @@
   meson,
   ninja,
   pkg-config,
+  installShellFiles,
+  writeText,
   wrapGAppsHook4,
   gtk4,
   libadwaita,
@@ -21,10 +23,13 @@ stdenv.mkDerivation {
     hash = "sha256-kU7QRcOn49ZfYjHWVUDDvUcaosVq1H9G8NjRBHa3fRc=";
   };
 
+  patches = [ ./waytator-save-copy.patch ];
+
   nativeBuildInputs = [
     meson
     ninja
     pkg-config
+    installShellFiles
     wrapGAppsHook4
   ];
 
@@ -32,6 +37,17 @@ stdenv.mkDerivation {
     gtk4
     libadwaita
   ];
+
+  postInstall = ''
+    installShellCompletion --zsh ${writeText "_waytator" ''
+      #compdef waytator
+
+      _arguments \
+        '--stdin[Read image from standard input]' \
+        '--name[Default name for an image read from standard input]:name:' \
+        '1:image:_files'
+    ''}
+  '';
 
   meta = {
     description = "Screenshot annotator and lightweight image editor";

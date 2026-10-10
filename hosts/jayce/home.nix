@@ -15,6 +15,7 @@ let
   });
   notificationSoundPath = "${pkgs.sound-theme-freedesktop}/share/sounds/freedesktop/stereo/message-new-instant.oga";
   waytator = pkgs.callPackage ../../packages/waytator.nix { };
+  wlClipPersist = pkgs.callPackage ../../packages/wl-clip-persist.nix { };
   waveDisplay = "${lib.getExe pkgs.wave} display";
   lockStatus = pkgs.writeShellApplication {
     name = "wave-lock-status";
@@ -335,6 +336,12 @@ in
       };
     };
     mpris-proxy.enable = true;
+    wl-clip-persist = {
+      enable = true;
+      package = wlClipPersist;
+      clipboardType = "regular";
+      systemdTargets = [ sessionTarget ];
+    };
   };
 
   xdg = {
@@ -395,6 +402,11 @@ in
     style.name = "kvantum";
   };
   systemd.user.services = {
+    wl-clip-persist.Unit = {
+      After = [ "wayland-session-waitenv.service" ];
+      ConditionEnvironment = "WAYLAND_DISPLAY";
+    };
+
     wave-caffeinate = {
       Unit = {
         Description = "Keep tasks running at performance without preventing lock or DPMS";

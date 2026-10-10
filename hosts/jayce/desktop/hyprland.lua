@@ -861,9 +861,8 @@ hl.bind(mod .. " + V", hl.dsp.window.float({ action = "toggle" }), { description
 hl.bind(mod .. " + SHIFT + V", switchFloatingFocus, { description = "Switch tiled/floating focus" })
 
 local screenshotName = '--name "$(date +%Y-%m-%d_%H-%M-%S).png"'
-hl.bind("Print", hl.dsp.exec_cmd("hyprshot -m region --raw | waytator --stdin " .. screenshotName), { description = "Capture region" })
-hl.bind("CTRL + Print", hl.dsp.exec_cmd("hyprshot -m output -m active --raw | waytator --stdin " .. screenshotName), { description = "Capture monitor" })
-hl.bind("ALT + Print", hl.dsp.exec_cmd("hyprshot -m window -m active --raw | waytator --stdin " .. screenshotName), { description = "Capture window" })
+hl.bind("Print", hl.dsp.exec_cmd("hyprshot -m region --clipboard-only"), { description = "Copy region to clipboard" })
+hl.bind("SHIFT + Print", hl.dsp.exec_cmd("hyprshot -m region --raw | waytator --stdin " .. screenshotName), { description = "Annotate region" })
 
 hl.bind(mod .. " + SHIFT + P", hl.dsp.exec_cmd([[loginctl lock-session && sleep 2 && hyprctl dispatch 'hl.dsp.dpms({ action = "disable" })']]), { description = "Lock session and turn displays off after 2 seconds" })
 hl.bind("switch:on:Lid Switch", hl.dsp.exec_cmd("wave display notify lid-close"), { locked = true, description = "Handle lid close" })

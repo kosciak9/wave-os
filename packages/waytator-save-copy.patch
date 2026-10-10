@@ -1,0 +1,15 @@
+diff --git a/src/waytator-window.c b/src/waytator-window.c
+--- a/src/waytator-window.c
++++ b/src/waytator-window.c
+@@ -1496,9 +1496,9 @@ waytator_window_reset_save_button(WaytatorWindow *self)
+   const gboolean has_unsaved_changes = waytator_window_has_unsaved_changes(self);
+ 
+   gtk_stack_set_visible_child(self->save_icon_stack, GTK_WIDGET(self->save_default_icon));
+-  gtk_widget_set_sensitive(GTK_WIDGET(self->save_button), has_unsaved_changes);
++  gtk_widget_set_sensitive(GTK_WIDGET(self->save_button), self->texture != NULL);
+   gtk_widget_action_set_enabled(GTK_WIDGET(self), "win.save", has_unsaved_changes && self->current_file != NULL);
+-  gtk_widget_action_set_enabled(GTK_WIDGET(self), "win.save-copy", has_unsaved_changes);
++  gtk_widget_action_set_enabled(GTK_WIDGET(self), "win.save-copy", self->texture != NULL);
+ }
+ 
+ static gboolean
