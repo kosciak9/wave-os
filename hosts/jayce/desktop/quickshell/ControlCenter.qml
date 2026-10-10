@@ -14,6 +14,7 @@ Scope {
     required property var caffeinateService
     required property var lidOverrideService
     required property var watchService
+    required property var weatherService
     required property var targetScreen
     property string section: ""
     property string passwordFor: ""
@@ -336,6 +337,7 @@ Scope {
         function onCenterOpenChanged() {
             if (root.service.centerOpen) {
                 root.windowVisible = true
+                root.weatherService.reload()
                 root.rebuildLater()
                 root.panelShown = true
                 hideTimer.stop()
@@ -432,16 +434,25 @@ Scope {
                     Item {
                         width: parent.width; height: 44
                         Column {
+                            id: dateColumn
                             anchors.left: parent.left; anchors.leftMargin: 4; anchors.verticalCenter: parent.verticalCenter
                             spacing: 2
                             SystemClock { id: clock; precision: SystemClock.Minutes }
                             Text { text: Qt.formatDateTime(clock.date, "HH:mm"); color: Theme.fujiWhite; font.family: Theme.fontFamily; font.pixelSize: 20; font.weight: Font.Bold }
                             Text { text: Qt.formatDateTime(clock.date, "dddd, d MMMM yyyy"); color: Theme.oldWhite; font.family: Theme.fontFamily; font.pixelSize: 11 }
                         }
-                        IconButton {
-                            anchors.right: parent.right; anchors.top: parent.top
-                            source: Quickshell.shellDir + "/assets/xmark.svg"
-                            onClicked: root.service.close()
+                        Column {
+                            visible: root.weatherService.known
+                            anchors.right: parent.right; anchors.rightMargin: 4; anchors.verticalCenter: parent.verticalCenter
+                            width: parent.width - dateColumn.width - 24
+                            spacing: 2
+                            Row {
+                                anchors.right: parent.right
+                                spacing: 6
+                                Icon { anchors.verticalCenter: parent.verticalCenter; width: 18; height: 18; source: root.weatherService.icon }
+                                Text { text: root.weatherService.temperature; color: Theme.fujiWhite; font.family: Theme.fontFamily; font.pixelSize: 20; font.weight: Font.Bold }
+                            }
+                            Text { width: parent.width; horizontalAlignment: Text.AlignRight; text: root.weatherService.summary; color: Theme.oldWhite; font.family: Theme.fontFamily; font.pixelSize: 11; elide: Text.ElideRight }
                         }
                     }
 

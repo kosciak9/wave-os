@@ -1,5 +1,7 @@
 //! Keep the paired InfiniTime watch connected through BlueZ, set its clock
 //! on every connection and send it the weather for this host's location.
+//! The same weather, named after the place, is left in wave's cache for the
+//! Control Center.
 
 use crate::dbus::{
     BluezAdapterProxyBlocking, BluezDeviceProxyBlocking, GattCharacteristicProxyBlocking,
@@ -7,7 +9,7 @@ use crate::dbus::{
 };
 use crate::location::{self, Coordinates};
 use anyhow::{Context, Result, bail};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::process::Command;
 use std::sync::mpsc::{self, RecvTimeoutError, Sender};
@@ -29,7 +31,12 @@ const IDLE_WAIT: Duration = Duration::from_secs(3600);
 const WEATHER_REFRESH: Duration = Duration::from_secs(3600);
 const WEATHER_RETRY: Duration = Duration::from_secs(15 * 60);
 const FORECAST_URL: &str = "https://api.met.no/weatherapi/locationforecast/2.0/compact";
-/// MET Norway requires an identifying User-Agent.
+const PLACE_URL: &str = "https://nominatim.openstreetmap.org/reverse";
+const WEATHER_CACHE: &str = "weather.json";
+/// The minimum and maximum span this many hourly steps; the compact
+/// forecast carries no ranges of its own.
+const RANGE_HOURS: usize = 12;
+/// MET Norway and Nominatim require an identifying User-Agent.
 const USER_AGENT: &str = "wave-os/0.1 github.com/kosciak9/wave-os";
 
 enum Event {
@@ -47,13 +54,16 @@ impl From<location::Event> for Event {
     }
 }
 
-/// What InfiniTime's weather screen shows: °C and its icon enum.
-#[derive(Clone, Copy)]
+/// The current weather in °C with MET Norway's symbol code; `place` and
+/// `updated` (Unix seconds) only label it for the Control Center.
+#[derive(Serialize)]
 struct Weather {
     temperature: f64,
     minimum: f64,
     maximum: f64,
-    icon: u8,
+    symbol: String,
+    place: Option<String>,
+    updated: i64,
 }
 
 /// The paired watch's D-Bus object, found by its advertised name.
@@ -146,7 +156,7 @@ fn weather_value(weather: &Weather) -> Vec<u8> {
     value.extend(hundredths(weather.minimum));
     value.extend(hundredths(weather.maximum));
     value.extend([0u8; 32]);
-    value.push(weather.icon);
+    value.push(icon(&weather.symbol));
     value
 }
 
@@ -202,7 +212,6 @@ struct InstantDetails {
 #[derive(Deserialize)]
 struct Period {
     summary: Option<Summary>,
-    details: Option<PeriodDetails>,
 }
 
 #[derive(Deserialize)]
@@ -211,18 +220,11 @@ struct Summary {
 }
 
 #[derive(Deserialize)]
-struct PeriodDetails {
-    air_temperature_min: Option<f64>,
-    air_temperature_max: Option<f64>,
+struct Place {
+    name: String,
 }
 
-/// Coordinates are rounded to two decimals (about 1 km), as MET asks and
-/// as the forecast needs no more.
-fn fetch_weather(place: Coordinates) -> Result<Weather> {
-    let url = format!(
-        "{FORECAST_URL}?lat={:.2}&lon={:.2}",
-        place.latitude, place.longitude
-    );
+fn download(url: &str) -> Result<Vec<u8>> {
     let mut command = Command::new("curl");
     command.args([
         "-q",
@@ -233,42 +235,58 @@ fn fetch_weather(place: Coordinates) -> Result<Weather> {
         "20",
         "-A",
         USER_AGENT,
-        &url,
+        url,
     ]);
     let output = crate::process::capture(&mut command, Duration::from_secs(25))?;
     if !output.success() {
-        bail!("MET Norway request failed ({})", output.code);
+        bail!("request failed ({})", output.code);
     }
-    let forecast: Forecast = serde_json::from_slice(&output.stdout).context("invalid forecast")?;
-    let now = &forecast
-        .properties
-        .timeseries
-        .first()
-        .context("empty forecast")?
-        .data;
+    Ok(output.stdout)
+}
+
+/// The city or town around the coordinates, in Polish where it has a name.
+fn place_name(place: Coordinates) -> Result<String> {
+    let url = format!(
+        "{PLACE_URL}?format=jsonv2&zoom=10&accept-language=pl&lat={:.2}&lon={:.2}",
+        place.latitude, place.longitude
+    );
+    let body = download(&url).context("Nominatim")?;
+    let place: Place = serde_json::from_slice(&body).context("invalid Nominatim place")?;
+    Ok(place.name)
+}
+
+/// Coordinates are rounded to two decimals (about 1 km), as MET asks and
+/// as the forecast needs no more.
+fn fetch_weather(place: Coordinates) -> Result<Weather> {
+    let url = format!(
+        "{FORECAST_URL}?lat={:.2}&lon={:.2}",
+        place.latitude, place.longitude
+    );
+    let body = download(&url).context("MET Norway")?;
+    let forecast: Forecast = serde_json::from_slice(&body).context("invalid forecast")?;
+    let steps = &forecast.properties.timeseries;
+    let now = &steps.first().context("empty forecast")?.data;
     let temperature = now.instant.details.air_temperature;
-    let range = now
-        .next_6_hours
-        .as_ref()
-        .and_then(|period| period.details.as_ref());
+    let upcoming = || {
+        steps
+            .iter()
+            .take(RANGE_HOURS)
+            .map(|step| step.data.instant.details.air_temperature)
+    };
     let symbol = now
         .next_1_hours
         .as_ref()
         .or(now.next_6_hours.as_ref())
         .and_then(|period| period.summary.as_ref())
-        .map(|summary| summary.symbol_code.as_str())
+        .map(|summary| summary.symbol_code.clone())
         .unwrap_or_default();
     Ok(Weather {
         temperature,
-        minimum: range
-            .and_then(|details| details.air_temperature_min)
-            .unwrap_or(temperature)
-            .min(temperature),
-        maximum: range
-            .and_then(|details| details.air_temperature_max)
-            .unwrap_or(temperature)
-            .max(temperature),
-        icon: icon(symbol),
+        minimum: upcoming().fold(temperature, f64::min),
+        maximum: upcoming().fold(temperature, f64::max),
+        symbol,
+        place: None,
+        updated: unsafe { libc::time(std::ptr::null_mut()) },
     })
 }
 
@@ -360,6 +378,7 @@ pub fn run() -> Result<i32> {
     }
 
     let mut place = location::cached();
+    let mut place_label: Option<String> = None;
     let mut weather: Option<Weather> = None;
     let mut weather_due = Instant::now();
     let mut connecting = false;
@@ -378,8 +397,18 @@ pub fn run() -> Result<i32> {
         if now >= weather_due
             && let Some(place) = place
         {
+            if place_label.is_none() {
+                match place_name(place) {
+                    Ok(name) => place_label = Some(name),
+                    Err(error) => eprintln!("wave watch: place unnamed: {error:#}"),
+                }
+            }
             match fetch_weather(place) {
-                Ok(fresh) => {
+                Ok(mut fresh) => {
+                    fresh.place = place_label.clone();
+                    if let Err(error) = location::store_cached(WEATHER_CACHE, &fresh) {
+                        eprintln!("wave watch: cannot cache the weather: {error:#}");
+                    }
                     weather = Some(fresh);
                     weather_due = now + WEATHER_REFRESH;
                     synced = false;
@@ -474,6 +503,7 @@ pub fn run() -> Result<i32> {
             }
             Ok(Event::Location(location::Event::Moved(coordinates))) => {
                 place = Some(coordinates);
+                place_label = None;
                 weather_due = Instant::now();
             }
             Ok(Event::Location(location::Event::Lost(reason))) | Ok(Event::Lost(reason)) => {

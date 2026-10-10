@@ -36,6 +36,10 @@ ShellRoot {
         id: watch
     }
 
+    Weather {
+        id: weather
+    }
+
     readonly property var primaryScreen: {
         const screens = Quickshell.screens
         let first = null
@@ -95,6 +99,7 @@ ShellRoot {
         caffeinateService: caffeinate
         lidOverrideService: lidOverride
         watchService: watch
+        weatherService: weather
     }
 
     TranscriptionBubble {
