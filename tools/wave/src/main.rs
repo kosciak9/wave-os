@@ -10,6 +10,8 @@ mod github;
 mod health;
 mod logging;
 mod model;
+#[cfg(target_os = "linux")]
+mod power_profile;
 mod presentation;
 mod process;
 mod remote;
@@ -90,6 +92,9 @@ enum Action {
         #[command(subcommand)]
         command: display::Command,
     },
+    /// Run the power profile policy: performance on AC or with caffeinate
+    #[cfg(target_os = "linux")]
+    PowerProfilePolicy,
 }
 
 #[derive(Subcommand)]
@@ -174,6 +179,8 @@ fn run(action: Action) -> Result<i32> {
         Action::Caffeinate { command } => caffeinate::run(command),
         #[cfg(target_os = "linux")]
         Action::Display { command } => display::run(command),
+        #[cfg(target_os = "linux")]
+        Action::PowerProfilePolicy => power_profile::run(),
     }
 }
 

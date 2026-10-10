@@ -1,7 +1,8 @@
 //! D-Bus interfaces of the Linux system services wave talks to.
 
+use std::collections::HashMap;
 use zbus::proxy;
-use zbus::zvariant::{ObjectPath, OwnedFd, OwnedObjectPath};
+use zbus::zvariant::{ObjectPath, OwnedFd, OwnedObjectPath, OwnedValue};
 
 /// (what, who, why, mode, uid, pid)
 pub type Inhibitor = (String, String, String, String, u32, u32);
@@ -58,4 +59,28 @@ pub trait SystemdManager {
 pub trait SystemdUnit {
     #[zbus(property)]
     fn active_state(&self) -> zbus::Result<String>;
+}
+
+#[proxy(
+    interface = "org.freedesktop.UPower",
+    default_service = "org.freedesktop.UPower",
+    default_path = "/org/freedesktop/UPower"
+)]
+pub trait UPower {
+    #[zbus(property)]
+    fn on_battery(&self) -> zbus::Result<bool>;
+}
+
+#[proxy(
+    interface = "org.freedesktop.UPower.PowerProfiles",
+    default_service = "org.freedesktop.UPower.PowerProfiles",
+    default_path = "/org/freedesktop/UPower/PowerProfiles"
+)]
+pub trait PowerProfiles {
+    #[zbus(property)]
+    fn active_profile(&self) -> zbus::Result<String>;
+    #[zbus(property)]
+    fn set_active_profile(&self, profile: &str) -> zbus::Result<()>;
+    #[zbus(property)]
+    fn profiles(&self) -> zbus::Result<Vec<HashMap<String, OwnedValue>>>;
 }

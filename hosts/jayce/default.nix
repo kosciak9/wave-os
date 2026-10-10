@@ -1,11 +1,9 @@
-{ options, pkgs, ... }:
-
-let
-  wavePowerProfilePolicy = pkgs.writeScriptBin "wave-power-profile-policy" ''
-    #!${pkgs.python3.withPackages (pythonPackages: [ pythonPackages.dbus-next ])}/bin/python3
-    ${builtins.readFile ./scripts/power-profile-policy.py}
-  '';
-in
+{
+  lib,
+  options,
+  pkgs,
+  ...
+}:
 
 {
   imports = [
@@ -218,7 +216,7 @@ in
         ];
         serviceConfig = {
           Type = "simple";
-          ExecStart = "${wavePowerProfilePolicy}/bin/wave-power-profile-policy";
+          ExecStart = "${lib.getExe pkgs.wave} power-profile-policy";
           Restart = "on-failure";
           RestartSec = 5;
           User = "root";
