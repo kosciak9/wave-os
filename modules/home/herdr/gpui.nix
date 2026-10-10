@@ -1,25 +1,35 @@
 { inputs, pkgs, ... }:
 {
-  home.packages = [ inputs.herdr-gpui.packages.${pkgs.stdenv.hostPlatform.system}.default ];
+  home.packages = [
+    (inputs.herdr-gpui.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs (old: {
+      patches = (old.patches or [ ]) ++ [ ./patches/gpui-shortcut-hints.patch ];
+    }))
+  ];
 
   # Settings saves replace this symlink; edit preferences here instead of in the GUI.
   xdg.configFile."herdr/config-gpui.local.toml" = {
     force = true;
     source = (pkgs.formats.toml { }).generate "herdr-gpui-settings" {
-      show_agents = true;
       show_system_load = false;
-      show_listening_ports = true;
       agent_checkpoints = false;
       theme = "light:kanagawa,dark:kanagawa";
       layout = {
-        mode = "comfortable";
+        mode = "superset";
         sidebar_gap = 8.0;
       };
       terminal.family = "Overpass Mono";
       sidebar.family = "Overpass";
       tabs.family = "Overpass";
       ui.family = "Overpass";
-      usage.show = true;
+      sidebar.hosts = {
+        Local = "#2B3328";
+        renekton = "#2D4F67";
+        ahri = "#49443C";
+      };
+      palette.project_roots = [
+        "~/Developer/alergeek"
+        "~/Developer/personal"
+      ];
       # Linux terminal conventions instead of the Super-based defaults, which
       # Hyprland owns. Copy, cut, paste and select-all stay hard-coded to Super.
       keybindings = {
@@ -64,6 +74,9 @@
         workspace_picker = "ctrl-shift-l";
         command_palette = "ctrl-shift-p";
         quit = "ctrl-shift-q";
+        # Built-in daemon chords shadow plugin commands here, unlike in the TUI;
+        # free prefix+shift+r for the Worktrunk remote-branch picker.
+        reload_config = "";
       }
       // builtins.listToAttrs (
         map (n: {

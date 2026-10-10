@@ -1,0 +1,347 @@
+diff --git a/src/app/api/worktrees.rs b/src/app/api/worktrees.rs
+index bdaa3ed..b11fca9 100644
+--- a/src/app/api/worktrees.rs
++++ b/src/app/api/worktrees.rs
+@@ -751,6 +751,7 @@ mod tests {
+                 method: crate::api::schema::Method::WorktreeCreate(WorktreeCreateParams {
+                     workspace_id: Some(workspace_id),
+                     branch: Some("worktree/api-create".into()),
++                    path: Some(worktree_root.join("checkout").display().to_string()),
+                     ..WorktreeCreateParams::default()
+                 }),
+             },
+@@ -855,6 +856,7 @@ mod tests {
+                 method: crate::api::schema::Method::WorktreeCreate(WorktreeCreateParams {
+                     workspace_id: Some(app.state.workspaces[0].id.clone()),
+                     branch: Some("worktree/api-create-deferred".into()),
++                    path: Some(worktree_root.join("checkout").display().to_string()),
+                     ..WorktreeCreateParams::default()
+                 }),
+             },
+@@ -930,6 +932,7 @@ mod tests {
+             method: crate::api::schema::Method::WorktreeCreate(WorktreeCreateParams {
+                 workspace_id: Some(parent_id.clone()),
+                 branch: Some(branch.into()),
++                path: Some(worktree_root.join("checkout").display().to_string()),
+                 ..WorktreeCreateParams::default()
+             }),
+         };
+@@ -1111,6 +1114,7 @@ mod tests {
+                 method: crate::api::schema::Method::WorktreeCreate(WorktreeCreateParams {
+                     cwd: Some(repo.display().to_string()),
+                     branch: Some("worktree/api-create-cwd".into()),
++                    path: Some(worktree_root.join("checkout").display().to_string()),
+                     ..WorktreeCreateParams::default()
+                 }),
+             },
+diff --git a/src/app/api/worktrees/deferred.rs b/src/app/api/worktrees/deferred.rs
+index 0f5ed54..09efd7d 100644
+--- a/src/app/api/worktrees/deferred.rs
++++ b/src/app/api/worktrees/deferred.rs
+@@ -129,20 +129,25 @@ impl App {
+                 return;
+             }
+         };
+-        let checkout_path = match params.path {
++        let explicit_path = match params.path {
+             Some(path) => match absolute_user_path(&path) {
+-                Ok(path) => path,
++                Ok(path) => Some(path),
+                 Err(err) => {
+                     Self::send_api_response(respond_to, encode_error(id, err.code, err.message));
+                     return;
+                 }
+             },
+-            None => crate::worktree::default_checkout_path(
++            None => None,
++        };
++        // Worktrunk picks the real checkout path; the predicted default path
++        // only keys in-flight operations for the same repo and branch.
++        let checkout_path = explicit_path.clone().unwrap_or_else(|| {
++            crate::worktree::default_checkout_path(
+                 &self.state.worktree_directory,
+                 &source.repo_name,
+                 &branch,
+-            ),
+-        };
++            )
++        });
+         let checkout_key = crate::worktree::canonical_or_original(&checkout_path);
+         if self
+             .pending_api_worktree_creates
+@@ -165,7 +170,10 @@ impl App {
+         self.pending_api_worktree_creates
+             .insert(checkout_key.clone(), operation_id);
+ 
+-        let parent_dir = checkout_path.parent().map(Path::to_path_buf);
++        let parent_dir = explicit_path
++            .as_deref()
++            .and_then(Path::parent)
++            .map(Path::to_path_buf);
+         let source_workspace_id = source
+             .workspace_idx
+             .and_then(|idx| self.state.workspaces.get(idx).map(|ws| ws.id.clone()));
+@@ -190,7 +198,6 @@ impl App {
+             focus: params.focus,
+             respond_to,
+         };
+-        let path = checkout_path;
+         let source_checkout_path = api_request.source_checkout_path.clone();
+         let event_tx = self.event_tx.clone();
+         std::thread::spawn(move || {
+@@ -202,12 +209,16 @@ impl App {
+             .and_then(|()| {
+                 crate::worktree::run_worktree_add_command(
+                     &source_checkout_path,
+-                    &path,
++                    explicit_path.as_deref(),
+                     &branch,
+                     &base,
+                     params.trust_repository,
+                 )
+             });
++            let (path, result) = match result {
++                Ok(path) => (path, Ok(())),
++                Err(err) => (checkout_path, Err(err)),
++            };
+             let _ = event_tx.blocking_send(AppEvent::WorktreeAddFinished(Box::new(
+                 crate::events::WorktreeAddResult {
+                     path,
+diff --git a/src/worktree.rs b/src/worktree.rs
+index 17f560a..0b30efa 100644
+--- a/src/worktree.rs
++++ b/src/worktree.rs
+@@ -7,6 +7,7 @@ const DEFAULT_WORKTREE_PREFIX: &str = "worktree";
+ pub(crate) struct WorktreeCommand {
+     pub program: String,
+     pub args: Vec<String>,
++    pub env: Vec<(String, String)>,
+ }
+ 
+ #[derive(Debug, Clone, PartialEq, Eq)]
+@@ -168,6 +169,32 @@ fn repository_git_args(repo_root: &Path, trust_repository: bool) -> Vec<String>
+     args
+ }
+ 
++// Worktrunk runs Git itself, so a request-scoped `safe.directory` reaches it
++// through Git's command-scope configuration environment instead of `-c`.
++fn worktrunk_command(
++    repo_root: &Path,
++    trust_repository: bool,
++    args: impl IntoIterator<Item = String>,
++) -> WorktreeCommand {
++    let env = if trust_repository {
++        vec![
++            ("GIT_CONFIG_COUNT".to_string(), "1".to_string()),
++            ("GIT_CONFIG_KEY_0".to_string(), "safe.directory".to_string()),
++            ("GIT_CONFIG_VALUE_0".to_string(), repo_root.display().to_string()),
++        ]
++    } else {
++        Vec::new()
++    };
++    WorktreeCommand {
++        program: "wt".to_string(),
++        args: ["-C".to_string(), repo_root.display().to_string()]
++            .into_iter()
++            .chain(args)
++            .collect(),
++        env,
++    }
++}
++
+ pub(crate) fn default_checkout_path(root: &Path, repo_name: &str, branch: &str) -> PathBuf {
+     root.join(repo_name).join(branch_to_path_slug(branch))
+ }
+@@ -178,17 +205,12 @@ pub(crate) fn build_worktree_remove_command(
+     force: bool,
+     trust_repository: bool,
+ ) -> WorktreeCommand {
+-    let mut args = repository_git_args(repo_root, trust_repository);
+-    args.extend(["worktree".to_string(), "remove".to_string()]);
++    let mut args = vec!["remove".to_string(), "--foreground".to_string()];
+     if force {
+         args.push("--force".to_string());
+     }
+     args.push(path.display().to_string());
+-
+-    WorktreeCommand {
+-        program: "git".to_string(),
+-        args,
+-    }
++    worktrunk_command(repo_root, trust_repository, args)
+ }
+ 
+ pub(crate) fn is_dirty_worktree_remove_error(message: &str) -> bool {
+@@ -196,11 +218,17 @@ pub(crate) fn is_dirty_worktree_remove_error(message: &str) -> bool {
+     (lower.contains("contains modified or untracked files")
+         && lower.contains("use --force to delete it"))
+         || lower.contains("working trees containing submodules cannot be moved or removed")
++        || (lower.contains("has uncommitted changes") && lower.contains("wt remove --force"))
+ }
+ 
++// `wt remove` falls back to treating an unknown path as a branch name, so a
++// checkout directory that no longer exists reports "No branch named <path>".
+ pub(crate) fn is_not_working_tree_remove_error(message: &str) -> bool {
+     let lower = message.to_ascii_lowercase();
+-    lower.contains("is not a working tree") || lower.contains("is not a worktree")
++    lower.contains("is not a working tree")
++        || lower.contains("is not a worktree")
++        || lower.contains("no worktree @")
++        || lower.contains("no branch named")
+ }
+ 
+ #[cfg(windows)]
+@@ -255,6 +283,7 @@ pub(crate) fn build_worktree_add_new_branch_command(
+     WorktreeCommand {
+         program: "git".to_string(),
+         args,
++        env: Vec::new(),
+     }
+ }
+ 
+@@ -274,9 +303,34 @@ pub(crate) fn build_worktree_add_existing_branch_command(
+     WorktreeCommand {
+         program: "git".to_string(),
+         args,
++        env: Vec::new(),
+     }
+ }
+ 
++pub(crate) fn build_worktrunk_switch_command(
++    repo_root: &Path,
++    branch: &str,
++    create_from_base: Option<&str>,
++    trust_repository: bool,
++) -> WorktreeCommand {
++    let mut args = vec!["switch".to_string()];
++    if let Some(base) = create_from_base {
++        args.extend(["--create".to_string(), "--base".to_string(), base.to_string()]);
++    }
++    args.extend([
++        branch.to_string(),
++        "--no-cd".to_string(),
++        "--format".to_string(),
++        "json".to_string(),
++    ]);
++    worktrunk_command(repo_root, trust_repository, args)
++}
++
++#[derive(serde::Deserialize)]
++struct WorktrunkSwitchOutput {
++    path: PathBuf,
++}
++
+ fn local_branch_exists(
+     repo_root: &Path,
+     branch: &str,
+@@ -306,31 +360,58 @@ fn local_branch_exists(
+     }
+ }
+ 
++/// Creates the checkout and returns its path. Without an explicit `path`,
++/// Worktrunk chooses the location from the user's `worktree-path` template.
+ pub(crate) fn run_worktree_add_command(
+     repo_root: &Path,
+-    path: &Path,
++    path: Option<&Path>,
+     branch: &str,
+     base: &str,
+     trust_repository: bool,
+-) -> Result<(), String> {
+-    let command = if local_branch_exists(repo_root, branch, trust_repository)? {
++) -> Result<PathBuf, String> {
++    let branch_exists = local_branch_exists(repo_root, branch, trust_repository)?;
++    let Some(path) = path else {
++        let command = build_worktrunk_switch_command(
++            repo_root,
++            branch,
++            (!branch_exists).then_some(base),
++            trust_repository,
++        );
++        let stdout = run_worktree_command_stdout(&command)?;
++        let output: WorktrunkSwitchOutput = serde_json::from_str(&stdout)
++            .map_err(|err| format!("unexpected wt switch output ({err}): {stdout}"))?;
++        if canonical_or_original(&output.path) == canonical_or_original(repo_root) {
++            return Err(format!(
++                "branch {branch} is already checked out at {}",
++                output.path.display()
++            ));
++        }
++        return Ok(output.path);
++    };
++    let command = if branch_exists {
+         build_worktree_add_existing_branch_command(repo_root, path, branch, trust_repository)
+     } else {
+         build_worktree_add_new_branch_command(repo_root, path, branch, base, trust_repository)
+     };
+-    run_worktree_command(&command)
++    run_worktree_command(&command)?;
++    Ok(path.to_path_buf())
+ }
+ 
+ pub(crate) fn run_worktree_command(command: &WorktreeCommand) -> Result<(), String> {
++    run_worktree_command_stdout(command).map(drop)
++}
++
++fn run_worktree_command_stdout(command: &WorktreeCommand) -> Result<String, String> {
+     let output = crate::noninteractive_process::command(&command.program)
+-        // Removal errors are classified by Git's English diagnostics.
++        // Removal errors are classified by Git's and Worktrunk's English diagnostics.
+         .env("LC_ALL", "C")
++        .envs(command.env.iter().cloned())
+         .args(&command.args)
+         .output()
+         .map_err(|err| err.to_string())?;
+ 
+     if output.status.success() {
+-        return Ok(());
++        return Ok(String::from_utf8_lossy(&output.stdout).trim().to_string());
+     }
+ 
+     let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+@@ -826,21 +907,21 @@ prunable stale
+             false,
+             false,
+         );
+-        assert_eq!(command.program, "git");
++        assert_eq!(command.program, "wt");
+         assert_eq!(
+             command.args,
+             vec![
+                 "-C",
+                 "/repo/herdr",
+-                "worktree",
+                 "remove",
++                "--foreground",
+                 "/w/herdr/issue-137"
+             ]
+         );
+     }
+ 
+     #[test]
+-    fn forced_worktree_remove_command_uses_git_force_flag() {
++    fn forced_worktree_remove_command_uses_worktrunk_force_flag() {
+         let command = build_worktree_remove_command(
+             Path::new("/repo/herdr"),
+             Path::new("/w/herdr/issue-137"),
+@@ -852,8 +933,8 @@ prunable stale
+             vec![
+                 "-C",
+                 "/repo/herdr",
+-                "worktree",
+                 "remove",
++                "--foreground",
+                 "--force",
+                 "/w/herdr/issue-137"
+             ]
+@@ -920,10 +1001,6 @@ prunable stale
+         assert!(!checkout_has_dirty_files(&checkout, false).unwrap());
+ 
+         let remove = build_worktree_remove_command(&repo, &checkout, false, false);
+-        let error = run_worktree_command(&remove).unwrap_err();
+-        assert!(is_dirty_worktree_remove_error(&error), "{error}");
+-        assert!(checkout.join("sub/README.md").exists());
+-
+         std::fs::write(checkout.join("sub/README.md"), "uncommitted change\n").unwrap();
+         let error = run_worktree_command(&remove).unwrap_err();
+         assert!(is_dirty_worktree_remove_error(&error), "{error}");

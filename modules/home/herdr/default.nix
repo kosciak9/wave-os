@@ -10,7 +10,7 @@ let
   plugins = (import ./plugins.nix { inherit pkgs lib; }) // config.programs.herdr.extraPlugins;
   herdr = inputs.herdr.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs (old: {
     patches = (old.patches or [ ]) ++ [
-      ./patches/worktrunk-context-menu.patch
+      ./patches/worktrunk-core.patch
       ./patches/agents-pane-title.patch
     ];
   });
@@ -89,13 +89,25 @@ in
     enable = true;
     enableZshIntegration = true;
     package = worktrunk;
+    settings = {
+      worktree-path = "{{ repo_path }}/../.worktrees/{{ repo }}/{{ branch | sanitize }}";
+      skip-commit-generation-prompt = true;
+      # Keep every commit of a branch: `wt merge` rebases and fast-forwards
+      # without squashing.
+      merge.squash = false;
+    };
   };
+  # Replaces the hand-edited file whose settings now live above.
+  xdg.configFile."worktrunk/config.toml".force = true;
 
   xdg.configFile."herdr/config.toml".text = ''
     onboarding = false
 
+    [update]
+    version_check = false
+
     [session]
-    resume_agents_on_restore = true
+    startup_per_agent_delay_ms = 500
 
     [experimental]
     pane_history = true
@@ -103,14 +115,14 @@ in
     [theme]
     name = "kanagawa"
 
-    [ui.sidebar.agents]
-    rows = [["pane"], ["workspace", "machine", "agent"]]
+    [ui]
+    agent_panel_sort = "priority"
 
-    [[keys.command]]
-    key = "prefix+shift+g"
-    type = "plugin_action"
-    command = "worktrunk.open"
-    description = "Worktree: switch or create from default branch"
+    [ui.toast]
+    delivery = "system"
+
+    [ui.sound]
+    enabled = false
 
     [[keys.command]]
     key = "prefix+shift+c"
@@ -123,12 +135,6 @@ in
     type = "plugin_action"
     command = "worktrunk.open-with-remotes"
     description = "Worktree: switch or create from remote branch"
-
-    [[keys.command]]
-    key = "prefix+shift+d"
-    type = "plugin_action"
-    command = "worktrunk.remove"
-    description = "Worktree: remove"
   '';
 
   assertions = [
@@ -149,16 +155,12 @@ in
         herdr
         (toString inputs.herdr)
         (toString herdrWorktrunk)
-        (toString config.xdg.configFile."herdr/config.toml".source)
       ]
       ++ lib.attrValues plugins;
     };
     Service = {
       Type = "simple";
       Environment = [
-        (lib.escapeShellArg "HERDR_CONFIG_PATH=${
-          toString config.xdg.configFile."herdr/config.toml".source
-        }")
         (lib.escapeShellArg "XDG_CONFIG_HOME=${config.xdg.configHome}")
         (lib.escapeShellArg "SHELL=${lib.getExe config.programs.zsh.package}")
         (lib.escapeShellArg "PATH=${
@@ -186,7 +188,6 @@ in
     config = {
       ProgramArguments = [ (toString herdrDarwinStart) ];
       EnvironmentVariables = {
-        HERDR_CONFIG_PATH = toString config.xdg.configFile."herdr/config.toml".source;
         XDG_CONFIG_HOME = config.xdg.configHome;
         HOME = config.home.homeDirectory;
         SHELL = lib.getExe config.programs.zsh.package;
@@ -360,6 +361,20 @@ in
           run ${lib.getExe herdr} plugin link ${lib.escapeShellArg (toString plugin)} --enabled
         '') (lib.attrValues plugins)
       );
+
+      # Config changes reload the running server so panes and agents survive.
+      herdrConfigChanged = lib.hm.dag.entryBefore [ "linkGeneration" ] ''
+        herdrConfigChanged=
+        ${pkgs.diffutils}/bin/cmp -s -- ${lib.escapeShellArg "${config.xdg.configHome}/herdr/config.toml"} \
+          ${config.xdg.configFile."herdr/config.toml".source} || herdrConfigChanged=1
+      '';
+
+      herdrConfigReload = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+        if [ -n "$herdrConfigChanged" ]; then
+          run ${lib.getExe herdr} --session default server reload-config \
+            || warnEcho "Herdr config reload failed; the next server start picks it up."
+        fi
+      '';
 
       herdrServicesReady = lib.mkIf herdrLinux (
         lib.hm.dag.entryBetween [ "reloadSystemd" ] [ "herdrIntegrations" "herdrWorktrunk" "herdrPlugins" ]

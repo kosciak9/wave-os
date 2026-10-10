@@ -93,8 +93,6 @@ ShellRoot {
         watchService: watch
     }
 
-    OpenCodeToasts {}
-
     TranscriptionBubble {
         targetScreen: root.primaryScreen
         notificationService: notifications
