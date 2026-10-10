@@ -313,6 +313,13 @@
 
   environment = {
     sessionVariables.NIXOS_OZONE_WL = "1";
+    # The module exposes only Wi-Fi settings; GeoClue's GeoIP JSON backend also accepts IPWhois.
+    etc."geoclue/geoclue.conf".text = lib.mkAfter ''
+      [ip]
+      enable=true
+      method=reallyfreegeoip
+      url=https://ipwho.is/?fields=latitude,longitude
+    '';
     # virsh defaults to the per-user session; VMs live in the system instance.
     variables.LIBVIRT_DEFAULT_URI = "qemu:///system";
     systemPackages = with pkgs; [
