@@ -297,11 +297,13 @@ Scope {
             anchors.topMargin: Theme.notificationBarHeight + 12
             anchors.bottom: parent.bottom
             anchors.bottomMargin: 12
-            // Anchored to the right edge, so the first frame is off screen
-            // whatever width the window has yet.
+            // The control center's entrance, nudged in from the right edge.
+            property real panelOffset: -8
             anchors.right: parent.right
-            anchors.rightMargin: -width - 12
+            anchors.rightMargin: 12 + panelOffset
             opacity: 0
+            scale: 0.985
+            transformOrigin: Item.Right
             radius: Theme.notificationRadius
             color: Theme.notificationSurface
             border.width: 1
@@ -318,11 +320,11 @@ Scope {
             states: State {
                 name: "shown"
                 when: root.opened
-                PropertyChanges { panel.anchors.rightMargin: 12; panel.opacity: 1 }
+                PropertyChanges { panel.opacity: 1; panel.panelOffset: 0; panel.scale: 1 }
             }
             transitions: Transition {
                 reversible: true
-                NumberAnimation { properties: "anchors.rightMargin,opacity"; duration: Theme.slowDuration; easing.type: Easing.OutCubic }
+                NumberAnimation { properties: "opacity,panelOffset,scale"; duration: Theme.slowDuration; easing.type: Easing.OutCubic }
             }
 
             Item {
