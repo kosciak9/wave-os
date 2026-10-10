@@ -26,6 +26,7 @@
     "pimalaya/google-client.json".owner = "kosciak";
     "protonmail/address".owner = "kosciak";
     "protonmail/bridge-password".owner = "kosciak";
+    "voxtype/openrouter-api-key".owner = "kosciak";
   };
 
   boot = {

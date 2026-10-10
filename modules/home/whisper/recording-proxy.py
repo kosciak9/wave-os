@@ -53,6 +53,9 @@ def archive_request(root, content_type, body, backend, received_at):
         if not isinstance(payload, bytes):
             raise ValueError("Invalid multipart payload")
         if name == "file" and audio is None:
+            # LiteLLM's built-in probe is synthetic audio, not a user recording.
+            if part.get_filename() == "audio_health_check.wav":
+                return None, {}
             audio = payload
             candidate = Path(part.get_filename() or "").suffix.lower()
             suffix = candidate if candidate in AUDIO_SUFFIXES else ".bin"
