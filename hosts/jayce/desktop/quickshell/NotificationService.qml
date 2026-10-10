@@ -13,12 +13,15 @@ Scope {
     readonly property string noneMode: "none"
     property string mode: allMode
     property bool centerOpen: false
+    // The screen whose bar opened the control center; null means the primary one.
+    property var centerScreen: null
     readonly property int maxHistoryEntries: 1000
     readonly property int maxPendingTransients: 100
     property alias history: historyModel
     property alias toasts: toastModel
     property int unreadCount: 0
     signal dictationNotification(string summary, string body)
+    signal centerSectionRequested(string section)
 
     property int nextEntry: 0
     property real lastSoundAt: 0
@@ -365,6 +368,17 @@ Scope {
         for (let i = toastModel.count - 1; i >= 0; i--) if (toastModel.get(i).appKey === app) removeToast(toastModel.get(i).entryKey)
     }
     function toggle(): void { if (centerOpen) close(); else open() }
+    // A bar click toggles the center on its own screen; a section click on an
+    // open center switches to that section instead of closing it.
+    function toggleAt(screen: var, section: string): void {
+        if (centerOpen && centerScreen === screen && section.length === 0) close()
+        else openAt(screen, section)
+    }
+    function openAt(screen: var, section: string): void {
+        centerScreen = screen
+        if (section.length > 0) centerSectionRequested(section)
+        open()
+    }
     function open(): void {
         centerOpen = true
         while (toastModel.count > 0) removeToast(toastModel.get(0).entryKey)

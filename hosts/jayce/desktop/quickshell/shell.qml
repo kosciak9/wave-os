@@ -86,7 +86,7 @@ ShellRoot {
     }
 
     ControlCenter {
-        targetScreen: root.primaryScreen
+        targetScreen: Quickshell.screens.indexOf(notifications.centerScreen) >= 0 ? notifications.centerScreen : root.primaryScreen
         service: notifications
         caffeinateService: caffeinate
         lidOverrideService: lidOverride

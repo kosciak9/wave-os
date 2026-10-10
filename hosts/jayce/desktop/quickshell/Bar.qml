@@ -30,7 +30,11 @@ PanelWindow {
 
     mask: Region { item: barBackground }
 
-    component NetworkWidget: Row {
+    // Only the bar whose clock, battery or network opened the center shows it as open.
+    readonly property bool centerHere: notificationService.centerOpen
+        && (notificationService.centerScreen === null ? primary : notificationService.centerScreen === modelData)
+
+    component NetworkWidget: WidgetButton {
         id: networkWidget
 
         property bool barVisible: true
@@ -55,9 +59,12 @@ PanelWindow {
         readonly property int strength: activeNetwork === null ? 0 : Math.round(activeNetwork.signalStrength * 100)
 
         visible: barVisible && wifiDevice !== null && Networking.wifiEnabled
-        leftPadding: 8
-        rightPadding: 8
-        spacing: 5
+        height: 32
+
+        onClicked: function(mouse) {
+            if (mouse.button === Qt.LeftButton)
+                root.notificationService.toggleAt(root.modelData, "wifi")
+        }
 
         Image {
             anchors.verticalCenter: parent.verticalCenter
@@ -257,19 +264,24 @@ PanelWindow {
         }
     }
 
-    component BatteryWidget: Item {
+    component BatteryWidget: WidgetButton {
         id: batteryWidget
 
         property bool barVisible: true
         readonly property var battery: UPower.displayDevice
 
         visible: barVisible && battery.ready && battery.isPresent && battery.isLaptopBattery
-        implicitWidth: batteryIcon.implicitWidth + 8
-        implicitHeight: batteryIcon.implicitHeight
+        height: 32
+        horizontalPadding: 4
+
+        onClicked: function(mouse) {
+            if (mouse.button === Qt.LeftButton)
+                root.notificationService.toggleAt(root.modelData, "")
+        }
 
         BatteryIcon {
             id: batteryIcon
-            anchors.centerIn: parent
+            anchors.verticalCenter: parent.verticalCenter
             level: batteryWidget.battery.percentage
             charging: batteryWidget.battery.state === UPowerDeviceState.Charging
             opacity: 0.8
@@ -313,12 +325,12 @@ PanelWindow {
         id: clockWidget
 
         height: 32
-        active: root.primary && root.notificationService.centerOpen
+        active: root.centerHere
         activeColor: Theme.sumiInk3
 
         onClicked: function(mouse) {
             if (mouse.button === Qt.LeftButton)
-                root.notificationService.toggle()
+                root.notificationService.toggleAt(root.modelData, "")
         }
 
         SystemClock {

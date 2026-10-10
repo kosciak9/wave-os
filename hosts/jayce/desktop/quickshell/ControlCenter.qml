@@ -322,6 +322,11 @@ Scope {
     }
     Connections {
         target: root.service
+        function onCenterSectionRequested(name) {
+            root.section = name
+            root.passwordFor = ""
+            root.wifiError = ""
+        }
         function onCenterOpenChanged() {
             if (root.service.centerOpen) {
                 root.windowVisible = true
