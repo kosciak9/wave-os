@@ -14,7 +14,7 @@ let
   # Google accounts synced into their own pimdir store; the first is the default.
   accounts = [
     "work"
-    "personal"
+    "gmail"
   ];
   googleClient = osConfig.sops.secrets."pimalaya/google-client.json".path;
   tokenDirectory = "${config.xdg.stateHome}/pimalaya/tokens";
@@ -119,21 +119,77 @@ let
     }\n"
     + builtins.readFile ./agenda.py
   );
+  # Proton Mail through the local Bridge, whose own cache already mirrors the
+  # mailbox, so himalaya reads it over IMAP rather than through neverest.
+  protonAddress = osConfig.sops.secrets."protonmail/address".path;
+  protonPassword = osConfig.sops.secrets."protonmail/bridge-password".path;
+  bridgeImap = {
+    host = "127.0.0.1";
+    port = 1143;
+  };
+  cat = lib.getExe' pkgs.coreutils "cat";
   himalayaConfig = toml.generate "himalaya.toml" {
-    accounts = forAccounts (account: {
-      pimdir.root = storeRoot account;
-      mailbox.alias = {
-        inbox = "gmail/INBOX";
-        sent = "gmail/SENT";
-        drafts = "gmail/DRAFT";
+    accounts =
+      forAccounts (account: {
+        pimdir.root = storeRoot account;
+        mailbox.alias = {
+          inbox = "gmail/INBOX";
+          sent = "gmail/SENT";
+          drafts = "gmail/DRAFT";
+        };
+      })
+      // {
+        # Bridge accepts plain authentication on loopback without TLS.
+        personal.imap = {
+          server = "imap://${bridgeImap.host}:${toString bridgeImap.port}";
+          sasl.plain.password.command = [
+            cat
+            protonPassword
+          ];
+        };
       };
-    });
+  };
+  # The Proton address stays out of this public repository, so it is merged
+  # into the generated configuration at run time.
+  himalaya = pkgs.writeShellApplication {
+    name = "himalaya";
+    text = ''
+      exec ${lib.getExe pkgs.himalaya} -c "${himalayaConfig}:/dev/fd/3" "$@" 3< <(
+        printf '[accounts.personal.imap.sasl.plain]\nusername = "%s"\n' "$(< '${protonAddress}')"
+      )
+    '';
+  };
+  # The mail panel rereads its inboxes over Quickshell IPC; a shell that is
+  # not running has nothing to update.
+  refreshMailPanel = "${lib.getExe config.programs.quickshell.package} -c wave ipc call mail refresh";
+  imapNotifyConfig = (pkgs.formats.json { }).generate "goimapnotify.json" {
+    configurations = [
+      {
+        inherit (bridgeImap) host port;
+        tls = false;
+        tlsOptions = {
+          starttls = false;
+          rejectUnauthorized = false;
+        };
+        usernameCMD = "${cat} ${protonAddress}";
+        passwordCMD = "${cat} ${protonPassword}";
+        boxes = [
+          {
+            mailbox = "INBOX";
+            onNewMail = refreshMailPanel;
+            onChangedMail = refreshMailPanel;
+            onDeletedMail = refreshMailPanel;
+          }
+        ];
+      }
+    ];
   };
 in
 {
   home.packages = [
-    # The wrapper shadows the binary; the package still contributes its completions.
+    # The wrappers shadow the binaries; the packages still contribute their completions.
     (lib.hiPrio ortie)
+    (lib.hiPrio himalaya)
     pimalaya.ortie
     pimalaya.neverest
     pimalaya.calendula
@@ -141,11 +197,23 @@ in
     pkgs.himalaya
     agenda
   ];
-  programs.zsh.generatedCompletions.wave-agenda = "${lib.getExe agenda} --print-completion zsh";
+  programs.zsh.generatedCompletions = {
+    wave-agenda = "${lib.getExe agenda} --print-completion zsh";
+    # Bridge prints only --help, which zsh's generic completion parses.
+    protonmail-bridge = "printf '#compdef protonmail-bridge\\n_gnu_generic\\n'";
+  };
+
+  services.protonmail-bridge = {
+    enable = true;
+    # Bridge keeps its vault key in pass.
+    extraPackages = [
+      config.programs.password-store.package
+      pkgs.gnupg
+    ];
+  };
 
   xdg.configFile = {
     "neverest/config.toml".source = neverestConfig;
-    "himalaya/config.toml".source = himalayaConfig;
     "calendula/config.toml".source = pimdirClientConfig;
     "cardamum/config.toml".source = pimdirClientConfig;
   };
@@ -156,14 +224,26 @@ in
       Service = {
         Type = "oneshot";
         ExecStart = "${lib.getExe pimalaya.neverest} sync --account %i";
-        # The bar's mail indicator rereads the mirror after every sync; a
-        # shell that is not running has nothing to update.
-        ExecStartPost = "-${lib.getExe config.programs.quickshell.package} -c wave ipc call mail refresh";
+        ExecStartPost = "-${refreshMailPanel}";
         # 2 means the sync finished but left an item waiting for a person.
         SuccessExitStatus = 2;
         Nice = 10;
         UMask = "0077";
       };
+    };
+    # Bridge's IMAP IDLE stands in for neverest's sync hook on the Proton inbox.
+    services.goimapnotify-proton = {
+      Unit = {
+        Description = "Refresh the mail panel on Proton Mail inbox changes";
+        After = [ "protonmail-bridge.service" ];
+        BindsTo = [ "protonmail-bridge.service" ];
+      };
+      Service = {
+        ExecStart = "${lib.getExe pkgs.goimapnotify} -conf ${imapNotifyConfig}";
+        Restart = "always";
+        RestartSec = 30;
+      };
+      Install.WantedBy = [ "protonmail-bridge.service" ];
     };
     timers = lib.genAttrs (map (account: "neverest-sync@${account}") accounts) (_: {
       Timer = {

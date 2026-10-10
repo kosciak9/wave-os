@@ -22,7 +22,11 @@
   nixpkgs.config.allowUnfree = true;
 
   # The Home Manager services read these through osConfig.
-  sops.secrets."pimalaya/google-client.json".owner = "kosciak";
+  sops.secrets = {
+    "pimalaya/google-client.json".owner = "kosciak";
+    "protonmail/address".owner = "kosciak";
+    "protonmail/bridge-password".owner = "kosciak";
+  };
 
   boot = {
     kernelPackages = pkgs.linuxPackages;

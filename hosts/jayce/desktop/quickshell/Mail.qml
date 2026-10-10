@@ -8,16 +8,17 @@ import Quickshell.Wayland
 import "Theme.js" as Theme
 
 // The newest inbox envelopes of each Gmail account as himalaya reads them
-// from the local neverest mirror, unread ones marked. Every neverest sync
-// asks for a refresh over IPC, which keeps the bar's unread badge current.
+// from the local neverest mirror or Proton Mail Bridge, unread ones marked.
+// Every neverest sync and every Bridge inbox change asks for a refresh over
+// IPC, which keeps the bar's unread badge current.
 Scope {
     id: root
     required property var fallbackScreen
     property var targetScreen: fallbackScreen
     property bool opened: false
     property bool windowVisible: false
-    // The accounts of hosts/jayce/pimalaya.nix, default first.
-    readonly property var accounts: ["work", "personal"]
+    // The himalaya accounts of hosts/jayce/pimalaya.nix.
+    readonly property var accounts: ["work", "personal", "gmail"]
     readonly property int pageSize: 25
     property var inboxes: []
     property int queried: 0
