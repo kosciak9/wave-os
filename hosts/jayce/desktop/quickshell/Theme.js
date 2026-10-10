@@ -27,6 +27,7 @@ var notificationToastWidth = 320
 var notificationToastGap = 6
 var controlCenterWidth = 580
 var agendaWidth = 540
+var mailWidth = 480
 var notificationBarHeight = 48
 var notificationSurface = "#1F1F28"
 var notificationSurfaceRaised = "#2A2A37"

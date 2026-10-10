@@ -15,6 +15,7 @@ PanelWindow {
     required property var modelData
     required property bool primary
     required property var notificationService
+    required property var mail
 
     screen: modelData
     color: "transparent"
@@ -344,34 +345,43 @@ PanelWindow {
             font.family: Theme.fontFamily
             font.pixelSize: 12
             font.weight: Font.Bold
+
+            Rectangle {
+                visible: root.primary && root.notificationService.history.count > 0
+                x: parent.width - width / 2 + 2
+                y: -width / 2 + 2
+                width: 8
+                height: 8
+                radius: 4
+                color: Theme.surimiOrange
+                border.width: 1.5
+                border.color: Theme.sumiInk0
+            }
         }
     }
 
-    component NotificationsWidget: WidgetButton {
-        id: notificationsWidget
-
-        readonly property var service: root.notificationService
-        readonly property bool hasNotifications: service.history.count > 0
+    component MailWidget: WidgetButton {
+        id: mailWidget
 
         height: 32
         horizontalPadding: 7
+        active: root.mail.opened
+        activeColor: Theme.sumiInk3
 
         onClicked: function(mouse) {
             if (mouse.button === Qt.LeftButton)
-                notificationsWidget.service.clear()
+                root.mail.toggle()
         }
 
         Item {
             anchors.verticalCenter: parent.verticalCenter
-            width: 16
-            height: 16
+            width: 15
+            height: 15
 
             Indicator {
                 anchors.fill: parent
-                width: 16
-                height: 16
-                source: Quickshell.shellDir + "/assets/notifications.svg"
-                opacity: notificationsWidget.hasNotifications ? 0.9 : 0.35
+                source: Quickshell.shellDir + "/assets/mail.svg"
+                opacity: root.mail.unreadCount > 0 ? 0.9 : 0.35
 
                 Behavior on opacity {
                     NumberAnimation { duration: Theme.normalDuration }
@@ -379,7 +389,7 @@ PanelWindow {
             }
 
             Rectangle {
-                visible: notificationsWidget.hasNotifications
+                visible: root.mail.unreadCount > 0
                 x: parent.width - width / 2 - 1
                 y: -width / 2 + 2
                 width: 8
@@ -440,7 +450,7 @@ PanelWindow {
 
                 ClockWidget {}
 
-                NotificationsWidget { visible: root.primary }
+                MailWidget { visible: root.primary }
             }
 
             Row {

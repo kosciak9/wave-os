@@ -156,6 +156,9 @@ in
       Service = {
         Type = "oneshot";
         ExecStart = "${lib.getExe pimalaya.neverest} sync --account %i";
+        # The bar's mail indicator rereads the mirror after every sync; a
+        # shell that is not running has nothing to update.
+        ExecStartPost = "-${lib.getExe config.programs.quickshell.package} -c wave ipc call mail refresh";
         # 2 means the sync finished but left an item waiting for a person.
         SuccessExitStatus = 2;
         Nice = 10;

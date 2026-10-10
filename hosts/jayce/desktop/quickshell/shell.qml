@@ -66,6 +66,7 @@ ShellRoot {
             Bar {
                 primary: modelData === root.primaryScreen
                 notificationService: notifications
+                mail: mailPanel
             }
         }
     }
@@ -85,6 +86,11 @@ ShellRoot {
     }
 
     Agenda {
+        fallbackScreen: root.primaryScreen
+    }
+
+    Mail {
+        id: mailPanel
         fallbackScreen: root.primaryScreen
     }
 
