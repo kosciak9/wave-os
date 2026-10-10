@@ -11,7 +11,6 @@ in
   imports = [
     ../../modules/wave/nixos.nix
     ../../modules/sops.nix
-    ../../modules/caddy/linux.nix
     ./hardware.nix
     ./user.nix
   ];
@@ -57,6 +56,16 @@ in
     };
     firewall.interfaces.tailscale0 = {
       allowedTCPPorts = [ 22 ];
+      allowedTCPPortRanges = [
+        {
+          from = 4000;
+          to = 4999;
+        }
+        {
+          from = 10000;
+          to = 19999;
+        }
+      ];
       allowedUDPPortRanges = [
         {
           from = 60000;

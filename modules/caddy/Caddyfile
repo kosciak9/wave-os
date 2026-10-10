@@ -1,19 +1,6 @@
 {
 	admin 127.0.0.1:2019
 	skip_install_trust
-	servers :443 {
-		name https
-	}
-	pki {
-		ca local {
-			name "Wave OS Development CA"
-			root {
-				format pem_file
-				cert {$WAVE_DEVELOPMENT_CA_CERT}
-				key {$WAVE_DEVELOPMENT_CA_KEY}
-			}
-		}
-	}
 }
 
 https://renekton.dusky-diatonic.ts.net:18790 {
@@ -28,13 +15,4 @@ https://renekton.dusky-diatonic.ts.net:6080 {
 		get_certificate tailscale
 	}
 	reverse_proxy 127.0.0.1:16080
-}
-
-https://development-caddy.localhost, https://localhost {
-	tls internal
-	route {
-		@routes_api path /api/routes /api/routes/*
-		respond @routes_api 404
-		reverse_proxy 127.0.0.1:11190
-	}
 }

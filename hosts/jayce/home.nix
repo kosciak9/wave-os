@@ -10,12 +10,7 @@ let
   wallpaper = "/home/kosciak/.config/secrets/wallpapers/kanagawa-black-centered.png";
   sessionTarget = "wayland-session@hyprland.desktop.target";
   geocluePackage = pkgs.geoclue2-with-demo-agent;
-  zenBrowser =
-    pkgs.wrapFirefox inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default.unwrapped
-      {
-        pname = "zen-browser";
-        extraPolicies.Certificates.Install = [ "${../../modules/caddy/development-root-ca.crt}" ];
-      };
+  zenBrowser = inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default;
   quickshellWithMultimedia = pkgs.quickshell.overrideAttrs (old: {
     buildInputs = (old.buildInputs or [ ]) ++ [ pkgs.kdePackages.qtmultimedia ];
   });
@@ -127,7 +122,6 @@ in
     ../../modules/home/cli
     ../../modules/home/camofox/linux.nix
     ../../modules/home/devenv
-    ../../modules/home/development-caddy/linux.nix
     ../../modules/home/ghostty
     ../../modules/home/git.nix
     ../../modules/home/neovim
@@ -219,7 +213,7 @@ in
       package = zenBrowser;
       profileName = "wave";
       settings = (import ../../modules/home/zen-browser/config/settings.nix) // {
-        "browser.startup.homepage" = "https://development-caddy.localhost";
+        "browser.startup.homepage" = "https://wave.exposed";
         "browser.startup.page" = 1;
       };
     };

@@ -9,7 +9,6 @@
     ../../modules/home/lightpanda
     ../../modules/home/cli
     ../../modules/home/devenv
-    ../../modules/home/development-caddy/darwin.nix
     ../../modules/home/ghostty
     ../../modules/home/git.nix
     ../../modules/home/neovim
@@ -63,7 +62,7 @@
       profileName = "wave";
       installId = "6ED35B3CA1B5D3AF";
       settings = (import ../../modules/home/zen-browser/config/settings.nix) // {
-        "browser.startup.homepage" = "https://development-caddy.localhost";
+        "browser.startup.homepage" = "https://wave.exposed";
         "browser.startup.page" = 1;
       };
     };
