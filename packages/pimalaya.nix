@@ -13,9 +13,15 @@ let
       hash,
       cargoHash,
       description,
+      patches ? [ ],
     }:
     rustPlatform.buildRustPackage {
-      inherit pname version cargoHash;
+      inherit
+        pname
+        version
+        cargoHash
+        patches
+        ;
 
       src = fetchFromGitHub {
         owner = "pimalaya";
@@ -55,6 +61,9 @@ in
     hash = "sha256-nZ0qW1AIjKpmLQdXVDSHm9yedga451EF9yz3djWflJY=";
     cargoHash = "sha256-Pn7wK8+tR8qfyOR0W/RZUm+6IxlN4QjiQB5QXLXt55I=";
     description = "Synchronize mail, contacts and calendars into a local pimdir store";
+    # Google answers 404 for the series of a lone occurrence of someone else's
+    # recurring event, which otherwise fails the whole calendar.
+    patches = [ ./patches/neverest-gcal-orphan-instances.patch ];
   };
   calendula = mkPimalayaCli {
     pname = "calendula";

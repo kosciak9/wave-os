@@ -1,0 +1,55 @@
+--- a/src/gcal/client.rs
++++ b/src/gcal/client.rs
+@@ -256,9 +256,13 @@
+     /// Reads a series event with every modified instance of it, the series
+     /// first.
+     fn series(&mut self, calendar: &str, id: &str) -> Result<Vec<GcalEvent>> {
+-        let master = self
+-            .op(|gcal| gcal.event_get(calendar, id, None, None))
+-            .with_context(|| format!("Get event {id} of {calendar} error"))?;
++        let master = match self.op(|gcal| gcal.event_get(calendar, id, None, None)) {
++            Ok(master) => master,
++            Err(err) if is_not_found(&err) => return self.orphan_instances(calendar, id),
++            Err(err) => {
++                return Err(err).with_context(|| format!("Get event {id} of {calendar} error"));
++            }
++        };
+ 
+         let mut events = vec![master.clone()];
+         let Some(uid) = master
+@@ -294,6 +298,23 @@
+         }
+     }
+ 
++    /// Reads the instances a calendar holds of a series it cannot read, as
++    /// when invited to one occurrence of someone else's recurring event.
++    fn orphan_instances(&mut self, calendar: &str, id: &str) -> Result<Vec<GcalEvent>> {
++        warn!("series {id} of {calendar} is not readable, keeping its instances alone");
++
++        let (events, _, _) = self.list(calendar, None)?;
++        let instances: Vec<GcalEvent> = events
++            .into_iter()
++            .filter(|event| event.recurring_event_id.as_deref() == Some(id))
++            .collect();
++
++        if instances.is_empty() {
++            bail!("Event {id} of {calendar} is neither readable nor listed");
++        }
++        Ok(instances)
++    }
++
+     /// Reads one item as iCalendar with the revision it corresponds to.
+     fn item(&mut self, calendar: &str, id: &str) -> Result<(String, String)> {
+         let events = self.series(calendar, id)?;
+@@ -461,6 +482,11 @@
+     })
+ }
+ 
++/// Whether a Calendar operation failed on a missing resource (HTTP 404).
++fn is_not_found(err: &GcalClientStdError) -> bool {
++    matches!(err, GcalClientStdError::Send(send) if send.status() == Some(404))
++}
++
+ /// Reads a whole iCalendar body as raw bytes.
+ fn read_ical(mut source: impl Read) -> Result<Vec<u8>> {
+     let mut ical = Vec::new();
