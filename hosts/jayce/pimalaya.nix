@@ -105,6 +105,20 @@ let
       pimdir.root = storeRoot account;
     });
   };
+  # calendula 0.2.0 filters by a series' first start, so the agenda expands
+  # recurrences itself until a release ships its occurrence expansion.
+  agenda = pkgs.writeScriptBin "wave-agenda" (
+    "#!${
+      lib.getExe (
+        pkgs.python3.withPackages (ps: [
+          ps.icalendar
+          ps.recurring-ical-events
+          ps.shtab
+        ])
+      )
+    }\n"
+    + builtins.readFile ./agenda.py
+  );
   himalayaConfig = toml.generate "himalaya.toml" {
     accounts = forAccounts (account: {
       pimdir.root = storeRoot account;
@@ -125,7 +139,9 @@ in
     pimalaya.calendula
     pimalaya.cardamum
     pkgs.himalaya
+    agenda
   ];
+  programs.zsh.generatedCompletions.wave-agenda = "${lib.getExe agenda} --print-completion zsh";
 
   xdg.configFile = {
     "neverest/config.toml".source = neverestConfig;
