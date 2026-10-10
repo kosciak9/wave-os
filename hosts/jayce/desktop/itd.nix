@@ -163,6 +163,4 @@ in
       Install.WantedBy = [ sessionTarget ];
     };
   };
-
-  programs.herdr.extraPlugins.watch-notify = pkgs.callPackage ./herdr-watch.nix { inherit itctl; };
 }
