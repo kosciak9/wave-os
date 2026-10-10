@@ -1,4 +1,5 @@
 {
+  config,
   lib,
   pkgs,
   inputs,
@@ -117,6 +118,7 @@ in
       pwvucontrol
       remmina
       ripgrep
+      spotifast
       trash-cli
       tesseract
       waytator
@@ -145,6 +147,10 @@ in
       };
     };
     home-manager.enable = true;
+    yazi = {
+      enable = true;
+      enableZshIntegration = true;
+    };
     zen-browser = {
       enable = true;
       package = zenBrowser;
@@ -346,6 +352,22 @@ in
 
   xdg = {
     enable = true;
+    desktopEntries.yazi = {
+      name = "Yazi File Manager";
+      icon = "yazi";
+      exec = "${lib.getExe config.programs.ghostty.package} -e ${lib.getExe config.programs.yazi.finalPackage} %f";
+      terminal = false;
+      mimeType = [ "inode/directory" ];
+      categories = [
+        "System"
+        "FileManager"
+        "FileTools"
+      ];
+    };
+    mimeApps = {
+      enable = true;
+      defaultApplications."inode/directory" = [ "yazi.desktop" ];
+    };
     userDirs = {
       enable = true;
       createDirectories = true;

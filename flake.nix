@@ -67,6 +67,11 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    spotifast = {
+      url = "github:crmne/spotifast/v0.12.0";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     zen-browser = {
       url = "github:youwen5/zen-browser-flake";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -152,6 +157,9 @@
           }) "antigravity";
         }
         // prev.lib.optionalAttrs prev.stdenv.hostPlatform.isLinux {
+          spotifast = final.callPackage ./packages/spotifast.nix {
+            spotifast = inputs.spotifast.packages.${final.stdenv.hostPlatform.system}.default;
+          };
           wave-hyprland = prev.hyprland.overrideAttrs (old: {
             patches = (old.patches or [ ]) ++ [ ./hosts/jayce/desktop/hyprland-niri-parity.patch ];
           });
@@ -297,6 +305,7 @@
             slack-mirror-context
             slack-mirror-image
             herdr-auto-title
+            spotifast
             ;
         };
         ${darwinSystem} = {
