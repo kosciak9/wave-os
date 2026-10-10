@@ -61,9 +61,14 @@ in
     hash = "sha256-nZ0qW1AIjKpmLQdXVDSHm9yedga451EF9yz3djWflJY=";
     cargoHash = "sha256-Pn7wK8+tR8qfyOR0W/RZUm+6IxlN4QjiQB5QXLXt55I=";
     description = "Synchronize mail, contacts and calendars into a local pimdir store";
-    # Google answers 404 for the series of a lone occurrence of someone else's
-    # recurring event, which otherwise fails the whole calendar.
-    patches = [ ./patches/neverest-gcal-orphan-instances.patch ];
+    patches = [
+      # Google answers 404 for the series of a lone occurrence of someone
+      # else's recurring event, which otherwise fails the whole calendar.
+      ./patches/neverest-gcal-orphan-instances.patch
+      # Gmail rate limits otherwise fail a whole fetch batch, which the next
+      # run then restarts from scratch.
+      ./patches/neverest-gmail-rate-limit.patch
+    ];
   };
   calendula = mkPimalayaCli {
     pname = "calendula";

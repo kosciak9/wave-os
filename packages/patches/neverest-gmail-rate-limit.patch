@@ -1,0 +1,127 @@
+--- a/src/gmail/client.rs
++++ b/src/gmail/client.rs
+@@ -44,7 +44,7 @@
+             import::GmailMessageImport, list::GmailMessagesListParams,
+         },
+     },
+-    send::{GMAIL_API_BASE, GmailSendOutput},
++    send::{GMAIL_API_BASE, GmailSendError, GmailSendOutput},
+ };
+ use io_pimdir::summary::mail::{addresses, decode, instant, message_ids};
+ use log::{debug, trace, warn};
+@@ -109,6 +109,17 @@
+ /// How many times an import's history is read before giving up on it.
+ const IMPORT_ATTEMPTS: u32 = 3;
+ 
++/// The waits before each retry of a rate-limited request, doubling up to
++/// about two minutes in all, past a whole per-minute quota window.
++const RATE_LIMIT_BACKOFF: &[Duration] = &[
++    Duration::from_secs(2),
++    Duration::from_secs(4),
++    Duration::from_secs(8),
++    Duration::from_secs(16),
++    Duration::from_secs(32),
++    Duration::from_secs(64),
++];
++
+ /// The live Gmail session of one side.
+ pub struct GmailClient {
+     inner: GmailClientStd,
+@@ -162,19 +173,38 @@
+ 
+     /// Runs one Gmail operation, reopening the stream first when the server
+     /// closed it, and records the new keep-alive hint.
++    ///
++    /// A rate-limited or transiently failed operation is retried after
++    /// [`RATE_LIMIT_BACKOFF`], so a long fetch slows down instead of losing
++    /// its whole batch to the per-user quota.
+     fn op<T>(
+         &mut self,
+-        run: impl FnOnce(&mut GmailClientStd) -> Result<GmailSendOutput<T>, GmailClientStdError>,
++        mut run: impl FnMut(&mut GmailClientStd) -> Result<GmailSendOutput<T>, GmailClientStdError>,
+     ) -> Result<T, GmailClientStdError> {
+-        if !self.alive
+-            && let Err(err) = self.reconnect()
+-        {
+-            warn!("cannot reopen the gmail stream: {err:#}");
+-        }
++        let mut waits = RATE_LIMIT_BACKOFF.iter();
++        loop {
++            if !self.alive
++                && let Err(err) = self.reconnect()
++            {
++                warn!("cannot reopen the gmail stream: {err:#}");
++            }
+ 
+-        let out = run(&mut self.inner)?;
+-        self.alive = out.keep_alive;
+-        Ok(out.response)
++            match run(&mut self.inner) {
++                Ok(out) => {
++                    self.alive = out.keep_alive;
++                    return Ok(out.response);
++                }
++                Err(err) if is_rate_limited(&err) => {
++                    let Some(wait) = waits.next() else {
++                        return Err(err);
++                    };
++                    warn!("gmail rate limit, retrying in {}s: {err}", wait.as_secs());
++                    self.alive = false;
++                    thread::sleep(*wait);
++                }
++                Err(err) => return Err(err),
++            }
++        }
+     }
+ 
+     /// Lists the user labels and [`SYSTEM_COLLECTIONS`], counted when
+@@ -676,6 +706,26 @@
+     matches!(err, GmailClientStdError::Send(send) if send.status() == Some(404))
+ }
+ 
++/// Whether Gmail asked to slow down: a 429 or 5xx, or a 403 naming a
++/// per-second or per-minute rate limit. A daily quota stays a failure.
++fn is_rate_limited(err: &GmailClientStdError) -> bool {
++    let GmailClientStdError::Send(send) = err else {
++        return false;
++    };
++    if send.is_retryable() {
++        return true;
++    }
++    let GmailSendError::Api {
++        status: 403,
++        message,
++    } = send
++    else {
++        return false;
++    };
++    let message = message.to_lowercase();
++    message.contains("rate limit") || message.contains("per minute")
++}
++
+ /// Whether a label is synced as a collection: every user label, and the
+ /// [`SYSTEM_COLLECTIONS`].
+ fn is_collection(label: &GmailLabel) -> bool {
+@@ -1026,6 +1076,22 @@
+     }
+ 
+     #[test]
++    fn only_rate_limits_are_retried() {
++        let api = |status, message: &str| {
++            GmailClientStdError::Send(GmailSendError::Api {
++                status,
++                message: message.into(),
++            })
++        };
++        assert!(is_rate_limited(&api(429, "Too many requests")));
++        assert!(is_rate_limited(&api(403, "Quota exceeded for quota metric 'Total Query Cost' and limit 'Units per minute per user'")));
++        assert!(is_rate_limited(&api(403, "User-rate limit exceeded")));
++        assert!(!is_rate_limited(&api(403, "Daily Limit Exceeded")));
++        assert!(!is_rate_limited(&api(403, "Insufficient Permission")));
++        assert!(!is_rate_limited(&api(404, "Not Found")));
++    }
++
++    #[test]
+     fn checkpoint_decodes_a_history_id() {
+         assert_eq!(decode_checkpoint(b"12345").as_deref(), Some("12345"));
+         assert_eq!(decode_checkpoint(&[]), None);
