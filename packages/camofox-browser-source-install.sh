@@ -77,6 +77,10 @@ acl Safe_ports port 80 443
 acl SSL_ports port 443
 acl CONNECT method CONNECT
 
+# Resolve the dashboard gateway at startup, independently of each app's DNS.
+acl wave_gateway dst wave.exposed
+acl wave_domains dstdomain -n .wave.exposed
+
 acl blocked_dst dst 0.0.0.0/8
 acl blocked_dst dst 10.0.0.0/8
 acl blocked_dst dst 100.64.0.0/10
@@ -98,9 +102,11 @@ acl blocked_dst dst fc00::/7
 acl blocked_dst dst fe80::/10
 acl blocked_dst dst ff00::/8
 
-http_access deny blocked_dst
 http_access deny !Safe_ports
 http_access deny CONNECT !SSL_ports
+http_access allow localhost CONNECT SSL_ports wave_domains wave_gateway
+http_access deny wave_domains
+http_access deny blocked_dst
 http_access allow localhost
 http_access deny all
 EOF
