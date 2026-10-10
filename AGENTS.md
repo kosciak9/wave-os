@@ -112,10 +112,16 @@
   only with `--force-with-lease`—never rewrite other task branches or `main`,
   and do not retain implementation detours just to document the path. An
   explicitly authorized direct push to `main` must be fast-forward-only (no
-  force push) and respect branch protection.
+  force push). Within the supervised per-task exception above, the owner's
+  explicit authorization to push directly to `main` also permits bypassing
+  GitHub's PR, review, and required-status-check gates using existing repository
+  permissions. GitHub reporting `Bypassed rule violations` is expected and
+  acceptable in that case. This does not authorize changing branch protection
+  settings, skipping local validation or hooks, or bypassing gates for other
+  tasks.
 - Write PR descriptions in Polish. Keep them concise: **What changed**, **Why**,
   and **Impact** (including affected hosts and user-visible runtime effect); add
   **Validation** only when meaningful and not merely routine CI. PR titles need
   not be in Polish. GitHub review and status policy is the merge gate and must
-  not be bypassed.
+  not be bypassed without the explicit per-task direct-push authorization above.
 - Never activate or switch system configurations unless explicitly requested.
