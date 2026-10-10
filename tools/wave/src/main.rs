@@ -1,4 +1,5 @@
 mod autodeploy;
+mod dashboard;
 mod github;
 mod health;
 mod logging;
@@ -63,6 +64,24 @@ enum Action {
         #[arg(long, default_value_t = 3)]
         streak: u32,
     },
+    /// Register this host's apps on the wave.exposed dashboard
+    Dashboard {
+        #[command(subcommand)]
+        action: DashboardAction,
+    },
+}
+
+#[derive(Subcommand)]
+enum DashboardAction {
+    /// Expose a local port as an app; prints its URL
+    Add {
+        project: String,
+        branch: String,
+        #[arg(long)]
+        port: u16,
+    },
+    /// Unregister an app; succeeds when it was not registered
+    Remove { project: String, branch: String },
 }
 
 /// The short hostname names this host's configuration in the flake.
@@ -118,6 +137,14 @@ fn run(action: Action) -> Result<i32> {
         Action::Switch { local } => switch::switch(&owner_paths()?, &hostname()?, local),
         Action::Deploy { node } => remote::deploy(&owner_paths()?, &node),
         Action::Autodeploy { nodes } => autodeploy::run(&owner_paths()?, &hostname()?, &nodes),
+        Action::Dashboard { action } => match action {
+            DashboardAction::Add {
+                project,
+                branch,
+                port,
+            } => dashboard::add(&project, &branch, port),
+            DashboardAction::Remove { project, branch } => dashboard::remove(&project, &branch),
+        },
     }
 }
 
