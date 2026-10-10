@@ -1,0 +1,189 @@
+diff --git a/crates/herdr-gpui/src/menu/workspace.rs b/crates/herdr-gpui/src/menu/workspace.rs
+index 7d9a1e0..f8c16f6 100644
+--- a/crates/herdr-gpui/src/menu/workspace.rs
++++ b/crates/herdr-gpui/src/menu/workspace.rs
+@@ -611,11 +611,9 @@ impl HerdrWindow {
+             WorkspaceAction::NewTab | WorkspaceAction::NewWorkspace => Some(DialogInput::new(
+                 self.menu.suggested_name.clone().unwrap_or_default(),
+             )),
+-            // Propose the daemon's own branch shape, selected so typing replaces it.
+-            WorkspaceAction::NewWorktree => {
+-                Some(DialogInput::new(crate::worktree::proposed_branch()))
+-            }
+-            WorkspaceAction::Close
++            // No branch is asked for: the daemon generates one.
++            WorkspaceAction::NewWorktree
++            | WorkspaceAction::Close
+             | WorkspaceAction::DeleteWorktree
+             | WorkspaceAction::OpenWorktree => None,
+         };
+diff --git a/crates/herdr-gpui/src/menu/workspace/render.rs b/crates/herdr-gpui/src/menu/workspace/render.rs
+index c5a1079..be49892 100644
+--- a/crates/herdr-gpui/src/menu/workspace/render.rs
++++ b/crates/herdr-gpui/src/menu/workspace/render.rs
+@@ -8,30 +8,12 @@ use crate::{
+ use gpui::{prelude::*, *};
+ 
+ impl HerdrWindow {
+-    /// The checkout the daemon would create for the branch currently drafted.
+-    /// Only a preview: the daemon derives the path it actually uses.
+-    pub(in crate::menu) fn checkout_preview(&self) -> String {
+-        let repo = self
+-            .menu
+-            .target
+-            .as_ref()
+-            .and_then(|target| target.worktree.as_ref())
+-            .map(|worktree| worktree.label.as_str());
+-        let root = self
+-            .live
+-            .snapshot
+-            .as_ref()
+-            .map(|snapshot| snapshot.worktree_directory.as_str())
+-            .filter(|root| !root.is_empty());
+-        let branch = self
+-            .menu
+-            .input
+-            .as_ref()
+-            .map_or("", |input| input.text.trim());
+-        match (repo, root) {
+-            _ if branch.is_empty() => "The daemon names the checkout.".to_owned(),
+-            (Some(repo), Some(root)) => crate::worktree::checkout_preview(root, repo, branch),
+-            _ => "The daemon chooses the checkout.".to_owned(),
++    /// What the dialog creates for the name typed so far: the branch, whose
++    /// checkout folder Worktrunk derives from its own path template.
++    pub(in crate::menu) fn checkout_preview(&self, cx: &App) -> String {
++        match self.worktree_branch(cx) {
++            Some(branch) => format!("Branch {branch}, checked out where Worktrunk places it."),
++            None => "The daemon names the branch and the checkout.".to_owned(),
+         }
+     }
+ 
+@@ -128,7 +110,6 @@ impl HerdrWindow {
+                             .into_any_element(),
+                     )
+                 }))
+-                .child(row("Branch", self.render_dialog_input(cx).into_any_element()))
+                 .child(format!(
+                     "Creates this folder from {}, without granting repository trust:",
+                     target.base_label()
+@@ -140,7 +121,7 @@ impl HerdrWindow {
+                         .bg(rgb(theme.active))
+                         .px(px(10.))
+                         .py(px(6.))
+-                        .child(self.checkout_preview()),
++                        .child(self.checkout_preview(cx)),
+                 )
+             }
+             WorkspaceAction::DeleteWorktree => body
+diff --git a/crates/herdr-gpui/src/menu/workspace/requests.rs b/crates/herdr-gpui/src/menu/workspace/requests.rs
+index 79db67b..d8f38f8 100644
+--- a/crates/herdr-gpui/src/menu/workspace/requests.rs
++++ b/crates/herdr-gpui/src/menu/workspace/requests.rs
+@@ -255,6 +255,9 @@ impl HerdrWindow {
+             return;
+         }
+         let name = self.worktree_name(cx);
++        let branch = (action == WorkspaceAction::NewWorktree)
++            .then(|| self.worktree_branch(cx))
++            .flatten();
+         let result = (|| {
+             if !self.menu_target_current() {
+                 return Err(crate::Error::StaleConnection);
+@@ -280,6 +283,8 @@ impl HerdrWindow {
+                     .and_then(|picker| picker.entry(picker.selected))
+                     .map(|entry| entry.path.as_str())
+                     .ok_or(crate::Error::WorktreeSelection)?
++            } else if let Some(branch) = &branch {
++                branch.as_str()
+             } else {
+                 self.menu
+                     .input
+diff --git a/crates/herdr-gpui/src/menu/worktree_source.rs b/crates/herdr-gpui/src/menu/worktree_source.rs
+index e2c7f5b..3ec0a00 100644
+--- a/crates/herdr-gpui/src/menu/worktree_source.rs
++++ b/crates/herdr-gpui/src/menu/worktree_source.rs
+@@ -317,6 +317,12 @@ impl HerdrWindow {
+         (!name.is_empty()).then(|| name.to_owned())
+     }
+ 
++    /// The branch the typed name stands for, so it also names the checkout.
++    pub(super) fn worktree_branch(&self, cx: &gpui::App) -> Option<String> {
++        self.worktree_name(cx)
++            .map(|name| crate::worktree::branch_to_path_slug(&name))
++    }
++
+     pub(super) fn open_worktree_source(
+         &mut self,
+         window: &mut gpui::Window,
+diff --git a/crates/herdr-gpui/src/worktree.rs b/crates/herdr-gpui/src/worktree.rs
+index d990b51..c1c7374 100644
+--- a/crates/herdr-gpui/src/worktree.rs
++++ b/crates/herdr-gpui/src/worktree.rs
+@@ -43,16 +43,6 @@ pub(super) fn generated_branch_slug(seed: u64) -> String {
+     format!("{PREFIX}/{adjective}-{noun}-{suffix:04x}")
+ }
+ 
+-/// A branch proposal seeded from the current clock, as the daemon seeds its own.
+-pub(super) fn proposed_branch() -> String {
+-    generated_branch_slug(
+-        std::time::SystemTime::now()
+-            .duration_since(std::time::UNIX_EPOCH)
+-            .map(|elapsed| elapsed.as_micros().min(u128::from(u64::MAX)) as u64)
+-            .unwrap_or(0),
+-    )
+-}
+-
+ /// The directory component the daemon derives from a branch name.
+ pub(super) fn branch_to_path_slug(branch: &str) -> String {
+     let mut slug = String::new();
+@@ -74,22 +64,6 @@ pub(super) fn branch_to_path_slug(branch: &str) -> String {
+     }
+ }
+ 
+-/// The checkout the daemon would create under its worktree directory. This is an
+-/// endpoint path, not a path on the machine drawing the dialog, so the separator
+-/// follows the root the daemon reported rather than this platform's.
+-pub(super) fn checkout_preview(root: &str, repo: &str, branch: &str) -> String {
+-    let separator = if !root.starts_with('/') && root.contains('\\') {
+-        '\\'
+-    } else {
+-        '/'
+-    };
+-    format!(
+-        "{}{separator}{repo}{separator}{}",
+-        root.trim_end_matches(separator),
+-        branch_to_path_slug(branch)
+-    )
+-}
+-
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+@@ -151,27 +125,6 @@ mod tests {
+             generated_branch_slug(u64::MAX),
+             "worktree/silver-valley-ffff"
+         );
+-        let proposed = proposed_branch();
+-        assert!(proposed.starts_with("worktree/"), "{proposed}");
+-        assert_eq!(proposed.split('-').count(), 3, "{proposed}");
+     }
+ 
+-    #[test]
+-    fn checkout_previews_follow_the_endpoint_root_and_branch_slug() {
+-        assert_eq!(
+-            checkout_preview(
+-                "/home/me/.herdr/worktrees/",
+-                "herdr",
+-                "worktree/brave-river"
+-            ),
+-            "/home/me/.herdr/worktrees/herdr/worktree-brave-river"
+-        );
+-        assert_eq!(
+-            checkout_preview("C:\\Users\\me\\worktrees", "herdr", "feature/Login v2"),
+-            "C:\\Users\\me\\worktrees\\herdr\\feature-login-v2"
+-        );
+-        // A branch with nothing to slug still lands in the namespaced directory.
+-        assert_eq!(branch_to_path_slug("///"), "worktree");
+-        assert_eq!(branch_to_path_slug("--Fix_42--"), "fix-42");
+-    }
+ }
