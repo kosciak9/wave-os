@@ -83,6 +83,8 @@ in
     ./plugin-options.nix
   ];
 
+  programs.zsh.generatedCompletions.herdr = "${lib.getExe herdr} completion zsh";
+
   programs.worktrunk = {
     enable = true;
     enableZshIntegration = true;

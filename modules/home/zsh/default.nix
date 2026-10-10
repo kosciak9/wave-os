@@ -1,126 +1,147 @@
 {
+  config,
   lib,
   pkgs,
   ...
 }:
 
 {
-  home.language = {
-    base = "en_US.UTF-8";
-    ctype = "en_US.UTF-8";
+  options.programs.zsh.generatedCompletions = lib.mkOption {
+    type = lib.types.attrsOf lib.types.str;
+    default = { };
+    description = ''
+      Completion scripts for commands whose packages ship none, keyed by command name. Each value
+      is a shell command that prints the zsh completion script; it runs at build time.
+    '';
   };
 
-  home.packages = [
-    pkgs.mosh
-    pkgs.zsh-completions
-  ];
+  config = {
+    home.language = {
+      base = "en_US.UTF-8";
+      ctype = "en_US.UTF-8";
+    };
 
-  programs = {
-    eza = {
-      enable = true;
-      enableZshIntegration = false;
-    };
-    fzf = {
-      enable = true;
-      enableZshIntegration = false;
-    };
-    zsh = {
-      enable = true;
-      enableCompletion = true;
-      autosuggestion.enable = true;
-      fastSyntaxHighlighting.enable = true;
-      history = {
-        append = true;
-        expireDuplicatesFirst = true;
-        extended = true;
-        findNoDups = true;
-        ignoreAllDups = true;
-        ignoreDups = true;
-        ignorePatterns = [
-          "cd*"
-          "pwd*"
-          "exit*"
-        ];
-        ignoreSpace = true;
-        saveNoDups = true;
-        save = 10000000;
-        size = 10000000;
-        share = true;
-      };
-      oh-my-zsh = {
+    home.packages = [
+      pkgs.mosh
+      pkgs.zsh-completions
+      (pkgs.runCommand "zsh-generated-completions" { } ''
+        mkdir -p "$out/share/zsh/site-functions"
+        export HOME="$TMPDIR"
+        ${lib.concatLines (
+          lib.mapAttrsToList (
+            command: generate: ''${generate} > "$out/share/zsh/site-functions/_${command}"''
+          ) config.programs.zsh.generatedCompletions
+        )}
+      '')
+    ];
+
+    programs = {
+      eza = {
         enable = true;
-        plugins = [
-          "git"
-          "pass"
+        enableZshIntegration = false;
+      };
+      fzf = {
+        enable = true;
+        enableZshIntegration = false;
+      };
+      zsh = {
+        enable = true;
+        enableCompletion = true;
+        autosuggestion.enable = true;
+        fastSyntaxHighlighting.enable = true;
+        history = {
+          append = true;
+          expireDuplicatesFirst = true;
+          extended = true;
+          findNoDups = true;
+          ignoreAllDups = true;
+          ignoreDups = true;
+          ignorePatterns = [
+            "cd*"
+            "pwd*"
+            "exit*"
+          ];
+          ignoreSpace = true;
+          saveNoDups = true;
+          save = 10000000;
+          size = 10000000;
+          share = true;
+        };
+        oh-my-zsh = {
+          enable = true;
+          plugins = [
+            "git"
+            "pass"
+          ];
+        };
+        setOptions = [
+          "BANG_HIST"
+          "HIST_BEEP"
+          "HIST_REDUCE_BLANKS"
+          "HIST_VERIFY"
+          "INC_APPEND_HISTORY"
+        ];
+        shellAliases = {
+          gcawip = "git commit --amend --no-verify -m wip";
+          gcwip = "git commit --no-verify -m wip";
+          l = "eza --git -h -g -H -l";
+          n = "nvim";
+          nvimrc = "$EDITOR ~/Developer/personal/wave-os/modules/home/neovim/config/init.lua";
+          oc = "opencode";
+          sudo = "sudo ";
+          vim = "nvim";
+          vimrc = "$EDITOR ~/Developer/personal/wave-os/modules/home/neovim/config/init.lua";
+          zshrc = "$EDITOR ~/Developer/personal/wave-os/modules/home/zsh/default.nix";
+        };
+        initContent = lib.mkMerge [
+          (lib.mkOrder 850 ''
+            if [[ -n $TTY && $options[zle] = on ]]; then
+              ZVM_INIT_MODE=sourcing
+              source "${pkgs.zsh-vi-mode}/share/zsh-vi-mode/zsh-vi-mode.plugin.zsh"
+            fi
+          '')
+          (lib.mkOrder 900 ''
+            if [[ -n $TTY && $options[zle] = on ]]; then
+              source "${pkgs.zsh-fzf-tab}/share/fzf-tab/fzf-tab.plugin.zsh"
+            fi
+          '')
+          (lib.mkOrder 910 ''
+            if [[ -n $TTY && $options[zle] = on ]]; then
+              source <("${lib.getExe pkgs.fzf}" --zsh)
+            fi
+          '')
+          (lib.mkOrder 1000 ''
+            export FZF_DEFAULT_COMMAND="fd --hidden --follow --exclude .git --exclude node_modules"
+            export FZF_DEFAULT_OPTS='
+              --layout=reverse
+              --color=fg:#dcd7ba,bg:#1f1f28,hl:#7e9cd8
+              --color=fg+:#dcd7ba,bg+:#2a2a37,hl+:#7fb4ca
+              --color=info:#a3aab0,prompt:#d27e99,pointer:#957fb8
+              --color=marker:#98bb6c,spinner:#957fb8,header:#7e9cd8'
+
+            zstyle ':fzf-tab:complete:cd:*' disabled-on any
+
+            ssh() {
+              # Only plain terminal logins use Mosh; SSH options and commands stay untouched.
+              if [[ -o interactive && -t 0 && -t 1 && $# -eq 1 && $1 != -* && $1 != ssh://* ]]; then
+                command mosh -- "$1"
+              else
+                command ssh "$@"
+              fi
+            }
+
+            cpu_count() {
+              if (( $+commands[nproc] )); then
+                nproc
+              else
+                sysctl -n hw.ncpu
+              fi
+            }
+            export MIX_OS_DEPS_COMPILE_PARTITION_COUNT=$(( $(cpu_count) / 2 ))
+
+          '')
         ];
       };
-      setOptions = [
-        "BANG_HIST"
-        "HIST_BEEP"
-        "HIST_REDUCE_BLANKS"
-        "HIST_VERIFY"
-        "INC_APPEND_HISTORY"
-      ];
-      shellAliases = {
-        gcawip = "git commit --amend --no-verify -m wip";
-        gcwip = "git commit --no-verify -m wip";
-        l = "eza --git -h -g -H -l";
-        n = "nvim";
-        nvimrc = "$EDITOR ~/Developer/personal/wave-os/modules/home/neovim/config/init.lua";
-        oc = "opencode";
-        sudo = "sudo ";
-        vim = "nvim";
-        vimrc = "$EDITOR ~/Developer/personal/wave-os/modules/home/neovim/config/init.lua";
-        zshrc = "$EDITOR ~/Developer/personal/wave-os/modules/home/zsh/default.nix";
-      };
-      initContent = lib.mkMerge [
-        (lib.mkOrder 850 ''
-          if [[ -n $TTY && $options[zle] = on ]]; then
-            ZVM_INIT_MODE=sourcing
-            source "${pkgs.zsh-vi-mode}/share/zsh-vi-mode/zsh-vi-mode.plugin.zsh"
-          fi
-        '')
-        (lib.mkOrder 900 ''
-          if [[ -n $TTY && $options[zle] = on ]]; then
-            source "${pkgs.zsh-fzf-tab}/share/fzf-tab/fzf-tab.plugin.zsh"
-          fi
-        '')
-        (lib.mkOrder 910 ''
-          if [[ -n $TTY && $options[zle] = on ]]; then
-            source <("${lib.getExe pkgs.fzf}" --zsh)
-          fi
-        '')
-        (lib.mkOrder 1000 ''
-          export FZF_DEFAULT_COMMAND="fd --hidden --follow --exclude .git --exclude node_modules"
-          export FZF_DEFAULT_OPTS='
-            --layout=reverse
-            --color=fg:#dcd7ba,bg:#1f1f28,hl:#7e9cd8
-            --color=fg+:#dcd7ba,bg+:#2a2a37,hl+:#7fb4ca
-            --color=info:#a3aab0,prompt:#d27e99,pointer:#957fb8
-            --color=marker:#98bb6c,spinner:#957fb8,header:#7e9cd8'
-
-          zstyle ':fzf-tab:complete:cd:*' disabled-on any
-
-          ssh() {
-            # Only plain terminal logins use Mosh; SSH options and commands stay untouched.
-            if [[ -o interactive && -t 0 && -t 1 && $# -eq 1 && $1 != -* && $1 != ssh://* ]]; then
-              command mosh -- "$1"
-            else
-              command ssh "$@"
-            fi
-          }
-
-          cpu_count() {
-            if (( $+commands[nproc] )); then
-              nproc
-            else
-              sysctl -n hw.ncpu
-            fi
-          }
-          export MIX_OS_DEPS_COMPILE_PARTITION_COUNT=$(( $(cpu_count) / 2 ))
-
-        '')
-      ];
     };
   };
 }

@@ -1,5 +1,6 @@
 {
   fetchFromGitHub,
+  installShellFiles,
   lib,
   rustPlatform,
 }:
@@ -22,6 +23,14 @@ let
         tag = "v${version}";
         inherit hash;
       };
+
+      nativeBuildInputs = [ installShellFiles ];
+      postInstall = ''
+        installShellCompletion --cmd ${pname} \
+          --bash <($out/bin/${pname} completion bash) \
+          --fish <($out/bin/${pname} completion fish) \
+          --zsh <($out/bin/${pname} completion zsh)
+      '';
 
       # Integration tests open sockets against live servers.
       cargoTestFlags = [ "--bins" ];

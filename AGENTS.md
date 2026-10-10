@@ -15,6 +15,10 @@
   `devenv test`.
   `nix flake check --no-build --all-systems --no-write-lock-file path:.` is
   optional diagnostics, not a replacement for Darwin evaluation.
+- Every installed CLI must come with zsh completions. Packages built here
+  install them in `postInstall` (`installShellCompletion`); for other packages
+  that ship none but can print them, register the generating command in
+  `programs.zsh.generatedCompletions` next to where the package is installed.
 - Builds are separate and targeted, preceded by evaluation and preferably a
   dry-run; do not routinely build the full fleet.
 - Do not create or maintain project-derived documentation or unit tests: these

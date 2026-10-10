@@ -112,7 +112,9 @@ let
 in
 {
   home.packages = [
-    ortie
+    # The wrapper shadows the binary; the package still contributes its completions.
+    (lib.hiPrio ortie)
+    pimalaya.ortie
     pimalaya.neverest
     pimalaya.calendula
     pimalaya.cardamum

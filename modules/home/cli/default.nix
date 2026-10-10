@@ -48,4 +48,6 @@ in
     tmux
     weave
   ];
+
+  programs.zsh.generatedCompletions.infisical = "${lib.getExe pkgs.infisical} completion zsh";
 }

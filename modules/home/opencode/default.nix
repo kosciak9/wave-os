@@ -6,6 +6,8 @@
     pkgs.camofox-browser-cli
   ];
 
+  programs.zsh.generatedCompletions.opencode = "${pkgs.opencode}/bin/opencode --completions zsh";
+
   xdg.configFile = {
     "opencode/commands" = {
       source = ./config/commands;
