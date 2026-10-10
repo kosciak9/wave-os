@@ -62,6 +62,16 @@ let
     # Skip the slow test suite there; Linux keeps the nixpkgs checks enabled.
     doCheck = !pkgs.stdenv.hostPlatform.isDarwin;
   };
+  # The daemon runs Worktrunk without the repository's direnv environment, so
+  # project hooks would miss the tools a terminal in that checkout has.
+  daemonWorktrunk = pkgs.writeShellScriptBin "wt" ''
+    direnv=${lib.getExe config.programs.direnv.package}
+    if [ "''${1-}" = -C ] && [ -n "''${2-}" ] \
+      && [ "$(cd -- "$2" && "$direnv" status --json | ${lib.getExe pkgs.jq} '.state.foundRC.allowed')" = 0 ]; then
+      exec "$direnv" exec "$2" ${lib.getExe worktrunk} "$@"
+    fi
+    exec ${lib.getExe worktrunk} "$@"
+  '';
   herdrLinux = pkgs.stdenv.hostPlatform.isLinux;
   herdrDarwin = pkgs.stdenv.hostPlatform.isDarwin;
   herdrLogDirectory = "${config.xdg.stateHome}/herdr";
@@ -165,6 +175,7 @@ in
         (lib.escapeShellArg "SHELL=${lib.getExe config.programs.zsh.package}")
         (lib.escapeShellArg "PATH=${
           lib.makeBinPath [
+            daemonWorktrunk
             pkgs.coreutils
             pkgs.bash
           ]
@@ -193,6 +204,7 @@ in
         SHELL = lib.getExe config.programs.zsh.package;
         PATH = "${
           lib.makeBinPath [
+            daemonWorktrunk
             pkgs.coreutils
             pkgs.bash
           ]
