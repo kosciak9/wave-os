@@ -135,8 +135,8 @@
       submitData = true;
       submissionUrl = "https://api.beacondb.net/v2/geosubmit";
       submissionNick = "wave-client";
-      appConfig.geoclue-where-am-i = {
-        desktopID = "geoclue-where-am-i";
+      appConfig.wave = {
+        desktopID = "wave";
         isAllowed = true;
         isSystem = false;
       };

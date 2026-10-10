@@ -8,8 +8,12 @@ mod dbus;
 mod display;
 mod github;
 mod health;
+#[cfg(target_os = "linux")]
+mod location;
 mod logging;
 mod model;
+#[cfg(target_os = "linux")]
+mod night_light;
 #[cfg(target_os = "linux")]
 mod power_profile;
 mod presentation;
@@ -92,6 +96,9 @@ enum Action {
         #[command(subcommand)]
         command: display::Command,
     },
+    /// Run the night light: warm the screen through civil twilight at this location
+    #[cfg(target_os = "linux")]
+    NightLight,
     /// Run the power profile policy: performance on AC or with caffeinate
     #[cfg(target_os = "linux")]
     PowerProfilePolicy,
@@ -179,6 +186,8 @@ fn run(action: Action) -> Result<i32> {
         Action::Caffeinate { command } => caffeinate::run(command),
         #[cfg(target_os = "linux")]
         Action::Display { command } => display::run(command),
+        #[cfg(target_os = "linux")]
+        Action::NightLight => night_light::run(),
         #[cfg(target_os = "linux")]
         Action::PowerProfilePolicy => power_profile::run(),
     }

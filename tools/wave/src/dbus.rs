@@ -85,3 +85,39 @@ pub trait PowerProfiles {
     #[zbus(property)]
     fn profiles(&self) -> zbus::Result<Vec<HashMap<String, OwnedValue>>>;
 }
+
+#[proxy(
+    interface = "org.freedesktop.GeoClue2.Manager",
+    default_service = "org.freedesktop.GeoClue2",
+    default_path = "/org/freedesktop/GeoClue2/Manager"
+)]
+pub trait GeoClueManager {
+    fn get_client(&self) -> zbus::Result<OwnedObjectPath>;
+}
+
+#[proxy(
+    interface = "org.freedesktop.GeoClue2.Client",
+    default_service = "org.freedesktop.GeoClue2"
+)]
+pub trait GeoClueClient {
+    fn start(&self) -> zbus::Result<()>;
+    #[zbus(property)]
+    fn set_desktop_id(&self, id: &str) -> zbus::Result<()>;
+    #[zbus(property)]
+    fn set_requested_accuracy_level(&self, level: u32) -> zbus::Result<()>;
+    #[zbus(property)]
+    fn set_distance_threshold(&self, meters: u32) -> zbus::Result<()>;
+    #[zbus(signal)]
+    fn location_updated(&self, old: ObjectPath<'_>, new: ObjectPath<'_>) -> zbus::Result<()>;
+}
+
+#[proxy(
+    interface = "org.freedesktop.GeoClue2.Location",
+    default_service = "org.freedesktop.GeoClue2"
+)]
+pub trait GeoClueLocation {
+    #[zbus(property)]
+    fn latitude(&self) -> zbus::Result<f64>;
+    #[zbus(property)]
+    fn longitude(&self) -> zbus::Result<f64>;
+}

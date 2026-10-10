@@ -9,7 +9,6 @@
 let
   wallpaper = "/home/kosciak/.config/secrets/wallpapers/kanagawa-black-centered.png";
   sessionTarget = "wayland-session@hyprland.desktop.target";
-  geocluePackage = pkgs.geoclue2-with-demo-agent;
   zenBrowser = inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default;
   quickshellWithMultimedia = pkgs.quickshell.overrideAttrs (old: {
     buildInputs = (old.buildInputs or [ ]) ++ [ pkgs.kdePackages.qtmultimedia ];
@@ -17,20 +16,6 @@ let
   notificationSoundPath = "${pkgs.sound-theme-freedesktop}/share/sounds/freedesktop/stereo/message-new-instant.oga";
   waytator = pkgs.callPackage ../../packages/waytator.nix { };
   waveDisplay = "${lib.getExe pkgs.wave} display";
-  nightLight = pkgs.writeShellApplication {
-    name = "wave-night-light";
-    runtimeInputs = with pkgs; [
-      coreutils
-      gawk
-      hyprland
-      sunwait
-    ];
-    text =
-      builtins.replaceStrings
-        [ "@where-am-i@" ]
-        [ "${geocluePackage}/libexec/geoclue-2.0/demos/where-am-i" ]
-        (builtins.readFile ./scripts/night-light.sh);
-  };
   lockStatus = pkgs.writeShellApplication {
     name = "wave-lock-status";
     runtimeInputs = [ pkgs.coreutils ];
@@ -504,7 +489,7 @@ in
         ConditionEnvironment = "WAYLAND_DISPLAY";
       };
       Service = {
-        ExecStart = lib.getExe nightLight;
+        ExecStart = "${lib.getExe pkgs.wave} night-light";
         Restart = "always";
         RestartSec = 5;
       };
