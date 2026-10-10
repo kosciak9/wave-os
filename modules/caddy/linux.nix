@@ -1,10 +1,11 @@
-_:
+{ config, ... }:
 
 let
   developmentRootCa = ./development-root-ca.crt;
 in
 {
   security.pki.certificateFiles = [ developmentRootCa ];
+  sops.secrets.development-ca-key.restartUnits = [ "caddy.service" ];
 
   services.caddy = {
     enable = true;
@@ -18,7 +19,7 @@ in
     };
     serviceConfig.LoadCredential = [
       "development-root-ca.crt:${developmentRootCa}"
-      "development-root-ca.key:/home/kosciak/.config/secrets/development-ca/root.key"
+      "development-root-ca.key:${config.sops.secrets.development-ca-key.path}"
     ];
   };
 }

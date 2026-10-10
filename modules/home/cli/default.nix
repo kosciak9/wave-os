@@ -30,13 +30,17 @@ in
   );
 
   home.packages = with pkgs; [
+    age
+    age-plugin-yubikey
     bat
     btop
     gh
     httpie
     infisical
     plannotator
+    sops
     sqlit
+    ssh-to-age
     tmux
     weave
   ];

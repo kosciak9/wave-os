@@ -1,6 +1,7 @@
 {
   config,
   lib,
+  osConfig,
   pkgs,
   ...
 }:
@@ -13,7 +14,7 @@ let
   containerName = "wave-alfred";
   logDirectory = "${home}/.local/state/alfred";
   googleState = "${logDirectory}/google-workspace";
-  secret = name: "${cfg.secretDirectory}/${name}";
+  secret = name: osConfig.sops.secrets."alfred/${name}".path;
   mcpTokenFile = secret "mcp-token";
 
   # MCP servers run on the host, where their data and logins are, each behind a loopback
@@ -123,7 +124,7 @@ let
   };
   # Reached by the container itself; their credentials go in as Podman secrets.
   remotes = {
-    # Twenty CRM; the URL and API key come from the OpenClaw Secret Store.
+    # Twenty CRM.
     twenty.tools = [
       "get_tool_catalog"
       "learn_tools"
@@ -145,35 +146,15 @@ let
       "describe_schema"
     ];
   };
-  openclawSecret = name: ''
-    if ! ${name}=$(${lib.getExe config.programs.openclaw.package} secrets store get ${name} --plain 2>/dev/null) ||
-      [[ -z "''$${name}" ]]; then
-      printf '%s\n' "could not retrieve ${name} from the OpenClaw Secret Store" >&2
-      exit 1
-    fi
-  '';
   policy =
     agent:
     lib.mapAttrs (_: bridge: bridge.tools) (lib.filterAttrs (_: bridge: bridge.agent == agent) bridges);
-
-  requirePrivateFile = ''
-    require_private_file() {
-      if [[ -L "$1" || ! -f "$1" ]] ||
-        [[ "$(/usr/bin/stat -f %Lp "$1")" != 600 ]] ||
-        [[ "$(/usr/bin/stat -f %u "$1")" != "$(/usr/bin/id -u)" ]]; then
-        printf '%s\n' "$1 must be a regular file of the user, mode 0600" >&2
-        exit 1
-      fi
-    }
-  '';
 
   obsidianMcp = pkgs.writeShellApplication {
     name = "alfred-obsidian-mcp";
     runtimeInputs = [ pkgs.coreutils ];
     text = ''
-      ${requirePrivateFile}
       vault_path_file=${lib.escapeShellArg (secret "obsidian-vault-path")}
-      require_private_file "$vault_path_file"
       vault_path=$(< "$vault_path_file")
       if [[ "$vault_path" != /* || "$vault_path" == *$'\n'* || "$vault_path" == *$'\r'* ]] ||
         [[ ! -d "$vault_path/.obsidian" ]]; then
@@ -242,12 +223,9 @@ let
     ];
     text = ''
       umask 077
-      ${requirePrivateFile}
       client_file=${lib.escapeShellArg (secret "google-workspace-client.json")}
       email_file=${lib.escapeShellArg (secret "google-workspace-email")}
       state_directory=${lib.escapeShellArg googleState}
-      require_private_file "$client_file"
-      require_private_file "$email_file"
       if ! jq -e '(.installed // .web) | (.client_id | type == "string" and length > 0) and (.client_secret | type == "string" and length > 0)' "$client_file" >/dev/null 2>&1; then
         printf '%s\n' "$client_file is not a Google OAuth client" >&2
         exit 1
@@ -276,11 +254,7 @@ let
     name = "alfred-camofox-mcp";
     runtimeInputs = [ pkgs.coreutils ];
     text = ''
-      if ! access_key=$(${lib.getExe config.programs.openclaw.package} secrets store get CAMOFOX_ACCESS_KEY --plain 2>/dev/null) ||
-        [[ -z "$access_key" ]]; then
-        printf '%s\n' "could not retrieve CAMOFOX_ACCESS_KEY from the OpenClaw Secret Store" >&2
-        exit 1
-      fi
+      access_key=$(< ${lib.escapeShellArg osConfig.sops.secrets."camofox/access-key".path})
       exec env -i HOME="$HOME" PATH="$PATH" \
         CAMOFOX_BASE_URL=http://127.0.0.1:9377 CAMOFOX_ACCESS_KEY="$access_key" \
         CAMOFOX_USER_ID=alfred \
@@ -292,9 +266,8 @@ let
     name = "alfred-substack-mcp";
     runtimeInputs = [ pkgs.coreutils ];
     text = ''
-      ${openclawSecret "SUBSTACK_PUBLICATION_URL"}
-      ${openclawSecret "SUBSTACK_SESSION_TOKEN"}
-      SUBSTACK_PUBLICATION_URL=$(tr '[:upper:]' '[:lower:]' <<<"$SUBSTACK_PUBLICATION_URL")
+      SUBSTACK_SESSION_TOKEN=$(< ${lib.escapeShellArg (secret "substack-session-token")})
+      SUBSTACK_PUBLICATION_URL=$(tr '[:upper:]' '[:lower:]' < ${lib.escapeShellArg (secret "substack-publication-url")})
       if [[ ! "$SUBSTACK_PUBLICATION_URL" =~ ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.substack\.com$ ]]; then
         printf '%s\n' "SUBSTACK_PUBLICATION_URL is not a bare *.substack.com hostname" >&2
         exit 1
@@ -426,15 +399,10 @@ let
       env_file=${lib.escapeShellArg (secret "env")}
       prompt_file=${lib.escapeShellArg (secret "prompt.md")}
       token_file=${lib.escapeShellArg mcpTokenFile}
-      slack_token_file=${lib.escapeShellArg "${slackMirror.secretDirectory}/mcp-token"}
+      slack_token_file=${lib.escapeShellArg osConfig.sops.secrets."slack-mirror/mcp-token".path}
       volume=${lib.escapeShellArg cfg.dataVolume}
       image=${lib.escapeShellArg cfg.image}
 
-      ${requirePrivateFile}
-      require_private_file "$env_file"
-      require_private_file "$prompt_file"
-      require_private_file "$token_file"
-      require_private_file "$slack_token_file"
       if ! grep -q '^TELEGRAM_BOT_TOKEN=.' "$env_file" ||
         ! grep -q '^TELEGRAM_CHAT_ID=-\?[0-9]\+$' "$env_file"; then
         printf '%s\n' "$env_file must set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID" >&2
@@ -498,11 +466,8 @@ let
       put_secret wave-alfred-config ${agentConfig}
       put_secret wave-alfred-prompt "$prompt_file"
       put_secret wave-alfred-mcp-token "$token_file"
-      ${openclawSecret "TWENTY_MCP_URL"}
-      ${openclawSecret "TWENTY_API_KEY"}
-      printf '%s' "$TWENTY_MCP_URL" | put_secret wave-alfred-twenty-url -
-      printf '%s' "$TWENTY_API_KEY" | put_secret wave-alfred-twenty-key -
-      unset TWENTY_MCP_URL TWENTY_API_KEY
+      printf '%s' "$(< ${lib.escapeShellArg (secret "twenty-mcp-url")})" | put_secret wave-alfred-twenty-url -
+      printf '%s' "$(< ${lib.escapeShellArg (secret "twenty-api-key")})" | put_secret wave-alfred-twenty-key -
       printf '%s' "$(< "$slack_token_file")" | put_secret wave-alfred-slack-token -
 
       instance=$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')
@@ -558,15 +523,6 @@ in
       default = "docker.io/gotenberg/gotenberg:8.37.0@sha256:f29984bd1e226bf1b93ba90af06000afa8b315853e99d27b9aaa41b93f15c769";
       description = "The Gotenberg image that renders attachments to PDF, pinned by digest.";
     };
-    secretDirectory = lib.mkOption {
-      type = lib.types.str;
-      default = "${home}/.config/secrets/alfred";
-      description = ''
-        Private directory (0700) of 0600 files: `env` (TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID),
-        `prompt.md` (who Alfred is), `obsidian-vault-path`, `google-workspace-client.json` and
-        `google-workspace-email`; `mcp-token` is generated. Restart after replacing one.
-      '';
-    };
     machineName = lib.mkOption {
       type = lib.types.strMatching "[a-zA-Z0-9][a-zA-Z0-9_-]*";
       default = "wave-services";
@@ -589,16 +545,9 @@ in
         assertion = slackMirror.enable;
         message = "Alfred reads Slack through services.slack-mirror.";
       }
-      {
-        assertion = lib.hasPrefix "/" cfg.secretDirectory;
-        message = "Alfred secretDirectory must be absolute.";
-      }
     ];
     home.activation.alfred = lib.hm.dag.entryBetween [ "setupLaunchAgents" ] [ "writeBoundary" ] ''
-      run install -d -m 0700 ${lib.escapeShellArg logDirectory} ${lib.escapeShellArg cfg.secretDirectory}
-      if [[ ! -e ${lib.escapeShellArg mcpTokenFile} ]]; then
-        run sh -c 'umask 077 && od -An -N32 -tx1 /dev/urandom | tr -d " \n" > "$1"' _ ${lib.escapeShellArg mcpTokenFile}
-      fi
+      run install -d -m 0700 ${lib.escapeShellArg logDirectory}
     '';
     launchd.agents = {
       alfred = {

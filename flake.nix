@@ -53,6 +53,11 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    sops-nix = {
+      url = "github:Mic92/sops-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     nix-openclaw = {
       url = "github:openclaw/nix-openclaw/f62d33f760bcbdbc6a52ac589eae22bf99201f90";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -218,6 +223,7 @@
         modules = [
           nixos-hardware.nixosModules.framework-16-7040-amd
           inputs.vicinae.nixosModules.default
+          inputs.sops-nix.nixosModules.sops
           ./hosts/jayce/default.nix
           home-manager.nixosModules.home-manager
           (_: { nixpkgs.overlays = [ packageOverlay ]; })
@@ -263,6 +269,7 @@
           determinate.darwinModules.default
           home-manager.darwinModules.home-manager
           inputs.nix-openclaw.darwinModules.openclaw
+          inputs.sops-nix.darwinModules.sops
           ./hosts/renekton/default.nix
           (_: {
             nixpkgs.overlays = [

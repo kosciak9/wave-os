@@ -1,6 +1,7 @@
 {
   config,
   lib,
+  osConfig,
   pkgs,
   ...
 }:
@@ -9,7 +10,6 @@ let
   homeDirectory = config.home.homeDirectory;
   podman = lib.getExe pkgs.podman;
   jq = lib.getExe pkgs.jq;
-  openclaw = lib.getExe config.programs.openclaw.package;
   common = import ./common.nix {
     inherit config lib pkgs;
     platform = "linux-arm64";
@@ -41,17 +41,12 @@ let
       pkgs.podman
       pkgs.jq
       pkgs.coreutils
-      config.programs.openclaw.package
     ];
     text = ''
             set -euo pipefail
-            openclaw=${lib.escapeShellArg openclaw}
             image_build=${lib.escapeShellArg (lib.getExe common.imageBuild)}
 
-            if ! access_key=$("$openclaw" secrets store get CAMOFOX_ACCESS_KEY --plain 2>/dev/null); then
-              printf '%s\n' "refusing to start Camofox: could not retrieve CAMOFOX_ACCESS_KEY from the OpenClaw Secret Store" >&2
-              exit 1
-            fi
+            access_key=$(< ${lib.escapeShellArg osConfig.sops.secrets."camofox/access-key".path})
             if [[ -z "$access_key" ]]; then
               printf '%s\n' "refusing to start Camofox: CAMOFOX_ACCESS_KEY is empty" >&2
               exit 1

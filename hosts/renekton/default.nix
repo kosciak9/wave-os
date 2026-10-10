@@ -3,6 +3,7 @@
 {
   imports = [
     ../../modules/wave/darwin.nix
+    ../../modules/sops.nix
     ../../modules/caddy/darwin.nix
     ./firewall.nix
     ./power.nix
@@ -63,6 +64,28 @@
     name = "kosciak";
     home = "/Users/kosciak";
   };
+
+  # The Home Manager services read these through osConfig.
+  sops.secrets =
+    lib.genAttrs
+      [
+        "alfred/env"
+        "alfred/prompt.md"
+        "alfred/mcp-token"
+        "alfred/obsidian-vault-path"
+        "alfred/google-workspace-client.json"
+        "alfred/google-workspace-email"
+        "alfred/twenty-mcp-url"
+        "alfred/twenty-api-key"
+        "alfred/substack-publication-url"
+        "alfred/substack-session-token"
+        "camofox/access-key"
+        "slack-mirror/mcp-token"
+        "slack-mirror/session.json"
+      ]
+      (_: {
+        owner = "kosciak";
+      });
 
   nixpkgs.config.allowUnfree = true;
   environment.systemPackages = with pkgs; [

@@ -1,6 +1,7 @@
 {
   config,
   lib,
+  osConfig,
   pkgs,
   ...
 }:
@@ -12,66 +13,7 @@ let
   containerName = "wave-slack-mirror";
   networkName = "wave-slack-mirror";
   image = pkgs.slack-mirror-image;
-  credentialReader = pkgs.writeText "slack-mirror-credentials.py" ''
-    import json
-    import os
-    import secrets
-    import stat
-    import sys
-
-    try:
-        mode = sys.argv[2]
-        if mode not in ("offline", "online"):
-            raise ValueError()
-        os.makedirs(sys.argv[1], mode=0o700, exist_ok=True)
-        directory = os.open(sys.argv[1], os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
-        metadata = os.fstat(directory)
-        if metadata.st_uid != os.getuid() or stat.S_IMODE(metadata.st_mode) != 0o700:
-            raise ValueError()
-        # Local MCP authentication is runtime state, unrelated to a Slack login.
-        if not os.path.lexists(os.path.join(sys.argv[1], "mcp-token")):
-            temporary = ".mcp-token-" + secrets.token_hex(16)
-            fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
-                         0o600, dir_fd=directory)
-            try:
-                with os.fdopen(fd, "wb") as target:
-                    target.write((secrets.token_hex(32) + "\n").encode("ascii"))
-                    target.flush()
-                    os.fsync(target.fileno())
-                try:
-                    os.link(temporary, "mcp-token", src_dir_fd=directory,
-                            dst_dir_fd=directory, follow_symlinks=False)
-                except FileExistsError:
-                    pass
-            finally:
-                os.unlink(temporary, dir_fd=directory)
-            os.fsync(directory)
-        contents = {}
-        names = ("mcp-token", "session.json") if mode == "online" else ("mcp-token",)
-        for name in names:
-            fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=directory)
-            with os.fdopen(fd, "rb") as source:
-                metadata = os.fstat(source.fileno())
-                if (not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != os.getuid()
-                        or stat.S_IMODE(metadata.st_mode) != 0o600 or metadata.st_nlink != 1):
-                    raise ValueError()
-                contents[name] = source.read(512001)
-                if not contents[name] or len(contents[name]) > 512000:
-                    raise ValueError()
-        os.close(directory)
-        if mode == "online" and not isinstance(json.loads(contents["session.json"]), dict):
-            raise ValueError()
-        token = contents["mcp-token"].decode("ascii").strip()
-        if not 32 <= len(token) <= 512 or any(ord(c) < 33 or ord(c) > 126 for c in token):
-            raise ValueError()
-        if len(sys.argv) == 4:
-            sys.stdout.buffer.write(contents[sys.argv[3]])
-    except (OSError, ValueError, KeyError):
-        print("Slack mirror credentials must be private owned regular files (0600), "
-              "in an owned directory (0700); online mode also requires a valid session.json",
-              file=sys.stderr)
-        sys.exit(1)
-  '';
+  secret = name: lib.escapeShellArg osConfig.sops.secrets."slack-mirror/${name}".path;
   machineCheck = pkgs.writeShellApplication {
     name = "slack-mirror-machine-check";
     runtimeInputs = [
@@ -96,10 +38,8 @@ let
     ];
     text = ''
       machine=${lib.escapeShellArg cfg.machineName}
-      credentials=${lib.escapeShellArg cfg.secretDirectory}
       volume=${lib.escapeShellArg cfg.dataVolume}
       mode=${if cfg.sync.enable then "online" else "offline"}
-      python3 ${credentialReader} "$credentials" "$mode"
 
       if ! state=$(podman machine inspect "$machine" | jq -er '
         if length == 1 and .[0].Rootful == false then .[0].State else error("rootful machine") end'); then
@@ -174,14 +114,12 @@ let
       done
       session_mount=()
       if [[ "$mode" == online ]]; then
-        python3 ${credentialReader} "$credentials" "$mode" session.json |
-          "''${transport[@]}" secret create --replace --label io.wave-os.component=${component} \
-            wave-slack-mirror-session - >/dev/null
+        "''${transport[@]}" secret create --replace --label io.wave-os.component=${component} \
+          wave-slack-mirror-session ${lib.optionalString cfg.sync.enable (secret "session.json")} >/dev/null
         session_mount=(--secret "source=wave-slack-mirror-session,type=mount,target=session.json,uid=65532,gid=65532,mode=0600")
       fi
-      python3 ${credentialReader} "$credentials" "$mode" mcp-token |
-        "''${transport[@]}" secret create --replace --label io.wave-os.component=${component} \
-          wave-slack-mirror-mcp-token - >/dev/null
+      "''${transport[@]}" secret create --replace --label io.wave-os.component=${component} \
+        wave-slack-mirror-mcp-token ${secret "mcp-token"} >/dev/null
 
       instance=$(python3 -c 'import secrets; print(secrets.token_hex(16))')
       child=""
@@ -230,11 +168,6 @@ in
       default = 19440;
       description = "Loopback-only host port for the authenticated MCP server.";
     };
-    secretDirectory = lib.mkOption {
-      type = lib.types.str;
-      default = "${home}/.config/secrets/slack-mirror";
-      description = "Private credential directory. A local MCP token is initialized once at runtime; session.json is required only when sync.enable is true. Restart after atomic replacements.";
-    };
     machineName = lib.mkOption {
       type = lib.types.strMatching "[a-zA-Z0-9][a-zA-Z0-9_-]*";
       default = "wave-services";
@@ -252,10 +185,6 @@ in
       {
         assertion = pkgs.stdenv.hostPlatform.isDarwin;
         message = "Slack mirror launchd supervision requires Darwin.";
-      }
-      {
-        assertion = lib.hasPrefix "/" cfg.secretDirectory;
-        message = "Slack mirror secretDirectory must be absolute.";
       }
     ];
     home.packages = [

@@ -1,4 +1,9 @@
-{ lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
   developmentRootCa = ./development-root-ca.crt;
@@ -67,6 +72,7 @@ let
 in
 {
   security.pki.certificateFiles = [ developmentRootCa ];
+  sops.secrets.development-ca-key = { };
 
   system.activationScripts.preActivation.text = ''
     /usr/bin/install -d -m 0750 -o root -g wheel /var/lib/caddy
@@ -90,7 +96,7 @@ in
       EnvironmentVariables = {
         HOME = "/var/lib/caddy";
         WAVE_DEVELOPMENT_CA_CERT = "${developmentRootCa}";
-        WAVE_DEVELOPMENT_CA_KEY = "/Users/kosciak/.config/secrets/development-ca/root.key";
+        WAVE_DEVELOPMENT_CA_KEY = config.sops.secrets.development-ca-key.path;
         XDG_CONFIG_HOME = "/var/lib/caddy/config";
         XDG_DATA_HOME = "/var/lib/caddy";
       };
