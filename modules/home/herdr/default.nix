@@ -11,6 +11,7 @@ let
   herdr = inputs.herdr.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs (old: {
     patches = (old.patches or [ ]) ++ [
       ./patches/worktrunk-core.patch
+      ./patches/worktrunk-terminal.patch
       ./patches/agents-pane-title.patch
     ];
   });
@@ -71,6 +72,18 @@ let
       exec "$direnv" exec "$2" ${lib.getExe worktrunk} "$@"
     fi
     exec ${lib.getExe worktrunk} "$@"
+  '';
+  worktreeTerminal = pkgs.writeShellScript "herdr-worktree-terminal" ''
+    shell_path=$PATH
+    export PATH=${
+      lib.makeBinPath [
+        daemonWorktrunk
+        pkgs.coreutils
+        pkgs.git
+        pkgs.jq
+      ]
+    }:"$PATH"
+    ${builtins.readFile ./worktree-terminal.sh}
   '';
   herdrLinux = pkgs.stdenv.hostPlatform.isLinux;
   herdrDarwin = pkgs.stdenv.hostPlatform.isDarwin;
@@ -171,6 +184,7 @@ in
     Service = {
       Type = "simple";
       Environment = [
+        (lib.escapeShellArg "HERDR_WORKTREE_TERMINAL=${worktreeTerminal}")
         (lib.escapeShellArg "XDG_CONFIG_HOME=${config.xdg.configHome}")
         (lib.escapeShellArg "SHELL=${lib.getExe config.programs.zsh.package}")
         (lib.escapeShellArg "PATH=${
@@ -199,6 +213,7 @@ in
     config = {
       ProgramArguments = [ (toString herdrDarwinStart) ];
       EnvironmentVariables = {
+        HERDR_WORKTREE_TERMINAL = toString worktreeTerminal;
         XDG_CONFIG_HOME = config.xdg.configHome;
         HOME = config.home.homeDirectory;
         SHELL = lib.getExe config.programs.zsh.package;

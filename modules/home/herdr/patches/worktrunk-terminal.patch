@@ -1,0 +1,496 @@
+diff --git a/src/api/schema/worktrees.rs b/src/api/schema/worktrees.rs
+--- a/src/api/schema/worktrees.rs
++++ b/src/api/schema/worktrees.rs
+@@ -12,6 +12,9 @@ pub struct WorktreeListParams {
+ 
+ #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema, Default)]
+ pub struct WorktreeCreateParams {
++    /// Open a preparation terminal before creating the checkout.
++    #[serde(default, skip_serializing_if = "super::is_false")]
++    pub terminal: bool,
+     #[serde(default, skip_serializing_if = "Option::is_none")]
+     pub workspace_id: Option<String>,
+     #[serde(default, skip_serializing_if = "Option::is_none")]
+@@ -32,6 +35,9 @@ pub struct WorktreeCreateParams {
+ 
+ #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema, Default)]
+ pub struct WorktreeOpenParams {
++    /// Adopt the checkout in an existing preparation workspace.
++    #[serde(default, skip_serializing_if = "Option::is_none")]
++    pub target_workspace_id: Option<String>,
+     #[serde(default, skip_serializing_if = "Option::is_none")]
+     pub workspace_id: Option<String>,
+     #[serde(default, skip_serializing_if = "Option::is_none")]
+diff --git a/src/app/api/worktrees.rs b/src/app/api/worktrees.rs
+--- a/src/app/api/worktrees.rs
++++ b/src/app/api/worktrees.rs
+@@ -10,6 +10,7 @@ use super::responses::{encode_error, encode_success};
+ 
+ mod deferred;
+ mod reads;
++mod terminal;
+ 
+ struct ApiFailure {
+     code: &'static str,
+@@ -92,13 +93,58 @@ impl App {
+         let canonical_source = crate::worktree::canonical_or_original(&source.source_checkout_path);
+         let target_is_source = canonical_path == canonical_source;
+         let already_open = self.open_workspace_idx_for_checkout(&canonical_path);
++        let preparation = if let Some(target) = &params.target_workspace_id {
++            let Some(ws_idx) = self.parse_workspace_id(target) else {
++                return encode_error(
++                    id,
++                    "workspace_not_found",
++                    "preparation workspace no longer exists",
++                );
++            };
++            let workspace = &self.state.workspaces[ws_idx];
++            if Some(ws_idx) == source.workspace_idx
++                || target_is_source
++                || workspace.worktree_space().is_some()
++                || workspace
++                    .git_space()
++                    .is_none_or(|space| space.key != source.repo_key)
++            {
++                return encode_error(
++                    id,
++                    "invalid_request",
++                    "target is not a preparation workspace for this repository",
++                );
++            }
++            if already_open.is_some_and(|open| open != ws_idx) {
++                return encode_error(
++                    id,
++                    "worktree_already_open",
++                    "checkout already belongs to another workspace",
++                );
++            }
++            Some(ws_idx)
++        } else {
++            None
++        };
+         let defer_source_created_event = target_is_source && already_open.is_none();
+         let created_source_workspace =
+             match self.ensure_source_parent_membership(&mut source, !defer_source_created_event) {
+                 Ok(created) => created,
+                 Err(err) => return encode_error(id, err.code, err.message),
+             };
+-        let (ws_idx, created_workspace) = if let Some(ws_idx) = already_open {
++        let (ws_idx, created_workspace) = if let Some(ws_idx) = preparation {
++            self.state.workspaces[ws_idx].identity_cwd = entry.path.clone();
++            let workspace = &self.state.workspaces[ws_idx];
++            if let Some(terminal_id) = workspace.terminal_id(workspace.tabs[0].root_pane) {
++                if let Some(terminal) = self.state.terminals.get_mut(terminal_id) {
++                    terminal.cwd = entry.path.clone();
++                }
++            }
++            if params.focus {
++                self.state.switch_workspace(ws_idx);
++            }
++            (ws_idx, false)
++        } else if let Some(ws_idx) = already_open {
+             if params.focus {
+                 self.state.switch_workspace(ws_idx);
+             }
+@@ -147,6 +193,9 @@ impl App {
+ 
+         let tab_idx = self.state.workspaces[ws_idx].active_tab;
+         let worktree = self.worktree_info_for_entry(&source, entry);
++        if preparation.is_some() {
++            self.emit_worktree_created_event(ws_idx, worktree.clone());
++        }
+         self.emit_worktree_opened_event(ws_idx, worktree.clone(), already_open.is_some());
+         encode_success(
+             id,
+diff --git a/src/app/api/worktrees/deferred.rs b/src/app/api/worktrees/deferred.rs
+--- a/src/app/api/worktrees/deferred.rs
++++ b/src/app/api/worktrees/deferred.rs
+@@ -129,6 +129,27 @@ impl App {
+                 return;
+             }
+         };
++        if params.terminal {
++            let response = if params.path.is_some() {
++                encode_error(
++                    id,
++                    "invalid_request",
++                    "terminal preparation uses Worktrunk's checkout path",
++                )
++            } else {
++                self.start_worktree_terminal(
++                    id,
++                    source,
++                    branch,
++                    base,
++                    params.label,
++                    params.focus,
++                    params.trust_repository,
++                )
++            };
++            Self::send_api_response(respond_to, response);
++            return;
++        }
+         let explicit_path = match params.path {
+             Some(path) => match absolute_user_path(&path) {
+                 Ok(path) => Some(path),
+diff --git a/src/app/api/worktrees/terminal.rs b/src/app/api/worktrees/terminal.rs
+new file mode 100644
+--- /dev/null
++++ b/src/app/api/worktrees/terminal.rs
+@@ -0,0 +1,79 @@
++use crate::app::App;
++
++use super::super::responses::{encode_error, encode_success};
++use super::WorktreeSource;
++
++impl App {
++    pub(super) fn start_worktree_terminal(
++        &mut self,
++        id: String,
++        mut source: WorktreeSource,
++        branch: String,
++        base: String,
++        label: Option<String>,
++        focus: bool,
++        trust_repository: bool,
++    ) -> String {
++        let Some(program) = std::env::var_os("HERDR_WORKTREE_TERMINAL") else {
++            return encode_error(
++                id,
++                "worktree_create_failed",
++                "worktree preparation terminal is not configured",
++            );
++        };
++        if let Err(err) = self.ensure_source_parent_membership(&mut source, true) {
++            return encode_error(id, err.code, err.message);
++        }
++        let shell = crate::pane::resolved_pane_shell(crate::pane::PaneShellConfig::new(
++            &self.state.default_shell,
++            self.state.shell_mode,
++        ));
++        let login = matches!(self.state.shell_mode, crate::config::ShellModeConfig::Login)
++            || (matches!(self.state.shell_mode, crate::config::ShellModeConfig::Auto)
++                && cfg!(target_os = "macos"));
++        let argv = vec![
++            program.to_string_lossy().into_owned(),
++            source.source_checkout_path.display().to_string(),
++            branch.clone(),
++            base,
++            shell,
++            if login { "login" } else { "non-login" }.into(),
++            self.public_workspace_id(source.workspace_idx.expect("source workspace exists")),
++        ];
++        let mut env = crate::worktree::build_worktrunk_switch_command(
++            &source.source_checkout_path,
++            &branch,
++            None,
++            trust_repository,
++        )
++        .env;
++        if trust_repository {
++            env.push(("HERDR_WORKTREE_TRUST".into(), "1".into()));
++        }
++        let ws_idx = match self.create_workspace_with_command(
++            source.source_checkout_path,
++            focus,
++            env,
++            Some(&argv),
++        ) {
++            Ok(ws_idx) => ws_idx,
++            Err(err) => return encode_error(id, "worktree_create_failed", err.to_string()),
++        };
++        // Preparation is one-shot; restoring this terminal must only open a shell.
++        let workspace = &self.state.workspaces[ws_idx];
++        let terminal_id = workspace
++            .terminal_id(workspace.tabs[0].root_pane)
++            .expect("preparation terminal exists");
++        if let Some(terminal) = self.state.terminals.get_mut(terminal_id) {
++            terminal.launch_argv = None;
++            terminal.respawn_shell_on_exit = false;
++        }
++        self.state.workspaces[ws_idx].set_custom_name(label.unwrap_or(branch));
++        self.emit_workspace_open_events(ws_idx);
++        encode_success(
++            id,
++            self.workspace_created_result(ws_idx)
++                .expect("preparation workspace has a terminal"),
++        )
++    }
++}
+diff --git a/src/app/creation.rs b/src/app/creation.rs
+--- a/src/app/creation.rs
++++ b/src/app/creation.rs
+@@ -268,9 +268,19 @@ impl App {
+         initial_cwd: PathBuf,
+         focus: bool,
+         extra_env: Vec<(String, String)>,
++    ) -> std::io::Result<usize> {
++        self.create_workspace_with_command(initial_cwd, focus, extra_env, None)
++    }
++
++    pub(crate) fn create_workspace_with_command(
++        &mut self,
++        initial_cwd: PathBuf,
++        focus: bool,
++        extra_env: Vec<(String, String)>,
++        argv: Option<&[String]>,
+     ) -> std::io::Result<usize> {
+         let (rows, cols) = self.state.estimate_pane_size();
+-        let (ws, terminal, runtime) = Workspace::new_with_extra_env(
++        let (ws, terminal, runtime) = Workspace::new_with_tab(
+             initial_cwd,
+             rows,
+             cols,
+@@ -281,6 +291,7 @@ impl App {
+             self.event_tx.clone(),
+             self.render_notify.clone(),
+             self.render_dirty.clone(),
++            argv,
+             extra_env,
+         )?;
+         self.terminal_runtimes.insert(terminal.id.clone(), runtime);
+diff --git a/src/cli/spec.rs b/src/cli/spec.rs
+--- a/src/cli/spec.rs
++++ b/src/cli/spec.rs
+@@ -283,6 +283,7 @@ fn worktree_command() -> Command {
+         .subcommand(
+             Command::new("open")
+                 .about("Open an existing Git worktree")
++                .arg(option("target-workspace", "ID"))
+                 .arg(option("workspace", "ID"))
+                 .arg(path_option("cwd", "PATH"))
+                 .arg(path_option("path", "PATH"))
+diff --git a/src/cli/worktree.rs b/src/cli/worktree.rs
+--- a/src/cli/worktree.rs
++++ b/src/cli/worktree.rs
+@@ -160,6 +160,7 @@ fn worktree_create(args: &[String]) -> std::io::Result<i32> {
+     }
+ 
+     super::runtime::worktree_create(WorktreeCreateParams {
++        terminal: false,
+         workspace_id,
+         cwd,
+         branch,
+@@ -172,6 +173,7 @@ fn worktree_create(args: &[String]) -> std::io::Result<i32> {
+ }
+ 
+ fn worktree_open(args: &[String]) -> std::io::Result<i32> {
++    let mut target_workspace_id = None;
+     let mut workspace_id = None;
+     let mut cwd = None;
+     let mut path = None;
+@@ -183,6 +185,14 @@ fn worktree_open(args: &[String]) -> std::io::Result<i32> {
+     let mut index = 0;
+     while index < args.len() {
+         match args[index].as_str() {
++            "--target-workspace" => {
++                let Some(value) = args.get(index + 1) else {
++                    eprintln!("missing value for --target-workspace");
++                    return Ok(2);
++                };
++                target_workspace_id = Some(super::normalize_workspace_id(value));
++                index += 2;
++            }
+             "--workspace" => {
+                 let Some(value) = args.get(index + 1) else {
+                     eprintln!("missing value for --workspace");
+@@ -244,18 +254,19 @@ fn worktree_open(args: &[String]) -> std::io::Result<i32> {
+     }
+     if workspace_id.is_some() && cwd.is_some() {
+         eprintln!(
+-            "usage: herdr worktree open [--workspace ID | --cwd PATH] (--path PATH | --branch NAME) [--label TEXT] [--focus] [--no-focus] [--trust-repository]"
++            "usage: herdr worktree open [--workspace ID | --cwd PATH] (--path PATH | --branch NAME) [--target-workspace ID] [--label TEXT] [--focus] [--no-focus] [--trust-repository]"
+         );
+         return Ok(2);
+     }
+     if path.is_some() == branch.is_some() {
+         eprintln!(
+-            "usage: herdr worktree open [--workspace ID | --cwd PATH] (--path PATH | --branch NAME) [--label TEXT] [--focus] [--no-focus] [--trust-repository]"
++            "usage: herdr worktree open [--workspace ID | --cwd PATH] (--path PATH | --branch NAME) [--target-workspace ID] [--label TEXT] [--focus] [--no-focus] [--trust-repository]"
+         );
+         return Ok(2);
+     }
+ 
+     super::runtime::worktree_open(WorktreeOpenParams {
++        target_workspace_id,
+         workspace_id,
+         cwd,
+         path,
+@@ -317,7 +328,7 @@ fn print_worktree_help() {
+         "  herdr worktree create [--workspace ID | --cwd PATH] [--branch NAME] [--base REF] [--path PATH] [--label TEXT] [--focus] [--no-focus] [--trust-repository]"
+     );
+     eprintln!(
+-        "  herdr worktree open [--workspace ID | --cwd PATH] (--path PATH | --branch NAME) [--label TEXT] [--focus] [--no-focus] [--trust-repository]"
++        "  herdr worktree open [--workspace ID | --cwd PATH] (--path PATH | --branch NAME) [--target-workspace ID] [--label TEXT] [--focus] [--no-focus] [--trust-repository]"
+     );
+     eprintln!("  herdr worktree remove --workspace ID [--force] [--trust-repository]");
+ }
+diff --git a/src/client/shell/worktrees.rs b/src/client/shell/worktrees.rs
+--- a/src/client/shell/worktrees.rs
++++ b/src/client/shell/worktrees.rs
+@@ -264,6 +264,7 @@ impl ClientShellState {
+         let workspace_id = create.source_workspace_id.clone();
+         if !self.push_endpoint_method_with_kind(
+             crate::api::schema::Method::WorktreeCreate(crate::api::schema::WorktreeCreateParams {
++                terminal: false,
+                 workspace_id: Some(workspace_id),
+                 cwd: None,
+                 branch: Some(branch),
+@@ -320,6 +321,7 @@ impl ClientShellState {
+         open.error = None;
+         if !self.push_endpoint_method_with_kind(
+             crate::api::schema::Method::WorktreeOpen(crate::api::schema::WorktreeOpenParams {
++                target_workspace_id: None,
+                 workspace_id: Some(workspace_id),
+                 cwd: None,
+                 path: Some(path),
+diff --git a/src/workspace.rs b/src/workspace.rs
+--- a/src/workspace.rs
++++ b/src/workspace.rs
+@@ -345,7 +345,7 @@ impl Workspace {
+     }
+ 
+     #[allow(clippy::too_many_arguments)]
+-    fn new_with_tab(
++    pub(crate) fn new_with_tab(
+         initial_cwd: PathBuf,
+         rows: u16,
+         cols: u16,
+diff --git a/src/protocol/wire.rs b/src/protocol/wire.rs
+--- a/src/protocol/wire.rs
++++ b/src/protocol/wire.rs
+@@ -1062,6 +1062,8 @@ pub struct ClientShellWorktree {
+     pub key: String,
+     pub label: String,
+     pub is_linked_worktree: bool,
++    #[serde(default, skip_serializing_if = "Option::is_none")]
++    pub checkout_path: Option<String>,
+ }
+ 
+ #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+diff --git a/src/server/client_shell.rs b/src/server/client_shell.rs
+--- a/src/server/client_shell.rs
++++ b/src/server/client_shell.rs
+@@ -93,6 +93,7 @@ pub(super) fn snapshot_with_completions(
+                         key: worktree.repo_key,
+                         label: worktree.repo_name,
+                         is_linked_worktree: worktree.is_linked_worktree,
++                        checkout_path: Some(worktree.checkout_path),
+                     }),
+                 agent_status: workspace.agent_status,
+             }
+diff --git a/src/client/shell/tests/agents_worktrees_notifications.rs b/src/client/shell/tests/agents_worktrees_notifications.rs
+--- a/src/client/shell/tests/agents_worktrees_notifications.rs
++++ b/src/client/shell/tests/agents_worktrees_notifications.rs
+@@ -98,6 +98,7 @@ fn grouped_worktrees_render_parent_branch_and_indented_child() {
+         key: "repo".into(),
+         label: "repo".into(),
+         is_linked_worktree: false,
++        checkout_path: None,
+     });
+     snapshot.workspaces.push(ClientShellWorkspace {
+         workspace_id: "ws_2".into(),
+@@ -113,6 +114,7 @@ fn grouped_worktrees_render_parent_branch_and_indented_child() {
+             key: "repo".into(),
+             label: "repo".into(),
+             is_linked_worktree: true,
++            checkout_path: None,
+         }),
+         focused: false,
+         agent_status: AgentStatus::Idle,
+@@ -179,6 +181,7 @@ fn duplicate_repo_parents_remain_visible_and_focusable_when_collapsed() {
+             key: "repo".into(),
+             label: "repo".into(),
+             is_linked_worktree: false,
++            checkout_path: None,
+         });
+         let mut duplicate = projected.workspaces[0].clone();
+         duplicate.workspace_id = "ws_duplicate".into();
+@@ -383,6 +386,7 @@ fn duplicate_repo_parent_drag_does_not_target_its_own_move_block() {
+         key: "repo".into(),
+         label: "repo".into(),
+         is_linked_worktree: false,
++        checkout_path: None,
+     });
+     let mut other = projected.workspaces[0].clone();
+     other.workspace_id = "ws_other".into();
+@@ -436,6 +440,7 @@ fn workspace_drag_moves_parent_worktree_as_one_block_and_rejects_child() {
+         key: "repo".into(),
+         label: "repo".into(),
+         is_linked_worktree: false,
++        checkout_path: None,
+     });
+     let mut child = projected.workspaces[0].clone();
+     child.workspace_id = "ws_child".into();
+@@ -446,6 +451,7 @@ fn workspace_drag_moves_parent_worktree_as_one_block_and_rejects_child() {
+         key: "repo".into(),
+         label: "repo".into(),
+         is_linked_worktree: true,
++        checkout_path: None,
+     });
+     let mut other = projected.workspaces[0].clone();
+     other.workspace_id = "ws_other".into();
+@@ -1435,6 +1441,7 @@ fn worktree_remove_escalates_recoverable_failure_to_force_confirmation() {
+             key: "repo-key".into(),
+             label: "repo".into(),
+             is_linked_worktree: true,
++            checkout_path: None,
+         });
+         let mut state = ClientShellState::new(ClientShellConfig::from_config(&Config::default()));
+         state.set_snapshot(Box::new(snapshot));
+diff --git a/src/client/shell/tests/close_tab.rs b/src/client/shell/tests/close_tab.rs
+--- a/src/client/shell/tests/close_tab.rs
++++ b/src/client/shell/tests/close_tab.rs
+@@ -193,6 +193,7 @@ fn last_tab_close_preserves_parent_group_and_linked_workspace_scope() {
+             key: "repo".into(),
+             label: "repo".into(),
+             is_linked_worktree: linked,
++            checkout_path: None,
+         });
+         let mut sibling = projected.workspaces[0].clone();
+         sibling.workspace_id = "ws_2".into();
+diff --git a/src/client/shell/tests/endpoints.rs b/src/client/shell/tests/endpoints.rs
+--- a/src/client/shell/tests/endpoints.rs
++++ b/src/client/shell/tests/endpoints.rs
+@@ -710,6 +710,7 @@ fn saved_machine_preserves_endpoint_scoped_worktree_collapses() {
+             key: "repo".into(),
+             label: "repo".into(),
+             is_linked_worktree: false,
++            checkout_path: None,
+         });
+         let mut child = snapshot.workspaces[0].clone();
+         child.workspace_id = child_id.into();
+@@ -722,6 +723,7 @@ fn saved_machine_preserves_endpoint_scoped_worktree_collapses() {
+             key: "repo".into(),
+             label: "repo".into(),
+             is_linked_worktree: true,
++            checkout_path: None,
+         });
+         snapshot.workspaces.push(child);
+     }
+@@ -973,12 +975,14 @@ fn expanded_machine_sidebar_applies_space_row_gap_within_each_machine() {
+         key: "repo".into(),
+         label: "repo".into(),
+         is_linked_worktree: false,
++        checkout_path: None,
+     });
+     add_second_workspace(&mut remote);
+     remote.workspaces[1].worktree = Some(ClientShellWorktree {
+         key: "repo".into(),
+         label: "repo".into(),
+         is_linked_worktree: true,
++        checkout_path: None,
+     });
+     let mut third = remote.workspaces[1].clone();
+     third.workspace_id = "ws_3".into();
+diff --git a/src/client/shell/tests/workspace_navigation.rs b/src/client/shell/tests/workspace_navigation.rs
+--- a/src/client/shell/tests/workspace_navigation.rs
++++ b/src/client/shell/tests/workspace_navigation.rs
+@@ -21,6 +21,7 @@ fn grouped_workspaces() -> ClientShellSnapshot {
+             key: "repo".into(),
+             label: "repo".into(),
+             is_linked_worktree: linked,
++            checkout_path: None,
+         });
+     }
+     projected
