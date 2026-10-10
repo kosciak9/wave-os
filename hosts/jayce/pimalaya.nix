@@ -83,15 +83,21 @@ let
       # A read-only mirror: Google stays authoritative and local edits are dropped.
       one-way = true;
       store.root = storeRoot account;
+      # Google's per-user minute quotas are fixed and neverest does not back off
+      # on 429, so these sources fetch one item at a time.
       gmail = {
         auth.token.command = accessToken account;
+        pool-size = 1;
         collection.filter.exclude = [
           "SPAM"
           "TRASH"
         ];
       };
       gcal.auth.token.command = accessToken account;
-      gpeople.auth.token.command = accessToken account;
+      gpeople = {
+        auth.token.command = accessToken account;
+        pool-size = 1;
+      };
     });
   };
   pimdirClientConfig = toml.generate "pimdir-client.toml" {
@@ -143,7 +149,7 @@ in
     timers = lib.genAttrs (map (account: "neverest-sync@${account}") accounts) (_: {
       Timer = {
         OnActiveSec = "1min";
-        OnUnitInactiveSec = "5min";
+        OnUnitInactiveSec = "15min";
       };
       Install.WantedBy = [ "timers.target" ];
     });
