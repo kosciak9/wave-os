@@ -24,6 +24,9 @@ in
   };
   nixpkgs.config.allowUnfree = true;
 
+  # The Home Manager services read these through osConfig.
+  sops.secrets."pimalaya/google-client.json".owner = "kosciak";
+
   boot = {
     kernelPackages = pkgs.linuxPackages;
     kernelParams = [ "quiet" ];

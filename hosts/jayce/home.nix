@@ -122,6 +122,7 @@ in
   imports = [
     ./desktop/itd.nix
     ./desktop/voxtype.nix
+    ./pimalaya.nix
     ../../modules/home/agents
     ../../modules/home/cli
     ../../modules/home/camofox/linux.nix
