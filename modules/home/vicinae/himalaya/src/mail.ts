@@ -42,7 +42,9 @@ export type AccountInbox = {
   error: string | null;
 };
 export type WriteStatus =
-  { status: "remote" } | { status: "pending"; message: string };
+  | { status: "remote" }
+  | { status: "syncing" }
+  | { status: "pending"; message: string };
 
 function run(
   file: string,
@@ -221,21 +223,22 @@ export async function confirmWrite(account: Account): Promise<WriteStatus> {
   }
 }
 
+// A full account sync takes minutes, so the write is handed to it rather than
+// awaited; reopening the inbox confirms it through confirmWrite.
 async function flushWrite(account: Account): Promise<WriteStatus> {
   if (!account.backends.includes("pimdir")) return { status: "remote" };
   try {
     await run(
       "systemctl",
-      ["--user", "start", `neverest-sync@${account.name}.service`],
-      180_000,
+      ["--user", "start", "--no-block", `neverest-sync@${account.name}.service`],
+      10_000,
       1024 * 1024,
     );
-    return await confirmWrite(account);
+    return { status: "syncing" };
   } catch {
     return {
       status: "pending",
-      message:
-        "Changed locally; sync failed or timed out. The write may still be queued.",
+      message: "Changed locally; the sync could not be started. The write stays queued.",
     };
   }
 }

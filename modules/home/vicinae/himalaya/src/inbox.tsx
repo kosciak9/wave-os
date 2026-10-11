@@ -197,7 +197,11 @@ export default function Inbox() {
     successTitle: string,
   ): Promise<string> {
     const notice = [
-      write.status === "pending" ? write.message : "",
+      write.status === "pending"
+        ? write.message
+        : write.status === "syncing"
+          ? "Syncing to the server in the background."
+          : "",
       badgeRefreshed
         ? ""
         : "Mail badge refresh unavailable; the mail operation was not undone.",
