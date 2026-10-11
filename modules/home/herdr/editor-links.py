@@ -85,11 +85,9 @@ def main():
         "set nomodeline noexrc",
         "-c",
         f"call cursor({line}, {column})",
-        "--",
-        path,
     ]
     if mode == "terminal":
-        os.execv(sys.argv[2], [sys.argv[2], *arguments])
+        os.execv(sys.argv[2], [sys.argv[2], *arguments, "--", path])
     elif mode == "open" and sys.argv[2] == "gui":
         # The daemon may predate the desktop session; use the user manager's GUI environment.
         subprocess.run(
@@ -104,6 +102,8 @@ def main():
                 "--no-fork",
                 "--neovim-bin",
                 sys.argv[5],
+                # Neovide inserts --embed before its own file targets.
+                path,
                 "--",
                 *arguments,
             ],
