@@ -1,0 +1,396 @@
+diff --git a/src/pass.tsx b/src/pass.tsx
+index 23c7414..eb3dde3 100644
+--- a/src/pass.tsx
++++ b/src/pass.tsx
+@@ -13,14 +13,15 @@ import {
+   listPasswordEntries,
+   decryptPasswordEntry,
+ } from "@/services/passctl";
+-import { getLastUsedPassword } from "@/storage/last-used";
++import { loadUsage, usageScore, UsageState } from "@/storage/frecency";
+ import { buildPasswordOptions } from "@/utils/password";
+ import { performPasswordAction } from "@/utils/actions";
+ import { getEntryIcon, getOptionIcon } from "@/utils/icons";
+ import { PasswordEntry, PasswordOption } from "@/types";
+ 
+ type CommandState = {
+-  entries: PasswordEntry[];
++  entries: string[];
++  usage?: UsageState;
+   isLoading: boolean;
+   error?: string;
+ };
+@@ -37,12 +38,17 @@ export default function Command() {
+   const refresh = useCallback(async () => {
+     setState((prev) => ({ ...prev, isLoading: true, error: undefined }));
+     try {
+-      const [entries, lastUsed] = await Promise.all([
+-        listPasswordEntries(preferences.passwordStorePath),
+-        getLastUsedPassword(preferences.lastUsedTtlSeconds),
+-      ]);
+-      const ordered = orderEntries(entries, lastUsed?.password, lastUsed?.option);
+-      setState({ entries: ordered, isLoading: false });
++      const entries = await listPasswordEntries(preferences.passwordStorePath);
++      let usage: UsageState | undefined;
++      try {
++        usage = await loadUsage(preferences.passwordStorePath, entries);
++      } catch {
++        await showToast({
++          style: Toast.Style.Failure,
++          title: "Usage history unavailable",
++        });
++      }
++      setState({ entries, usage, isLoading: false });
+     } catch (error) {
+       const message = error instanceof Error ? error.message : "Unexpected error";
+       await showToast({ style: Toast.Style.Failure, title: "Failed to load passwords", message });
+@@ -77,9 +83,10 @@ export default function Command() {
+           }
+         />
+       ) : (
+-        state.entries.map((entry) => (
++        orderEntries(state.entries, state.usage).map((entry) => (
+           <List.Item
+             key={entry.value}
++            id={entry.value}
+             title={entry.value}
+             icon={getEntryIcon(entry.value)}
+             actions={
+@@ -210,14 +217,28 @@ function PasswordOptionsView({
+                     icon={
+                       action === "paste" ? Icon.Keyboard : Icon.CopyClipboard
+                     }
+-                    onAction={() => performPasswordAction(password, option, action)}
++                    onAction={() =>
++                      performPasswordAction(
++                        password,
++                        option,
++                        action,
++                        preferences.passwordStorePath,
++                      )
++                    }
+                   />
+                   <Action
+                     title={alternateAction === "copy" ? "Copy to Clipboard" : "Paste"}
+                     icon={
+                       alternateAction === "copy" ? Icon.CopyClipboard : Icon.Keyboard
+                     }
+-                    onAction={() => performPasswordAction(password, option, alternateAction)}
++                    onAction={() =>
++                      performPasswordAction(
++                        password,
++                        option,
++                        alternateAction,
++                        preferences.passwordStorePath,
++                      )
++                    }
+                   />
+                 </ActionPanel>
+               }
+@@ -231,20 +252,29 @@ function PasswordOptionsView({
+ 
+ function orderEntries(
+   entries: string[],
+-  lastUsed?: string | null,
+-  lastUsedOption?: string | null,
++  usage: UsageState | undefined,
+ ): PasswordEntry[] {
+-  const mapped = entries.map<PasswordEntry>((value) => ({ value }));
+-
+-  if (!lastUsed) {
+-    return mapped;
+-  }
+-
+-  const index = mapped.findIndex((entry) => entry.value === lastUsed);
+-  if (index === -1) {
+-    return [{ value: lastUsed, showOtpFirst: lastUsedOption === "Password" }, ...mapped];
+-  }
+-
+-  const [entry] = mapped.splice(index, 1);
+-  return [{ ...entry, showOtpFirst: lastUsedOption === "Password" }, ...mapped];
++  const now = Date.now();
++  const scores = new Map(
++    usage?.entries.map((record) => [record.entry, usageScore(record, now)]),
++  );
++  const lastUsed =
++    usage?.lastUsed &&
++    now - usage.lastUsed.timestamp <= preferences.lastUsedTtlSeconds * 1000
++      ? usage.lastUsed
++      : null;
++  return [...entries]
++    .sort((a, b) => {
++      if (lastUsed) {
++        const pinned =
++          Number(b === lastUsed.password) - Number(a === lastUsed.password);
++        if (pinned) return pinned;
++      }
++      return (scores.get(b) ?? 0) - (scores.get(a) ?? 0) || a.localeCompare(b);
++    })
++    .map((value) => ({
++      value,
++      showOtpFirst:
++        value === lastUsed?.password && lastUsed.option === "Password",
++    }));
+ }
+diff --git a/src/storage/frecency.ts b/src/storage/frecency.ts
+new file mode 100644
+index 0000000..2128624
+--- /dev/null
++++ b/src/storage/frecency.ts
+@@ -0,0 +1,154 @@
++import { createHash } from "crypto";
++import { LocalStorage } from "@vicinae/api";
++import { LastUsedRecord, PasswordOptionType } from "@/types";
++
++const HALF_LIFE_MS = 10 * 24 * 60 * 60 * 1000;
++const CONTINUATION_MS = 120 * 1000;
++const MAX_ENTRIES = 512;
++const MAX_SCORE = 1_000_000;
++
++type UsageRecord = { entry: string; score: number; timestamp: number };
++export type UsageState = {
++  entries: UsageRecord[];
++  lastUsed: LastUsedRecord | null;
++};
++
++const emptyUsage = (): UsageState => ({ entries: [], lastUsed: null });
++const storageKey = (store: string) =>
++  `pass-usage-v1:${createHash("sha256").update(store).digest("hex")}`;
++
++function isObject(value: unknown): value is Record<string, unknown> {
++  return typeof value === "object" && value !== null && !Array.isArray(value);
++}
++
++function isTimestamp(value: unknown, now: number): value is number {
++  return (
++    typeof value === "number" &&
++    Number.isSafeInteger(value) &&
++    value > 0 &&
++    value <= now
++  );
++}
++
++function isUsageRecord(value: unknown, now: number): value is UsageRecord {
++  return (
++    isObject(value) &&
++    typeof value.entry === "string" &&
++    value.entry.length > 0 &&
++    value.entry.length <= 4096 &&
++    typeof value.score === "number" &&
++    Number.isFinite(value.score) &&
++    value.score > 0 &&
++    value.score <= MAX_SCORE &&
++    isTimestamp(value.timestamp, now)
++  );
++}
++
++function isLastUsed(value: unknown, now: number): value is LastUsedRecord {
++  return (
++    isObject(value) &&
++    typeof value.password === "string" &&
++    value.password.length > 0 &&
++    value.password.length <= 4096 &&
++    typeof value.option === "string" &&
++    ["Password", "OTP", "Other"].includes(value.option) &&
++    isTimestamp(value.timestamp, now)
++  );
++}
++
++export function usageScore(
++  record: UsageRecord | undefined,
++  now: number,
++): number {
++  return record
++    ? record.score * 2 ** (-Math.max(0, now - record.timestamp) / HALF_LIFE_MS)
++    : 0;
++}
++
++async function readUsage(store: string, now: number): Promise<UsageState> {
++  const stored: unknown = await LocalStorage.getItem(storageKey(store));
++  if (typeof stored !== "string") return emptyUsage();
++  let parsed: unknown;
++  try {
++    parsed = JSON.parse(stored);
++  } catch {
++    return emptyUsage();
++  }
++  if (
++    !isObject(parsed) ||
++    parsed.version !== 1 ||
++    !Array.isArray(parsed.entries) ||
++    parsed.entries.length > MAX_ENTRIES
++  )
++    return emptyUsage();
++  return {
++    entries: parsed.entries
++      .filter((value): value is UsageRecord => isUsageRecord(value, now))
++      .map(({ entry, score, timestamp }) => ({ entry, score, timestamp })),
++    lastUsed: isLastUsed(parsed.lastUsed, now)
++      ? {
++          password: parsed.lastUsed.password,
++          option: parsed.lastUsed.option,
++          timestamp: parsed.lastUsed.timestamp,
++        }
++      : null,
++  };
++}
++
++async function writeUsage(store: string, usage: UsageState): Promise<void> {
++  await LocalStorage.setItem(
++    storageKey(store),
++    JSON.stringify({ version: 1, ...usage }),
++  );
++}
++
++export async function loadUsage(
++  store: string,
++  available: string[],
++): Promise<UsageState> {
++  const usage = await readUsage(store, Date.now());
++  const entries = new Set(available);
++  const pruned: UsageState = {
++    entries: usage.entries.filter((record) => entries.has(record.entry)),
++    lastUsed:
++      usage.lastUsed && entries.has(usage.lastUsed.password)
++        ? usage.lastUsed
++        : null,
++  };
++  if (JSON.stringify(pruned) !== JSON.stringify(usage))
++    await writeUsage(store, pruned);
++  return pruned;
++}
++
++export async function recordUsage(
++  store: string,
++  entry: string,
++  option: PasswordOptionType | undefined,
++): Promise<void> {
++  const now = Date.now();
++  const usage = await readUsage(store, now);
++  // A password followed by its OTP is one login, but the OTP still updates continuation state.
++  const continuation =
++    option === "otp" &&
++    usage.lastUsed?.password === entry &&
++    usage.lastUsed.option === "Password" &&
++    now - usage.lastUsed.timestamp <= CONTINUATION_MS;
++  if (!continuation) {
++    const previous = usage.entries.find((record) => record.entry === entry);
++    usage.entries = usage.entries.filter((record) => record.entry !== entry);
++    usage.entries.push({
++      entry,
++      score: Math.min(MAX_SCORE, usageScore(previous, now) + 1),
++      timestamp: now,
++    });
++  }
++  usage.entries.sort((a, b) => usageScore(b, now) - usageScore(a, now));
++  usage.entries = usage.entries.slice(0, MAX_ENTRIES);
++  usage.lastUsed = {
++    password: entry,
++    option:
++      option === "password" ? "Password" : option === "otp" ? "OTP" : "Other",
++    timestamp: now,
++  };
++  await writeUsage(store, usage);
++}
+diff --git a/src/storage/last-used.ts b/src/storage/last-used.ts
+deleted file mode 100644
+index deb3ba9..0000000
+--- a/src/storage/last-used.ts
++++ /dev/null
+@@ -1,45 +0,0 @@
+-import { promises as fs } from "fs";
+-import os from "os";
+-import path from "path";
+-import { LastUsedRecord } from "@/types";
+-
+-const STORAGE_DIR = path.join(os.homedir(), ".local", "state", "vicinae-pass");
+-const STORAGE_FILE = path.join(STORAGE_DIR, "last-used.json");
+-
+-export async function getLastUsedPassword(ttlSeconds: number): Promise<LastUsedRecord | null> {
+-  try {
+-    const buffer = await fs.readFile(STORAGE_FILE, "utf-8");
+-    if (!buffer) return null;
+-
+-    const parsed = JSON.parse(buffer) as LastUsedRecord;
+-    if (!parsed?.password || !parsed.option || !parsed.timestamp) {
+-      return null;
+-    }
+-
+-    const delta = Date.now() - Number(parsed.timestamp);
+-    if (delta / 1000 > ttlSeconds) {
+-      return null;
+-    }
+-    return parsed;
+-  } catch (error) {
+-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+-      return null;
+-    }
+-    console.error("Failed to read last-used cache:", error);
+-    return null;
+-  }
+-}
+-
+-export async function updateLastUsedPassword(password: string, option: string): Promise<void> {
+-  try {
+-    await fs.mkdir(STORAGE_DIR, { recursive: true });
+-    const payload: LastUsedRecord = {
+-      password,
+-      option,
+-      timestamp: Date.now(),
+-    };
+-    await fs.writeFile(STORAGE_FILE, JSON.stringify(payload));
+-  } catch (error) {
+-    console.error("Failed to persist last-used cache:", error);
+-  }
+-}
+diff --git a/src/utils/actions.ts b/src/utils/actions.ts
+index 01909fd..2334411 100644
+--- a/src/utils/actions.ts
++++ b/src/utils/actions.ts
+@@ -1,5 +1,5 @@
+ import { Clipboard, Toast, closeMainWindow, showToast } from "@vicinae/api";
+-import { updateLastUsedPassword } from "@/storage/last-used";
++import { recordUsage } from "@/storage/frecency";
+ import { PasswordOption } from "@/types";
+ 
+ export type PasswordActionType = "copy" | "paste";
+@@ -7,20 +7,18 @@ export type PasswordActionType = "copy" | "paste";
+ export async function performPasswordAction(
+   passwordName: string,
+   option: PasswordOption,
+-  action: PasswordActionType
++  action: PasswordActionType,
++  store: string,
+ ): Promise<void> {
+   const concealed = option.type === "password" || option.type === "otp";
+ 
+   try {
+     if (action === "copy") {
+       await Clipboard.copy(option.value, { concealed });
+-      await closeMainWindow();
+     } else {
+       await closeMainWindow();
+       await Clipboard.paste(option.value);
+     }
+-
+-    await updateLastUsedPassword(passwordName, option.title);
+   } catch (error) {
+     const message = error instanceof Error ? error.message : "Unexpected error";
+     await showToast({
+@@ -28,5 +26,16 @@ export type PasswordActionType = "copy" | "paste";
+       title: `Failed to ${action}`,
+       message,
+     });
++    return;
++  }
++
++  try {
++    await recordUsage(store, passwordName, option.type);
++  } catch {
++    await showToast({
++      style: Toast.Style.Failure,
++      title: "Usage history could not be saved",
++    });
+   }
++  if (action === "copy") await closeMainWindow();
+ }

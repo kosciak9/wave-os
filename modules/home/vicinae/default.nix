@@ -24,7 +24,10 @@ let
   passExtension =
     inputs.vicinae-extensions.packages.${pkgs.stdenv.hostPlatform.system}.pass.overrideAttrs
       (oldAttrs: {
-        patches = (oldAttrs.patches or [ ]) ++ [ ./pass-gpg-agent.patch ];
+        patches = (oldAttrs.patches or [ ]) ++ [
+          ./pass-gpg-agent.patch
+          ./pass-frecency.patch
+        ];
       });
 in
 {

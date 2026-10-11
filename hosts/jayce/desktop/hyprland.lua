@@ -695,6 +695,7 @@ end
 hl.bind(mod .. " + slash", hl.dsp.exec_cmd("qs -c wave ipc call keybinds toggle"), { description = "Show keyboard shortcuts" })
 hl.bind(mod .. " + RETURN", hl.dsp.exec_cmd("ghostty"), { description = "Open terminal" })
 hl.bind(mod .. " + SPACE", hl.dsp.exec_cmd("vicinae toggle"), { description = "Toggle launcher" })
+hl.bind(mod .. " + CTRL + SPACE", hl.dsp.exec_cmd("vicinae cmd launch @tinkerbells/pass:pass"), { description = "Open passwords" })
 hl.bind(mod .. " + C", hl.dsp.exec_cmd("qs -c wave ipc call notifications toggle"), { description = "Toggle control center" })
 hl.bind(mod .. " + A", hl.dsp.exec_cmd("qs -c wave ipc call agenda toggle"), { description = "Toggle agenda" })
 hl.bind(mod .. " + G", hl.dsp.exec_cmd("qs -c wave ipc call mail toggle"), { description = "Toggle mail" })
