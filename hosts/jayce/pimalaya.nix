@@ -129,6 +129,7 @@ let
     host = "127.0.0.1";
     port = 1143;
   };
+  bridgeCertificate = "${config.xdg.configHome}/protonmail/bridge-tls/cert.pem";
   cat = lib.getExe' pkgs.coreutils "cat";
   himalayaConfig = toml.generate "himalaya.toml" {
     accounts =
@@ -145,9 +146,12 @@ let
           mailbox.alias = {
             inbox = "INBOX";
             archive = "Archive";
+            trash = "Trash";
           };
           imap = {
             server = "imap://${bridgeImap.host}:${toString bridgeImap.port}";
+            starttls = true;
+            tls.cert = bridgeCertificate;
             sasl.plain.password.command = [
               cat
               protonPassword
@@ -173,10 +177,10 @@ let
     configurations = [
       {
         inherit (bridgeImap) host port;
-        tls = false;
+        tls = true;
         tlsOptions = {
-          starttls = false;
-          rejectUnauthorized = false;
+          starttls = true;
+          rejectUnauthorized = true;
         };
         usernameCMD = "${cat} ${protonAddress}";
         passwordCMD = "${cat} ${protonPassword}";
@@ -246,6 +250,7 @@ in
         BindsTo = [ "protonmail-bridge.service" ];
       };
       Service = {
+        Environment = [ "SSL_CERT_FILE=${bridgeCertificate}" ];
         ExecStart = "${lib.getExe pkgs.goimapnotify} -conf ${imapNotifyConfig}";
         Restart = "always";
         RestartSec = 30;
