@@ -157,9 +157,7 @@
           }) "antigravity";
         }
         // prev.lib.optionalAttrs prev.stdenv.hostPlatform.isLinux {
-          drift-tui = final.callPackage ./packages/drift-tui.nix { };
-          octorus = final.callPackage ./packages/octorus.nix { inherit (prev) octorus; };
-          reviewly = final.callPackage ./packages/reviewly.nix { };
+          pr-cockpit = final.callPackage ./packages/pr-cockpit.nix { };
           spotifast = final.callPackage ./packages/spotifast.nix {
             spotifast = inputs.spotifast.packages.${final.stdenv.hostPlatform.system}.default;
           };
@@ -309,9 +307,7 @@
             slack-mirror-image
             herdr-auto-title
             spotifast
-            drift-tui
-            octorus
-            reviewly
+            pr-cockpit
             ;
         };
         ${darwinSystem} = {

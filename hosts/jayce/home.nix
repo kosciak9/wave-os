@@ -68,6 +68,7 @@ in
     ../../modules/home/git.nix
     ../../modules/home/neovim
     ../../modules/home/opencode
+    ../../modules/home/pr-cockpit
     ../../modules/home/herdr
     ../../modules/home/herdr/gpui.nix
     ../../modules/home/starship
@@ -99,7 +100,6 @@ in
     packages = with pkgs; [
       brightnessctl
       chromium
-      drift-tui
       fd
       gimp
       hyprsunset
@@ -118,12 +118,10 @@ in
       noto-fonts
       noto-fonts-color-emoji
       obsidian
-      octorus
       playerctl
       pulseaudio
       pwvucontrol
       remmina
-      reviewly
       ripgrep
       spotifast
       trash-cli

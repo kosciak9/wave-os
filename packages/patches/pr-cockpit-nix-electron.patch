@@ -1,0 +1,32 @@
+diff --git a/shell/main.js b/shell/main.js
+--- a/shell/main.js
++++ b/shell/main.js
+@@ -209,7 +209,7 @@ if (!app.requestSingleInstanceLock()) {
+   if (process.platform === "linux" && isManaged) {
+     const release = fs.realpathSync(process.env.COCKPIT_RELEASE_ROOT || "");
+     const executable = fs.realpathSync(process.execPath);
+-    const expectedExecutable = path.join(release, "shell", "node_modules", "electron", "dist", "electron");
++    const expectedExecutable = fs.realpathSync(path.join(release, "shell", "node_modules", "electron", "dist", "electron"));
+     if (executable !== expectedExecutable) throw new Error("Linux shell executable is outside the active immutable release");
+     const stat = fs.readFileSync(`/proc/${process.pid}/stat`, "utf8");
+     const fields = stat.slice(stat.lastIndexOf(") ") + 2).trim().split(/\s+/);
+diff --git a/shell/shellProcessOwnership.js b/shell/shellProcessOwnership.js
+--- a/shell/shellProcessOwnership.js
++++ b/shell/shellProcessOwnership.js
+@@ -25,8 +25,15 @@ function recordedProcessIsActive(fs, record) {
+   if (values.has("tray") && values.get("tray") !== "ready") throw new Error("Linux GUI ownership record is invalid");
+   const pid = values.get("pid");
+   if (!/^[1-9][0-9]*$/.test(pid)) throw new Error("Linux GUI ownership record is invalid");
+-  if (values.get("executable") !== path.join(values.get("release"), "shell", "node_modules", "electron", "dist", "electron")) throw new Error("Linux GUI ownership record is invalid");
++  let expectedExecutable;
++  try {
++    expectedExecutable = fs.realpathSync(path.join(values.get("release"), "shell", "node_modules", "electron", "dist", "electron"));
++  } catch (error) {
++    if (error?.code === "ENOENT") return false;
++    throw error;
++  }
++  if (values.get("executable") !== expectedExecutable) throw new Error("Linux GUI ownership record is invalid");
+   try {
+     const stat = fs.readFileSync(`/proc/${pid}/stat`, "utf8");
+     const fields = stat.slice(stat.lastIndexOf(") ") + 2).trim().split(/\s+/);
+     return fields[19] === values.get("start") && fs.realpathSync(`/proc/${pid}/exe`) === values.get("executable");
