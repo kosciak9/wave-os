@@ -193,15 +193,17 @@ export async function confirmWrite(account: Account): Promise<WriteStatus> {
           return [line.slice(0, separator), line.slice(separator + 1)];
         }),
     );
+    // A running sync is no failure: a first fill runs for hours, and it
+    // drains the queue as it starts.
+    if (properties.get("ActiveState") !== "inactive") return { status: "syncing" };
     if (
-      properties.get("ActiveState") !== "inactive" ||
       properties.get("Result") !== "success" ||
       properties.get("ExecMainStatus") !== "0"
     ) {
       return {
         status: "pending",
         message:
-          "Sync is unfinished or left unresolved work. Remote application is not confirmed.",
+          "The last sync failed or left unresolved work. Remote application is not confirmed.",
       };
     }
     const queue = queueStatusSchema.safeParse(

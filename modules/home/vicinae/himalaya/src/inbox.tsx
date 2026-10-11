@@ -156,9 +156,8 @@ export default function Inbox() {
           if (request !== generation.current) return;
           setWriteNotices((current) => {
             const next = { ...current };
-            if (write?.status === "remote") delete next[account.name];
-            else if (write?.status === "pending")
-              next[account.name] = write.message;
+            if (write?.status === "pending") next[account.name] = write.message;
+            else delete next[account.name];
             return next;
           });
           setState((current) =>
