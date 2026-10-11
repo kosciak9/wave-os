@@ -15,6 +15,7 @@
         ./patches/gpui-claude-reset-credits.patch
         ./patches/gpui-system-notification-dismissal.patch
         ./patches/gpui-terminal-padding.patch
+        ./patches/gpui-usage-reset-expiry.patch
       ];
       # GPUI's Linux backend currently discards handles and cannot withdraw notifications.
       postPatch = (old.postPatch or "") + ''

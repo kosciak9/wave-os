@@ -140,6 +140,7 @@ in
 
     [ui]
     agent_panel_sort = "priority"
+    prompt_new_tab_name = false
 
     [ui.toast]
     delivery = "system"
