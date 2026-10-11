@@ -1,0 +1,157 @@
+diff --git a/src/account.rs b/src/account.rs
+index 7167b41..74d2881 100644
+--- a/src/account.rs
++++ b/src/account.rs
+@@ -24,7 +24,7 @@ use anyhow::{Context, Result, bail};
+ #[cfg(any(feature = "imap", feature = "smtp"))]
+ use io_sasl::mechanism::Sasl;
+ use pimalaya_cli::spinner::Spinner;
+-use pimalaya_config::secret::SecretResolver;
++use pimalaya_config::secret::{Secret, SecretResolver};
+ #[cfg(any(
+     feature = "imap",
+     feature = "msgraph",
+@@ -273,6 +273,7 @@ impl SourceAccountBackend {
+             #[cfg(feature = "gmail")]
+             SourceBackendConfig::Gmail(config) => Ok(Self::Gmail(GmailAccount {
+                 token: resolver.resolve(config.auth.token.clone())?,
++                token_source: config.auth.token.clone(),
+                 user_id: config.user_id.clone(),
+                 tls: config.tls.clone().into_tls(config.alpn.clone()),
+             })),
+@@ -342,6 +343,9 @@ pub struct GoogleAccount {
+ pub struct GmailAccount {
+     /// The OAuth 2.0 bearer token, as the configured command printed it.
+     pub token: SecretString,
++    /// The configured token, read again when Gmail stops accepting the
++    /// first one partway through a long run.
++    pub token_source: Secret,
+     /// The mailbox owner, `me` for the authenticated user.
+     pub user_id: String,
+     /// The TLS handle, ALPN folded in.
+diff --git a/src/client.rs b/src/client.rs
+index 6076e91..b487749 100644
+--- a/src/client.rs
++++ b/src/client.rs
+@@ -647,7 +647,12 @@ pub fn open(account: &SourceAccount) -> Result<Client> {
+         }
+         #[cfg(feature = "gmail")]
+         SourceAccountBackend::Gmail(gmail) => {
+-            let client = GmailClient::connect(&gmail.token, &gmail.user_id, gmail.tls.clone())?;
++            let client = GmailClient::connect(
++                &gmail.token,
++                gmail.token_source.clone(),
++                &gmail.user_id,
++                gmail.tls.clone(),
++            )?;
+             Ok(Client::Gmail(Box::new(client)))
+         }
+         #[cfg(not(any(
+diff --git a/src/gmail/client.rs b/src/gmail/client.rs
+index c748a54..15a020b 100644
+--- a/src/gmail/client.rs
++++ b/src/gmail/client.rs
+@@ -48,6 +48,7 @@ use io_gmail::v1::{
+ };
+ use io_pimdir::summary::mail::{addresses, decode, instant, message_ids};
+ use log::{debug, trace, warn};
++use pimalaya_config::secret::Secret;
+ use pimalaya_stream::{
+     proxy::Proxy,
+     stream::{Stream, TlsConnectOptions},
+@@ -125,6 +126,10 @@ pub struct GmailClient {
+     inner: GmailClientStd,
+     /// The TLS configuration, kept for stream reopens.
+     tls: Tls,
++    /// The configured token and mailbox owner, kept to sign in again once
++    /// the access token expires, an hour into a long fetch.
++    token_source: Secret,
++    user: String,
+     /// Label name to label id, refreshed from the label listing when a name
+     /// misses.
+     labels: HashMap<String, String>,
+@@ -136,23 +141,40 @@ pub struct GmailClient {
+ impl GmailClient {
+     /// Opens the TLS connection to the Gmail API with a bearer token, scoped
+     /// to the `user` mailbox owner (`me` or an address).
+-    pub fn connect(token: &SecretString, user: &str, tls: Tls) -> Result<Self> {
+-        let options = GmailClientStdConnectOptions {
+-            tls: tls.clone(),
+-            proxy: Proxy::None,
+-            user_id: user.to_owned(),
+-        };
+-        let inner = GmailClientStd::connect(token.expose_secret(), options)
+-            .context("Cannot connect to Gmail")?;
++    pub fn connect(token: &SecretString, token_source: Secret, user: &str, tls: Tls) -> Result<Self> {
++        let inner = Self::sign_in(token, user, &tls)?;
+ 
+         Ok(Self {
+             inner,
+             tls,
++            token_source,
++            user: user.to_owned(),
+             labels: HashMap::new(),
+             alive: true,
+         })
+     }
+ 
++    fn sign_in(token: &SecretString, user: &str, tls: &Tls) -> Result<GmailClientStd> {
++        let options = GmailClientStdConnectOptions {
++            tls: tls.clone(),
++            proxy: Proxy::None,
++            user_id: user.to_owned(),
++        };
++        GmailClientStd::connect(token.expose_secret(), options).context("Cannot connect to Gmail")
++    }
++
++    /// Reads the configured token again and opens a session with it.
++    fn refresh_token(&mut self) -> Result<()> {
++        let token = self
++            .token_source
++            .clone()
++            .get()
++            .context("Cannot read the Gmail token again")?;
++        self.inner = Self::sign_in(&token, &self.user, &self.tls)?;
++        self.alive = true;
++        Ok(())
++    }
++
+     /// Reopens the stream to the Gmail endpoint, keeping the credential.
+     fn reconnect(&mut self) -> Result<()> {
+         debug!("reopening the gmail stream");
+@@ -182,6 +204,7 @@ impl GmailClient {
+         mut run: impl FnMut(&mut GmailClientStd) -> Result<GmailSendOutput<T>, GmailClientStdError>,
+     ) -> Result<T, GmailClientStdError> {
+         let mut waits = RATE_LIMIT_BACKOFF.iter();
++        let mut refreshed = false;
+         loop {
+             if !self.alive
+                 && let Err(err) = self.reconnect()
+@@ -202,6 +225,14 @@ impl GmailClient {
+                     self.alive = false;
+                     thread::sleep(*wait);
+                 }
++                Err(err) if is_unauthorized(&err) && !refreshed => {
++                    refreshed = true;
++                    warn!("gmail refused the access token, reading it again: {err}");
++                    if let Err(refresh) = self.refresh_token() {
++                        warn!("{refresh:#}");
++                        return Err(err);
++                    }
++                }
+                 Err(err) => return Err(err),
+             }
+         }
+@@ -718,6 +749,12 @@ fn is_not_found(err: &GmailClientStdError) -> bool {
+     matches!(err, GmailClientStdError::Send(send) if send.status() == Some(404))
+ }
+ 
++/// Whether Gmail refused the access token (HTTP 401), as it does once the
++/// token expires.
++fn is_unauthorized(err: &GmailClientStdError) -> bool {
++    matches!(err, GmailClientStdError::Send(send) if send.status() == Some(401))
++}
++
+ /// Whether Gmail asked to slow down: a 429 or 5xx, or a 403 naming a
+ /// per-second or per-minute rate limit. A daily quota stays a failure.
+ fn is_rate_limited(err: &GmailClientStdError) -> bool {

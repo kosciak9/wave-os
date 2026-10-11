@@ -1,0 +1,116 @@
+diff --git a/src/offline/driver.rs b/src/offline/driver.rs
+index f9ab66c..cc60d40 100644
+--- a/src/offline/driver.rs
++++ b/src/offline/driver.rs
+@@ -809,7 +809,7 @@ fn run_local(
+         return Ok(());
+     }
+ 
+-    let cache = phase2_hydrate(source_name, &plans, &mut ctxs, &blobs)?;
++    let (cache, failure) = phase2_hydrate(source_name, &plans, &mut ctxs, &blobs)?;
+     phase3_apply(
+         source_name,
+         &plans,
+@@ -817,9 +817,13 @@ fn run_local(
+         &mut stores[0],
+         &blobs,
+         &cache,
++        failure.is_some(),
+     )?;
+ 
+-    Ok(())
++    match failure {
++        Some(err) => Err(err),
++        None => Ok(()),
++    }
+ }
+ 
+ /// Opens `count` single-connection [`SourceCtx`]s with overlapping handshakes.
+@@ -999,12 +1003,15 @@ fn collection_spine(
+ /// A batched fetch stays within one selected collection, so bodies are chunked
+ /// per collection and the biggest batches queued first for a global
+ /// largest-first order. A worker steals the next, idling at no collection edge.
++///
++/// A failed batch stops the pool but keeps what the others downloaded, returned
++/// beside the failure, so the next run does not fetch it all again.
+ fn phase2_hydrate(
+     source: &str,
+     plans: &[CollectionPlan],
+     ctxs: &mut [SourceCtx],
+     blobs: &PimdirBlobs,
+-) -> Result<HashMap<FetchKey, PimdirFetchedItem>> {
++) -> Result<(HashMap<FetchKey, PimdirFetchedItem>, Option<anyhow::Error>)> {
+     let mut batches: Vec<(u64, String, Vec<PimdirHandle>)> = Vec::new();
+     let mut total_bodies = 0usize;
+     for (collection, targets) in plans {
+@@ -1018,7 +1025,7 @@ fn phase2_hydrate(
+         }
+     }
+     if total_bodies == 0 {
+-        return Ok(HashMap::new());
++        return Ok((HashMap::new(), None));
+     }
+     batches.sort_by_key(|(max_size, ..)| Reverse(*max_size));
+ 
+@@ -1091,18 +1098,24 @@ fn phase2_hydrate(
+         }
+     });
+ 
+-    if let Some(err) = failure.into_inner().unwrap() {
+-        return Err(err);
+-    }
+     let cache = cache.into_inner().unwrap();
+-    s.success(format!("Downloaded {} item(s) from {source}", cache.len()));
+-    Ok(cache)
++    let failure = failure.into_inner().unwrap();
++    if failure.is_some() {
++        warn!(
++            "downloading {source} stopped at {} of {total_bodies} bodies, keeping those",
++            cache.len()
++        );
++    } else {
++        s.success(format!("Downloaded {} item(s) from {source}", cache.len()));
++    }
++    Ok((cache, failure))
+ }
+ 
+ /// Phase 3, applying the pre-fetched bodies to the index, per collection.
+ ///
+ /// The `Full` upgrade runs over a [`CachedFetchRemote`], a miss falling back to
+-/// a real fetch. Only store writes happen here.
++/// a real fetch. Only store writes happen here. After a failed download only
++/// the cached bodies are applied, the rest left for the next run.
+ fn phase3_apply(
+     source: &str,
+     plans: &[CollectionPlan],
+@@ -1110,11 +1123,12 @@ fn phase3_apply(
+     store: &mut PimdirSourceStore,
+     blobs: &PimdirBlobs,
+     cache: &HashMap<FetchKey, PimdirFetchedItem>,
++    cached_only: bool,
+ ) -> Result<()> {
+     let total = plans.len();
+     let s = Spinner::start(format!("Writing {source} (0/{total})"));
+     for (index, (collection, _)) in plans.iter().enumerate() {
+-        if let Err(err) = apply_full(collection, ctx, store, blobs, cache) {
++        if let Err(err) = apply_full(collection, ctx, store, blobs, cache, cached_only) {
+             warn!("{collection} write error: {err:#}");
+         }
+         s.set_message(format!("Writing {source} ({}/{total})", index + 1));
+@@ -1132,12 +1146,16 @@ fn apply_full(
+     store: &mut PimdirSourceStore,
+     blobs: &PimdirBlobs,
+     cache: &HashMap<FetchKey, PimdirFetchedItem>,
++    cached_only: bool,
+ ) -> Result<()> {
+     let handles: Vec<PimdirHandle> = projection_view(store, collection, &ctx.name)
+         .with_context(|| format!("Project {} {collection}", &ctx.name))?
+         .into_iter()
+         .filter(|p| p.status != PimdirStatus::Tombstone && p.level < PimdirLevel::Full)
+         .map(|p| p.handle)
++        .filter(|handle| {
++            !cached_only || cache.contains_key(&(collection.to_string(), handle.0.clone()))
++        })
+         .collect();
+     if handles.is_empty() {
+         return Ok(());

@@ -68,9 +68,21 @@ in
       # Gmail rate limits otherwise fail a whole fetch batch, which the next
       # run then restarts from scratch.
       ./patches/neverest-gmail-rate-limit.patch
+      # The People API caps contact reads per minute, and neverest reads each
+      # contact on its own.
+      ./patches/neverest-gpeople-rate-limit.patch
       # An inbox move's target must reuse the Gmail message, even when it
       # syncs before the source; importing its body would duplicate it.
       ./patches/neverest-gmail-native-copy.patch
+      # Access tokens expire after an hour, and a first fetch of a large
+      # mailbox runs longer.
+      ./patches/neverest-gmail-token-refresh.patch
+      # A failed download otherwise drops every body it already fetched, so
+      # the next run starts a large mailbox over.
+      ./patches/neverest-keep-partial-fetch.patch
+      # A large first listing raises every message's envelope in one write,
+      # all lost when one request fails.
+      ./patches/neverest-chunked-upgrade.patch
     ];
   };
   calendula = mkPimalayaCli {

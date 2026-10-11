@@ -1,0 +1,112 @@
+--- a/src/gpeople/client.rs
++++ b/src/gpeople/client.rs
+@@ -16,6 +16,7 @@
+ 
+ use std::{
+     io::{Read, Write},
++    thread,
+     time::Duration,
+ };
+ 
+@@ -27,7 +28,7 @@
+         connections::list::GpeopleConnectionsListParams,
+         vcard::{GPEOPLE_PERSON_STASH_KEY, GPEOPLE_PERSON_VCARD_FIELDS},
+     },
+-    send::{GPEOPLE_API_BASE, GpeopleSendOutput},
++    send::{GPEOPLE_API_BASE, GpeopleSendError, GpeopleSendOutput},
+ };
+ use log::{debug, trace, warn};
+ use pimalaya_stream::{
+@@ -46,6 +47,17 @@
+     },
+ };
+ 
++/// The waits before each retry of a rate-limited request, doubling up to
++/// about two minutes in all, past a whole per-minute quota window.
++const RATE_LIMIT_BACKOFF: &[Duration] = &[
++    Duration::from_secs(2),
++    Duration::from_secs(4),
++    Duration::from_secs(8),
++    Duration::from_secs(16),
++    Duration::from_secs(32),
++    Duration::from_secs(64),
++];
++
+ /// The one collection a People account syncs: every connection.
+ pub const CONTACTS: &str = "contacts";
+ 
+@@ -103,19 +115,39 @@
+ 
+     /// Runs one People operation, reopening the stream first when the
+     /// server closed it, and records the new keep-alive hint.
++    ///
++    /// A rate-limited operation is retried after [`RATE_LIMIT_BACKOFF`], so a
++    /// long fetch slows down instead of losing its whole batch to the
++    /// per-minute read quota. Only refusals are retried: a 5xx may have
++    /// applied a write.
+     fn op<T>(
+         &mut self,
+-        run: impl FnOnce(&mut GpeopleClientStd) -> Result<GpeopleSendOutput<T>, GpeopleClientStdError>,
++        mut run: impl FnMut(&mut GpeopleClientStd) -> Result<GpeopleSendOutput<T>, GpeopleClientStdError>,
+     ) -> Result<T, GpeopleClientStdError> {
+-        if !self.alive
+-            && let Err(err) = self.reconnect()
+-        {
+-            warn!("cannot reopen the people stream: {err:#}");
+-        }
++        let mut waits = RATE_LIMIT_BACKOFF.iter();
++        loop {
++            if !self.alive
++                && let Err(err) = self.reconnect()
++            {
++                warn!("cannot reopen the people stream: {err:#}");
++            }
+ 
+-        let out = run(&mut self.inner)?;
+-        self.alive = out.keep_alive;
+-        Ok(out.response)
++            match run(&mut self.inner) {
++                Ok(out) => {
++                    self.alive = out.keep_alive;
++                    return Ok(out.response);
++                }
++                Err(err) if is_rate_limited(&err) => {
++                    let Some(wait) = waits.next() else {
++                        return Err(err);
++                    };
++                    warn!("people rate limit, retrying in {}s: {err}", wait.as_secs());
++                    self.alive = false;
++                    thread::sleep(*wait);
++                }
++                Err(err) => return Err(err),
++            }
++        }
+     }
+ 
+     /// Lists the one address book a People account has.
+@@ -370,6 +402,25 @@
+     Ok(())
+ }
+ 
++/// Whether People asked to slow down: a 429, or a 403 naming a per-minute
++/// rate limit. A daily quota stays a failure.
++fn is_rate_limited(err: &GpeopleClientStdError) -> bool {
++    let GpeopleClientStdError::Send(send) = err else {
++        return false;
++    };
++    match send {
++        GpeopleSendError::Api { status: 429, .. } => true,
++        GpeopleSendError::Api {
++            status: 403,
++            message,
++        } => {
++            let message = message.to_lowercase();
++            message.contains("rate limit") || message.contains("per minute")
++        }
++        _ => false,
++    }
++}
++
+ /// Whether a listing failed on an expired sync token (HTTP 410).
+ fn is_expired(err: &anyhow::Error) -> bool {
+     err.chain().any(|cause| {

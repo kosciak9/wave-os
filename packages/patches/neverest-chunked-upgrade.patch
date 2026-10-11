@@ -1,0 +1,35 @@
+diff --git a/src/offline/driver.rs b/src/offline/driver.rs
+index ee7f112..de20427 100644
+--- a/src/offline/driver.rs
++++ b/src/offline/driver.rs
+@@ -2489,16 +2489,23 @@ fn upgrade_probed(
+         return Ok(());
+     }
+ 
+-    let mut remote = PimRemote::new(&mut ctx.pool, blobs.clone(), ctx.namespace.clone());
+-    run_verb(
+-        store,
+-        &mut remote,
+-        PimdirUpgrade::new(collection.to_string(), probed, tier),
+-    )
+-    .with_context(|| format!("Upgrade probed {} {collection}", &ctx.name))?;
++    // NOTE: one upgrade per chunk, each written on its own, so a failure
++    // partway through a large first listing keeps the chunks before it.
++    for chunk in probed.chunks(UPGRADE_CHUNK) {
++        let mut remote = PimRemote::new(&mut ctx.pool, blobs.clone(), ctx.namespace.clone());
++        run_verb(
++            store,
++            &mut remote,
++            PimdirUpgrade::new(collection.to_string(), chunk.to_vec(), tier),
++        )
++        .with_context(|| format!("Upgrade probed {} {collection}", &ctx.name))?;
++    }
+     Ok(())
+ }
+ 
++/// How many probed items one upgrade raises before it is written.
++const UPGRADE_CHUNK: usize = 500;
++
+ /// One side's placements the engine left marked conflicted in `collection`.
+ fn conflicted_placements(
+     store: &PimdirSourceStore,
