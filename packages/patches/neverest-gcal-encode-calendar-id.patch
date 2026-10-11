@@ -1,0 +1,78 @@
+diff --git a/src/gcal/client.rs b/src/gcal/client.rs
+index 54d8f14..70491c7 100644
+--- a/src/gcal/client.rs
++++ b/src/gcal/client.rs
+@@ -233,7 +233,7 @@ impl GcalClient {
+                 ..Default::default()
+             };
+             let page = self
+-                .op(|gcal| gcal.events_list(calendar, &params))
++                .op(|gcal| gcal.events_list(&path_segment(calendar), &params))
+                 .map_err(anyhow::Error::new)
+                 .with_context(|| format!("List events of {calendar} error"))?;
+ 
+@@ -256,7 +256,7 @@ impl GcalClient {
+     /// Reads a series event with every modified instance of it, the series
+     /// first.
+     fn series(&mut self, calendar: &str, id: &str) -> Result<Vec<GcalEvent>> {
+-        let master = match self.op(|gcal| gcal.event_get(calendar, id, None, None)) {
++        let master = match self.op(|gcal| gcal.event_get(&path_segment(calendar), id, None, None)) {
+             Ok(master) => master,
+             Err(err) if is_not_found(&err) => return self.orphan_instances(calendar, id),
+             Err(err) => {
+@@ -282,7 +282,7 @@ impl GcalClient {
+                 ..Default::default()
+             };
+             let page = self
+-                .op(|gcal| gcal.events_list(calendar, &params))
++                .op(|gcal| gcal.events_list(&path_segment(calendar), &params))
+                 .with_context(|| format!("List instances of {id} error"))?;
+ 
+             events.extend(
+@@ -368,10 +368,10 @@ impl GcalClient {
+ 
+         let created = match event.ical_uid.as_deref().filter(|uid| !uid.is_empty()) {
+             Some(_) => self
+-                .op(|gcal| gcal.event_import(calendar, &event, &GcalEventImportParams::default()))
++                .op(|gcal| gcal.event_import(&path_segment(calendar), &event, &GcalEventImportParams::default()))
+                 .with_context(|| format!("Import event into {calendar} error"))?,
+             None => self
+-                .op(|gcal| gcal.event_insert(calendar, &event, &GcalEventInsertParams::default()))
++                .op(|gcal| gcal.event_insert(&path_segment(calendar), &event, &GcalEventInsertParams::default()))
+                 .with_context(|| format!("Insert event into {calendar} error"))?,
+         };
+ 
+@@ -406,7 +406,7 @@ impl GcalClient {
+         let updated = self
+             .op(|gcal| {
+                 gcal.event_update(
+-                    calendar,
++                    &path_segment(calendar),
+                     id,
+                     &event,
+                     &GcalEventUpdateParams::default(),
+@@ -425,7 +425,7 @@ impl GcalClient {
+         check_revision(id, &events, if_match)?;
+         let etag = events.first().and_then(|event| event.etag.clone());
+ 
+-        self.op(|gcal| gcal.event_delete(calendar, id, None, etag.as_deref()))
++        self.op(|gcal| gcal.event_delete(&path_segment(calendar), id, None, etag.as_deref()))
+             .with_context(|| format!("Delete event {id} of {calendar} error"))?;
+         Ok(())
+     }
+@@ -487,6 +487,15 @@ fn is_not_found(err: &GcalClientStdError) -> bool {
+     matches!(err, GcalClientStdError::Send(send) if send.status() == Some(404))
+ }
+ 
++/// A calendar id as one URL path segment: io-gcal joins it into the path
++/// as is, and a holiday calendar's `#` would otherwise start the fragment.
++fn path_segment(id: &str) -> String {
++    id.replace('%', "%25")
++        .replace('#', "%23")
++        .replace('?', "%3F")
++        .replace('/', "%2F")
++}
++
+ /// Reads a whole iCalendar body as raw bytes.
+ fn read_ical(mut source: impl Read) -> Result<Vec<u8>> {
+     let mut ical = Vec::new();

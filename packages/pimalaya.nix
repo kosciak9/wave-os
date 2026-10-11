@@ -65,6 +65,9 @@ in
       # Google answers 404 for the series of a lone occurrence of someone
       # else's recurring event, which otherwise fails the whole calendar.
       ./patches/neverest-gcal-orphan-instances.patch
+      # io-gcal puts a calendar id into the URL path unescaped, and the `#` of a
+      # holiday calendar's id cuts the path short.
+      ./patches/neverest-gcal-encode-calendar-id.patch
       # Gmail rate limits otherwise fail a whole fetch batch, which the next
       # run then restarts from scratch.
       ./patches/neverest-gmail-rate-limit.patch
