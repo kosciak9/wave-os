@@ -2,7 +2,7 @@
   "$schema": "https://vicinae.com/schemas/extension.json",
   "name": "himalaya",
   "title": "Himalaya",
-  "description": "Read and archive mail from a unified inbox",
+  "description": "Read, archive and trash mail from a unified inbox",
   "icon": "icon.svg",
   "author": "wave-os",
   "license": "MIT",
@@ -12,7 +12,7 @@
       "name": "inbox",
       "title": "Inbox",
       "subtitle": "Himalaya",
-      "description": "Search, read and archive mail across all accounts",
+      "description": "Search, read, archive and trash mail across all accounts",
       "mode": "view"
     }
   ],

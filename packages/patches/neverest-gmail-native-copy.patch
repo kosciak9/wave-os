@@ -1,0 +1,60 @@
+--- a/src/gmail/client.rs
++++ b/src/gmail/client.rs
+@@ -620,6 +620,18 @@
+         Ok(())
+     }
+ 
++    /// Files an inbox message without importing it; trashing removes INBOX.
++    pub fn copy_inbox_item(&mut self, to: &str, id: &str) -> Result<()> {
++        let label = self.label_id(to)?;
++        let remove = if label == TRASH {
++            vec!["INBOX".to_string()]
++        } else {
++            Vec::new()
++        };
++        self.modify(&[id], &[label], &remove)
++            .with_context(|| format!("Copy message {id} to {to} error"))
++    }
++
+     /// Moves messages from one label to another in one modify each batch.
+     pub fn move_items(&mut self, from: &str, to: &str, ids: &[&str]) -> Result<()> {
+         let from_label = self.label_id(from)?;
+--- a/src/offline/remote.rs
++++ b/src/offline/remote.rs
+@@ -421,12 +421,35 @@
+                     link_id,
+                     flags,
+                     object,
+-                    ..
++                    origin,
+                 } => {
+                     let link = link_id
+                         .as_ref()
+                         .map(|link| self.kind.split_link_id(link))
+                         .unwrap_or_default();
++                    // An inbox move's target can sync first, including after a
++                    // refused move. Reuse the Gmail message instead of importing it.
++                    #[cfg(feature = "gmail")]
++                    if link.mint.is_none()
++                        && let Some(origin) = origin.as_ref()
++                        && wire_name(&self.namespace, origin.collection.as_str())
++                            .eq_ignore_ascii_case("INBOX")
++                        && let Client::Gmail(client) = self.pool.primary()
++                    {
++                        let copied = client.copy_inbox_item(&collection, origin.handle.as_str());
++                        results.push(match copied {
++                            Ok(()) => {
++                                self.held.claim(&collection, origin.handle.as_str());
++                                accepted(handle, Some(origin.handle.clone()))
++                            }
++                            Err(err) => {
++                                self.reject(&collection, handle, "copy", format!("{err:#}"))
++                            }
++                        });
++                        continue;
++                    }
++                    #[cfg(not(feature = "gmail"))]
++                    let _ = origin;
+                     self.append(&collection, handle, &flags, object, link)
+                 }
+                 PimdirChangeKind::Update {

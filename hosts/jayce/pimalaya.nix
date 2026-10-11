@@ -92,7 +92,6 @@ let
         pool-size = 1;
         collection.filter.exclude = [
           "SPAM"
-          "TRASH"
         ];
       };
       gcal.auth.token.command = accessToken account;
@@ -139,6 +138,7 @@ let
           inbox = "gmail/INBOX";
           sent = "gmail/SENT";
           drafts = "gmail/DRAFT";
+          trash = "gmail/TRASH";
         };
       })
       // {

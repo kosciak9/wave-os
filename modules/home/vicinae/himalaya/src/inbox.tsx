@@ -1,11 +1,13 @@
 import {
   Action,
   ActionPanel,
+  Alert,
   Detail,
   Icon,
   Keyboard,
   List,
   Toast,
+  confirmAlert,
   showToast,
   useNavigation,
 } from "@vicinae/api";
@@ -24,9 +26,11 @@ import {
   loadInbox,
   readMail,
   sender,
+  trashMail,
 } from "./mail";
 
 const archiveShortcut: Keyboard.Shortcut = { modifiers: ["ctrl"], key: "e" };
+type InboxRemoval = "archive" | "trash";
 
 type InboxState =
   | { status: "loading" }
@@ -42,13 +46,13 @@ function MessageDetail({
   body,
   notice,
   confirmation,
-  archive,
+  removeFromInbox,
 }: {
   message: Mail;
   body: string;
   notice: string;
   confirmation: Promise<string>;
-  archive: (message: Mail) => Promise<void>;
+  removeFromInbox: (message: Mail, operation: InboxRemoval) => Promise<void>;
 }) {
   const { pop } = useNavigation();
   const [busy, setBusy] = useState(true);
@@ -65,6 +69,15 @@ function MessageDetail({
       active = false;
     };
   }, [confirmation]);
+  async function remove(operation: InboxRemoval) {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await removeFromInbox(message, operation);
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <Detail
       navigationTitle={escapeMarkup(message.subject || "No subject")}
@@ -96,12 +109,13 @@ function MessageDetail({
             title={busy ? "Waiting for mail operation…" : "Archive"}
             icon={Icon.Box}
             shortcut={archiveShortcut}
-            onAction={async () => {
-              if (busy) return;
-              setBusy(true);
-              await archive(message);
-              setBusy(false);
-            }}
+            onAction={() => remove("archive")}
+          />
+          <Action
+            title="Move to Trash"
+            icon={Icon.Trash}
+            style={Action.Style.Destructive}
+            onAction={() => remove("trash")}
           />
           <Action title="Back to Inbox" icon={Icon.ArrowLeft} onAction={pop} />
         </ActionPanel>
@@ -117,7 +131,7 @@ export default function Inbox() {
   const [busy, setBusy] = useState(false);
   const [writeNotices, setWriteNotices] = useState<Record<string, string>>({});
   const [selectedId, setSelectedId] = useState("");
-  const [advanceAfterArchive, setAdvanceAfterArchive] = useState(false);
+  const [advanceAfterRemoval, setAdvanceAfterRemoval] = useState(false);
   const inFlight = useRef(false);
   const generation = useRef(0);
   const { push, pop } = useNavigation();
@@ -208,16 +222,39 @@ export default function Inbox() {
     return notice;
   }
 
-  async function archive(message: Mail): Promise<boolean> {
+  async function removeFromInbox(
+    message: Mail,
+    operation: InboxRemoval,
+  ): Promise<boolean> {
     if (inFlight.current) return false;
     inFlight.current = true;
     setBusy(true);
-    const toast = await showToast({
-      style: Toast.Style.Animated,
-      title: "Archiving…",
-    });
+    let toast: Toast | undefined;
     try {
-      const result = await archiveMail(message);
+      if (
+        operation === "trash" &&
+        !(await confirmAlert({
+          title: "Move message to Trash?",
+          message: escapeMarkup(
+            `“${message.subject || "No subject"}” (${message.account.name}) will be moved to Trash, not permanently deleted.`,
+          ),
+          primaryAction: {
+            title: "Move to Trash",
+            style: Alert.ActionStyle.Destructive,
+          },
+          dismissAction: { title: "Cancel", style: Alert.ActionStyle.Cancel },
+          rememberUserChoice: false,
+        }))
+      )
+        return false;
+      toast = await showToast({
+        style: Toast.Style.Animated,
+        title: operation === "archive" ? "Archiving…" : "Moving to Trash…",
+      });
+      const result =
+        operation === "archive"
+          ? await archiveMail(message)
+          : await trashMail(message);
       setState((current) =>
         current.status !== "ready"
           ? current
@@ -243,13 +280,25 @@ export default function Inbox() {
         message.account.name,
         result.write,
         result.badgeRefreshed,
-        "Archived",
+        operation === "archive" ? "Archived" : "Moved to Trash",
       );
       return true;
     } catch (error) {
-      toast.style = Toast.Style.Failure;
-      toast.title = "Archive not confirmed";
-      toast.message = errorText(error);
+      const title =
+        operation === "archive"
+          ? "Archive not confirmed"
+          : "Move to Trash not confirmed";
+      if (toast) {
+        toast.style = Toast.Style.Failure;
+        toast.title = title;
+        toast.message = errorText(error);
+      } else {
+        await showToast({
+          style: Toast.Style.Failure,
+          title,
+          message: errorText(error),
+        });
+      }
       return false;
     } finally {
       inFlight.current = false;
@@ -325,10 +374,10 @@ export default function Inbox() {
               : "Message opened; confirming Seen and sync status…"
           }
           confirmation={confirmation}
-          archive={async (current) => {
-            if (await archive(current)) {
+          removeFromInbox={async (current, operation) => {
+            if (await removeFromInbox(current, operation)) {
               pop();
-              setAdvanceAfterArchive(true);
+              setAdvanceAfterRemoval(true);
             }
           }}
         />,
@@ -367,21 +416,21 @@ export default function Inbox() {
   const errors = inboxes.filter((inbox) => inbox.error !== null);
   // Native selection provides the next visible fuzzy-ranked item; do not duplicate its filtering.
   useEffect(() => {
-    if (!advanceAfterArchive) return;
+    if (!advanceAfterRemoval) return;
     if (
       messages.length === 0 ||
       selectedId.startsWith("error:") ||
       selectedId.startsWith("pending:") ||
       selectedId.startsWith("loading:")
     ) {
-      setAdvanceAfterArchive(false);
+      setAdvanceAfterRemoval(false);
       return;
     }
     const next = messages.find((message) => message.key === selectedId);
     if (!next || inFlight.current) return;
-    setAdvanceAfterArchive(false);
+    setAdvanceAfterRemoval(false);
     void open(next);
-  }, [advanceAfterArchive, selectedId, state]);
+  }, [advanceAfterRemoval, selectedId, state]);
   const writeNotice = Object.entries(writeNotices)
     .map(([account, notice]) => `${account}: ${notice}`)
     .join(" ");
@@ -412,7 +461,7 @@ export default function Inbox() {
       searchBarPlaceholder="Search all inbox subjects and senders…"
       onSearchTextChange={(value) => {
         setSearch(value);
-        setAdvanceAfterArchive(false);
+        setAdvanceAfterRemoval(false);
       }}
       onSelectionChange={setSelectedId}
       navigationTitle={
@@ -429,7 +478,7 @@ export default function Inbox() {
           value={accountFilter}
           onChange={(value) => {
             setAccountFilter(value);
-            setAdvanceAfterArchive(false);
+            setAdvanceAfterRemoval(false);
           }}
           storeValue={false}
         >
@@ -499,7 +548,13 @@ export default function Inbox() {
                 title="Archive"
                 icon={Icon.Box}
                 shortcut={archiveShortcut}
-                onAction={() => archive(message)}
+                onAction={() => removeFromInbox(message, "archive")}
+              />
+              <Action
+                title="Move to Trash"
+                icon={Icon.Trash}
+                style={Action.Style.Destructive}
+                onAction={() => removeFromInbox(message, "trash")}
               />
               {refreshAction}
             </ActionPanel>

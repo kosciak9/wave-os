@@ -25,6 +25,9 @@ const archiveSchema = z.object({
   action: z.literal("archived"),
   count: z.literal(1),
 });
+const moveSchema = z.object({
+  message: z.literal("1 message successfully moved"),
+});
 const queueStatusSchema = z.object({ pending: z.number().int().nonnegative() });
 
 export type Account = z.infer<typeof accountSchema>;
@@ -309,6 +312,40 @@ export async function archiveMail(
   if (!report.success)
     throw new Error(
       "Archive response did not confirm one processed message; refresh before retrying",
+    );
+  return {
+    write: await flushWrite(message.account),
+    badgeRefreshed: await refreshBadge(),
+  };
+}
+
+export async function trashMail(
+  message: Mail,
+): Promise<{ write: WriteStatus; badgeRefreshed: boolean }> {
+  if (message.mailbox !== "inbox")
+    throw new Error("Only inbox messages can be moved to Trash");
+  if (message.account.backends.length === 0)
+    throw new Error(
+      "Himalaya did not identify this account's backend; patched account discovery is required",
+    );
+  // `message delete` can purge messages already in Trash; move never permanently deletes.
+  const report = moveSchema.safeParse(
+    await json([
+      "--account",
+      message.account.name,
+      "message",
+      "move",
+      "--from",
+      "inbox",
+      "--to",
+      "trash",
+      "--",
+      message.id,
+    ]),
+  );
+  if (!report.success)
+    throw new Error(
+      "Move response did not confirm one processed message; refresh before retrying",
     );
   return {
     write: await flushWrite(message.account),

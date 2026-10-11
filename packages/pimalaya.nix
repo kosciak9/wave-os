@@ -68,6 +68,9 @@ in
       # Gmail rate limits otherwise fail a whole fetch batch, which the next
       # run then restarts from scratch.
       ./patches/neverest-gmail-rate-limit.patch
+      # An inbox move's target must reuse the Gmail message, even when it
+      # syncs before the source; importing its body would duplicate it.
+      ./patches/neverest-gmail-native-copy.patch
     ];
   };
   calendula = mkPimalayaCli {
