@@ -7,6 +7,8 @@
         ./patches/gpui-worktree-name-branch.patch
         ./patches/gpui-worktree-terminal.patch
         ./patches/gpui-status-usage.patch
+        ./patches/gpui-nix-config.patch
+        ./patches/gpui-chrome-spacing.patch
       ];
     }))
   ];
@@ -19,17 +21,29 @@
       agent_checkpoints = false;
       theme = "light:kanagawa,dark:kanagawa";
       layout = {
-        mode = "superset";
+        mode = "normal";
         sidebar_gap = 8.0;
       };
-      terminal.family = "Overpass Mono";
-      sidebar.family = "Overpass";
-      tabs.family = "Overpass";
-      ui.family = "Overpass";
-      sidebar.hosts = {
-        Local = "#2B3328";
-        renekton = "#2D4F67";
-        ahri = "#49443C";
+      terminal = {
+        family = "Overpass Mono";
+        size = 15.0;
+      };
+      sidebar = {
+        family = "Overpass";
+        size = 14.0;
+        hosts = {
+          Local = "#2B3328";
+          renekton = "#2D4F67";
+          ahri = "#49443C";
+        };
+      };
+      tabs = {
+        family = "Overpass";
+        size = 14.0;
+      };
+      ui = {
+        family = "Overpass";
+        size = 14.0;
       };
       palette.project_roots = [
         "~/Developer/alergeek"
