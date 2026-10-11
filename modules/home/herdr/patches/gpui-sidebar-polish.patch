@@ -1,0 +1,113 @@
+diff --git a/crates/herdr-gpui/src/sidebar/layout.rs b/crates/herdr-gpui/src/sidebar/layout.rs
+--- a/crates/herdr-gpui/src/sidebar/layout.rs
++++ b/crates/herdr-gpui/src/sidebar/layout.rs
+@@ -242,6 +242,7 @@
+ #[derive(Clone, Copy)]
+ pub(super) struct SidebarLook {
+     pub(super) density: SidebarMetrics,
++    pub(super) text_offset: f32,
+ }
+ 
+ /// Group every row joins, so its highlight layer can follow the row's hover.
+@@ -249,6 +250,22 @@
+ pub(super) const ROW_GROUP: &str = "sidebar-row";
+ 
+ impl SidebarLook {
++    pub(super) fn with_font(
++        mut self,
++        font: &crate::config::FontConfig,
++        window: &gpui::Window,
++    ) -> Self {
++        let text = window.text_system();
++        let id = text.resolve_font(&font.font());
++        let size = px(font.size);
++        // Center the visible capitals, not the font's unequal ascent/descent box.
++        self.text_offset = f32::from(
++            (text.cap_height(id, size) - text.ascent(id, size) + text.descent(id, size)) / 2.,
++        )
++        .clamp(-self.row_padding(), self.row_padding());
++        self
++    }
++
+     pub(super) fn inset(&self) -> f32 {
+         self.density.inset
+     }
+@@ -404,6 +421,7 @@
+ pub(super) fn for_mode(mode: LayoutMode) -> SidebarLook {
+     SidebarLook {
+         density: SidebarMetrics::for_mode(mode),
++        text_offset: 0.,
+     }
+ }
+ 
+@@ -411,5 +429,6 @@
+ pub(super) fn for_config(config: &crate::config::Config) -> SidebarLook {
+     SidebarLook {
+         density: SidebarMetrics::for_mode(config.layout.mode).with(&config.sidebar_style.overrides),
++        text_offset: 0.,
+     }
+ }
+diff --git a/crates/herdr-gpui/src/sidebar/render.rs b/crates/herdr-gpui/src/sidebar/render.rs
+--- a/crates/herdr-gpui/src/sidebar/render.rs
++++ b/crates/herdr-gpui/src/sidebar/render.rs
+@@ -3,7 +3,7 @@
+ //! caches only.
+ 
+ use super::{
+-    DEVICE_FOOTER_HEIGHT, STATUS_WIDTH, SidebarDrag,
++    STATUS_WIDTH, SidebarDrag,
+     agents::Indicators,
+     agents_sort,
+     cell::{Cell, Fold, RowContext, RowData, WorkspaceRow, layout_for},
+@@ -35,7 +35,7 @@
+     ) -> Stateful<Div> {
+         let width = sidebar_width(self.sidebar_width, f32::from(window.viewport_size().width));
+         let split = self.sidebar_split.unwrap_or(0.5).clamp(0.1, 0.9);
+-        let look = layout::for_config(&self.config);
++        let look = layout::for_config(&self.config).with_font(&self.config.sidebar, window);
+         let rows = layout_for(self.config.layout.mode);
+         // The row a workspace menu was opened for keeps looking hovered while
+         // the pointer is over the menu.
+@@ -701,7 +701,6 @@
+                             .child(agents),
+                     )
+             })
+-            .child(self.render_device_footer(cx))
+             .child(
+                 div()
+                     .id("sidebar-resize")
+@@ -769,10 +768,8 @@
+                                                 ));
+                                             }
+                                             SidebarDrag::Split => {
+-                                                let height = (f32::from(bounds.size.height)
+-                                                    - 6.
+-                                                    - DEVICE_FOOTER_HEIGHT)
+-                                                    .max(1.);
++                                                let height =
++                                                    (f32::from(bounds.size.height) - 6.).max(1.);
+                                                 this.sidebar_split = Some(
+                                                     ((f32::from(
+                                                         event.position.y - bounds.origin.y,
+diff --git a/crates/herdr-gpui/src/sidebar/row.rs b/crates/herdr-gpui/src/sidebar/row.rs
+--- a/crates/herdr-gpui/src/sidebar/row.rs
++++ b/crates/herdr-gpui/src/sidebar/row.rs
+@@ -313,7 +313,7 @@
+     let vertical_padding = look.row_padding();
+     // Content starts below the highlight's edge, which sits half the row
+     // spacing in from the row's own.
+-    let content_top = vertical_padding + look.spacing() / 2.;
++    let content_top = vertical_padding + look.spacing() / 2. + look.text_offset;
+     let show_detail = matches!(kind, RowKind::Agent(_))
+         || if tree == RowTree::None {
+             layout.workspace_details()
+@@ -422,7 +422,8 @@
+         .flex()
+         .items_start()
+         .gap(px(gap))
+-        .py(px(content_top))
++        .pt(px(content_top))
++        .pb(px(vertical_padding + look.spacing() / 2. - look.text_offset))
+         .cursor_pointer()
+         .map(|row| cx.mark.apply(row, key, &look))
+         .map(|row| look.mark(row, key, state, theme))

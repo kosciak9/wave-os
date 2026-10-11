@@ -11,6 +11,8 @@
         ./patches/gpui-chrome-spacing.patch
         ./patches/gpui-worktree-tree.patch
         ./patches/gpui-editor-links.patch
+        ./patches/gpui-sidebar-polish.patch
+        ./patches/gpui-claude-reset-credits.patch
       ];
     }))
   ];
@@ -33,6 +35,7 @@
       sidebar = {
         family = "Overpass";
         size = 14.0;
+        row_padding = 4.0;
         hosts = {
           Local = "#2B3328";
           renekton = "#2D4F67";
