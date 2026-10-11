@@ -51,7 +51,6 @@ in
   programs.vicinae = {
     enable = true;
     package = vicinae;
-    extensions = [ passExtension ] ++ lib.optional pkgs.stdenv.hostPlatform.isLinux mailExtension;
     settings = {
       tray.enabled = false;
       font = {
@@ -172,5 +171,13 @@ in
         ]
       }:/run/current-system/sw/bin:/usr/bin:/bin:/usr/sbin:/sbin";
     };
+  };
+
+  # Extension directory names are part of command IDs; package versions must not change them.
+  xdg.dataFile = {
+    "vicinae/extensions/pass".source = passExtension;
+  }
+  // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
+    "vicinae/extensions/himalaya".source = mailExtension;
   };
 }
