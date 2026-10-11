@@ -92,12 +92,16 @@ stdenvNoCC.mkDerivation {
   buildInputs = [ stdenv.cc.cc.lib ];
   dontStrip = true;
 
-  patches = [ ./patches/pr-cockpit-nix-electron.patch ];
+  patches = [
+    ./patches/pr-cockpit-nix-electron.patch
+    ./patches/pr-cockpit-appearance.patch
+  ];
 
   postPatch = ''
     substituteInPlace scripts/cockpit \
       --replace-fail 'runtime_link="''${XDG_DATA_HOME:-$HOME/.local/share}/pr-cockpit-runtime/current"' 'runtime_link="$root"' \
       --replace-fail 'electron_bin="$runtime_root/shell/node_modules/electron/dist/electron"' 'electron_bin="${lib.getExe electron_43}"'
+    cat ${./pr-cockpit-appearance.css} >> ui/src/app.css
   '';
 
   configurePhase = ''
@@ -124,6 +128,7 @@ stdenvNoCC.mkDerivation {
     bun scripts/check-release.ts
     bun scripts/check-worktree-runtime.ts
     bun test shell
+    COCKPIT_DATA_DIR="$TMPDIR/pr-cockpit-check" bun test server/settings.test.ts
     runHook postCheck
   '';
 

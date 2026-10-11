@@ -1,0 +1,103 @@
+
+:root {
+  --overpass-sans: "Overpass Nerd Font", "Overpass", sans-serif;
+  --overpass-mono: "OverpassM Nerd Font", "Overpass Mono", monospace;
+}
+
+[data-font-interface="overpass"] {
+  --sans: var(--overpass-sans);
+}
+
+[data-font-ui="overpass"] {
+  --mono: var(--overpass-mono);
+}
+
+[data-font-code="overpass"] {
+  --code-font: var(--overpass-mono);
+}
+
+[data-font-comments="overpass"] {
+  --md-font: var(--overpass-sans);
+}
+
+[data-palette="kanagawa"] {
+  --bg: oklch(0.203458 0.013862 285.102);
+  --panel: var(--bg);
+  --panel-raised: oklch(0.290684 0.023569 284.840);
+  --surface: oklch(0.243319 0.017046 285.064);
+  --surface-hover: color-mix(in oklch, var(--surface) 85%, var(--text));
+  --surface-pressed: color-mix(in oklch, var(--surface) 92%, var(--text));
+  --border: oklch(0.339610 0.027903 284.818);
+  --border-soft: var(--panel-raised);
+  --border-hover: oklch(0.455763 0.040519 284.679);
+  --text: oklch(0.875521 0.039108 99.086);
+  --text-dim: oklch(0.803091 0.060817 99.153);
+  --text-faint: oklch(0.547036 0.012207 100.991);
+  --native-accent: oklch(0.693714 0.095060 263.657);
+  --native-blue: var(--native-accent);
+  --native-gray: var(--text-faint);
+  --native-green: oklch(0.747686 0.112469 128.362);
+  --native-orange: oklch(0.790658 0.135149 51.139);
+  --native-purple: oklch(0.638046 0.086991 301.697);
+  --native-red: oklch(0.671044 0.154443 15.272);
+  --native-yellow: oklch(0.833239 0.089865 81.644);
+  --native-on-accent: var(--bg);
+  --native-focus: var(--native-accent);
+  --focus-ring: color-mix(in oklch, var(--native-focus) 35%, transparent);
+  --ghost-hover: color-mix(in oklch, var(--text) 7%, transparent);
+  --ghost-pressed: color-mix(in oklch, var(--text) 10%, transparent);
+  --brand-hover: color-mix(in oklch, var(--native-accent) 85%, white);
+  --brand-pressed: color-mix(in oklch, var(--native-accent) 90%, black);
+  --brand-disabled: color-mix(in oklch, var(--native-accent) 30%, var(--bg));
+  --disabled-fg: var(--text-faint);
+  --disabled-bg: var(--surface);
+  --switch-unchecked: var(--border);
+  --switch-unchecked-hover: var(--border-hover);
+  --switch-unchecked-pressed: var(--surface-pressed);
+  --switch-thumb: var(--text);
+  --fail: var(--native-red);
+  --fail-bg: color-mix(in oklch, var(--fail) 14%, var(--bg));
+  --review: var(--native-orange);
+  --review-bg: color-mix(in oklch, var(--review) 13%, var(--bg));
+  --ready: var(--native-green);
+  --ready-bg: color-mix(in oklch, var(--ready) 13%, var(--bg));
+  --wait: var(--text-dim);
+  --wait-bg: color-mix(in oklch, var(--wait) 9%, var(--bg));
+  --merged: var(--native-purple);
+  --merged-bg: color-mix(in oklch, var(--merged) 14%, var(--bg));
+  --closed: var(--native-red);
+  --closed-bg: var(--fail-bg);
+  --add-bg: color-mix(in oklch, var(--native-green) 13%, var(--bg));
+  --add-bg-intra: color-mix(in oklch, var(--native-green) 26%, transparent);
+  --add-gutter: var(--native-green);
+  --del-bg: color-mix(in oklch, var(--native-red) 14%, var(--bg));
+  --del-bg-intra: color-mix(in oklch, var(--native-red) 26%, transparent);
+  --del-gutter: var(--native-red);
+  --md-body: var(--text);
+  --link: var(--native-accent);
+  --link-bg: color-mix(in oklch, var(--link) 14%, var(--bg));
+  --link-bg-hover: color-mix(in oklch, var(--link) 22%, var(--bg));
+  --code-bg: var(--surface);
+  --code-fg: var(--text);
+  --code-block-bg: var(--bg);
+  --hunk-hover: var(--surface-hover);
+  --inline-thread-bg: var(--surface);
+  --ln-tint: color-mix(in oklch, var(--text) 3%, transparent);
+  --overlay-bg: color-mix(in oklch, var(--bg) 85%, transparent);
+  --meta-sep: var(--border-hover);
+  --scroll: var(--border);
+  --scroll-hover: var(--border-hover);
+}
+
+@media (prefers-contrast: more) {
+  [data-palette="kanagawa"] {
+    --border: var(--text-dim);
+    --border-hover: var(--text);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  [data-palette="kanagawa"] {
+    --overlay-bg: var(--panel);
+  }
+}

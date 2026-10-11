@@ -1,0 +1,204 @@
+diff --git a/server/settings.ts b/server/settings.ts
+--- a/server/settings.ts
++++ b/server/settings.ts
+@@ -18,8 +18,8 @@
+ export type AgentTrigger = "keybind" | "activity";
+ export type AgentModel = "opus" | "sonnet";
+-export type ThemePreference = "system" | "dark" | "light";
+-export type FontPreference = "default" | "alacritty";
+-export type CodeTheme = "github" | "catppuccin";
++export type ThemePreference = "system" | "dark" | "light" | "kanagawa";
++export type FontPreference = "default" | "alacritty" | "overpass";
++export type CodeTheme = "github" | "catppuccin" | "kanagawa";
+ export type DiffLayout = "unified" | "split";
+ export type InboxLabels = "off" | "dot" | "name";
+
+@@ -108,13 +108,13 @@
+ export function normalizeThemePreference(value: unknown): ThemePreference {
+-  return value === "light" || value === "dark" || value === "system" ? value : "system";
++  return value === "light" || value === "dark" || value === "system" || value === "kanagawa" ? value : "system";
+ }
+
+ export function normalizeFontPreference(value: unknown): FontPreference {
+-  return value === "alacritty" ? "alacritty" : "default";
++  return value === "alacritty" || value === "overpass" ? value : "default";
+ }
+
+ export function normalizeCodeTheme(value: unknown): CodeTheme {
+-  return value === "catppuccin" ? "catppuccin" : "github";
++  return value === "catppuccin" || value === "kanagawa" ? value : "github";
+ }
+
+ export function normalizeDiffLayout(value: unknown): DiffLayout {
+diff --git a/shell/main.js b/shell/main.js
+--- a/shell/main.js
++++ b/shell/main.js
+@@ -162,9 +162,10 @@
+ function normalizeThemePreference(value) {
+-  return value === "light" || value === "dark" || value === "system" ? value : "system";
++  return value === "light" || value === "dark" || value === "system" || value === "kanagawa" ? value : "system";
+ }
+
+ function windowBackgroundColor() {
++  if (shellThemePreference === "kanagawa") return "#16161d";
+   const isLight = shellThemePreference === "light" || (shellThemePreference === "system" && !nativeTheme.shouldUseDarkColors);
+   return isLight ? "#ffffff" : "#171717";
+ }
+
+@@ -181,7 +182,7 @@
+   perViewSizeEnabled = data.per_view_window_size === true;
+   perViewPositionEnabled = data.per_view_window_position === true;
+   shellThemePreference = normalizeThemePreference(data.theme);
+-  nativeTheme.themeSource = shellThemePreference;
++  nativeTheme.themeSource = shellThemePreference === "kanagawa" ? "dark" : shellThemePreference;
+   syncWindowBackground();
+ }
+
+@@ -1042,7 +1043,7 @@
+     async function applyShortcuts() {
+       const settings = await fetchSettings();
+       shellThemePreference = normalizeThemePreference(settings?.theme);
+-      nativeTheme.themeSource = shellThemePreference;
++      nativeTheme.themeSource = shellThemePreference === "kanagawa" ? "dark" : shellThemePreference;
+       syncWindowBackground();
+       if (!isManaged) return; // dev instance: don't steal the installed app's global shortcuts
+       const shortcuts = configuredShortcuts(process.platform, settings);
+diff --git a/ui/src/lib/theme.svelte.js b/ui/src/lib/theme.svelte.js
+--- a/ui/src/lib/theme.svelte.js
++++ b/ui/src/lib/theme.svelte.js
+@@ -9,6 +9,10 @@
+     light: "catppuccin-latte",
+     dark: "catppuccin-mocha",
+   },
++  kanagawa: {
++    light: "kanagawa-lotus",
++    dark: "kanagawa-wave",
++  },
+ };
+
+ function systemTheme() {
+@@ -18,13 +22,13 @@
+ function normalizePreference(value) {
+-  return value === "light" || value === "dark" || value === "system" ? value : "system";
++  return value === "light" || value === "dark" || value === "system" || value === "kanagawa" ? value : "system";
+ }
+
+ function normalizeCodeTheme(value) {
+-  return value === "catppuccin" ? "catppuccin" : "github";
++  return value === "catppuccin" || value === "kanagawa" ? value : "github";
+ }
+
+ function normalizeFont(value) {
+-  return value === "alacritty" ? "alacritty" : "default";
++  return value === "alacritty" || value === "overpass" ? value : "default";
+ }
+
+ function normalizeScale(value) {
+@@ -47,10 +51,11 @@
+ function applyTheme(preference) {
+-  const next = preference === "system" ? systemTheme() : preference;
++  const next = preference === "system" ? systemTheme() : preference === "kanagawa" ? "dark" : preference;
+   theme.preference = preference;
+   theme.name = next;
+   theme.shiki = SHIKI_THEMES[theme.codeTheme][next];
+   if (typeof document !== "undefined") {
+     document.documentElement.setAttribute("data-theme", next);
+-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", next === "light" ? "#ffffff" : "#171716");
++    document.documentElement.setAttribute("data-palette", preference === "kanagawa" ? "kanagawa" : "default");
++    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", preference === "kanagawa" ? "#16161d" : next === "light" ? "#ffffff" : "#171716");
+   }
+ }
+diff --git a/ui/src/lib/Settings.svelte b/ui/src/lib/Settings.svelte
+--- a/ui/src/lib/Settings.svelte
++++ b/ui/src/lib/Settings.svelte
+@@ -680,6 +680,7 @@
+               <option value="system">System</option>
+               <option value="dark">Dark</option>
+               <option value="light">Light</option>
++              <option value="kanagawa">Kanagawa</option>
+             </select>
+           </label>
+
+@@ -689,6 +690,7 @@
+             <select class="input narrow" bind:value={codeTheme}>
+               <option value="github">GitHub</option>
+               <option value="catppuccin">Catppuccin</option>
++              <option value="kanagawa">Kanagawa</option>
+             </select>
+           </label>
+
+@@ -711,6 +713,7 @@
+             <select class="input narrow" bind:value={fontInterface}>
+               <option value="default">Default</option>
+               <option value="alacritty">Alacritty — 0xProto</option>
++              <option value="overpass">Overpass</option>
+             </select>
+           </label>
+
+@@ -719,6 +722,7 @@
+             <select class="input narrow" bind:value={fontUi}>
+               <option value="default">Default</option>
+               <option value="alacritty">Alacritty — 0xProto</option>
++              <option value="overpass">Overpass Mono</option>
+             </select>
+           </label>
+
+@@ -727,6 +731,7 @@
+             <select class="input narrow" bind:value={fontCode}>
+               <option value="default">Default</option>
+               <option value="alacritty">Alacritty — 0xProto</option>
++              <option value="overpass">Overpass Mono</option>
+             </select>
+           </label>
+
+@@ -735,6 +740,7 @@
+             <select class="input narrow" bind:value={fontComments}>
+               <option value="default">Default</option>
+               <option value="alacritty">Alacritty — 0xProto</option>
++              <option value="overpass">Overpass</option>
+             </select>
+           </label>
+           </div>
+diff --git a/ui/src/lib/highlight.js b/ui/src/lib/highlight.js
+--- a/ui/src/lib/highlight.js
++++ b/ui/src/lib/highlight.js
+@@ -3,6 +3,8 @@
+   "github-light-default": () => import("shiki/themes/github-light-default.mjs"),
+   "catppuccin-latte": () => import("shiki/themes/catppuccin-latte.mjs"),
+   "catppuccin-mocha": () => import("shiki/themes/catppuccin-mocha.mjs"),
++  "kanagawa-wave": () => import("shiki/themes/kanagawa-wave.mjs"),
++  "kanagawa-lotus": () => import("shiki/themes/kanagawa-lotus.mjs"),
+ };
+
+ const LANG_BY_EXT = {
+@@ -27,6 +29,9 @@
+   sql: "sql",
+   sh: "bash",
+   bash: "bash",
++  nix: "nix",
++  ex: "elixir",
++  exs: "elixir",
+ };
+
+ export function langForPath(path) {
+@@ -59,6 +64,8 @@
+         import("shiki/langs/html.mjs"),
+         import("shiki/langs/sql.mjs"),
+         import("shiki/langs/bash.mjs"),
++        import("shiki/langs/nix.mjs"),
++        import("shiki/langs/elixir.mjs"),
+         import("shiki/langs/diff.mjs"),
+       ]);
+       return createHighlighterCore({
+diff --git a/ui/src/lib/codeHighlight.svelte.js b/ui/src/lib/codeHighlight.svelte.js
+--- a/ui/src/lib/codeHighlight.svelte.js
++++ b/ui/src/lib/codeHighlight.svelte.js
+@@ -31,4 +31,8 @@
+   bash: "bash",
+   shell: "bash",
++  nix: "nix",
++  elixir: "elixir",
++  ex: "elixir",
++  exs: "elixir",
+   diff: "diff",
+ };
