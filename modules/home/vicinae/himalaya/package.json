@@ -1,0 +1,37 @@
+{
+  "$schema": "https://vicinae.com/schemas/extension.json",
+  "name": "himalaya",
+  "title": "Himalaya",
+  "description": "Read and archive mail from a unified inbox",
+  "icon": "icon.svg",
+  "author": "wave-os",
+  "license": "MIT",
+  "version": "1.0.0",
+  "commands": [
+    {
+      "name": "inbox",
+      "title": "Inbox",
+      "subtitle": "Himalaya",
+      "description": "Search, read and archive mail across all accounts",
+      "mode": "view"
+    }
+  ],
+  "dependencies": {
+    "@vicinae/api": "0.22.2",
+    "react": "19.0.0",
+    "sanitize-html": "2.18.0",
+    "turndown": "7.2.4",
+    "zod": "4.0.17"
+  },
+  "devDependencies": {
+    "@types/node": "24.3.0",
+    "@types/react": "19.0.10",
+    "@types/sanitize-html": "2.16.2",
+    "@types/turndown": "5.0.6",
+    "typescript": "5.9.2"
+  },
+  "scripts": {
+    "build": "vici build",
+    "typecheck": "tsc --noEmit"
+  }
+}

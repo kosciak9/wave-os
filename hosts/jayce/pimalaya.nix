@@ -8,6 +8,9 @@
 
 let
   pimalaya = pkgs.callPackage ../../packages/pimalaya.nix { };
+  himalayaPackage = pkgs.himalaya.overrideAttrs (oldAttrs: {
+    patches = (oldAttrs.patches or [ ]) ++ [ ../../packages/patches/himalaya-archive.patch ];
+  });
   toml = pkgs.formats.toml { };
   jq = lib.getExe pkgs.jq;
 
@@ -80,8 +83,7 @@ let
 
   neverestConfig = toml.generate "neverest.toml" {
     accounts = forAccounts (account: {
-      # A read-only mirror: Google stays authoritative and local edits are dropped.
-      one-way = true;
+      one-way = false;
       store.root = storeRoot account;
       # Google's per-user minute quotas are fixed and neverest does not back off
       # on 429, so these sources fetch one item at a time.
@@ -139,13 +141,18 @@ let
         };
       })
       // {
-        # Bridge accepts plain authentication on loopback without TLS.
-        personal.imap = {
-          server = "imap://${bridgeImap.host}:${toString bridgeImap.port}";
-          sasl.plain.password.command = [
-            cat
-            protonPassword
-          ];
+        personal = {
+          mailbox.alias = {
+            inbox = "INBOX";
+            archive = "Archive";
+          };
+          imap = {
+            server = "imap://${bridgeImap.host}:${toString bridgeImap.port}";
+            sasl.plain.password.command = [
+              cat
+              protonPassword
+            ];
+          };
         };
       };
   };
@@ -154,7 +161,7 @@ let
   himalaya = pkgs.writeShellApplication {
     name = "himalaya";
     text = ''
-      exec ${lib.getExe pkgs.himalaya} -c "${himalayaConfig}:/dev/fd/3" "$@" 3< <(
+      exec ${lib.getExe himalayaPackage} -c "${himalayaConfig}:/dev/fd/3" "$@" 3< <(
         printf '[accounts.personal.imap.sasl.plain]\nusername = "%s"\n' "$(< '${protonAddress}')"
       )
     '';
@@ -194,7 +201,7 @@ in
     pimalaya.neverest
     pimalaya.calendula
     pimalaya.cardamum
-    pkgs.himalaya
+    himalayaPackage
     agenda
   ];
   programs.zsh.generatedCompletions = {

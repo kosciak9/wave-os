@@ -1,0 +1,338 @@
+diff --git a/src/account/list.rs b/src/account/list.rs
+--- a/src/account/list.rs
++++ b/src/account/list.rs
+@@ -126,6 +126,10 @@ impl AccountRow {
+         if account.mbox.is_some() {
+             backends.push("mbox");
+         }
++        #[cfg(feature = "pimdir")]
++        if account.pimdir.is_some() {
++            backends.push("pimdir");
++        }
+         if account.smtp.is_some() {
+             backends.push("smtp");
+         }
+diff --git a/src/gmail/backend.rs b/src/gmail/backend.rs
+index 4dce580..e56e8c9 100644
+--- a/src/gmail/backend.rs
++++ b/src/gmail/backend.rs
+@@ -262,6 +262,15 @@ impl GmailClient {
+         Ok(ids.len())
+     }
+ 
++    /// Archives messages by removing only their INBOX label.
++    pub fn archive_messages(&mut self, ids: &[&str]) -> Result<usize> {
++        let remove = vec![String::from("INBOX")];
++        for id in ids {
++            self.message_modify(id, &[], &remove)?;
++        }
++        Ok(ids.len())
++    }
++
+     /// Permanently deletes `ids` (`users.messages.delete`).
+     pub fn delete_messages(&mut self, ids: &[&str]) -> Result<()> {
+         for id in ids {
+diff --git a/src/pimdir/client.rs b/src/pimdir/client.rs
+--- a/src/pimdir/client.rs
++++ b/src/pimdir/client.rs
+@@ -86,6 +86,19 @@ impl PimdirClient {
+ }
+ 
+ impl PimdirClient {
++    /// Counts all outstanding raw actions in this store, including parked ones.
++    pub fn pending_actions_count(&self) -> Result<usize> {
++        let pending = self
++            .store
++            .list_pending_actions()
++            .map_err(|err| anyhow!("Read pending pimdir actions: {err}"))?;
++        let parked = self
++            .store
++            .parked_actions()
++            .map_err(|err| anyhow!("Read parked pimdir actions: {err}"))?;
++        Ok(pending.len() + parked.len())
++    }
++
+     /// Cancels one queued action, reporting whether there was a row.
+     ///
+     /// Cancelling is an owner write, and the only retraction a queued
+diff --git a/src/pimdir/queue/cli.rs b/src/pimdir/queue/cli.rs
+--- a/src/pimdir/queue/cli.rs
++++ b/src/pimdir/queue/cli.rs
+@@ -10,7 +10,10 @@ use crate::{
+     account::context::Account,
+     pimdir::{
+         client::PimdirClient,
+-        queue::{cancel::PimdirQueueCancelCommand, list::PimdirQueueListCommand},
++        queue::{
++            cancel::PimdirQueueCancelCommand, list::PimdirQueueListCommand,
++            status::PimdirQueueStatusCommand,
++        },
+     },
+ };
+ 
+@@ -28,6 +31,7 @@ pub enum PimdirQueueCommand {
+     #[command(alias = "ls")]
+     List(PimdirQueueListCommand),
+     Cancel(PimdirQueueCancelCommand),
++    Status(PimdirQueueStatusCommand),
+ }
+ 
+ impl PimdirQueueCommand {
+@@ -41,6 +45,7 @@ impl PimdirQueueCommand {
+         match self {
+             Self::List(cmd) => cmd.execute(printer, account, client),
+             Self::Cancel(cmd) => cmd.execute(printer, client),
++            Self::Status(cmd) => cmd.execute(printer, client),
+         }
+     }
+ }
+diff --git a/src/pimdir/queue/mod.rs b/src/pimdir/queue/mod.rs
+--- a/src/pimdir/queue/mod.rs
++++ b/src/pimdir/queue/mod.rs
+@@ -6,3 +6,4 @@
+ pub mod cancel;
+ pub mod cli;
+ pub mod list;
++pub mod status;
+diff --git a/src/pimdir/queue/status.rs b/src/pimdir/queue/status.rs
+new file mode 100644
+--- /dev/null
++++ b/src/pimdir/queue/status.rs
+@@ -0,0 +1,39 @@
++//! Raw pimdir queue status, without reading message bodies.
++
++use std::fmt;
++
++use anyhow::Result;
++use clap::Parser;
++use pimalaya_cli::printer::Printer;
++use schemars::JsonSchema;
++use serde::Serialize;
++
++use crate::pimdir::client::PimdirClient;
++
++/// Count all outstanding actions across the store, including parked actions.
++///
++/// Includes every action kind and producer, not only queued message creations.
++/// A shared store counts other accounts too, conservatively refusing to report
++/// a fully drained queue while any writes remain outstanding.
++#[derive(Debug, Parser)]
++pub struct PimdirQueueStatusCommand;
++
++impl PimdirQueueStatusCommand {
++    /// Reports how many raw queue actions remain outstanding.
++    pub fn execute(self, printer: &mut impl Printer, client: &mut PimdirClient) -> Result<()> {
++        printer.out(PimdirQueueStatus {
++            pending: client.pending_actions_count()?,
++        })
++    }
++}
++
++#[derive(Debug, Serialize, JsonSchema)]
++pub struct PimdirQueueStatus {
++    pub pending: usize,
++}
++
++impl fmt::Display for PimdirQueueStatus {
++    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
++        write!(f, "{} outstanding pimdir action(s)", self.pending)
++    }
++}
+diff --git a/src/shared/client.rs b/src/shared/client.rs
+index feeb7d1..01bf3d6 100644
+--- a/src/shared/client.rs
++++ b/src/shared/client.rs
+@@ -425,6 +425,70 @@ impl EmailClient {
+         }
+     }
+ 
++    /// Archives inbox messages, using removal only for known Gmail storage.
++    #[cfg(backend)]
++    pub fn archive_messages(&mut self, account: &Account, ids: &[&str]) -> Result<usize> {
++        let inbox = match account.mailbox_alias.get("inbox") {
++            Some(inbox) => inbox.clone(),
++            None => self.role_mailbox_id(&MailboxRole::Inbox)?.ok_or_else(|| {
++                anyhow!("Cannot determine the inbox mailbox; set `mailbox.alias.inbox`")
++            })?,
++        };
++        let inbox = self.resolve_mailbox_id(&inbox)?;
++
++        match self.storage_mut()? {
++            #[cfg(feature = "gmail")]
++            BackendClient::Gmail(client) => {
++                if inbox != "INBOX" {
++                    bail!("Gmail archive requires the INBOX mailbox");
++                }
++                return client.archive_messages(ids);
++            }
++            #[cfg(feature = "pimdir")]
++            BackendClient::Pimdir(client) => {
++                let collection = client.hub_id(&inbox)?;
++                if collection == "gmail/INBOX" {
++                    // Neverest removes only the label for Remove in gmail/INBOX.
++                    // No other pimdir collection is safe to archive by deletion.
++                    client.delete_messages(&collection, ids)?;
++                    return Ok(ids.len());
++                }
++                if collection.starts_with("gmail/") {
++                    bail!("Gmail pimdir archive requires the gmail/INBOX collection");
++                }
++            }
++            #[allow(unreachable_patterns)]
++            _ => {}
++        }
++
++        let archive = match account.mailbox_alias.get("archive") {
++            Some(archive) => archive.clone(),
++            None => self
++                .role_mailbox_id(&MailboxRole::Archive)?
++                .ok_or_else(|| {
++                    anyhow!("Cannot determine the archive mailbox; set `mailbox.alias.archive`")
++                })?,
++        };
++        let archive = self.resolve_mailbox_id(&archive)?;
++        if archive == inbox {
++            bail!("The archive mailbox must differ from the inbox");
++        }
++        if let Some(trash) = account.mailbox_alias.get("trash")
++            && self.resolve_mailbox_id(trash)? == archive
++        {
++            bail!("The archive mailbox must not be the trash");
++        }
++        let mailboxes = self.list_mailboxes(false)?;
++        let destination = mailboxes
++            .iter()
++            .find(|mailbox| mailbox.id == archive)
++            .ok_or_else(|| anyhow!("Archive mailbox `{archive}` does not exist"))?;
++        if destination.role == Some(MailboxRole::Trash) {
++            bail!("The archive mailbox must not be the trash");
++        }
++        self.move_messages(&inbox, &archive, ids)
++    }
++
+     /// The id of the mailbox the backend marks with `role`, `None` when it
+     /// marks none.
+     ///
+@@ -544,6 +608,11 @@ impl EmailClient {
+     /// which is what lets a caller compare a mailbox against the trash.
+     pub fn resolve_mailbox_id(&mut self, mailbox: &str) -> Result<String> {
+         match self.storage_mut()? {
++            #[cfg(feature = "maildir")]
++            BackendClient::Maildir(client) => Ok(client
++                .resolve_maildir(std::path::Path::new(mailbox))?
++                .path()
++                .to_string()),
+             #[cfg(feature = "jmap")]
+             BackendClient::Jmap(client) => client.resolve_mailbox_id(mailbox),
+             #[cfg(feature = "gmail")]
+diff --git a/src/shared/message/archive.rs b/src/shared/message/archive.rs
+new file mode 100644
+--- /dev/null
++++ b/src/shared/message/archive.rs
+@@ -0,0 +1,58 @@
++//! # Message archive
++//!
++//! Archive inbox messages without sending them to the trash.
++
++use std::fmt;
++
++use anyhow::Result;
++use clap::Parser;
++use pimalaya_cli::printer::Printer;
++use schemars::JsonSchema;
++use serde::Serialize;
++
++use crate::{
++    account::context::Account,
++    shared::{client::EmailClient, flag::arg::MessageIdsArg},
++};
++
++/// Archive messages from the active account's inbox.
++///
++/// Gmail removes only the INBOX label. A Neverest Gmail pimdir replica
++/// stages that removal for the next sync; it needs no All Mail collection.
++/// Other backends move to `mailbox.alias.archive` or the archive role,
++/// refusing a missing archive mailbox before changing any messages.
++#[derive(Debug, Parser)]
++pub struct MessageArchiveCommand {
++    #[command(flatten)]
++    pub message_ids: MessageIdsArg,
++}
++
++impl MessageArchiveCommand {
++    /// Archives the messages and reports how many were processed.
++    pub fn execute(
++        self,
++        printer: &mut impl Printer,
++        account: &mut Account,
++        client: &mut EmailClient,
++    ) -> Result<()> {
++        let ids: Vec<&str> = self.message_ids.inner.iter().map(String::as_str).collect();
++        let count = client.archive_messages(account, &ids)?;
++        printer.out(ArchiveReport {
++            action: "archived",
++            count,
++        })
++    }
++}
++
++/// The archive output, including actions staged for the next pimdir sync.
++#[derive(Debug, Serialize, JsonSchema)]
++pub(crate) struct ArchiveReport {
++    action: &'static str,
++    count: usize,
++}
++
++impl fmt::Display for ArchiveReport {
++    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
++        write!(f, "Successfully archived {} message(s)", self.count)
++    }
++}
+diff --git a/src/shared/message/cli.rs b/src/shared/message/cli.rs
+index f2ebc82..3d9d583 100644
+--- a/src/shared/message/cli.rs
++++ b/src/shared/message/cli.rs
+@@ -8,9 +8,9 @@ use pimalaya_cli::printer::Printer;
+ 
+ #[cfg(backend)]
+ use crate::shared::message::{
+-    add::MessageAddCommand, copy::MessageCopyCommand, delete::MessageDeleteCommand,
+-    forward::MessageForwardCommand, mv::MessageMoveCommand, read::MessageReadCommand,
+-    reply::MessageReplyCommand,
++    add::MessageAddCommand, archive::MessageArchiveCommand, copy::MessageCopyCommand,
++    delete::MessageDeleteCommand, forward::MessageForwardCommand, mv::MessageMoveCommand,
++    read::MessageReadCommand, reply::MessageReplyCommand,
+ };
+ use crate::{
+     account::context::Account,
+@@ -32,6 +32,8 @@ pub enum MessageCommand {
+     #[cfg(backend)]
+     #[command(visible_alias = "save")]
+     Add(MessageAddCommand),
++    #[cfg(backend)]
++    Archive(MessageArchiveCommand),
+     #[command(visible_alias = "write", alias = "new")]
+     Compose(MessageComposeCommand),
+     #[cfg(backend)]
+@@ -64,6 +66,8 @@ impl MessageCommand {
+         match self {
+             #[cfg(backend)]
+             Self::Add(cmd) => cmd.execute(printer, account, client),
++            #[cfg(backend)]
++            Self::Archive(cmd) => cmd.execute(printer, account, client),
+             Self::Compose(cmd) => cmd.execute(printer, account, client),
+             #[cfg(backend)]
+             Self::Copy(cmd) => cmd.execute(printer, account, client),
+diff --git a/src/shared/message/mod.rs b/src/shared/message/mod.rs
+index 3c832c5..e9d6cc1 100644
+--- a/src/shared/message/mod.rs
++++ b/src/shared/message/mod.rs
+@@ -9,6 +9,8 @@
+ 
+ #[cfg(backend)]
+ pub mod add;
++#[cfg(backend)]
++pub mod archive;
+ pub mod arg;
+ #[cfg(any(backend, feature = "smtp"))]
+ pub mod builder;

@@ -91,7 +91,6 @@ ShellRoot {
 
     Mail {
         id: mailPanel
-        fallbackScreen: root.primaryScreen
     }
 
     NotificationToasts {

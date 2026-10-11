@@ -29,6 +29,21 @@ let
           ./pass-frecency.patch
         ];
       });
+  mailExtension = inputs.vicinae.lib.${pkgs.stdenv.hostPlatform.system}.mkVicinaeExtension {
+    pname = "vicinae-extension-himalaya";
+    version = "0";
+    src = lib.fileset.toSource {
+      root = ./himalaya;
+      fileset = lib.fileset.unions [
+        ./himalaya/package.json
+        ./himalaya/package-lock.json
+        ./himalaya/tsconfig.json
+        ./himalaya/LICENSE
+        ./himalaya/assets
+        ./himalaya/src
+      ];
+    };
+  };
 in
 {
   imports = [ inputs.vicinae.homeManagerModules.default ];
@@ -36,7 +51,7 @@ in
   programs.vicinae = {
     enable = true;
     package = vicinae;
-    extensions = [ passExtension ];
+    extensions = [ passExtension ] ++ lib.optional pkgs.stdenv.hostPlatform.isLinux mailExtension;
     settings = {
       tray.enabled = false;
       font = {
@@ -68,7 +83,7 @@ in
       };
       close_on_focus_loss = true;
       pop_to_root_on_close = true;
-      escape_key_behavior = "close_window";
+      escape_key_behavior = "navigate_back";
       providers = {
         "browser-extension" = {
           enabled = false;

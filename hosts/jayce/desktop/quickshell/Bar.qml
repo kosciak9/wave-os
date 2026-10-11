@@ -365,12 +365,10 @@ PanelWindow {
 
         height: 32
         horizontalPadding: 7
-        active: root.mail.opened
-        activeColor: Theme.sumiInk3
 
         onClicked: function(mouse) {
             if (mouse.button === Qt.LeftButton)
-                root.mail.toggle()
+                root.mail.open()
         }
 
         Item {
