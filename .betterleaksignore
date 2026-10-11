@@ -1,2 +1,4 @@
 # False positive: a form input variable in the upstream patch, not a password literal.
 2b29e57a876150597ce0c2762dcbc24164579062:modules/home/vicinae/pass-gpg-agent.patch:generic-password:126
+# False positive: `password: entry` stores the entry name, not the decrypted password.
+debd0c5c32b7b0dac25b9599a736fd6a99128cc3:modules/home/vicinae/pass-frecency.patch:generic-password:288
