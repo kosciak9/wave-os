@@ -17,6 +17,8 @@ let
   notificationSoundPath = "${pkgs.sound-theme-freedesktop}/share/sounds/freedesktop/stereo/message-new-instant.oga";
   waytator = pkgs.callPackage ../../packages/waytator.nix { };
   wlClipPersist = pkgs.callPackage ../../packages/wl-clip-persist.nix { };
+  libreoffice = pkgs.callPackage ../../packages/libreoffice.nix { };
+  markitdownOffice = pkgs.callPackage ../../packages/markitdown-office.nix { };
   waveDisplay = "${lib.getExe pkgs.wave} display";
   lockStatus = pkgs.writeShellApplication {
     name = "wave-lock-status";
@@ -106,6 +108,7 @@ in
       kanagawa-kvantum
       karla
       kdePackages.qtstyleplugin-kvantum
+      libreoffice
       nerd-fonts.iosevka
       nerd-fonts.overpass
       nerd-fonts.symbols-only
@@ -151,7 +154,19 @@ in
     yazi = {
       enable = true;
       enableZshIntegration = true;
+      extraPackages = [
+        markitdownOffice
+        pkgs.glow
+      ];
+      plugins.piper = pkgs.yaziPlugins.piper;
+      settings.plugin.prepend_previewers = [
+        {
+          url = "*.{docx,DOCX,xlsx,XLSX,pptx,PPTX}";
+          run = ''piper -- markitdown "$1" | CLICOLOR_FORCE=1 glow -w "$w" -s dark -'';
+        }
+      ];
     };
+    zathura.enable = true;
     zen-browser = {
       enable = true;
       package = zenBrowser;
@@ -368,6 +383,14 @@ in
     mimeApps = {
       enable = true;
       defaultApplications = {
+        "application/pdf" = [ "org.pwmt.zathura.desktop" ];
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document" = [
+          "writer.desktop"
+        ];
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" = [ "calc.desktop" ];
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation" = [
+          "impress.desktop"
+        ];
         "application/xhtml+xml" = [ "zen.desktop" ];
         "inode/directory" = [ "yazi.desktop" ];
         "text/html" = [ "zen.desktop" ];
