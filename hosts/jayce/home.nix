@@ -88,6 +88,7 @@ in
     ];
     sessionVariables = {
       ANDROID_HOME = "$HOME/.local/share/android-sdk";
+      BROWSER = lib.getExe zenBrowser;
       GTK_USE_PORTAL = "1";
       QT_QPA_PLATFORM = "wayland";
       _JAVA_AWT_WM_NONREPARENTING = "1";
@@ -366,7 +367,13 @@ in
     };
     mimeApps = {
       enable = true;
-      defaultApplications."inode/directory" = [ "yazi.desktop" ];
+      defaultApplications = {
+        "application/xhtml+xml" = [ "zen.desktop" ];
+        "inode/directory" = [ "yazi.desktop" ];
+        "text/html" = [ "zen.desktop" ];
+        "x-scheme-handler/http" = [ "zen.desktop" ];
+        "x-scheme-handler/https" = [ "zen.desktop" ];
+      };
     };
     userDirs = {
       enable = true;
