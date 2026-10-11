@@ -99,6 +99,7 @@ in
     packages = with pkgs; [
       brightnessctl
       chromium
+      drift-tui
       fd
       gimp
       hyprsunset
@@ -117,10 +118,12 @@ in
       noto-fonts
       noto-fonts-color-emoji
       obsidian
+      octorus
       playerctl
       pulseaudio
       pwvucontrol
       remmina
+      reviewly
       ripgrep
       spotifast
       trash-cli
