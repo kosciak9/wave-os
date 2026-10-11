@@ -7,7 +7,7 @@
 }:
 
 let
-  plugins = (import ./plugins.nix { inherit pkgs lib; }) // config.programs.herdr.extraPlugins;
+  plugins = (import ./plugins.nix { inherit pkgs lib config; }) // config.programs.herdr.extraPlugins;
   herdr = inputs.herdr.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs (old: {
     patches = (old.patches or [ ]) ++ [
       ./patches/worktrunk-core.patch

@@ -30,20 +30,20 @@ provisional choices made to proceed with the work.
 
 - Link source-code findings with Markdown links labeled by readable
   repo-relative `path:line` (or `path:start-end`) and targeting the exact
-  inspected checkout with an absolute `file:` URI and `#L<number>` anchor.
-  Percent-encode spaces and other URL characters in the URI; keep the visible
-  path readable as a fallback when links cannot be opened.
+  inspected checkout with `herdr-edit:///absolute/path?line=<number>`
+  (optionally `&column=<number>`). Percent-encode spaces and other URL
+  characters in the path; keep the visible path readable as a fallback when
+  links cannot be opened.
 
   > Example:
-  > [`modules/example.nix:42`](file:///workspace/repo/modules/example.nix#L42)
+  > `[modules/example.nix:42](herdr-edit:///workspace/repo/modules/example.nix?line=42)`.
 
 - Link external sources with descriptive Markdown labels and their real URLs.
   For source code in another repository, use its exact revision and line anchor
   when available. Never invent paths, line numbers, or URLs.
 - Use local absolute file links only for private or session-specific findings.
   In public PRs and issues, use shareable repository web links or relative
-  `path:line` references; never expose local host paths. Do not use
-  editor-specific link schemes or assume a particular link handler.
+  `path:line` references; never expose local host paths.
 
 ## Factual uncertainties and open decisions
 

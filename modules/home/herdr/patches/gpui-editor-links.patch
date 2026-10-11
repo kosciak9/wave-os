@@ -1,0 +1,189 @@
+--- a/crates/herdr-gpui/src/terminal/links.rs
++++ b/crates/herdr-gpui/src/terminal/links.rs
+@@ -36,6 +36,8 @@
+     /// A local path as the pane printed it, with `~/` and relative paths left
+     /// for the click to resolve, or the absolute path of a `file://` link.
+     Path(String),
++    /// An explicit OSC 8 target activated only by the pane's daemon.
++    Editor(String),
+ }
+ 
+ /// A link read from one row, and the frame columns it covers.
+@@ -63,7 +65,7 @@
+ ) -> Option<String> {
+     match located(surface, x, y, cell_width, cell_height)?.1.target {
+         RowTarget::Web(url) => Some(url),
+-        RowTarget::Path(_) => None,
++        RowTarget::Path(_) | RowTarget::Editor(_) => None,
+     }
+ }
+ 
+@@ -150,6 +152,9 @@
+         let destination = frame.hyperlinks.get(index as usize)?;
+         let target = match web_url(destination) {
+             Some(url) => RowTarget::Web(url),
++            None if destination.starts_with("herdr-edit:///") => {
++                RowTarget::Editor(destination.clone())
++            }
+             None => RowTarget::Path(file_url_path(destination)?),
+         };
+         let on_link = |i: &usize| cells[*i].skip || cells[*i].hyperlink == Some(index);
+--- a/crates/herdr-gpui/src/window/file_links.rs
++++ b/crates/herdr-gpui/src/window/file_links.rs
+@@ -171,8 +171,9 @@
+             self.cell_width,
+             self.config.terminal.line_height(),
+         )?;
+-        (matches!(link.link.target, RowTarget::Web(_)) || !self.selected_is_remote())
+-            .then_some(link)
++        (matches!(link.link.target, RowTarget::Web(_) | RowTarget::Editor(_))
++            || !self.selected_is_remote())
++        .then_some(link)
+     }
+ 
+     /// The file path under `position`, with the directory it is relative to.
+--- a/crates/herdr-gpui/src/window/input.rs
++++ b/crates/herdr-gpui/src/window/input.rs
+@@ -54,6 +54,8 @@
+         modifiers: gpui::Modifiers,
+     ) -> bool {
+         modifiers.shift
++            || ((modifiers.control || modifiers.secondary())
++                && self.editor_link_at(position).is_some())
+             || (modifiers.secondary()
+                 && (self.terminal_link_at(position).is_some()
+                     || self.daemon_link_at(position).is_some()
+@@ -74,6 +76,8 @@
+                     .terminal_mouse_at(position)
+                     .is_none_or(|hit| !hit.mouse_reporting));
+         web || (modifiers.secondary() && self.file_link_at(position).is_some())
++            || ((modifiers.control || modifiers.secondary())
++                && self.editor_link_at(position).is_some())
+     }
+ 
+     pub(crate) fn terminal_link_at(&self, position: gpui::Point<gpui::Pixels>) -> Option<String> {
+--- a/crates/herdr-gpui/src/window/links.rs
++++ b/crates/herdr-gpui/src/window/links.rs
+@@ -9,7 +9,7 @@
+ use crate::{
+     browser::WebUrl,
+     links::{LinkCell, LinkInbox, LinkRequest, ResolvedLink, activation_fallback},
+-    terminal::RowLink,
++    terminal::{RowLink, RowTarget},
+ };
+ use gpui::{Context, Modifiers, Pixels, Point, Task, Window};
+ use std::{
+@@ -73,6 +73,7 @@
+     /// daemon neither handles nor reads a web address there.
+     fallback: Option<WebUrl>,
+     in_tab: bool,
++    daemon_only: bool,
+ }
+ 
+ /// A press that may become a click on a link.
+@@ -100,6 +101,13 @@
+ }
+ 
+ impl HerdrWindow {
++    pub(crate) fn editor_link_at(&self, position: Point<Pixels>) -> Option<String> {
++        match self.local_link_at(position)?.link.target {
++            RowTarget::Editor(url) => Some(url),
++            _ => None,
++        }
++    }
++
+     fn link_cell_at(&self, position: Point<Pixels>) -> Option<LinkCell> {
+         if self.menu.page.is_some()
+             || !self.live.surface_ready()
+@@ -149,10 +157,12 @@
+         modifiers: Modifiers,
+         cx: &mut Context<Self>,
+     ) {
+-        let local = modifiers
+-            .secondary()
++        let local = (modifiers.secondary() || modifiers.control)
+             .then(|| self.local_link_at(position))
+             .flatten()
++            .filter(|link| {
++                modifiers.secondary() || matches!(link.link.target, RowTarget::Editor(_))
++            })
+             .map(|link| link.link);
+         if local != self.links.local {
+             self.links.local = local;
+@@ -267,8 +277,9 @@
+                 PollResult::Answered(result) => {
+                     let in_tab = flight.context.in_tab;
+                     let fallback = flight.context.fallback.clone();
++                    let daemon_only = flight.context.daemon_only;
+                     self.links.activating = None;
+-                    if let Some(url) = activation_fallback(result, fallback) {
++                    if !daemon_only && let Some(url) = activation_fallback(result, fallback) {
+                         self.open_web_link(url, in_tab, window, cx);
+                     }
+                 }
+@@ -286,6 +297,17 @@
+         position: Point<Pixels>,
+         modifiers: Modifiers,
+     ) -> Option<PressedLink> {
++        if let Some(url) = self.editor_link_at(position) {
++            if !modifiers.control && !modifiers.secondary() {
++                return None;
++            }
++            return Some(PressedLink {
++                url: Some(url),
++                cell: Some(self.link_cell_at(position)?),
++                file: None,
++                position,
++            });
++        }
+         let url = self.terminal_link_at(position);
+         let daemon = self.daemon_link_at(position);
+         if url.is_some() || daemon.is_some() {
+@@ -339,7 +361,9 @@
+             .url
+             .as_deref()
+             .and_then(|url| WebUrl::try_from(url).ok());
+-        if let Some(cell) = &release.cell {
++        if self.live.supports_link_activate
++            && let Some(cell) = &release.cell
++        {
+             // One click at a time: a second while the first is unanswered
+             // would race its handler.
+             if self.links.activating.is_some() {
+@@ -351,7 +375,14 @@
+                     self.links.activating = Some(InFlight {
+                         id,
+                         inbox: connection.links.clone(),
+-                        context: PendingActivation { fallback, in_tab },
++                        context: PendingActivation {
++                            fallback,
++                            in_tab,
++                            daemon_only: release
++                                .url
++                                .as_deref()
++                                .is_some_and(|url| url.starts_with("herdr-edit:///")),
++                        },
+                     });
+                     return true;
+                 }
+--- a/crates/herdr-gpui/src/terminal/links/tests/paths.rs
++++ b/crates/herdr-gpui/src/terminal/links/tests/paths.rs
+@@ -8,7 +8,7 @@
+ fn path(text: &str, column: u16) -> Option<(String, Range<u16>)> {
+     read(text, column).and_then(|link| match link.target {
+         RowTarget::Path(path) => Some((path, link.columns)),
+-        RowTarget::Web(_) => None,
++        RowTarget::Web(_) | RowTarget::Editor(_) => None,
+     })
+ }
+ 
+--- a/crates/herdr-gpui/src/window/links/tests.rs
++++ b/crates/herdr-gpui/src/window/links/tests.rs
+@@ -285,6 +285,7 @@
+             context: PendingActivation {
+                 fallback: WebUrl::try_from(URL).ok(),
+                 in_tab: false,
++                daemon_only: false,
+             },
+         });
+     });
