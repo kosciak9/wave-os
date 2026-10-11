@@ -1,0 +1,682 @@
+diff --git a/crates/herdr-gpui/src/app.rs b/crates/herdr-gpui/src/app.rs
+index 2f2da7e..55f984a 100644
+--- a/crates/herdr-gpui/src/app.rs
++++ b/crates/herdr-gpui/src/app.rs
+@@ -268,6 +268,11 @@ pub(crate) fn run() -> std::process::ExitCode {
+     } else {
+         crate::usage::KeychainGrants::default()
+     };
++    let usage_headlines = if mode == LaunchMode::Normal {
++        crate::usage::Headlines::load()
++    } else {
++        crate::usage::Headlines::default()
++    };
+     // Nor with saved editor groups, which they would overwrite.
+     let group_layouts = if mode == LaunchMode::Normal {
+         crate::browser::Layouts::load()
+@@ -285,6 +290,7 @@ pub(crate) fn run() -> std::process::ExitCode {
+             group_layouts.install(cx);
+             agent_skill.install_global(cx);
+             keychain_grants.install(cx);
++            usage_headlines.install(cx);
+             // Only the user's own app answers agents; native test modes stay private.
+             if mode == LaunchMode::Normal {
+                 crate::control::install(cx);
+diff --git a/crates/herdr-gpui/src/usage.rs b/crates/herdr-gpui/src/usage.rs
+index 733fa26..b99b262 100644
+--- a/crates/herdr-gpui/src/usage.rs
++++ b/crates/herdr-gpui/src/usage.rs
+@@ -7,6 +7,7 @@
+ 
+ mod access;
+ mod cookies;
++mod headlines;
+ mod icons;
+ mod model;
+ mod panel;
+@@ -23,6 +24,7 @@ mod values;
+ mod tests;
+ 
+ pub(crate) use access::KeychainGrants;
++pub(crate) use headlines::Headlines;
+ pub(crate) use model::{Host, Provider};
+ pub(crate) use panel::PANEL_WIDTH;
+ pub(crate) use probe::Shell;
+@@ -180,6 +182,8 @@ pub(crate) struct Usage {
+     /// The provider last picked in the panel, which leads the status bar on
+     /// any host that has numbers for it.
+     chosen: Option<Provider>,
++    /// The status-bar position whose panel is open.
++    pub(super) headline_slot: usize,
+     /// Providers just allowed, whose remembered refusals the next read
+     /// forgets so macOS asks again.
+     retry: HashSet<Provider>,
+diff --git a/crates/herdr-gpui/src/usage/headlines.rs b/crates/herdr-gpui/src/usage/headlines.rs
+new file mode 100644
+index 0000000..2a3f372
+--- /dev/null
++++ b/crates/herdr-gpui/src/usage/headlines.rs
+@@ -0,0 +1,119 @@
++//! Persistent providers for the two status-bar positions, shared by all windows.
++
++use super::{Entry, HEADLINE, Provider, has_numbers, registry};
++use crate::state_file;
++use gpui::{App, Global};
++use serde::{Deserialize, Serialize};
++
++#[derive(Default, Serialize, Deserialize)]
++struct Saved {
++    providers: [Option<String>; HEADLINE],
++}
++
++#[derive(Default)]
++pub(crate) struct Headlines {
++    providers: [Option<Provider>; HEADLINE],
++    writer: Option<state_file::Writer<Saved>>,
++}
++
++impl Global for Headlines {}
++
++impl Headlines {
++    pub(crate) fn load() -> Self {
++        let path = crate::preferences::state_dir().map(|dir| dir.join("usage-headlines.json"));
++        let saved = path
++            .as_deref()
++            .map(|path| {
++                state_file::read(path, 16 * 1024).and_then(|bytes| {
++                    bytes.map_or(Ok(Saved::default()), |bytes| {
++                        Ok(serde_json::from_slice::<Saved>(&bytes)?)
++                    })
++                })
++            })
++            .transpose()
++            .unwrap_or_else(|error| {
++                tracing::warn!(%error, "Cannot restore usage selections");
++                None
++            })
++            .unwrap_or_default();
++        let mut providers = saved
++            .providers
++            .map(|id| id.and_then(|id| registry::find(&id)));
++        if providers[0].is_some() && providers[0] == providers[1] {
++            providers[1] = None;
++        }
++        let writer = path.and_then(|path| {
++            state_file::Writer::start("usage-headlines", path)
++                .map_err(|error| tracing::warn!(%error, "Cannot start usage selection writer"))
++                .ok()
++        });
++        Self { providers, writer }
++    }
++
++    pub(crate) fn install(self, cx: &mut App) {
++        cx.set_global(self);
++        cx.on_app_quit(|cx| {
++            let writer = cx.global_mut::<Self>().writer.take();
++            cx.background_executor().spawn(async move {
++                if let Some(writer) = writer {
++                    writer.finish();
++                }
++            })
++        })
++        .detach();
++    }
++
++    pub(crate) fn providers(cx: &App) -> [Option<Provider>; HEADLINE] {
++        cx.try_global::<Self>()
++            .map_or([None; HEADLINE], |headlines| headlines.providers)
++    }
++
++    /// Fill only unassigned positions, after a complete read, in registry order.
++    /// Missing providers keep their position instead of promoting another account.
++    pub(crate) fn fill(entry: &Entry, cx: &mut App) {
++        let mut providers = Self::providers(cx);
++        for reading in &entry.readings {
++            if !(has_numbers(reading) || reading.access.is_some())
++                || providers.contains(&Some(reading.provider))
++            {
++                continue;
++            }
++            let Some(slot) = providers.iter_mut().find(|provider| provider.is_none()) else {
++                break;
++            };
++            *slot = Some(reading.provider);
++        }
++        Self::save(providers, cx);
++    }
++
++    pub(crate) fn choose(slot: usize, provider: Provider, cx: &mut App) {
++        let mut providers = Self::providers(cx);
++        if let Some(other) = providers
++            .iter()
++            .position(|chosen| *chosen == Some(provider))
++        {
++            // Selecting the other position's provider swaps, rather than duplicating it.
++            providers.swap(slot, other);
++        } else {
++            providers[slot] = Some(provider);
++        }
++        Self::save(providers, cx);
++    }
++
++    fn save(providers: [Option<Provider>; HEADLINE], cx: &mut App) {
++        if providers == Self::providers(cx) {
++            return;
++        }
++        if !cx.has_global::<Self>() {
++            cx.set_global(Self::default());
++        }
++        let headlines = cx.global_mut::<Self>();
++        headlines.providers = providers;
++        if let Some(writer) = &headlines.writer {
++            writer.save(Saved {
++                providers: providers
++                    .map(|provider| provider.map(|provider| provider.id().to_owned())),
++            });
++        }
++    }
++}
+diff --git a/crates/herdr-gpui/src/usage/panel.rs b/crates/herdr-gpui/src/usage/panel.rs
+index 813a84d..052ed44 100644
+--- a/crates/herdr-gpui/src/usage/panel.rs
++++ b/crates/herdr-gpui/src/usage/panel.rs
+@@ -16,21 +16,24 @@ pub(crate) const PANEL_GAP: f32 = 6.;
+ impl HerdrWindow {
+     pub(crate) fn open_usage(
+         &mut self,
++        slot: usize,
+         provider: Provider,
+         anchor: Point<Pixels>,
+         window: &mut Window,
+         cx: &mut Context<Self>,
+     ) {
+         if self.open_menu(window, cx) {
++            self.usage.headline_slot = slot;
+             self.menu.anchor = anchor;
+             self.menu.page = Some(Page::Usage(provider));
+         }
+     }
+ 
+-    /// Shows `provider` in the panel and leads the status bar with it.
+-    fn choose_usage(&mut self, provider: Provider) {
++    /// Changes only the position whose panel was opened.
++    fn choose_usage(&mut self, provider: Provider, cx: &mut Context<Self>) {
+         self.menu.page = Some(Page::Usage(provider));
+         self.usage.choose(provider);
++        super::Headlines::choose(self.usage.headline_slot, provider, cx);
+     }
+ 
+     /// Left and right step through the tabs, as the pointer does, so the
+@@ -61,7 +64,7 @@ impl HerdrWindow {
+             "right" => (index + 1) % count,
+             _ => return false,
+         };
+-        self.choose_usage(providers[next]);
++        self.choose_usage(providers[next], cx);
+         cx.notify();
+         true
+     }
+@@ -226,7 +229,7 @@ impl HerdrWindow {
+             .flex_col()
+             .min_h_0()
+             .child(body.flex_shrink_1())
+-            .when(readings.len() > 1, |panel| {
++            .when(!readings.is_empty(), |panel| {
+                 panel.child(
+                     div()
+                         .flex_none()
+@@ -284,7 +287,7 @@ impl HerdrWindow {
+                     .child(div().max_w_full().truncate().child(provider.name()))
+                     .on_click(cx.listener(move |this, _, _, cx| {
+                         cx.stop_propagation();
+-                        this.choose_usage(provider);
++                        this.choose_usage(provider, cx);
+                         cx.notify();
+                     }))
+             }))
+diff --git a/crates/herdr-gpui/src/usage/render.rs b/crates/herdr-gpui/src/usage/render.rs
+index 950d7c4..17f6f32 100644
+--- a/crates/herdr-gpui/src/usage/render.rs
++++ b/crates/herdr-gpui/src/usage/render.rs
+@@ -1,11 +1,9 @@
+-//! The status bar's usage segments: per agent, a meter for the window closest
+-//! to its limit and each window's share used with its time to reset. A click
+-//! opens that agent's panel, so the bar stays one quiet line; picking a tab
+-//! there brings that agent to the front of the bar.
++//! Two fixed usage positions, each showing only its tightest limit and reset.
++//! Picking a provider in the panel changes the position that opened it.
+ 
+ use super::{
+-    Reading,
+-    model::{Severity, Window as Limit},
++    Headlines, Reading,
++    model::{Provider, Severity, Window as Limit},
+     panel::PANEL_GAP,
+ };
+ use crate::window::HerdrWindow;
+@@ -19,20 +17,22 @@ use std::{
+ const METER_WIDTH: f32 = 40.;
+ 
+ impl HerdrWindow {
+-    /// The provider chosen in the panel, then those closest to a limit, at
+-    /// most [`super::HEADLINE`]; nothing when usage is hidden or no provider
+-    /// on the host has numbers yet.
+     pub(crate) fn render_usage(&self, cx: &mut Context<Self>) -> Option<impl IntoElement> {
+         let entry = self.usage.current();
+-        let shown = entry
+-            .map(|entry| entry.headline(super::HEADLINE, self.usage.chosen()))
++        let shown = Headlines::providers(cx)
++            .map(|provider| provider.filter(|provider| !self.config.usage.hidden(*provider)));
++        let available = entry
++            .map(|entry| entry.tabs(&self.config.usage))
+             .unwrap_or_default();
+         // A host that could not be read at all says so, but only while
+         // there is nothing older to show.
+         let host_error = entry
+             .and_then(|entry| entry.error.clone())
+-            .filter(|_| shown.is_empty());
+-        if !self.config.usage.show || (shown.is_empty() && host_error.is_none()) {
++            .filter(|_| shown.iter().all(Option::is_none));
++        if !self.config.usage.show
++            || entry.is_none()
++            || (shown.iter().all(Option::is_none) && available.is_empty() && host_error.is_none())
++        {
+             return None;
+         }
+         let busy = self.usage.busy();
+@@ -47,8 +47,22 @@ impl HerdrWindow {
+             .overflow_hidden()
+             .items_center()
+             .gap(px(4.));
+-        for reading in &shown {
+-            row = row.child(self.usage_segment(reading, now, cx));
++        for (slot, selected) in shown.into_iter().enumerate() {
++            let Some(provider) =
++                selected.or_else(|| available.first().map(|reading| reading.provider))
++            else {
++                continue;
++            };
++            let reading = selected.and_then(|provider| {
++                entry.and_then(|entry| {
++                    entry
++                        .readings
++                        .iter()
++                        .find(|reading| reading.provider == provider)
++                })
++            });
++            row =
++                row.child(self.usage_segment(slot, provider, selected.is_some(), reading, now, cx));
+         }
+         if let Some(error) = host_error {
+             let (foreground, surface) = (theme.foreground, theme.surface);
+@@ -122,16 +136,19 @@ impl HerdrWindow {
+ 
+     fn usage_segment(
+         &self,
+-        reading: &Reading,
++        slot: usize,
++        provider: Provider,
++        assigned: bool,
++        reading: Option<&Reading>,
+         now: SystemTime,
+         cx: &mut Context<Self>,
+     ) -> impl IntoElement {
+         let theme = &self.theme;
+-        let provider = reading.provider;
+-        let key = provider.id();
++        let key = format!("slot-{slot}");
+         let bounds = Rc::new(Cell::new(Bounds::<Pixels>::default()));
+         let painted = bounds.clone();
+-        let open = self.menu.page == Some(crate::menu::Page::Usage(provider));
++        let open = self.menu.page == Some(crate::menu::Page::Usage(provider))
++            && self.usage.headline_slot == slot;
+         let mut segment = div()
+             .id(SharedString::from(format!("usage-{key}")))
+             .debug_selector(move || format!("usage-{key}"))
+@@ -146,14 +163,17 @@ impl HerdrWindow {
+             .rounded(px(crate::config::corners::CONTROL))
+             .cursor_pointer()
+             .hover(|s| s.bg(rgb(theme.active)))
++            .active(|s| s.bg(rgb(theme.active)))
+             .when(open, |segment| segment.bg(rgb(theme.active)))
+-            .child(
+-                svg()
+-                    .path(provider.icon())
+-                    .size(px(12.))
+-                    .flex_none()
+-                    .text_color(rgb(theme.foreground)),
+-            )
++            .when(assigned, |segment| {
++                segment.child(
++                    svg()
++                        .path(provider.icon())
++                        .size(px(12.))
++                        .flex_none()
++                        .text_color(rgb(theme.foreground)),
++                )
++            })
+             .child(
+                 canvas(|_, _, _| (), move |area, _, _, _| painted.set(area))
+                     .absolute()
+@@ -165,24 +185,37 @@ impl HerdrWindow {
+                 // the same gap above the bar wherever the click landed.
+                 let origin = bounds.get().origin;
+                 this.open_usage(
++                    slot,
+                     provider,
+                     point(origin.x, origin.y - px(PANEL_GAP)),
+                     window,
+                     cx,
+                 );
+             }));
+-        let Some(report) = &reading.report else {
++        if !assigned {
++            return segment.child("Choose usage");
++        }
++        let Some(report) = reading.and_then(|reading| reading.report.as_ref()) else {
+             // Waiting on Keychain access: the lock says why there are no
+             // numbers, and the click opens the panel that asks.
+-            return segment.when(reading.access.is_some(), |segment| {
+-                segment.child(
+-                    svg()
+-                        .path("icons/lock.svg")
+-                        .size(px(11.))
+-                        .flex_none()
+-                        .text_color(rgb(theme.muted)),
++            return segment
++                .when(
++                    reading.is_some_and(|reading| reading.access.is_some()),
++                    |segment| {
++                        segment.child(
++                            svg()
++                                .path("icons/lock.svg")
++                                .size(px(11.))
++                                .flex_none()
++                                .text_color(rgb(theme.muted)),
++                        )
++                    },
+                 )
+-            });
++                .child(if self.usage.busy() {
++                    "…"
++                } else {
++                    "Unavailable"
++                });
+         };
+         if let Some(tightest) = report.tightest() {
+             segment = segment.child(meter(tightest, theme));
+@@ -193,14 +226,18 @@ impl HerdrWindow {
+             .overflow_hidden()
+             .whitespace_nowrap()
+             .gap(px(4.));
+-        for (index, window) in report.windows.iter().enumerate() {
+-            if index > 0 {
+-                labels = labels.child(div().text_color(rgb(theme.muted)).child("·"));
+-            }
++        if let Some(window) = report.tightest() {
+             labels = labels.child(
+                 div()
+                     .text_color(rgb(color(window.used.into(), theme, theme.foreground)))
+-                    .child(window.label(now)),
++                    .child(format!(
++                        "{}% · {}",
++                        window.percent(),
++                        window
++                            .resets_in(now)
++                            .map(super::model::countdown)
++                            .unwrap_or_else(|| "—".into())
++                    )),
+             );
+         }
+         // A service that meters money or credits rather than a window shows
+@@ -213,14 +250,17 @@ impl HerdrWindow {
+         segment
+             .child(labels)
+             // The numbers are the last good ones; the panel says why.
+-            .when(reading.error.is_some(), |segment| {
+-                segment.child(
+-                    div()
+-                        .flex_none()
+-                        .text_color(rgb(theme.ink(theme.palette[3])))
+-                        .child("!"),
+-                )
+-            })
++            .when(
++                reading.is_some_and(|reading| reading.error.is_some()),
++                |segment| {
++                    segment.child(
++                        div()
++                            .flex_none()
++                            .text_color(rgb(theme.ink(theme.palette[3])))
++                            .child("!"),
++                    )
++                },
++            )
+     }
+ }
+ 
+diff --git a/crates/herdr-gpui/src/window.rs b/crates/herdr-gpui/src/window.rs
+index 3de9c7c..bf614ef 100644
+--- a/crates/herdr-gpui/src/window.rs
++++ b/crates/herdr-gpui/src/window.rs
+@@ -240,6 +240,7 @@ pub(crate) struct HerdrWindow {
+     /// Browser tabs this window shows, and its pages for them.
+     pub(crate) browser: crate::browser::Browser,
+     pub(crate) _browser_tabs: Subscription,
++    pub(crate) _usage_headlines: Subscription,
+     /// The daemon's prefix was typed, so the next keystroke completes a chord.
+     pub(crate) prefix_armed: bool,
+     /// Herdr's resize mode: direction keys resize the focused pane until
+@@ -492,6 +493,12 @@ impl HerdrWindow {
+         for provider in self.usage.take_denied() {
+             crate::usage::KeychainGrants::revoke(provider, cx);
+         }
++        if !self.usage.busy()
++            && let Some(entry) = self.usage.current()
++            && entry.updated.is_some()
++        {
++            crate::usage::Headlines::fill(entry, cx);
++        }
+         changed
+     }
+ 
+@@ -789,6 +796,7 @@ impl HerdrWindow {
+             browser: crate::browser::Browser::new(cx),
+             // Another window, or an agent, may open or close a tab.
+             _browser_tabs: cx.observe_global::<crate::browser::Store>(|_, cx| cx.notify()),
++            _usage_headlines: cx.observe_global::<crate::usage::Headlines>(|_, cx| cx.notify()),
+             prefix_armed: false,
+             resize_mode: false,
+             server_keys: None,
+diff --git a/crates/herdr-gpui/src/window/render.rs b/crates/herdr-gpui/src/window/render.rs
+index d8b0622..0d23252 100644
+--- a/crates/herdr-gpui/src/window/render.rs
++++ b/crates/herdr-gpui/src/window/render.rs
+@@ -4,7 +4,7 @@
+ 
+ use super::{HerdrWindow, PressedLink};
+ use crate::{
+-    APP_VERSION, CheckForUpdates, Minimize, PlaySound, RunCommand, ShowHerdrNotDetected,
++    CheckForUpdates, Minimize, PlaySound, RunCommand, ShowHerdrNotDetected,
+     ShowUpdatePreview,
+     actions::{RingBellPreview, ShowToastPreview},
+     browser::{Pick, Shown, Slot},
+@@ -18,10 +18,6 @@ use gpui::{prelude::*, *};
+ use herdr_client::ConnectOptions;
+ use std::time::Duration;
+ 
+-/// The status bar's 24-unit SVG icons pad their artwork, so they are drawn at
+-/// this size to look as large as the 12px ring of the report-issue button.
+-const STATUS_GLYPH: f32 = 16.;
+-
+ impl HerdrWindow {
+     /// Config warnings, then the daemon's announcement, stacked over the
+     /// top-right of the terminal area below the tab strip, whose buttons stay
+@@ -808,166 +804,7 @@ impl Render for HerdrWindow {
+                             )),
+                     )
+                     .children(self.render_listening_ports(cx))
+-                    .children(self.render_system_load())
+-                    .child({
+-                        let cup = crate::caffeine::cup(cx);
+-                        let awake = cup == crate::caffeine::Cup::On;
+-                        let (foreground, surface) = (self.theme.foreground, self.theme.surface);
+-                        div()
+-                            .id("status-caffeine")
+-                            .debug_selector(|| "status-caffeine".into())
+-                            .flex_none()
+-                            .flex()
+-                            .items_center()
+-                            .px_2()
+-                            .h_full()
+-                            .cursor_pointer()
+-                            .hover(|s| s.bg(rgb(self.theme.active)))
+-                            .child(
+-                                svg()
+-                                    .path(if awake {
+-                                        "icons/coffee-full.svg"
+-                                    } else {
+-                                        "icons/coffee.svg"
+-                                    })
+-                                    .size(px(STATUS_GLYPH))
+-                                    .flex_none()
+-                                    .text_color(rgb(match cup {
+-                                        crate::caffeine::Cup::On => self.theme.primary(),
+-                                        crate::caffeine::Cup::Pending => self.theme.muted,
+-                                        crate::caffeine::Cup::Off => self.theme.foreground,
+-                                    })),
+-                            )
+-                            .tooltip(move |_, cx| {
+-                                cx.new(|_| crate::usage::Hint {
+-                                    text: if awake {
+-                                        "Keeping the display awake".into()
+-                                    } else {
+-                                        "Keep the display awake".into()
+-                                    },
+-                                    foreground,
+-                                    surface,
+-                                })
+-                                .into()
+-                            })
+-                            .on_click(cx.listener(|_, _, _, cx| {
+-                                let view = cx.entity().downgrade();
+-                                crate::caffeine::toggle(cx, move |error, cx| {
+-                                    let flash = super::Flash::warning(error.to_string());
+-                                    let _ = view.update(cx, |this, cx| this.show_flash(flash, cx));
+-                                });
+-                            }))
+-                    })
+-                    .child(
+-                        div()
+-                                    .id("status-theme")
+-                                    .debug_selector(|| "status-theme".into())
+-                                    .flex_shrink_1()
+-                                    .min_w(px(33.))
+-                            .flex()
+-                            .items_center()
+-                            .gap(px(5.))
+-                            .px_2()
+-                            .cursor_pointer()
+-                            .hover(|s| s.bg(rgb(self.theme.active)))
+-                            .child(
+-                                svg()
+-                                    .path("icons/theme.svg")
+-                                    .size(px(STATUS_GLYPH))
+-                                    .flex_none()
+-                                    .text_color(rgb(self.theme.foreground)),
+-                            )
+-                                    .child(div().min_w_0().truncate().child("Theme"))
+-                            .on_click(cx.listener(|this, _, window, cx| {
+-                                this.open_theme_picker(window, cx);
+-                            })),
+-                    )
+-                    .child(
+-                        div()
+-                                    .id("status-keybinds")
+-                                    .debug_selector(|| "status-keybinds".into())
+-                                    .flex_shrink_1()
+-                                    .min_w(px(33.))
+-                            .flex()
+-                            .items_center()
+-                            .gap(px(5.))
+-                            .px_2()
+-                            .cursor_pointer()
+-                            .hover(|s| s.bg(rgb(self.theme.active)))
+-                            .child(
+-                                svg()
+-                                    .path("icons/keyboard.svg")
+-                                    .size(px(STATUS_GLYPH))
+-                                    .flex_none()
+-                                    .text_color(rgb(self.theme.foreground)),
+-                            )
+-                                    .child(div().min_w_0().truncate().child("Shortcuts"))
+-                            .on_click(cx.listener(|this, _, window, cx| {
+-                                this.open_keybinds(window, cx);
+-                            })),
+-                    )
+-                    .child(
+-                        div()
+-                                    .id("report-issue")
+-                                    .debug_selector(|| "report-issue".into())
+-                                    .flex_shrink_1()
+-                                    .min_w(px(33.))
+-                            .flex()
+-                            .items_center()
+-                            .gap(px(5.))
+-                            .px_2()
+-                            .cursor_pointer()
+-                            .hover(|s| s.bg(rgb(self.theme.active)))
+-                            .child(
+-                                div()
+-                                    .size(px(12.))
+-                                    .flex_none()
+-                                    .flex()
+-                                    .items_center()
+-                                    .justify_center()
+-                                    .rounded_full()
+-                                    .border_1()
+-                                    .border_color(rgb(self.theme.foreground))
+-                                    .child(
+-                                        div()
+-                                            .size(px(3.))
+-                                            .rounded_full()
+-                                            .bg(rgb(self.theme.foreground)),
+-                                    ),
+-                            )
+-                                    .child(div().min_w_0().truncate().child("Report issue"))
+-                            .on_click(|_, _, cx| {
+-                                cx.open_url(&format!(
+-                                    "https://github.com/penso/herdr-gpui/issues/new?template=bug_report.yml&version={}",
+-                                    APP_VERSION.replace('+', "%2B"),
+-                                ));
+-                            }),
+-                    )
+-                    .child(
+-                        div()
+-                            .id("status-version")
+-                            .debug_selector(|| "status-version".into())
+-                            .flex_none()
+-                            .whitespace_nowrap()
+-                            .cursor_pointer()
+-                            .hover(|s| s.bg(rgb(self.theme.active)))
+-                            // A waiting update is the one status here worth
+-                            // interrupting for, so it takes the accent color
+-                            // the rest of the chrome reserves for chosen rows.
+-                            .text_color(rgb(if self.updater.update_available() {
+-                                self.theme.primary()
+-                            } else {
+-                                self.theme.muted
+-                            }))
+-                            .child(if self.updater.update_available() {
+-                                "Update available"
+-                            } else {
+-                                APP_VERSION
+-                            })
+-                            .on_click(cx.listener(|this, _, window, cx| {
+-                                this.open_app_update(false, window, cx);
+-                            })),
+-                    ),
++                    .children(self.render_system_load()),
+                             ),
+                     ),
+             )

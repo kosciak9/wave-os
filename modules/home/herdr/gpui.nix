@@ -6,6 +6,7 @@
         ./patches/gpui-shortcut-hints.patch
         ./patches/gpui-worktree-name-branch.patch
         ./patches/gpui-worktree-terminal.patch
+        ./patches/gpui-status-usage.patch
       ];
     }))
   ];
