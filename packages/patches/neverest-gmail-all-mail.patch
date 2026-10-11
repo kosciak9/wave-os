@@ -1,0 +1,141 @@
+diff --git a/src/gmail/client.rs b/src/gmail/client.rs
+index 15a020b..3a43b37 100644
+--- a/src/gmail/client.rs
++++ b/src/gmail/client.rs
+@@ -16,6 +16,10 @@
+ //! for the flags), a delta round reads `history.list` scoped to the label, and
+ //! an expired history id (HTTP 404) restarts a full round.
+ //!
++//! [`ALL`] is one more collection with no label behind it: every message
++//! outside spam and trash, as Gmail's All Mail, so an archived message keeps
++//! a place in the store. It is read-only.
++//!
+ //! Pushes are label changes: a delete removes the collection's label (from
+ //! `INBOX` it archives), a move swaps two labels, and only a delete from
+ //! `TRASH` is permanent. An append goes through `messages.import`, whose
+@@ -78,6 +82,10 @@ const SPAM: &str = "SPAM";
+ /// Gmail system label of the trash, hidden from other listings.
+ const TRASH: &str = "TRASH";
+ 
++/// The collection of every message outside spam and trash, listed with no
++/// label filter rather than by a label of its own.
++const ALL: &str = "ALL";
++
+ /// The system labels synced as collections, next to every user label.
+ const SYSTEM_COLLECTIONS: &[&str] = &["INBOX", "SENT", "DRAFT", SPAM, TRASH];
+ 
+@@ -263,6 +271,12 @@ impl GmailClient {
+                 unread,
+             });
+         }
++        collections.push(Collection {
++            id: ALL.to_owned(),
++            name: ALL.to_owned(),
++            total: None,
++            unread: None,
++        });
+ 
+         Ok(collections)
+     }
+@@ -289,6 +303,9 @@ impl GmailClient {
+     /// Resolves a collection name to its label id, case-insensitively,
+     /// refreshing the name map on a miss.
+     fn label_id(&mut self, name: &str) -> Result<String> {
++        if name.eq_ignore_ascii_case(ALL) {
++            return Ok(ALL.to_owned());
++        }
+         if let Some(id) = lookup_label(&self.labels, name) {
+             return Ok(id);
+         }
+@@ -296,6 +313,16 @@ impl GmailClient {
+         lookup_label(&self.labels, name).with_context(|| format!("Unknown Gmail label {name}"))
+     }
+ 
++    /// Resolves a collection a push writes to, refusing [`ALL`], which no
++    /// label change can add a message to or take one from.
++    fn writable_label(&mut self, name: &str) -> Result<String> {
++        let label = self.label_id(name)?;
++        if label == ALL {
++            bail!("Gmail collection {ALL} is read-only, file or archive messages through a label");
++        }
++        Ok(label)
++    }
++
+     /// Creates a user label; a system label is never created.
+     pub fn create_collection(&mut self, name: &str) -> Result<()> {
+         if is_system(name) {
+@@ -401,7 +428,7 @@ impl GmailClient {
+     /// Spam and trash are listed only from their own label, as Gmail's own
+     /// views do.
+     fn list_ids(&mut self, label: &str, and: Option<&str>) -> Result<Vec<String>> {
+-        let label_ids: Vec<String> = [Some(label), and]
++        let label_ids: Vec<String> = [(label != ALL).then_some(label), and]
+             .into_iter()
+             .flatten()
+             .map(String::from)
+@@ -446,7 +473,7 @@ impl GmailClient {
+         loop {
+             let params = GmailHistoryListParams {
+                 start_history_id: start,
+-                label_id: Some(label),
++                label_id: (label != ALL).then_some(label),
+                 history_types: types,
+                 max_results: Some(PAGE_SIZE),
+                 page_token: token.as_deref(),
+@@ -575,7 +602,7 @@ impl GmailClient {
+         mut source: impl Read,
+         hint: Option<&str>,
+     ) -> Result<WrittenItem> {
+-        let label = self.label_id(collection)?;
++        let label = self.writable_label(collection)?;
+ 
+         let mut raw = Vec::new();
+         source
+@@ -668,7 +695,7 @@ impl GmailClient {
+     /// Deletes one message from a label by removing that label, which
+     /// archives when it is `INBOX`; from `TRASH` it is deleted for good.
+     pub fn delete_item(&mut self, collection: &str, id: &str) -> Result<()> {
+-        let label = self.label_id(collection)?;
++        let label = self.writable_label(collection)?;
+ 
+         if label == TRASH {
+             self.op(|client| client.message_delete(id))
+@@ -683,7 +710,7 @@ impl GmailClient {
+ 
+     /// Files an inbox message without importing it; trashing removes INBOX.
+     pub fn copy_inbox_item(&mut self, to: &str, id: &str) -> Result<()> {
+-        let label = self.label_id(to)?;
++        let label = self.writable_label(to)?;
+         let remove = if label == TRASH {
+             vec!["INBOX".to_string()]
+         } else {
+@@ -695,8 +722,8 @@ impl GmailClient {
+ 
+     /// Moves messages from one label to another in one modify each batch.
+     pub fn move_items(&mut self, from: &str, to: &str, ids: &[&str]) -> Result<()> {
+-        let from_label = self.label_id(from)?;
+-        let to_label = self.label_id(to)?;
++        let from_label = self.writable_label(from)?;
++        let to_label = self.writable_label(to)?;
+         if from_label == to_label {
+             return Ok(());
+         }
+@@ -787,7 +814,7 @@ fn is_collection(label: &GmailLabel) -> bool {
+ /// Whether a collection name is one of the [`SYSTEM_COLLECTIONS`], whose
+ /// name is their id.
+ fn is_system(name: &str) -> bool {
+-    SYSTEM_COLLECTIONS.contains(&name)
++    SYSTEM_COLLECTIONS.contains(&name) || name.eq_ignore_ascii_case(ALL)
+ }
+ 
+ /// Finds a label id by collection name, case-insensitively, as Gmail
+@@ -804,6 +831,9 @@ fn lookup_label(labels: &HashMap<String, String>, name: &str) -> Option<String>
+ /// as the listings exclude it everywhere else.
+ fn belongs(label_ids: &[String], label: &str) -> bool {
+     let has = |id: &str| label_ids.iter().any(|l| l == id);
++    if label == ALL {
++        return !(has(SPAM) || has(TRASH));
++    }
+     has(label) && (label == SPAM || label == TRASH || !(has(SPAM) || has(TRASH)))
+ }
+ 

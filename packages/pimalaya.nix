@@ -80,6 +80,12 @@ in
       # A failed download otherwise drops every body it already fetched, so
       # the next run starts a large mailbox over.
       ./patches/neverest-keep-partial-fetch.patch
+      # Gmail's All Mail is no label, so an archived message would otherwise
+      # leave the store.
+      ./patches/neverest-gmail-all-mail.patch
+      # A Gmail message filed under several labels, ALL among them, would
+      # otherwise be downloaded once per label.
+      ./patches/neverest-gmail-reuse-bodies.patch
       # A large first listing raises every message's envelope in one write,
       # all lost when one request fails.
       ./patches/neverest-chunked-upgrade.patch

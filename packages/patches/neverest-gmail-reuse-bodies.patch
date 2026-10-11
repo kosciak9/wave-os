@@ -1,0 +1,104 @@
+diff --git a/src/offline/driver.rs b/src/offline/driver.rs
+index cc60d40..ee7f112 100644
+--- a/src/offline/driver.rs
++++ b/src/offline/driver.rs
+@@ -50,7 +50,7 @@ use io_pimdir::{
+         PimdirSortKey, PimdirStatus,
+     },
+     rekey::{PimdirRekey, PimdirRekeyReport},
+-    remote::{PimdirFetchedItem, PimdirTier},
++    remote::{PimdirFetchedBody, PimdirFetchedItem, PimdirTier},
+     summary::PimdirSummary,
+     sync::{
+         PimdirConflictPolicy, PimdirPushRights, PimdirSync, PimdirSyncEvent, PimdirSyncOptions,
+@@ -809,7 +809,15 @@ fn run_local(
+         return Ok(());
+     }
+ 
+-    let (cache, failure) = phase2_hydrate(source_name, &plans, &mut ctxs, &blobs)?;
++    // NOTE: only a Gmail handle, the message id, names one message under
++    // every label; elsewhere a handle is scoped to its collection.
++    let (plans, held) = if matches!(ctxs[0].pool.primary(), Client::Gmail(_)) {
++        reuse_held_bodies(&stores[0], source_name, collections.keys(), &blobs, plans)
++    } else {
++        (plans, HashMap::new())
++    };
++    let (mut cache, failure) = phase2_hydrate(source_name, &plans, &mut ctxs, &blobs)?;
++    cache.extend(held);
+     phase3_apply(
+         source_name,
+         &plans,
+@@ -998,6 +1006,73 @@ fn collection_spine(
+     Ok((targets, report))
+ }
+ 
++/// Serves the bodies the store already holds under another collection of the
++/// same message, narrowing the plans to the rest.
++///
++/// A message filed under several labels would otherwise be downloaded once
++/// per label, the store only folding the copies once they are written.
++fn reuse_held_bodies<'a>(
++    store: &PimdirSourceStore,
++    source: &str,
++    collections: impl Iterator<Item = &'a String>,
++    blobs: &PimdirBlobs,
++    plans: Vec<CollectionPlan>,
++) -> (Vec<CollectionPlan>, HashMap<FetchKey, PimdirFetchedItem>) {
++    let mut held: HashMap<String, PimdirPlacement> = HashMap::new();
++    for collection in collections {
++        let Ok(placements) = load_side(store, &hub_id(source, collection)) else {
++            continue;
++        };
++        for placement in placements {
++            if placement.object.is_some() && placement.status != PimdirStatus::Tombstone {
++                held.entry(placement.handle.0.clone()).or_insert(placement);
++            }
++        }
++    }
++
++    let mut cache = HashMap::new();
++    let plans = plans
++        .into_iter()
++        .map(|(collection, targets)| {
++            let targets = targets
++                .into_iter()
++                .filter(|(handle, _)| {
++                    let Some(placement) = held.get(&handle.0) else {
++                        return true;
++                    };
++                    let (Some(hash), Some(link_id)) =
++                        (placement.object.clone(), placement.link_id.clone())
++                    else {
++                        return true;
++                    };
++                    let Ok(meta) = fs::metadata(blobs.path(&hash)) else {
++                        return true;
++                    };
++                    let item = PimdirFetchedItem {
++                        handle: handle.clone(),
++                        link_id,
++                        summary: placement.summary.clone(),
++                        sort_key: placement.sort_key.clone(),
++                        body: Some(PimdirFetchedBody::Persisted {
++                            hash,
++                            size: meta.len() as usize,
++                        }),
++                        revision: None,
++                    };
++                    cache.insert((collection.clone(), handle.0.clone()), item);
++                    false
++                })
++                .collect();
++            (collection, targets)
++        })
++        .collect();
++
++    if !cache.is_empty() {
++        info!("reusing {} body(ies) {source} already holds", cache.len());
++    }
++    (plans, cache)
++}
++
+ /// Phase 2, hydrating every body through one global work-stealing pool.
+ ///
+ /// A batched fetch stays within one selected collection, so bodies are chunked
