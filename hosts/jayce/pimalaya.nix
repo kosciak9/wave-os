@@ -231,7 +231,12 @@ in
 
   systemd.user = {
     services."neverest-sync@" = {
-      Unit.Description = "Mirror Google account %i into its pimdir store";
+      Unit = {
+        Description = "Mirror Google account %i into its pimdir store";
+        # A first fill runs for hours; restarting it would hold the switch
+        # until it ends, and the timer starts the new unit next time anyway.
+        X-SwitchMethod = "keep-old";
+      };
       Service = {
         Type = "oneshot";
         ExecStart = "${lib.getExe pimalaya.neverest} sync --account %i";
