@@ -187,7 +187,7 @@ PanelWindow {
 
         Repeater {
             model: ScriptModel {
-                values: [...SystemTray.items.values].filter(item => !/spotify/i.test(item.id + " " + item.title))
+                values: [...SystemTray.items.values].filter(item => !/spotify|spotifast|pr[ -]?cockpit/i.test(item.id + " " + item.title))
             }
 
             delegate: Rectangle {
