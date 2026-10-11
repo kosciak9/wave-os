@@ -9,6 +9,7 @@
         ./patches/gpui-status-usage.patch
         ./patches/gpui-nix-config.patch
         ./patches/gpui-chrome-spacing.patch
+        ./patches/gpui-worktree-tree.patch
       ];
     }))
   ];

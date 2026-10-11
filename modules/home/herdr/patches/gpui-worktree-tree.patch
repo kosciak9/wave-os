@@ -1,0 +1,55 @@
+diff --git a/crates/herdr-gpui/src/sidebar/render.rs b/crates/herdr-gpui/src/sidebar/render.rs
+--- a/crates/herdr-gpui/src/sidebar/render.rs
++++ b/crates/herdr-gpui/src/sidebar/render.rs
+@@ -277,8 +277,15 @@
+                             } else {
+                                 0.
+                             };
++                        let tree_width = layout.child_indent() - STATUS_WIDTH - layout.gap();
++                        let continue_tree =
++                            matches!(self.config.layout.mode, LayoutMode::Classic { .. })
++                                && layout.tree_lines
++                                && tree == RowTree::Child
++                                && tree_width > 0.;
+                         div()
+                             .debug_selector(|| format!("ports-{endpoint_id}-{id}"))
++                            .relative()
+                             .h(px(line_height(font)))
+                             .flex_none()
+                             .w_full()
+@@ -296,6 +303,35 @@
+                                 (font.size * 0.85).round(),
+                                 cx,
+                             ))
++                            // A port line belongs to the worktree, so its trunk
++                            // continues through it until the last sibling's elbow.
++                            .when(continue_tree, |ports| {
++                                let gutter =
++                                    row_cx.nest + look.tree_gutter() + indicators.width(font)
++                                        - STATUS_WIDTH;
++                                let color = theme.muted;
++                                let font = font.clone();
++                                ports.child(
++                                    canvas(
++                                        |_, _, _| (),
++                                        move |bounds, _, window, _| {
++                                            let [trunk, _] = super::row::tree_lines(
++                                                bounds,
++                                                RowTree::Child,
++                                                &font,
++                                                0.,
++                                                window.scale_factor(),
++                                            );
++                                            window.paint_quad(fill(trunk, rgb(color)));
++                                        },
++                                    )
++                                    .absolute()
++                                    .left(px(gutter))
++                                    .top_0()
++                                    .w(px(tree_width))
++                                    .h_full(),
++                                )
++                            })
+                     });
+                 let element = Cell::new(
+                     rows,
