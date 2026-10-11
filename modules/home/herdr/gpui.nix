@@ -13,7 +13,14 @@
         ./patches/gpui-editor-links.patch
         ./patches/gpui-sidebar-polish.patch
         ./patches/gpui-claude-reset-credits.patch
+        ./patches/gpui-system-notification-dismissal.patch
+        ./patches/gpui-terminal-padding.patch
       ];
+      # GPUI's Linux backend currently discards handles and cannot withdraw notifications.
+      postPatch = (old.postPatch or "") + ''
+        patch --batch --fuzz=0 -d "$cargoDepsCopy/gpui-pre-linux-0.3.6" -p1 \
+          < ${./patches/gpui-linux-notification-handles.patch}
+      '';
     }))
   ];
 
