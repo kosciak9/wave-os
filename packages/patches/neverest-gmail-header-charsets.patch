@@ -1,0 +1,80 @@
+diff --git a/src/gmail/client.rs b/src/gmail/client.rs
+index 3a43b37..c330220 100644
+--- a/src/gmail/client.rs
++++ b/src/gmail/client.rs
+@@ -50,7 +50,8 @@ use io_gmail::v1::{
+     },
+     send::{GMAIL_API_BASE, GmailSendError, GmailSendOutput},
+ };
+-use io_pimdir::summary::mail::{addresses, decode, instant, message_ids};
++use io_pimdir::summary::mail::{instant, message_ids};
++use mail_parser::MessageParser;
+ use log::{debug, trace, warn};
+ use pimalaya_config::secret::Secret;
+ use pimalaya_stream::{
+@@ -960,16 +961,34 @@ fn message_summary(id: &str, message: &GmailMessage) -> ItemSummary {
+             .as_ref()
+             .and_then(|payload| payload.header(name))
+     };
+-    let list = |name: &str| {
+-        header(name)
+-            .map(addresses)
+-            .unwrap_or_default()
+-            .into_iter()
+-            .map(|address| Address {
+-                name: address.name,
+-                email: address.address,
++
++    // NOTE: Gmail answers headers with their RFC 2047 words intact, and
++    // io-pimdir's decoder reads every 8-bit charset but latin1 and cp1252 as
++    // UTF-8, so a Polish `iso-8859-2` subject lost its letters. mail-parser
++    // carries the charset tables.
++    let mut raw = String::new();
++    for name in ["Subject", "From", "To", "Cc", "Bcc"] {
++        if let Some(value) = header(name) {
++            let value = value.replace(['\r', '\n'], " ");
++            raw.push_str(&format!("{name}: {value}\r\n"));
++        }
++    }
++    raw.push_str("\r\n");
++    let parsed = MessageParser::default().parse_headers(raw.as_bytes());
++    let list = |address: Option<&mail_parser::Address>| -> Vec<Address> {
++        address
++            .map(|address| {
++                address
++                    .iter()
++                    .filter_map(|addr| {
++                        Some(Address {
++                            name: addr.name().map(str::to_owned),
++                            email: addr.address()?.to_owned(),
++                        })
++                    })
++                    .collect()
+             })
+-            .collect()
++            .unwrap_or_default()
+     };
+ 
+     ItemSummary {
+@@ -977,11 +996,16 @@ fn message_summary(id: &str, message: &GmailMessage) -> ItemSummary {
+         message_id: header("Message-ID").and_then(normalize_message_id),
+         in_reply_to: header("In-Reply-To").map(message_ids).unwrap_or_default(),
+         flags: flags_from_labels(&message.label_ids),
+-        subject: header("Subject").map(decode).unwrap_or_default(),
+-        from: list("From"),
+-        to: list("To"),
+-        cc: list("Cc"),
+-        bcc: list("Bcc"),
++        subject: parsed
++            .as_ref()
++            .and_then(|parsed| parsed.subject())
++            .unwrap_or_default()
++            .trim()
++            .to_owned(),
++        from: list(parsed.as_ref().and_then(|parsed| parsed.from())),
++        to: list(parsed.as_ref().and_then(|parsed| parsed.to())),
++        cc: list(parsed.as_ref().and_then(|parsed| parsed.cc())),
++        bcc: list(parsed.as_ref().and_then(|parsed| parsed.bcc())),
+         date: header("Date")
+             .and_then(instant)
+             .and_then(|date| DateTime::parse_from_rfc3339(&date).ok()),

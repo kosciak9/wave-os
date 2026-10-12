@@ -92,6 +92,9 @@ in
       # A large first listing raises every message's envelope in one write,
       # all lost when one request fails.
       ./patches/neverest-chunked-upgrade.patch
+      # io-pimdir decodes header words in 8-bit charsets other than latin1 and
+      # cp1252 as UTF-8, so Polish subjects and names lost their letters.
+      ./patches/neverest-gmail-header-charsets.patch
     ];
   };
   calendula = mkPimalayaCli {
