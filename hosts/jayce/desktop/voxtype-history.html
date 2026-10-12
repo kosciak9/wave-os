@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta http-equiv="refresh" content="30" />
+    <title>Dyktowanie — renekton vs OpenRouter</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --background: light-dark(oklch(98% 0 none), oklch(19% 0.015 265));
+        --foreground: light-dark(oklch(24% 0 none), oklch(90% 0.02 85));
+        --accent: light-dark(oklch(46% 0.13 255), oklch(75% 0.1 255));
+        --gutter: clamp(1rem, 0.75rem + 1vw, 2rem);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--background);
+        color: var(--foreground);
+        font-family: system-ui, sans-serif;
+        line-height: 1.6;
+      }
+      main {
+        display: grid;
+        grid-template-columns:
+          [full-start] minmax(var(--gutter), 1fr)
+          [content-start] min(100% - var(--gutter) * 2, 90rem) [content-end]
+          minmax(var(--gutter), 1fr) [full-end];
+        padding-block: var(--gutter);
+      }
+      main > * {
+        grid-column: content;
+      }
+      h1,
+      h2 {
+        text-wrap: balance;
+      }
+      a {
+        color: var(--accent);
+      }
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 0.25em;
+      }
+      a:active,
+      button:active,
+      input:active {
+        background: color-mix(in oklch, var(--accent) 20%, transparent);
+      }
+      @media (hover: hover) and (pointer: fine) {
+        a:hover {
+          color: color-mix(in oklch, var(--accent), var(--foreground) 25%);
+        }
+      }
+      form {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.75rem;
+      }
+      input,
+      button {
+        font: inherit;
+        min-block-size: 2.75rem;
+        padding-inline: 0.75rem;
+      }
+      input {
+        inline-size: 6rem;
+      }
+      .table {
+        overflow-x: auto;
+      }
+      table {
+        border-collapse: collapse;
+        inline-size: 100%;
+        white-space: nowrap;
+      }
+      th,
+      td {
+        padding-block: 0.6rem;
+        padding-inline: 0.75rem;
+        text-align: start;
+        border-block-end: 1px solid
+          color-mix(in oklch, var(--foreground) 20%, transparent);
+      }
+      td {
+        font-variant-numeric: tabular-nums;
+      }
+      tbody:empty::after {
+        content: "Brak danych w tym okresie.";
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Dyktowanie: renekton vs OpenRouter</h1>
+        <p>Historia od: $since. Automatyczne odświeżanie co 30 sekund.</p>
+        <form>
+          <label for="days">Ostatnie dni</label>
+          <input
+            id="days"
+            name="days"
+            type="number"
+            min="1"
+            max="365"
+            value="$days"
+          />
+          <button type="submit">Pokaż</button>
+          <a href="/dictation/api?days=$days">Metryki JSON</a>
+          <a href="/dictation/metrics">Prometheus</a>
+        </form>
+      </header>
+      <section>
+        <h2>Żądania użytkownika</h2>
+        <p>
+          $requests żądań · $successful OK · $failed błędów · $unfinished
+          nieukończonych.
+        </p>
+        <p>
+          OpenRouter użyty w $openrouter żądaniach, w tym $recovered uratowanych
+          po błędzie renekton.
+        </p>
+        <p>
+          Czas udanego żądania, z oczekiwaniem na fallback: p50 $p50 · p95 $p95.
+          Mierzony po odebraniu audio przez proxy, bez czasu nagrywania i
+          wysyłania pliku.
+        </p>
+      </section>
+      <section>
+        <h2>Próby według backendu</h2>
+        <p>
+          p50/p95 tylko udanych prób. Czas obejmuje sieć i obsługę backendu, bez
+          wcześniejszej nieudanej próby. RTF to czas próby / długość nagrania;
+          mniej oznacza szybciej. p95 przy małej liczbie próbek jest mało
+          miarodajne.
+        </p>
+        <div
+          class="table"
+          tabindex="0"
+          role="region"
+          aria-label="Porównanie backendów"
+        >
+          <table>
+            <thead>
+              <tr>
+                <th>Backend</th>
+                <th>Próby</th>
+                <th>OK</th>
+                <th>Błędy</th>
+                <th>Nieukończone</th>
+                <th>Skuteczność zakończonych</th>
+                <th>p50</th>
+                <th>p95</th>
+                <th>Audio p50</th>
+                <th>RTF p50</th>
+                <th>Koszt API</th>
+              </tr>
+            </thead>
+            <tbody>
+              $providers
+            </tbody>
+          </table>
+        </div>
+        <p>
+          Renekton jest pierwszym wyborem, OpenRouter — zapasowym; to nie jest
+          test obu modeli na identycznym audio. Koszt tylko jeśli raportowany
+          przez dostawcę. „—” nie oznacza zera. Renekton: bez opłaty API, bez
+          wyceny sprzętu i prądu.
+        </p>
+      </section>
+      <section>
+        <h2>Historia dzienna</h2>
+        <div
+          class="table"
+          tabindex="0"
+          role="region"
+          aria-label="Historia dzienna"
+        >
+          <table>
+            <thead>
+              <tr>
+                <th>Dzień</th>
+                <th>Żądania</th>
+                <th>OK</th>
+                <th>Błędy</th>
+                <th>Nieukończone</th>
+                <th>Z OpenRouter</th>
+                <th>Renekton: OK / błędy</th>
+                <th>OpenRouter: OK / błędy</th>
+              </tr>
+            </thead>
+            <tbody>
+              $daily
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <section>
+        <h2>Ostatnie 100 prób w wybranym okresie</h2>
+        <div
+          class="table"
+          tabindex="0"
+          role="region"
+          aria-label="Ostatnie próby"
+        >
+          <table>
+            <thead>
+              <tr>
+                <th>Czas</th>
+                <th>Backend</th>
+                <th>Wynik</th>
+                <th>HTTP</th>
+                <th>Czas próby</th>
+                <th>Audio</th>
+                <th>Typ błędu</th>
+              </tr>
+            </thead>
+            <tbody>
+              $recent
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <footer>
+        <p>
+          Zapis lokalny, trwały po restarcie. Bez audio, transkrypcji,
+          nagłówków, adresów backendów i treści błędów. Testy dostępności
+          LiteLLM nie są liczone. Dane zbierane od aktywacji tej konfiguracji.
+        </p>
+      </footer>
+    </main>
+  </body>
+</html>

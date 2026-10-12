@@ -1,4 +1,5 @@
 {
+  config,
   lib,
   pkgs,
   osConfig,
@@ -64,11 +65,26 @@ let
       disable_spend_logs = true;
     };
     litellm_settings = {
+      callbacks = [ "dictation_history.history" ];
       telemetry = false;
       turn_off_message_logging = true;
       redact_messages_in_exceptions = true;
     };
   };
+  proxyFiles = pkgs.linkFarm "voxtype-proxy-config" [
+    {
+      name = "config.yaml";
+      path = proxyConfig;
+    }
+    {
+      name = "dictation_history.py";
+      path = ./voxtype-history.py;
+    }
+    {
+      name = "dictation_history.html";
+      path = ./voxtype-history.html;
+    }
+  ];
   proxy = pkgs.writeShellApplication {
     name = "wave-voxtype-proxy";
     runtimeInputs = with pkgs; [
@@ -90,7 +106,7 @@ let
       })
       export OPENROUTER_API_KEY
       export LITELLM_LOCAL_MODEL_COST_MAP=True
-      exec ${lib.getExe pkgs.litellm} --host 127.0.0.1 --port 18080 --config ${proxyConfig} --telemetry False
+      exec ${lib.getExe pkgs.litellm} --host 127.0.0.1 --port 18080 --config ${proxyFiles}/config.yaml --telemetry False
     '';
   };
   daemon = pkgs.writeShellApplication {
@@ -162,6 +178,7 @@ in
       };
       Service = {
         ExecStart = lib.getExe proxy;
+        Environment = [ "WAVE_DICTATION_HISTORY=${config.xdg.stateHome}/voxtype/history.sqlite3" ];
         Restart = "on-failure";
         RestartSec = 10;
         UMask = "0077";
