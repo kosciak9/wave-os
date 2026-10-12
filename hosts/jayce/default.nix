@@ -283,6 +283,7 @@
         gtk3
         libdrm
         libgbm
+        libglvnd
         libx11
         libxcb
         libxcomposite
