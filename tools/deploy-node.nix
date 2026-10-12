@@ -33,6 +33,11 @@ assert config.wave.deployTarget.enable;
   sshUser = "deploy";
   user = "root";
   sshOpts = [
+    # Confirmation must establish a new TCP connection, not reuse an old master.
+    "-o"
+    "ControlMaster=no"
+    "-o"
+    "ControlPath=none"
     "-o"
     "BatchMode=yes"
     "-o"

@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ lib, pkgs, ... }:
 
 let
   anchorName = "com.apple/100.WaveRenekton";
@@ -75,6 +75,21 @@ let
       sleepPid=""
     done
   '';
+
+  firewallCheck = pkgs.writeShellScript "wave-renekton-firewall-check" ''
+    set -euo pipefail
+    export LC_ALL=C
+
+    /bin/launchctl print system/org.nixos.wave-renekton-firewall \
+      | /usr/bin/grep 'state = running' >/dev/null
+    /sbin/pfctl -s info 2>/dev/null | /usr/bin/grep '^Status: Enabled' >/dev/null
+    /sbin/pfctl -sr 2>/dev/null | /usr/bin/grep -F 'anchor "com.apple/*"' >/dev/null
+    rules=$(/sbin/pfctl -a ${anchorName} -sr 2>/dev/null)
+    expected=$(/sbin/pfctl -n -v -a ${anchorName} -f ${anchorRules} 2>/dev/null)
+    /bin/test "$rules" = "$expected"
+    /usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate \
+      | /usr/bin/grep '(State = 0)' >/dev/null
+  '';
 in
 
 {
@@ -85,9 +100,34 @@ in
     blockAllIncoming = false;
   };
 
+  security.sudo.extraConfig = ''
+    kosciak ALL=(root) NOPASSWD: ${firewallCheck}
+  '';
+
+  wave.health.checks.firewall = ''
+    if [ "$(/usr/bin/id -u)" = 0 ]; then
+      ${firewallCheck}
+    else
+      /usr/bin/sudo -n ${firewallCheck}
+    fi
+  '';
+
+  system.activationScripts.postActivation.text = lib.mkAfter ''
+    # An unchanged plist does not make nix-darwin reload a job stuck in EX_CONFIG.
+    if ! /bin/launchctl print system/org.nixos.wave-renekton-firewall 2>/dev/null | /usr/bin/grep 'state = running' >/dev/null; then
+      /bin/launchctl bootout system/org.nixos.wave-renekton-firewall 2>/dev/null || true
+      /bin/launchctl bootstrap system /Library/LaunchDaemons/org.nixos.wave-renekton-firewall.plist || exit 1
+    fi
+  '';
+
   launchd.daemons.wave-renekton-firewall = {
     serviceConfig = {
-      ProgramArguments = [ "${pfLoader}" ];
+      # Start outside the Nix store so a temporarily unavailable store fails in
+      # the shell and KeepAlive retries, rather than leaving launchd in EX_CONFIG.
+      ProgramArguments = [
+        "/bin/sh"
+        "${pfLoader}"
+      ];
       RunAtLoad = true;
       KeepAlive = true;
       ThrottleInterval = 10;

@@ -33,6 +33,10 @@ fn active_revision(user: &str, hostname: &str) -> Option<String> {
         Command::new("ssh")
             .args([
                 "-o",
+                "ControlMaster=no",
+                "-o",
+                "ControlPath=none",
+                "-o",
                 "BatchMode=yes",
                 "-o",
                 "ConnectTimeout=10",
