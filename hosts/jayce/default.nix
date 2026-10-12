@@ -282,6 +282,7 @@
         glib
         gtk3
         libdrm
+        libgbm
         libx11
         libxcb
         libxcomposite
@@ -290,7 +291,6 @@
         libxfixes
         libxkbcommon
         libxrandr
-        mesa
         nspr
         nss
         pango
