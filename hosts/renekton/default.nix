@@ -1,4 +1,9 @@
-{ lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
   imports = [
@@ -6,6 +11,7 @@
     ../../modules/sops.nix
     ../../modules/caddy/darwin.nix
     ./firewall.nix
+    ./network-guard.nix
     ./power.nix
     ./spotlight.nix
   ];
@@ -59,6 +65,35 @@
     localHostName = "renekton";
     computerName = "renekton";
   };
+
+  # Replaces nix-darwin's networking step, which re-sets the names on every activation;
+  # renekton's network dropped during that step, so names are written only on drift.
+  # The application firewall commands are carried over unchanged from firewall.nix's options.
+  system.activationScripts.networking.text = lib.mkForce (
+    let
+      inherit (config.networking) applicationFirewall;
+      onOff = enabled: if enabled then "on" else "off";
+    in
+    ''
+      echo "configuring networking..." >&2
+
+      ensure_scutil_name() {
+        local key="$1" value="$2"
+        if [ "$(/usr/sbin/scutil --get "$key" 2>/dev/null)" != "$value" ]; then
+          /usr/sbin/scutil --set "$key" "$value"
+        fi
+      }
+
+      ensure_scutil_name ComputerName ${lib.escapeShellArg config.networking.computerName}
+      ensure_scutil_name HostName ${lib.escapeShellArg config.networking.hostName}
+      ensure_scutil_name LocalHostName ${lib.escapeShellArg config.networking.localHostName}
+
+      echo "configuring application firewall..." >&2
+
+      /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate ${onOff applicationFirewall.enable}
+      /usr/libexec/ApplicationFirewall/socketfilterfw --setblockall ${onOff applicationFirewall.blockAllIncoming}
+    ''
+  );
 
   users.users.kosciak = {
     name = "kosciak";
