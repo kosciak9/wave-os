@@ -118,7 +118,7 @@ in
 {
   environment.systemPackages = [ pkgs.cliproxyapi ];
   wave.health.checks.cliproxyapi = ''
-    /usr/bin/test "$(${lib.getExe pkgs.curl} --silent --output /dev/null --write-out '%{http_code}' \
+    test "$(${lib.getExe pkgs.curl} --silent --output /dev/null --write-out '%{http_code}' \
       --max-time 5 http://127.0.0.1:8317/v1/models)" = 401
   '';
   launchd.daemons.cliproxyapi.serviceConfig = {
