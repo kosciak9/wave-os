@@ -3,6 +3,7 @@
   imports = [
     ../../modules/home/agents
     ../../modules/home/alfred
+    ../../modules/home/frida
     ../../modules/home/openclaw
     ../../modules/home/slack-mirror
     ../../modules/home/camofox
@@ -36,16 +37,19 @@
       fi
     '';
   };
-  services.alfred = {
-    enable = true;
-    # Podman permits one active VM; Alfred shares it with OpenClaw and Slack mirror.
-    machineName = "openclaw-sandbox";
-  };
-  services.slack-mirror = {
-    enable = true;
-    sync.enable = true;
-    # Podman permits one active VM; sharing it does not couple service lifecycles.
-    machineName = "openclaw-sandbox";
+  services = {
+    alfred = {
+      enable = true;
+      # Podman permits one active VM; Alfred shares it with OpenClaw and Slack mirror.
+      machineName = "openclaw-sandbox";
+    };
+    frida.enable = true;
+    slack-mirror = {
+      enable = true;
+      sync.enable = true;
+      # Podman permits one active VM; sharing it does not couple service lifecycles.
+      machineName = "openclaw-sandbox";
+    };
   };
   programs = {
     home-manager.enable = true;

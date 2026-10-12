@@ -109,6 +109,7 @@
     lib.genAttrs
       [
         "alfred/env"
+        "frida/env"
         "alfred/prompt.md"
         "alfred/mcp-token"
         "alfred/obsidian-vault-path"
