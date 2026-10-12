@@ -123,6 +123,7 @@
             src = inputs.herdr-auto-title;
           };
           plannotator = final.callPackage ./packages/plannotator.nix { };
+          cliproxyapi = final.callPackage ./packages/cliproxyapi.nix { inherit prev; };
           wave-dashboard = final.callPackage ./packages/wave-dashboard.nix { };
           slack-mirror = final.callPackage ./packages/slack-mirror.nix { };
           slack-mirror-context = final.callPackage ./packages/slack-mirror-context.nix { };

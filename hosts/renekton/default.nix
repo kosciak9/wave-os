@@ -10,6 +10,7 @@
     ../../modules/wave/darwin.nix
     ../../modules/sops.nix
     ../../modules/caddy/darwin.nix
+    ../../modules/cliproxyapi/darwin.nix
     ./firewall.nix
     ./network-guard.nix
     ./power.nix
@@ -120,6 +121,11 @@
         "alfred/substack-publication-url"
         "alfred/substack-session-token"
         "camofox/access-key"
+        "cliproxyapi/api-key"
+        "cliproxyapi/base-url"
+        "cliproxyapi/client-keys"
+        "cliproxyapi/management-key"
+        "cliproxyapi/opencode-go-keys"
         "slack-mirror/mcp-token"
         "slack-mirror/session.json"
       ]

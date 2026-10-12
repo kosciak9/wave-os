@@ -1,5 +1,6 @@
 {
 	admin 127.0.0.1:2019
+	auto_https disable_redirects
 	skip_install_trust
 }
 
@@ -15,4 +16,26 @@ https://renekton.dusky-diatonic.ts.net:6080 {
 		get_certificate tailscale
 	}
 	reverse_proxy 127.0.0.1:16080
+}
+
+https://tokens.wave.exposed {
+	tls {
+		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+		resolvers 1.1.1.1
+	}
+	route {
+		@outside not remote_ip 127.0.0.1 ::1 100.64.0.0/10 fd7a:115c:a1e0::/48
+		respond @outside 403
+		@management path /management.html /v8/management/*
+		handle @management {
+			reverse_proxy 127.0.0.1:8317
+		}
+		@inference path /v1/models /v1/chat/completions /v1/responses /v1/responses/compact /v1/messages /v1/messages/count_tokens
+		handle @inference {
+			reverse_proxy 127.0.0.1:8317
+		}
+		handle {
+			respond 404
+		}
+	}
 }

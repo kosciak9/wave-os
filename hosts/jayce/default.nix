@@ -23,6 +23,8 @@
 
   # The Home Manager services read these through osConfig.
   sops.secrets = {
+    "cliproxyapi/api-key".owner = "kosciak";
+    "cliproxyapi/base-url".owner = "kosciak";
     "pimalaya/google-client.json".owner = "kosciak";
     "protonmail/address".owner = "kosciak";
     "protonmail/bridge-password".owner = "kosciak";

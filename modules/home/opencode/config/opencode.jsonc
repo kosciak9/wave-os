@@ -1,6 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "openai/gpt-6.1-sol",
+  "model": "cliproxy/gpt-6.1-sol",
   "default_agent": "⩀",
   // Nix owns the binary. Do not let the CLI replace it.
   "update": "disable",
@@ -30,19 +30,19 @@
   },
   "agents": {
     "title": {
-      "model": "openai/gpt-6-luna#low",
+      "model": "cliproxy/gpt-6-luna#low",
     },
     "summary": {
-      "model": "openai/gpt-6.1-sol#medium",
+      "model": "cliproxy/gpt-6.1-sol#medium",
     },
     "compaction": {
-      "model": "openai/gpt-6.1-sol#medium",
+      "model": "cliproxy/gpt-6.1-sol#medium",
     },
     // No custom system prompt keeps OpenCode's built-in per-model prompts.
     "⩀": {
       "description": "Programming assistant for planning, exploration, and implementation",
       "mode": "primary",
-      "model": "openai/gpt-6.1-sol#medium",
+      "model": "cliproxy/gpt-6.1-sol#medium",
     },
     "build": {
       "disabled": true,
@@ -51,13 +51,13 @@
       "disabled": true,
     },
     "general": {
-      "model": "openai/gpt-6.1-sol#medium",
+      "model": "cliproxy/gpt-6.1-sol#medium",
       // The built-in general agent denies launching subagents.
       "permissions": [{ "action": "subagent", "resource": "*", "effect": "allow" }],
     },
     "explore": {
       "description": "Codebase and documentation researcher with file reading/search, Bash, web search/fetch, and Context7. No edit or skill tools; include task-specific instructions and relevant context when delegating.",
-      "model": "openai/gpt-6-luna#low",
+      "model": "cliproxy/gpt-6-luna#low",
       // The built-in explore agent denies everything except reads and web tools.
       "permissions": [
         { "action": "shell", "resource": "*", "effect": "allow" },

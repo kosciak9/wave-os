@@ -3,10 +3,16 @@
   lib,
   pkgs,
   config,
+  osConfig,
   ...
 }:
 
 let
+  gatewayPackage = import ../../../packages/agent-gateway.nix {
+    inherit lib pkgs;
+    apiKeyFile = osConfig.sops.secrets."cliproxyapi/api-key".path;
+    baseUrlFile = osConfig.sops.secrets."cliproxyapi/base-url".path;
+  };
   plugins = (import ./plugins.nix { inherit pkgs lib config; }) // config.programs.herdr.extraPlugins;
   herdr = inputs.herdr.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs (old: {
     patches = (old.patches or [ ]) ++ [
@@ -246,8 +252,8 @@ in
       herdr
       antigravity-cli
       bash
-      claude-code
-      codex
+      (gatewayPackage claude-code "claude")
+      (gatewayPackage codex "codex")
       fzf
       jq
       python3
