@@ -90,8 +90,12 @@
 
       echo "configuring application firewall..." >&2
 
-      /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate ${onOff applicationFirewall.enable}
-      /usr/libexec/ApplicationFirewall/socketfilterfw --setblockall ${onOff applicationFirewall.blockAllIncoming}
+      ${lib.optionalString (applicationFirewall.enable != null) ''
+        /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate ${onOff applicationFirewall.enable}
+      ''}
+      ${lib.optionalString (applicationFirewall.blockAllIncoming != null) ''
+        /usr/libexec/ApplicationFirewall/socketfilterfw --setblockall ${onOff applicationFirewall.blockAllIncoming}
+      ''}
     ''
   );
 

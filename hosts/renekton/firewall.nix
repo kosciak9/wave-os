@@ -95,10 +95,9 @@ in
 {
   environment.etc."pf.anchors/wave-renekton".source = anchorRules;
 
-  networking.applicationFirewall = {
-    enable = false;
-    blockAllIncoming = false;
-  };
+  # Even `socketfilterfw --setblockall off` turns the firewall back on.
+  # Leave its other options unmanaged when PF owns inbound filtering.
+  networking.applicationFirewall.enable = false;
 
   security.sudo.extraConfig = ''
     kosciak ALL=(root) NOPASSWD: ${firewallCheck}
