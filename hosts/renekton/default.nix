@@ -111,6 +111,10 @@
       [
         "alfred/env"
         "frida/env"
+        "frida/mcp-token"
+        "frida/home-assistant-mcp-url"
+        "frida/anytype-api-key"
+        "frida/anytype-space-id"
         "alfred/prompt.md"
         "alfred/mcp-token"
         "alfred/obsidian-vault-path"
