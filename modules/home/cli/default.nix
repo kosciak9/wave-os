@@ -31,7 +31,7 @@ in
   );
 
   # The passphrase-protected admin age key edits ~/.config/secrets until a YubiKey replaces it.
-  home.sessionVariables.SOPS_AGE_KEY_CMD = "age -d ${config.home.homeDirectory}/.config/secrets/admin.age";
+  home.sessionVariables.SOPS_AGE_KEY_CMD = "age -d ${config.home.homeDirectory}/.config/secrets/keys/admin.age";
 
   home.packages = with pkgs; [
     age
