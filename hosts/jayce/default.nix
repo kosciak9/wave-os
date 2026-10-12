@@ -267,7 +267,35 @@
         obs-wayland-hotkeys
       ];
     };
-    nix-ld.enable = true;
+    nix-ld = {
+      enable = true;
+      # Prebuilt Electron from npm (desktop apps run from source)
+      libraries = with pkgs; [
+        alsa-lib
+        at-spi2-atk
+        at-spi2-core
+        atk
+        cairo
+        cups
+        dbus
+        expat
+        glib
+        gtk3
+        libdrm
+        libx11
+        libxcb
+        libxcomposite
+        libxdamage
+        libxext
+        libxfixes
+        libxkbcommon
+        libxrandr
+        mesa
+        nspr
+        nss
+        pango
+      ];
+    };
     fuse.enable = true;
     gnupg.agent = {
       enable = true;
