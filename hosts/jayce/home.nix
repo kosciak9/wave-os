@@ -1,5 +1,4 @@
 {
-  config,
   lib,
   pkgs,
   inputs,
@@ -18,7 +17,7 @@ let
   waytator = pkgs.callPackage ../../packages/waytator.nix { };
   wlClipPersist = pkgs.callPackage ../../packages/wl-clip-persist.nix { };
   libreoffice = pkgs.callPackage ../../packages/libreoffice.nix { };
-  markitdownOffice = pkgs.callPackage ../../packages/markitdown-office.nix { };
+  strata = pkgs.callPackage ../../packages/strata.nix { };
   waveDisplay = "${lib.getExe pkgs.wave} display";
   lockStatus = pkgs.writeShellApplication {
     name = "wave-lock-status";
@@ -124,6 +123,7 @@ in
       remmina
       ripgrep
       spotifast
+      strata
       trash-cli
       tesseract
       waytator
@@ -152,21 +152,6 @@ in
       };
     };
     home-manager.enable = true;
-    yazi = {
-      enable = true;
-      enableZshIntegration = true;
-      extraPackages = [
-        markitdownOffice
-        pkgs.glow
-      ];
-      plugins.piper = pkgs.yaziPlugins.piper;
-      settings.plugin.prepend_previewers = [
-        {
-          url = "*.{docx,DOCX,xlsx,XLSX,pptx,PPTX}";
-          run = ''piper -- markitdown "$1" | CLICOLOR_FORCE=1 glow -w "$w" -s dark -'';
-        }
-      ];
-    };
     zathura.enable = true;
     zen-browser = {
       enable = true;
@@ -369,18 +354,6 @@ in
 
   xdg = {
     enable = true;
-    desktopEntries.yazi = {
-      name = "Yazi File Manager";
-      icon = "yazi";
-      exec = "${lib.getExe config.programs.ghostty.package} -e ${lib.getExe config.programs.yazi.finalPackage} %f";
-      terminal = false;
-      mimeType = [ "inode/directory" ];
-      categories = [
-        "System"
-        "FileManager"
-        "FileTools"
-      ];
-    };
     mimeApps = {
       enable = true;
       defaultApplications = {
@@ -393,7 +366,7 @@ in
           "impress.desktop"
         ];
         "application/xhtml+xml" = [ "zen.desktop" ];
-        "inode/directory" = [ "yazi.desktop" ];
+        "inode/directory" = [ "io.github.lgse.Strata.desktop" ];
         "text/html" = [ "zen.desktop" ];
         "x-scheme-handler/http" = [ "zen.desktop" ];
         "x-scheme-handler/https" = [ "zen.desktop" ];

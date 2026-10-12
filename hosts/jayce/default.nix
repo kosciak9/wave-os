@@ -108,6 +108,7 @@
   wave.deployer.enable = true;
 
   services = {
+    gvfs.enable = true;
     openssh = {
       enable = true;
       openFirewall = false;
@@ -356,6 +357,7 @@
     # virsh defaults to the per-user session; VMs live in the system instance.
     variables.LIBVIRT_DEFAULT_URI = "qemu:///system";
     systemPackages = with pkgs; [
+      bubblewrap
       e2fsprogs
       gnupg
       pinentry-gnome3
