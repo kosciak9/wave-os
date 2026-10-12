@@ -284,6 +284,7 @@
         libdrm
         libgbm
         libglvnd
+        libsecret
         libx11
         libxcb
         libxcomposite
