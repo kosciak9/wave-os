@@ -1,6 +1,6 @@
 use super::hyprland::{Hyprland, Monitor, Notice};
 use super::logind::Logind;
-use super::ownership::{Backlight, EVENT_DELAY, Ownership, description_identity};
+use super::ownership::{Backlight, EVENT_DELAY, Ownership};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
@@ -18,6 +18,7 @@ const MOVE_CONFIRM_ATTEMPTS: u32 = 15;
 const MOVE_CONFIRM_INTERVAL: Duration = Duration::from_millis(80);
 const INTERNAL_RETURN_ATTEMPTS: u32 = 40;
 const INTERNAL_RETURN_INTERVAL: Duration = Duration::from_millis(100);
+const CONVERGENCE_RETRY: Duration = Duration::from_secs(1);
 const DIM_STEPS: u32 = 40;
 const DIM_STEP_INTERVAL: Duration = Duration::from_millis(50);
 /// Idle dim target as a fraction of the panel's maximum brightness.
@@ -160,6 +161,7 @@ fn has_internal(monitors: &[Monitor]) -> bool {
 /// the hardware report now, so any event repairs any earlier drift.
 pub struct Reconciler {
     hyprland: Hyprland,
+    connected: bool,
     logind: Logind,
     pub ownership: Ownership,
     /// While present, Hyprland's config keeps eDP-1 disabled across reloads.
@@ -174,6 +176,8 @@ pub struct Reconciler {
     suspend_delay: Duration,
     idle_requested: bool,
     deferred_snapshot_at: Option<Instant>,
+    convergence_retry_at: Option<Instant>,
+    wake_pending: bool,
     /// Whether the last convergence left eDP-1 off for a closed lid or the override.
     internal_off: bool,
     fade: Option<Fade>,
@@ -188,6 +192,7 @@ impl Reconciler {
     ) -> Self {
         Self {
             hyprland,
+            connected: false,
             logind,
             ownership,
             internal_off_marker,
@@ -201,6 +206,8 @@ impl Reconciler {
             suspend_delay: Duration::from_secs(1),
             idle_requested: false,
             deferred_snapshot_at: None,
+            convergence_retry_at: None,
+            wake_pending: false,
             internal_off: false,
             fade: None,
         }
@@ -218,7 +225,7 @@ impl Reconciler {
 
     pub fn status(&self) -> Status {
         Status {
-            available: lid_state() == Lid::Open && self.external_present,
+            available: self.connected && lid_state() == Lid::Open && self.external_present,
             active: self.override_active(),
         }
     }
@@ -293,13 +300,31 @@ impl Reconciler {
         self.converge(false);
     }
 
-    pub fn hyprland_connected(&mut self) {
+    pub fn hyprland_connected(&mut self, instance: Hyprland) {
+        if instance.signature != self.hyprland.signature {
+            eprintln!("wave display: following the replacement Hyprland instance");
+            self.clear_override("Hyprland restarted");
+            let state = std::mem::take(&mut self.ownership.state).for_instance(&instance.signature);
+            self.ownership = Ownership::new(state);
+            self.generated.clear();
+            self.last_external.clear();
+            self.idle_requested = false;
+            self.suspend_requested = false;
+            self.reset_sleep_retry();
+        }
+        self.hyprland = instance;
+        self.connected = true;
         self.deferred_snapshot_at = None;
-        self.converge(false);
+        self.converge(true);
     }
 
     pub fn hyprland_disconnected(&mut self) {
+        eprintln!("wave display: Hyprland disconnected; waiting for its replacement");
+        self.connected = false;
+        self.external_present = false;
         self.deferred_snapshot_at = None;
+        self.convergence_retry_at = None;
+        self.reset_sleep_retry();
     }
 
     pub fn hyprland_notice(&mut self, notice: Notice<'_>) {
@@ -320,10 +345,9 @@ impl Reconciler {
                 self.ownership.monitor_removed(name);
                 self.during_topology_change(|reconciler| reconciler.converge(false));
             }
-            Notice::MonitorAdded { name, description } => {
+            Notice::MonitorAdded { name, .. } => {
                 self.deferred_snapshot_at = None;
-                let identity = description_identity(description);
-                self.ownership.monitor_added(name, identity.as_deref());
+                self.ownership.monitor_added(name);
                 self.during_topology_change(|reconciler| {
                     std::thread::sleep(OUTPUT_SETTLE);
                     reconciler.converge(false);
@@ -339,6 +363,10 @@ impl Reconciler {
     /// Timed follow-ups; returns when the next one is due.
     pub fn tick(&mut self) -> Option<Instant> {
         let now = Instant::now();
+        if self.convergence_retry_at.is_some_and(|due| now >= due) {
+            self.convergence_retry_at = None;
+            self.converge(false);
+        }
         if self.deferred_snapshot_at.is_some_and(|due| now >= due) {
             self.deferred_snapshot_at = None;
             self.snapshot();
@@ -364,6 +392,7 @@ impl Reconciler {
         [
             self.fade.as_ref().map(|fade| fade.next_at),
             self.deferred_snapshot_at,
+            self.convergence_retry_at,
             retry,
             self.ownership.next_flush(),
             generated_expiry,
@@ -389,6 +418,9 @@ impl Reconciler {
     }
 
     fn snapshot(&mut self) -> Option<Vec<Monitor>> {
+        if !self.connected {
+            return None;
+        }
         let monitors = self
             .hyprland
             .monitors()
@@ -442,6 +474,12 @@ impl Reconciler {
     }
 
     pub fn converge(&mut self, wake_displays: bool) {
+        self.wake_pending |= wake_displays;
+        if !self.connected {
+            return;
+        }
+        let wake_displays = self.wake_pending;
+        self.convergence_retry_at = None;
         let lid = lid_state();
         if lid != self.last_lid && lid != Lid::Unknown && self.last_lid != Lid::Unknown {
             self.clear_override("the lid moved");
@@ -452,28 +490,40 @@ impl Reconciler {
             if lid == Lid::Closed || self.override_active() {
                 self.dpms(INTERNAL, false);
             }
-            self.defer_sleep();
+            self.convergence_retry_at = Some(Instant::now() + CONVERGENCE_RETRY);
             return;
         };
-        if self.override_active() && !self.external_present {
+        let lost_external = self.override_active() && !self.external_present;
+        if lost_external {
             self.clear_override("no external display");
+            self.wake_pending = true;
+            self.idle_requested = false;
+            self.undim();
         }
 
-        if lid == Lid::Closed || self.override_active() {
-            self.converge_closed(&monitors, lid);
+        let converged = if lid == Lid::Closed || self.override_active() {
+            let mut converged = self.converge_closed(&monitors, lid);
             if wake_displays && let Ok(monitors) = self.hyprland.monitors() {
                 for monitor in monitors.iter().filter(|monitor| monitor.name != INTERNAL) {
-                    self.set_dpms(monitor, true);
+                    converged &= self.set_dpms(monitor, true);
                 }
             }
+            converged
         } else {
-            self.converge_open(monitors, wake_displays);
+            self.converge_open(monitors, wake_displays || lost_external)
+        };
+        if converged {
+            self.wake_pending = false;
+        } else {
+            self.convergence_retry_at = Some(Instant::now() + CONVERGENCE_RETRY);
         }
     }
 
-    fn converge_closed(&mut self, monitors: &[Monitor], lid: Lid) {
-        if let Some(internal) = monitors.iter().find(|monitor| monitor.name == INTERNAL) {
-            self.set_dpms(internal, false);
+    fn converge_closed(&mut self, monitors: &[Monitor], lid: Lid) -> bool {
+        if let Some(internal) = monitors.iter().find(|monitor| monitor.name == INTERNAL)
+            && !self.set_dpms(internal, false)
+        {
+            return false;
         }
         // Only a lid closed without an external display locks and sleeps;
         // with one, the session carries on there.
@@ -485,51 +535,58 @@ impl Reconciler {
                 }
                 self.request_sleep(false);
             }
-            return;
+            return true;
         }
         if has_internal(monitors) {
             if !self.evacuate_internal(monitors) {
-                self.defer_sleep();
-                return;
+                return false;
             }
-        } else {
-            self.mark_internal_off();
-            self.restore_outputs(monitors);
+        } else if !self.mark_internal_off() || !self.restore_outputs(monitors) {
+            return false;
         }
         self.internal_off = true;
         self.undim();
         self.sync_keyboard();
         self.settle_sleep();
+        true
     }
 
-    fn converge_open(&mut self, monitors: Vec<Monitor>, wake_displays: bool) {
+    fn converge_open(&mut self, monitors: Vec<Monitor>, wake_displays: bool) -> bool {
+        let restoring_internal = !has_internal(&monitors);
         let monitors = if has_internal(&monitors) {
-            self.clear_internal_off_marker();
+            if !self.clear_internal_off_marker() {
+                return false;
+            }
             monitors
         } else {
             match self.enable_internal() {
                 Some(monitors) => monitors,
-                None => {
-                    self.defer_sleep();
-                    return;
-                }
+                None => return false,
             }
         };
         self.internal_off = false;
+        if wake_displays || restoring_internal {
+            self.wake_pending = true;
+            self.undim();
+        }
         self.sync_keyboard();
-        self.restore_outputs(&monitors);
-        if wake_displays {
+        let mut converged = self.restore_outputs(&monitors);
+        if wake_displays || restoring_internal {
             for monitor in &monitors {
-                self.set_dpms(monitor, true);
+                converged &= self.set_dpms(monitor, true);
             }
         }
         self.settle_sleep();
+        converged
     }
 
     fn mark_internal_off(&self) -> bool {
-        std::fs::write(&self.internal_off_marker, b"")
-            .map_err(|error| eprintln!("wave display: cannot mark eDP-1 off: {error}"))
-            .is_ok()
+        std::fs::write(
+            &self.internal_off_marker,
+            self.hyprland.signature.as_bytes(),
+        )
+        .map_err(|error| eprintln!("wave display: cannot mark eDP-1 off: {error}"))
+        .is_ok()
     }
 
     fn clear_internal_off_marker(&self) -> bool {
@@ -588,7 +645,7 @@ impl Reconciler {
             .is_ok()
     }
 
-    /// Reloads Hyprland's config without the off marker to bring eDP-1 back.
+    /// Re-enables only the panel, keeping its configured mode and scale.
     fn enable_internal(&mut self) -> Option<Vec<Monitor>> {
         if !self.clear_internal_off_marker() {
             return None;
@@ -596,7 +653,11 @@ impl Reconciler {
         let mut monitors = None;
         self.during_topology_change(|reconciler| {
             reconciler.blackout();
-            if let Err(error) = reconciler.hyprland.reload() {
+            let command = format!(
+                "hl.monitor({{ output = {}, disabled = false }})",
+                lua_string(INTERNAL)
+            );
+            if let Err(error) = reconciler.hyprland.eval(&command) {
                 eprintln!("wave display: {error:#}");
                 return;
             }
@@ -609,7 +670,7 @@ impl Reconciler {
                 }
                 std::thread::sleep(INTERNAL_RETURN_INTERVAL);
             }
-            eprintln!("wave display: eDP-1 did not return after reload");
+            eprintln!("wave display: eDP-1 did not return after enabling it");
         });
         monitors
     }
@@ -678,7 +739,7 @@ impl Reconciler {
     /// Returns workspaces to the outputs the user placed them on. Focus is
     /// only rearranged after something moved or the topology changed, so
     /// routine events never steal focus or warp the cursor.
-    fn restore_outputs(&mut self, monitors: &[Monitor]) {
+    fn restore_outputs(&mut self, monitors: &[Monitor]) -> bool {
         let previous_focus = monitors
             .iter()
             .find(|monitor| monitor.focused)
@@ -697,11 +758,12 @@ impl Reconciler {
             })
             .collect();
         let moved = !moves.is_empty();
+        let mut restored = true;
         for (id, target) in moves {
-            self.move_workspace(id, &target);
+            restored &= self.move_workspace(id, &target);
         }
         if !moved && self.frozen_last_active.is_empty() {
-            return;
+            return true;
         }
 
         let connected: Vec<String> = self.ownership.connected().map(String::from).collect();
@@ -730,29 +792,29 @@ impl Reconciler {
                 }
             }
         }
+        restored
     }
 
-    fn set_dpms(&self, monitor: &Monitor, enabled: bool) {
-        if monitor.dpms_status != enabled {
-            self.dpms(&monitor.name, enabled);
-        }
+    fn set_dpms(&self, monitor: &Monitor, enabled: bool) -> bool {
+        monitor.dpms_status == enabled || self.dpms(&monitor.name, enabled)
     }
 
-    fn dpms(&self, connector: &str, enabled: bool) {
+    fn dpms(&self, connector: &str, enabled: bool) -> bool {
         if enabled
             && connector == INTERNAL
             && (lid_state() == Lid::Closed || self.override_active())
         {
-            return;
+            return true;
         }
         let command = format!(
             "hl.dsp.dpms({{ action = {}, monitor = {} }})",
             lua_string(if enabled { "enable" } else { "disable" }),
             lua_string(connector)
         );
-        if let Err(error) = self.hyprland.dispatch(&command) {
-            eprintln!("wave display: {error:#}");
-        }
+        self.hyprland
+            .dispatch(&command)
+            .map_err(|error| eprintln!("wave display: {error:#}"))
+            .is_ok()
     }
 
     /// Hides the flash of moving workspaces behind Quickshell's blackout.

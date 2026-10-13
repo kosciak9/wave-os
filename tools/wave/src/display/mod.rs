@@ -18,7 +18,7 @@ use std::sync::mpsc::{self, RecvTimeoutError, Sender};
 use std::time::Duration;
 
 const CLIENT_WRITE_TIMEOUT: Duration = Duration::from_secs(2);
-/// Covers a full convergence: blackout, workspace moves and a config reload.
+/// Covers a full convergence: blackout, workspace moves and output activation.
 const CLIENT_REPLY_TIMEOUT: Duration = Duration::from_secs(30);
 const WATCHER_WRITE_TIMEOUT: Duration = Duration::from_millis(200);
 const IDLE_WAIT: Duration = Duration::from_secs(3600);
@@ -167,10 +167,11 @@ impl From<logind::Event> for Event {
 }
 
 fn load_state(path: &Path, signature: &str) -> State {
-    let mut state: State = fs::read(path)
+    let state: State = fs::read(path)
         .ok()
         .and_then(|bytes| serde_json::from_slice(&bytes).ok())
         .unwrap_or_default();
+    let mut state = state.for_instance(signature);
     if state.lid_override.as_deref() != Some(signature) {
         state.lid_override = None;
     }
@@ -305,7 +306,9 @@ fn daemon(paths: &Paths) -> Result<()> {
             .map(|due: std::time::Instant| due.saturating_duration_since(std::time::Instant::now()))
             .unwrap_or(IDLE_WAIT);
         match incoming.recv_timeout(wait) {
-            Ok(Event::Hyprland(hyprland::Event::Connected)) => reconciler.hyprland_connected(),
+            Ok(Event::Hyprland(hyprland::Event::Connected(instance))) => {
+                reconciler.hyprland_connected(instance)
+            }
             Ok(Event::Hyprland(hyprland::Event::Disconnected)) => {
                 reconciler.hyprland_disconnected()
             }

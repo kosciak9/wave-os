@@ -3,7 +3,9 @@ local mod = "SUPER"
 -- `wave display` keeps this marker while the lid is closed or overridden, so
 -- a config reload never turns the laptop screen back on behind its back.
 local internalOffMarker = io.open((os.getenv("XDG_RUNTIME_DIR") or "") .. "/wave-display/internal-off", "r")
+local internalOff = false
 if internalOffMarker then
+    internalOff = internalOffMarker:read("*a") == os.getenv("HYPRLAND_INSTANCE_SIGNATURE")
     internalOffMarker:close()
 end
 
@@ -13,7 +15,7 @@ hl.monitor({
     position = "auto",
     scale = 1.6,
     vrr = 2,
-    disabled = internalOffMarker ~= nil,
+    disabled = internalOff,
 })
 
 hl.monitor({

@@ -18,6 +18,8 @@ hyprland.stdenv.mkDerivation {
 
   dontUseCmakeConfigure = true;
 
+  patches = [ ./hyprland-scroll-overview-hotplug.patch ];
+
   postPatch = ''
     substituteInPlace Makefile --replace-fail lua5.4 lua
   '';

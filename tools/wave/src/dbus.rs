@@ -38,6 +38,8 @@ pub trait Session {
     default_path = "/org/freedesktop/systemd1"
 )]
 pub trait SystemdManager {
+    #[zbus(property(emits_changed_signal = "false"))]
+    fn environment(&self) -> zbus::Result<Vec<String>>;
     fn start_unit(&self, name: &str, mode: &str) -> zbus::Result<OwnedObjectPath>;
     fn stop_unit(&self, name: &str, mode: &str) -> zbus::Result<OwnedObjectPath>;
     fn load_unit(&self, name: &str) -> zbus::Result<OwnedObjectPath>;

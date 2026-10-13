@@ -12,6 +12,8 @@ const ADDED_OUTPUT_GRACE: Duration = Duration::from_secs(2);
 #[derive(Default, Serialize, Deserialize)]
 pub struct State {
     #[serde(default)]
+    pub instance: String,
+    #[serde(default)]
     pub workspaces: BTreeMap<i64, WorkspaceRecord>,
     /// Output identity -> the workspace last active on it.
     #[serde(default)]
@@ -29,6 +31,22 @@ pub struct State {
     /// Laptop screen backlight before the idle dim, restored on activity.
     #[serde(default)]
     pub dimmed_backlight: Option<Backlight>,
+}
+
+impl State {
+    pub fn for_instance(self, signature: &str) -> Self {
+        if self.instance == signature {
+            return self;
+        }
+        // Workspace IDs and the override belong to a compositor instance;
+        // backlight levels belong to hardware and must still be restored.
+        Self {
+            instance: signature.into(),
+            keyboard_backlight: self.keyboard_backlight,
+            dimmed_backlight: self.dimmed_backlight,
+            ..Self::default()
+        }
+    }
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -139,6 +157,14 @@ impl Ownership {
             .added_at
             .get(destination)
             .is_some_and(|added| added.elapsed() < ADDED_OUTPUT_GRACE);
+        if let Some(pending) = self.pending.get_mut(&id) {
+            // A last-output unplug can cascade through FALLBACK before the
+            // panel returns. Keep the original source until the batch settles.
+            pending.destination = destination.into();
+            pending.when = Instant::now();
+            pending.generated |= generated || restoring;
+            return;
+        }
         self.pending.insert(
             id,
             PendingMove {
@@ -166,17 +192,13 @@ impl Ownership {
         }
     }
 
-    pub fn monitor_added(&mut self, connector: &str, identity: Option<&str>) {
+    pub fn monitor_added(&mut self, connector: &str) {
         self.removed_connectors.remove(connector);
         self.added_at.insert(connector.into(), Instant::now());
-        let Some(identity) = identity else { return };
-        for (id, pending) in &mut self.pending {
-            let desired = self
-                .state
-                .workspaces
-                .get(id)
-                .and_then(|record| record.desired_identity.as_deref());
-            if pending.destination == connector && desired == Some(identity) {
+        // Hyprland moves orphaned workspaces before announcing the new output;
+        // these are recovery moves, not changes to the user's placement.
+        for pending in self.pending.values_mut() {
+            if pending.destination == connector {
                 pending.generated = true;
             }
         }

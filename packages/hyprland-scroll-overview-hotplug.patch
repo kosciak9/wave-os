@@ -1,0 +1,153 @@
+diff --git a/main.cpp b/main.cpp
+--- a/main.cpp
++++ b/main.cpp
+@@ -65,6 +65,7 @@
+ static bool                g_scrollMoveMouseHookWarned      = false;
+ static CHyprSignalListener g_configReloadHook;
+ static CHyprSignalListener g_nativeDragMouseMoveHook;
++static CHyprSignalListener g_monitorRemovedHook;
+ 
+ static void failNotif(const std::string& reason);
+ static void warnNativeDragUnavailable();
+@@ -687,6 +688,16 @@
+ 
+     g_configReloadHook = Event::bus()->m_events.config.reloaded.listen([] { reconcileNativeDragHook(); });
+ 
++    g_monitorRemovedHook = Event::bus()->m_events.monitor.preRemoved.listen([](PHLMONITOR monitor) {
++        const auto OVERVIEW = scrollOverviewForMonitor(monitor);
++        if (!OVERVIEW)
++            return;
++
++        // Tear down input and render hooks while the monitor is still usable.
++        OVERVIEW->dismissTransient();
++        removeOverview(OVERVIEW.get());
++    });
++
+     g_nativeDragMouseMoveHook = Event::bus()->m_events.input.mouse.move.listen([](Vector2D, Event::SCallbackInfo& info) {
+         if (info.cancelled || g_unloading || scrollOverviews().empty())
+             return;
+@@ -714,6 +725,7 @@
+     g_unloading = true;
+     g_nativeDragMouseMoveHook.reset();
+     g_configReloadHook.reset();
++    g_monitorRemovedHook.reset();
+     if (g_pScrollChangeWorkspaceHook)
+         g_pScrollChangeWorkspaceHook->unhook();
+     clearScrollOverviews();
+diff --git a/scrollOverview.cpp b/scrollOverview.cpp
+--- a/scrollOverview.cpp
++++ b/scrollOverview.cpp
+@@ -5042,6 +5042,25 @@
+     const bool PRESERVEMONITORSTATE = mode == ECloseMode::PRESERVE_MONITOR_STATE;
+     const bool ACTIVATESELECTION    = !PRESERVEMONITORSTATE && activeScrollOverview().get() == this;
+     const auto MONITOR              = pMonitor.lock();
++    if (!MONITOR || !MONITOR->m_enabled || !MONITOR->m_activeWorkspace) {
++        setClosing(true);
++        closeRemovalPending = true;
++        scale->setCallbackOnEnd({});
++        // No frames will finish the close animation after the output is gone.
++        // Defer removal so an input callback cannot destroy its own overview.
++        if (!closeRemovalIdle) {
++            closeRemovalIdle = wl_event_loop_add_idle(
++                g_pCompositor->m_wlEventLoop,
++                [](void* data) {
++                    auto* overview = static_cast<CScrollOverview*>(data);
++                    overview->closeRemovalIdle = nullptr;
++                    removeOverview(overview);
++                },
++                this);
++        }
++        return;
++    }
++
+     const auto SELECTEDWORKSPACE    = PRESERVEMONITORSTATE ?
+         (MONITOR ? MONITOR->m_activeWorkspace : PHLWORKSPACE{}) :
+         (viewportCurrentWorkspace < images.size() && images[viewportCurrentWorkspace] ? images[viewportCurrentWorkspace]->pWorkspace : PHLWORKSPACE{});
+@@ -5062,7 +5081,7 @@
+         *scale = 1.F;
+ 
+         if (!ScrollOverview::Config::getValue<int>("animations:enabled")) {
+-            forceWorkspaceWindowsDecoRecalc(finalWorkspace ? finalWorkspace : pMonitor->m_activeWorkspace);
++            forceWorkspaceWindowsDecoRecalc(finalWorkspace ? finalWorkspace : MONITOR->m_activeWorkspace);
+             damage();
+         }
+ 
+@@ -5073,7 +5092,7 @@
+         });
+     };
+ 
+-    if (!PRESERVEMONITORSTATE && !closeOnWindow && (!SELECTEDWORKSPACE || SELECTEDWORKSPACE == pMonitor->m_activeWorkspace)) {
++    if (!PRESERVEMONITORSTATE && !closeOnWindow && (!SELECTEDWORKSPACE || SELECTEDWORKSPACE == MONITOR->m_activeWorkspace)) {
+         const auto FOCUSEDWINDOW = getOverviewWindowToShow(Desktop::focusState()->window());
+         if (!SELECTEDWORKSPACE || (FOCUSEDWINDOW && FOCUSEDWINDOW->m_workspace == SELECTEDWORKSPACE))
+             closeOnWindow = FOCUSEDWINDOW;
+@@ -5097,8 +5116,8 @@
+         }
+ 
+         if (sourceIdx < images.size() && targetIdx < images.size()) {
+-            if (FINALWORKSPACE != pMonitor->m_activeWorkspace)
+-                pMonitor->changeWorkspace(FINALWORKSPACE, false, true, true);
++            if (FINALWORKSPACE != MONITOR->m_activeWorkspace)
++                MONITOR->changeWorkspace(FINALWORKSPACE, false, true, true);
+ 
+             if (ACTIVATESELECTION)
+                 Desktop::focusState()->fullWindowFocus(closeOnWindow.lock(), Desktop::FOCUS_REASON_DESKTOP_STATE_CHANGE);
+@@ -5106,7 +5125,7 @@
+             startedOn                = FINALWORKSPACE;
+             viewportCurrentWorkspace = targetIdx;
+ 
+-            const auto FINALPITCH = getWorkspaceLogicalPitch(pMonitor.lock(), 1.F, layout);
++            const auto FINALPITCH = getWorkspaceLogicalPitch(MONITOR, 1.F, layout);
+             viewOffset->setValueAndWarp(axisOffsetVector(workspaceOverviewLogicalOffset(sourceIdx, targetIdx, FINALPITCH), layout));
+             *viewOffset = Vector2D{};
+ 
+@@ -5120,7 +5139,7 @@
+ 
+     if (!closeOnWindow) {
+         const auto ACTIVEIDX = activeWorkspaceIndex();
+-        const auto FINALPITCH = getWorkspaceLogicalPitch(pMonitor.lock(), 1.F, layout);
++        const auto FINALPITCH = getWorkspaceLogicalPitch(MONITOR, 1.F, layout);
+         *viewOffset = Vector2D{};
+ 
+         for (size_t workspaceIdx = 0; workspaceIdx < images.size(); ++workspaceIdx) {
+@@ -5131,12 +5150,12 @@
+             break;
+         }
+ 
+-        if (SELECTEDWORKSPACE && SELECTEDWORKSPACE != pMonitor->m_activeWorkspace)
+-            pMonitor->changeWorkspace(SELECTEDWORKSPACE, false, true, true);
+-    } else if (closeOnWindow == Desktop::focusState()->window() && closeOnWindow->m_workspace == pMonitor->m_activeWorkspace) {
++        if (SELECTEDWORKSPACE && SELECTEDWORKSPACE != MONITOR->m_activeWorkspace)
++            MONITOR->changeWorkspace(SELECTEDWORKSPACE, false, true, true);
++    } else if (closeOnWindow == Desktop::focusState()->window() && closeOnWindow->m_workspace == MONITOR->m_activeWorkspace) {
+         if (focusSyncedFromWorkspaceID != WORKSPACE_INVALID) {
+             const auto ACTIVEIDX   = activeWorkspaceIndex();
+-            const auto FINALPITCH = getWorkspaceLogicalPitch(pMonitor.lock(), 1.F, layout);
++            const auto FINALPITCH = getWorkspaceLogicalPitch(MONITOR, 1.F, layout);
+ 
+             for (size_t workspaceIdx = 0; workspaceIdx < images.size(); ++workspaceIdx) {
+                 if (!images[workspaceIdx] || !images[workspaceIdx]->pWorkspace || images[workspaceIdx]->pWorkspace->m_id != focusSyncedFromWorkspaceID)
+@@ -5150,18 +5169,20 @@
+         *viewOffset = Vector2D{};
+     } else {
+ 
+-        if (closeOnWindow->m_workspace != pMonitor->m_activeWorkspace)
+-            pMonitor->changeWorkspace(closeOnWindow->m_workspace, false, true, true);
++        if (closeOnWindow->m_workspace != MONITOR->m_activeWorkspace)
++            MONITOR->changeWorkspace(closeOnWindow->m_workspace, false, true, true);
+ 
+         if (ACTIVATESELECTION)
+             Desktop::focusState()->fullWindowFocus(closeOnWindow.lock(), Desktop::FOCUS_REASON_DESKTOP_STATE_CHANGE);
+ 
+         const auto ACTIVEIDX = activeWorkspaceIndex();
+-        const auto FINALPITCH = getWorkspaceLogicalPitch(pMonitor.lock(), 1.F, layout);
++        const auto FINALPITCH = getWorkspaceLogicalPitch(MONITOR, 1.F, layout);
+         bool       found      = false;
+         const auto selectedWindow = getOverviewWindowToShow(closeOnWindow.lock());
+         for (size_t workspaceIdx = 0; workspaceIdx < images.size(); ++workspaceIdx) {
+             const auto& wimg = images[workspaceIdx];
++            if (!wimg)
++                continue;
+             for (const auto& windowRef : wimg->windows) {
+                 const auto window = getOverviewWindowToShow(windowRef.lock());
+                 if (window == selectedWindow && window) {
