@@ -74,8 +74,13 @@ let
   };
 in
 {
-  home.packages = [ common.imageBuild ];
-  home.activation.camofoxDirectories = common.activation;
+  home = {
+    packages = [ common.imageBuild ];
+    file.".local/state/camofox/access-key".source =
+      config.lib.file.mkOutOfStoreSymlink
+        osConfig.sops.secrets."camofox/access-key".path;
+    activation.camofoxDirectories = common.activation;
+  };
   launchd.agents.camofox-browser = {
     enable = true;
     domain = "gui";

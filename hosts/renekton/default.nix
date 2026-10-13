@@ -45,18 +45,6 @@
           show-recents-count = 1;
         };
 
-        "ai.openclaw.mac" = {
-          "openclaw.nixMode" = true;
-          "openclaw.connectionMode" = "local";
-          "openclaw.canvasEnabled" = false;
-          "openclaw.computerControlEnabled" = false;
-          "openclaw.quickChatEnabled" = false;
-          "openclaw.showDockIcon" = true;
-          "openclaw.heartbeatsEnabled" = false;
-          "openclaw.iconAnimationsEnabled" = true;
-          "openclaw.iconOverride" = "system";
-          autoUpdateEnabled = false;
-        };
       };
     };
   };
@@ -167,7 +155,6 @@
   services.tailscale.enable = true;
   services.openssh.enable = true;
 
-  # The OpenClaw Gateway probes return with it; it is paused for Alfred.
   wave.deployTarget.enable = true;
   # Tailscale 1.98+ manages /etc/resolver/ts.net itself and rejects nix-darwin's
   # symlink because it escapes os.Root("/etc/resolver").

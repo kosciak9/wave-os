@@ -54,12 +54,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    nix-openclaw = {
-      url = "github:openclaw/nix-openclaw/f62d33f760bcbdbc6a52ac589eae22bf99201f90";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.home-manager.follows = "home-manager";
-    };
-
     nix-flatpak.url = "github:gmodena/nix-flatpak?ref=v0.7.0";
 
     sqlit = {
@@ -141,9 +135,7 @@
           openclaw-languagetool-mcp-image = final.callPackage ./packages/openclaw-languagetool-mcp-image.nix {
             context = final.openclaw-languagetool-mcp-context;
           };
-          openclaw-embeddinggemma = final.callPackage ./packages/openclaw-embeddinggemma.nix { };
           openclaw-whisper-model = final.callPackage ./packages/openclaw-whisper-model.nix { };
-          openclaw-llama-server = final.callPackage ./packages/openclaw-llama-server.nix { };
           anytype-mcp = final.callPackage ./packages/anytype-mcp.nix { };
           substack-mcp = final.callPackage ./packages/substack-mcp.nix { };
           workspace-mcp = final.callPackage ./packages/workspace-mcp.nix { };
@@ -174,15 +166,6 @@
         // prev.lib.optionalAttrs prev.stdenv.hostPlatform.isDarwin {
           asr-benchmark = final.callPackage ./packages/asr-benchmark.nix { };
           browser-decision = final.callPackage ./packages/browser-decision.nix { };
-          camofox-openclaw-plugin = final.callPackage ./packages/camofox-openclaw-plugin.nix { };
-          openclawRuntimePlugins = (prev.openclawRuntimePlugins or { }) // {
-            "camofox-browser" = final.camofox-openclaw-plugin;
-          };
-          openclawPackages = prev.openclawPackages // {
-            openclaw-app = prev.openclawPackages.openclaw-app.overrideAttrs (_: {
-              dontFixup = true;
-            });
-          };
         };
       pkgs = import nixpkgs {
         inherit system;
@@ -192,10 +175,7 @@
       darwinPkgs = import nixpkgs {
         system = darwinSystem;
         config.allowUnfree = true;
-        overlays = [
-          inputs.nix-openclaw.overlays.default
-          packageOverlay
-        ];
+        overlays = [ packageOverlay ];
       };
       ahriPkgs = import inputs.nixpkgs-ahri {
         system = ahriSystem;
@@ -273,14 +253,10 @@
         modules = [
           determinate.darwinModules.default
           home-manager.darwinModules.home-manager
-          inputs.nix-openclaw.darwinModules.openclaw
           inputs.sops-nix.darwinModules.sops
           ./hosts/renekton/default.nix
           (_: {
-            nixpkgs.overlays = [
-              inputs.nix-openclaw.overlays.default
-              packageOverlay
-            ];
+            nixpkgs.overlays = [ packageOverlay ];
           })
           (_: {
             home-manager = {
@@ -322,14 +298,11 @@
             slack-mirror-image
             openclaw-languagetool-mcp-context
             openclaw-languagetool-mcp-image
-            openclaw-embeddinggemma
             openclaw-whisper-model
-            openclaw-llama-server
             anytype-mcp
             substack-mcp
             workspace-mcp
             camofox-browser-source
-            camofox-openclaw-plugin
             asr-benchmark
             browser-decision
             camofox-browser-cli

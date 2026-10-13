@@ -10,8 +10,6 @@ let
   podman = lib.getExe pkgs.podman;
   sandboxMachineChecker = pkgs.openclaw-sandbox-machine-check;
   sandboxMachineName = lib.escapeShellArg sandboxMachineChecker.passthru.machineName;
-  curl = lib.getExe pkgs.curl;
-  openclaw = lib.getExe config.programs.openclaw.package;
   install = lib.getExe' pkgs.coreutils "install";
 
   sandboxMachineAgent = pkgs.writeShellApplication {
@@ -96,49 +94,10 @@ let
     '';
   };
 
-  appAgent = pkgs.writeShellApplication {
-    name = "openclaw-app-agent";
-    runtimeInputs = [
-      pkgs.curl
-      config.programs.openclaw.package
-    ];
-    text = ''
-      set -euo pipefail
-
-      curl=${curl}
-      openclaw=${lib.escapeShellArg openclaw}
-      app_binary=${lib.escapeShellArg "${homeDirectory}/Applications/Home Manager Apps/OpenClaw.app/Contents/MacOS/OpenClaw"}
-      deadline=$((SECONDS + 120))
-      until "$curl" --fail --silent --show-error --max-time 5 \
-        http://127.0.0.1:18789/healthz >/dev/null 2>&1 && \
-        "$curl" --fail --silent --show-error --max-time 5 \
-          http://127.0.0.1:18789/startupz >/dev/null 2>&1; do
-        if (( SECONDS >= deadline )); then
-          printf '%s\n' "timed out waiting for OpenClaw readiness" >&2
-          exit 1
-        fi
-        sleep 2
-      done
-
-      if ! token=$("$openclaw" secrets store get OPENCLAW_GATEWAY_TOKEN --plain); then
-        printf '%s\n' "refusing to start OpenClaw.app: could not retrieve OPENCLAW_GATEWAY_TOKEN from the store" >&2
-        exit 1
-      fi
-      if [[ -z "$token" ]]; then
-        printf '%s\n' "refusing to start OpenClaw.app: OPENCLAW_GATEWAY_TOKEN is empty" >&2
-        exit 1
-      fi
-      export OPENCLAW_GATEWAY_TOKEN="$token"
-      exec "$app_binary"
-    '';
-  };
 in
 {
-  home.packages = [
-    pkgs.openclaw-languagetool-mcp-image
-  ];
-
-  home.activation.openclawLogDirectory = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+  # Keep the shared VM's launchd identity and log paths stable for existing services.
+  home.activation.podmanMachineLogDirectory = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     ${install} -d -m 0700 -- "${homeDirectory}/Library/Logs/OpenClaw"
   '';
 
@@ -158,18 +117,4 @@ in
     };
   };
 
-  launchd.agents.openclaw-app = {
-    # Paused with the Gateway it connects to.
-    enable = false;
-    domain = "gui";
-    config = {
-      ProgramArguments = [ (lib.getExe appAgent) ];
-      RunAtLoad = true;
-      KeepAlive = false;
-      Umask = 63;
-      ProcessType = "Background";
-      StandardOutPath = "${homeDirectory}/Library/Logs/OpenClaw/app.log";
-      StandardErrorPath = "${homeDirectory}/Library/Logs/OpenClaw/app.error.log";
-    };
-  };
 }

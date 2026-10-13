@@ -3,4 +3,3 @@ modules/home/vicinae/pass-frecency.patch whitespace=-blank-at-eol,-space-before-
 packages/patches/camofox-client-errors.patch whitespace=-blank-at-eol,-space-before-tab
 packages/patches/camofox-click-outcome.patch whitespace=-blank-at-eol,-space-before-tab
 packages/patches/himalaya-archive.patch whitespace=-blank-at-eol,-space-before-tab
-packages/patches/openclaw-browser-delegation.patch whitespace=-blank-at-eol,-space-before-tab

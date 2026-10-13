@@ -8,8 +8,6 @@ import hashlib
 import json
 import os
 import pathlib
-import shutil
-import subprocess
 import sys
 import tempfile
 from urllib.error import HTTPError, URLError
@@ -27,26 +25,10 @@ def die(message, code=2):
 
 
 def access_key():
-    """Get the access key, preserving the existing local lookup order."""
+    """Get the access key from the environment or local state."""
     value = os.environ.get("CAMOFOX_ACCESS_KEY")
     if value:
         return value
-
-    if shutil.which("openclaw"):
-        try:
-            result = subprocess.run(
-                ["openclaw", "secrets", "store", "get", "CAMOFOX_ACCESS_KEY", "--plain"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.DEVNULL,
-                text=True,
-                timeout=10,
-                check=False,
-            )
-            value = result.stdout.strip()
-            if value:
-                return value
-        except (OSError, subprocess.SubprocessError):
-            pass
 
     state = (
         pathlib.Path(os.environ.get("XDG_STATE_HOME", pathlib.Path.home() / ".local/state"))
@@ -59,7 +41,7 @@ def access_key():
     if value:
         return value
     die(
-        "no access key; set CAMOFOX_ACCESS_KEY, configure openclaw secrets, "
+        "no access key; set CAMOFOX_ACCESS_KEY "
         "or create XDG_STATE_HOME/camofox/access-key"
     )
 

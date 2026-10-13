@@ -4,7 +4,7 @@
     ../../modules/home/agents
     ../../modules/home/alfred
     ../../modules/home/frida
-    ../../modules/home/openclaw
+    ../../modules/home/podman/darwin.nix
     ../../modules/home/slack-mirror
     ../../modules/home/camofox
     ../../modules/home/lightpanda
@@ -40,7 +40,7 @@
   services = {
     alfred = {
       enable = true;
-      # Podman permits one active VM; Alfred shares it with OpenClaw and Slack mirror.
+      # Podman permits one active VM; shared with Frida, Slack mirror and browsers.
       machineName = "openclaw-sandbox";
     };
     frida.enable = true;
