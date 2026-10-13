@@ -118,6 +118,7 @@ let
       jq --slurpfile clients ${lib.escapeShellArg config.sops.secrets."cliproxyapi/client-keys".path} \
         --slurpfile go ${lib.escapeShellArg config.sops.secrets."cliproxyapi/opencode-go-keys".path} \
         --slurpfile zen ${lib.escapeShellArg config.sops.secrets."cliproxyapi/opencode-zen-keys".path} \
+        --rawfile quota ${lib.escapeShellArg config.sops.secrets."cliproxyapi/quota-key".path} \
         --rawfile management ${lib.escapeShellArg config.sops.secrets."cliproxyapi/management-key".path} '
           def valid_keys: type == "array" and
             all(.[]; type == "string" and length > 0 and test("^[^\\r\\n]+$"));
@@ -125,10 +126,14 @@ let
             if ($list[0] | length) == 0 then .keys = []
             else .keys = ($list[0] | map({"api-key": .})) end;
           ($management | rtrimstr("\n")) as $management_key |
+          ($quota | rtrimstr("\n")) as $quota_key |
           if ($clients[0] | valid_keys and length > 0) and ($go[0] | valid_keys) and
             ($zen[0] | valid_keys) and
             ($management_key | length > 0 and test("^[^\\r\\n]+$")) and
-            ($clients[0] | index($management_key) == null) then
+            ($quota_key | length >= 32 and test("^[^\\r\\n]+$")) and
+            ($clients[0] | index($management_key) == null and index($quota_key) == null) and
+            ($go[0] | index($quota_key) == null) and ($zen[0] | index($quota_key) == null) and
+            ($quota_key != $management_key) then
             .access["api-keys"] = $clients[0] |
             .management["secret-key"] = $management_key |
             .["api-keys"] |= with_entries(.value |= map(
@@ -136,7 +141,7 @@ let
                 with_keys($zen) | .keys |= map(. + {"disable-codex-cloaking": true})
               elif (.name | startswith("opencode-zen-")) then with_keys($zen)
               else with_keys($go) end))
-          else error("CLIProxyAPI requires valid client/Go/Zen key arrays and a separate management key") end
+          else error("CLIProxyAPI requires valid key arrays and distinct management and quota keys") end
         ' ${settings} > "$config_file"
       chmod 600 "$config_file"
       mv -f "$config_file" "$state/config.json"
@@ -150,6 +155,8 @@ in
   wave.health.checks.cliproxyapi = ''
     test "$(${lib.getExe pkgs.curl} --silent --output /dev/null --write-out '%{http_code}' \
       --max-time 5 http://127.0.0.1:8317/v1/models)" = 401
+    test "$(${lib.getExe pkgs.curl} --silent --output /dev/null --write-out '%{http_code}' \
+      --max-time 5 http://127.0.0.1:8317/v1/quota)" = 401
   '';
   launchd.daemons.cliproxyapi.serviceConfig = {
     ProgramArguments = [ (lib.getExe start) ];
@@ -157,6 +164,7 @@ in
     EnvironmentVariables = {
       HOME = home;
       MANAGEMENT_STATIC_PATH = toString managementStatic;
+      CLIPROXYAPI_QUOTA_KEY_FILE = config.sops.secrets."cliproxyapi/quota-key".path;
     };
     WorkingDirectory = home;
     RunAtLoad = true;

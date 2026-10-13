@@ -115,6 +115,7 @@
         "camofox/access-key"
         "cliproxyapi/api-key"
         "cliproxyapi/base-url"
+        "cliproxyapi/quota-key"
         "cliproxyapi/client-keys"
         "cliproxyapi/management-key"
         "cliproxyapi/opencode-go-keys"

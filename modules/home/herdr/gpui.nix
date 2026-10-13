@@ -1,4 +1,9 @@
-{ inputs, pkgs, ... }:
+{
+  inputs,
+  pkgs,
+  osConfig,
+  ...
+}:
 {
   home.packages = [
     (inputs.herdr-gpui.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs (old: {
@@ -16,6 +21,7 @@
         ./patches/gpui-system-notification-dismissal.patch
         ./patches/gpui-terminal-padding.patch
         ./patches/gpui-usage-reset-expiry.patch
+        ./patches/gpui-gateway-quota.patch
       ];
       # GPUI's Linux backend currently discards handles and cannot withdraw notifications.
       postPatch = (old.postPatch or "") + ''
@@ -32,6 +38,10 @@
       show_system_load = false;
       agent_checkpoints = false;
       theme = "light:kanagawa,dark:kanagawa";
+      usage.gateway = {
+        base_url_file = osConfig.sops.secrets."cliproxyapi/base-url".path;
+        key_file = osConfig.sops.secrets."cliproxyapi/quota-key".path;
+      };
       layout = {
         mode = "normal";
         sidebar_gap = 8.0;

@@ -1,0 +1,656 @@
+diff --git a/internal/api/server.go b/internal/api/server.go
+index 72cd21e..597fcb8 100644
+--- a/internal/api/server.go
++++ b/internal/api/server.go
+@@ -260,7 +260,7 @@ func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdk
+ 	// Create HTTP server
+ 	s.server = &http.Server{
+ 		Addr:    fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
+-		Handler: engine,
++		Handler: newQuotaEndpoint(authManager, optionState.pluginHost, engine),
+ 	}
+ 
+ 	return s
+diff --git a/internal/runtime/executor/meta_executor.go b/internal/runtime/executor/meta_executor.go
+index 34d428d..487de34 100644
+--- a/internal/runtime/executor/meta_executor.go
++++ b/internal/runtime/executor/meta_executor.go
+@@ -71,6 +71,16 @@ func (e *MetaExecutor) HttpRequest(ctx context.Context, auth *cliproxyauth.Auth,
+ 	if ctx == nil {
+ 		ctx = req.Context()
+ 	}
++	// The quota/key endpoint authenticates with DCA, not the inference API key.
++	if req.Method == http.MethodPost && req.URL.Scheme == "https" && req.URL.Host == "api.meta.ai" && req.URL.Path == "/muse-code/key" {
++		token := extractDCAToken(auth)
++		if token == "" {
++			return nil, fmt.Errorf("meta quota: missing DCA credential")
++		}
++		httpReq := req.Clone(ctx)
++		httpReq.Header.Set("Authorization", "Bearer "+token)
++		return helps.NewProxyAwareHTTPClient(ctx, e.cfg, auth, 0).Do(httpReq)
++	}
+ 	enriched, err := e.ensureAuth(ctx, auth)
+ 	if err != nil {
+ 		return nil, err
+diff --git a/internal/api/quota_endpoint.go b/internal/api/quota_endpoint.go
+new file mode 100644
+index 0000000..07644a6
+--- /dev/null
++++ b/internal/api/quota_endpoint.go
+@@ -0,0 +1,616 @@
++package api
++
++import (
++	"context"
++	"crypto/hmac"
++	"crypto/sha256"
++	"crypto/subtle"
++	"encoding/hex"
++	"encoding/json"
++	"fmt"
++	"io"
++	"math"
++	"net/http"
++	"net/url"
++	"os"
++	"sort"
++	"strconv"
++	"strings"
++	"sync"
++	"time"
++
++	"github.com/router-for-me/CLIProxyAPI/v8/internal/pluginhost"
++	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
++	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
++)
++
++const quotaTTL = 5 * time.Minute
++const maxQuotaLimits = 32
++
++type quotaLimit struct {
++	Label            string   `json:"label"`
++	RemainingPercent *float64 `json:"remaining_percent,omitempty"`
++	Remaining        *float64 `json:"remaining,omitempty"`
++	Total            *float64 `json:"total,omitempty"`
++	Unit             string   `json:"unit,omitempty"`
++	ResetAt          int64    `json:"reset_at,omitempty"`
++}
++
++type quotaAccount struct {
++	ID        string       `json:"id"`
++	Provider  string       `json:"provider"`
++	Label     string       `json:"label"`
++	Status    string       `json:"status"`
++	UpdatedAt int64        `json:"updated_at,omitempty"`
++	Stale     bool         `json:"stale"`
++	Limits    []quotaLimit `json:"limits"`
++}
++
++type quotaObservation struct {
++	account quotaAccount
++	checked time.Time
++	version uint64
++	epoch   uint64
++}
++
++type quotaEndpoint struct {
++	manager    *auth.Manager
++	plugins    *pluginhost.Host
++	next       http.Handler
++	key        []byte
++	keyHash    [32]byte
++	mu         sync.Mutex
++	cache      map[string]quotaObservation
++	refreshing bool
++}
++
++func newQuotaEndpoint(manager *auth.Manager, plugins *pluginhost.Host, next http.Handler) *quotaEndpoint {
++	q := &quotaEndpoint{manager: manager, plugins: plugins, next: next, cache: make(map[string]quotaObservation)}
++	// Read exactly once. Rotation requires restarting the server; failures never enable anonymous access.
++	if path := os.Getenv("CLIPROXYAPI_QUOTA_KEY_FILE"); path != "" {
++		info, err := os.Stat(path)
++		if err != nil || !info.Mode().IsRegular() {
++			return q
++		}
++		if file, err := os.Open(path); err == nil {
++			info, statErr := file.Stat()
++			if statErr != nil || !info.Mode().IsRegular() {
++				_ = file.Close()
++				return q
++			}
++			data, readErr := io.ReadAll(io.LimitReader(file, 4098))
++			_ = file.Close()
++			key := strings.TrimSpace(string(data))
++			valid := readErr == nil && len(data) <= 4097 && len(key) >= 32 && len(key) <= 4096
++			for _, char := range key {
++				valid = valid && char >= 33 && char <= 126
++			}
++			if valid {
++				q.key = []byte(key)
++				q.keyHash = sha256.Sum256(q.key)
++			}
++		}
++	}
++	return q
++}
++
++func (q *quotaEndpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
++	if r.URL.Path != "/v1/quota" {
++		q.next.ServeHTTP(w, r)
++		return
++	}
++	// This boundary deliberately precedes Gin, request logging and inference/management gates.
++	w.Header().Set("Cache-Control", "no-store")
++	w.Header().Set("Content-Type", "application/json")
++	if len(q.key) == 0 || q.manager == nil {
++		w.WriteHeader(http.StatusServiceUnavailable)
++		_, _ = io.WriteString(w, `{"error":"quota unavailable"}`)
++		return
++	}
++	headers := r.Header.Values("Authorization")
++	var supplied string
++	if len(headers) == 1 && strings.HasPrefix(headers[0], "Bearer ") {
++		supplied = strings.TrimPrefix(headers[0], "Bearer ")
++	}
++	digest := sha256.Sum256([]byte(supplied))
++	if supplied == "" || subtle.ConstantTimeCompare(digest[:], q.keyHash[:]) != 1 {
++		w.WriteHeader(http.StatusUnauthorized)
++		_, _ = io.WriteString(w, `{"error":"unauthorized"}`)
++		return
++	}
++	if r.Method != http.MethodGet {
++		w.Header().Set("Allow", "GET")
++		w.WriteHeader(http.StatusMethodNotAllowed)
++		_, _ = io.WriteString(w, `{"error":"method not allowed"}`)
++		return
++	}
++	now := time.Now()
++	groups := make(map[string]*auth.Auth)
++	for _, account := range q.manager.List() {
++		if account == nil {
++			continue
++		}
++		id := q.accountID(account)
++		previous := groups[id]
++		available := quotaLifecycleStatus(account, now) == ""
++		if previous == nil || (available && quotaLifecycleStatus(previous, now) != "") || (available == (quotaLifecycleStatus(previous, now) == "") && account.ID < previous.ID) {
++			groups[id] = account
++		}
++	}
++	accounts := make([]*auth.Auth, 0, len(groups))
++	for _, account := range groups {
++		accounts = append(accounts, account)
++	}
++	sort.Slice(accounts, func(i, j int) bool { return accounts[i].ID < accounts[j].ID })
++	result := make([]quotaAccount, 0, len(accounts))
++	counts := make(map[string]int)
++	seen := make(map[string]bool)
++	refresh := false
++	q.mu.Lock()
++	for _, account := range accounts {
++		if account == nil {
++			continue
++		}
++		id := q.accountID(account)
++		if seen[id] {
++			continue
++		}
++		seen[id] = true
++		provider := quotaProviderLabel(quotaAccountProvider(account))
++		counts[provider]++
++		item := quotaAccount{ID: id, Provider: provider, Label: fmt.Sprintf("%s %d", provider, counts[provider]), Status: "unavailable", Stale: true, Limits: []quotaLimit{}}
++		cached, exists := q.cache[id]
++		if exists && cached.version == account.CredentialVersion && cached.epoch == account.RegistrationEpoch {
++			item.Status, item.UpdatedAt, item.Limits = cached.account.Status, cached.account.UpdatedAt, cached.account.Limits
++			item.Stale = cached.account.Stale || now.Sub(cached.checked) >= quotaTTL
++		} else {
++			exists = false
++		}
++		if status := quotaLifecycleStatus(account, now); status != "" {
++			item.Status = status
++			item.Limits = []quotaLimit{}
++			item.Stale = false
++			if status == "disabled" || status == "unavailable" {
++				delete(q.cache, id)
++			}
++		} else if !exists || now.Sub(cached.checked) >= quotaTTL {
++			refresh = true
++		}
++		if len(item.Limits) > maxQuotaLimits {
++			item.Limits = item.Limits[:maxQuotaLimits]
++		}
++		result = append(result, item)
++	}
++	for id := range q.cache {
++		if !seen[id] {
++			delete(q.cache, id)
++		}
++	}
++	if refresh && !q.refreshing {
++		q.refreshing = true
++		go q.refresh(accounts)
++	}
++	q.mu.Unlock()
++	_ = json.NewEncoder(w).Encode(struct {
++		Accounts  []quotaAccount `json:"accounts"`
++		UpdatedAt int64          `json:"updated_at"`
++	}{result, now.Unix()})
++}
++
++func (q *quotaEndpoint) accountID(account *auth.Auth) string {
++	hash := hmac.New(sha256.New, q.key)
++	provider := quotaAccountProvider(account)
++	identity := account.ID
++	// Console keys reused across protocol adapters identify one account; OAuth IDs stay distinct.
++	if (provider == "go" || provider == "zen") && account.AuthKind() == auth.AuthKindAPIKey {
++		key := account.Attributes[auth.AttributeAPIKey]
++		if key == "" {
++			key, _ = account.Metadata[auth.AttributeAPIKey].(string)
++		}
++		if key != "" {
++			identity = "api-key\x00" + key
++		}
++	}
++	_, _ = io.WriteString(hash, provider+"\x00"+identity)
++	return hex.EncodeToString(hash.Sum(nil))
++}
++
++func quotaAccountProvider(account *auth.Auth) string {
++	if account.AuthKind() == auth.AuthKindAPIKey {
++		prefix := strings.ToLower(strings.TrimSpace(account.Prefix))
++		if prefix == "go" || prefix == "zen" {
++			return prefix
++		}
++		if base, err := url.Parse(account.Attributes["base_url"]); err == nil && base.Scheme == "https" && base.Host == "opencode.ai" {
++			path := strings.TrimRight(base.Path, "/")
++			if path == "/inference/go" || path == "/inference/go/v1" {
++				return "go"
++			}
++			if path == "/inference" || path == "/inference/v1" {
++				return "zen"
++			}
++		}
++	}
++	return account.Provider
++}
++
++func quotaProviderLabel(provider string) string {
++	switch provider {
++	case "codex", "claude", "meta", "xai", "antigravity", "gemini", "gemini-cli", "aistudio", "vertex", "kimi", "qwen", "iflow", "openai", "openai-compatible", "go", "zen", "opencode", "devin":
++		return provider
++	default:
++		return "other"
++	}
++}
++
++func quotaLifecycleStatus(account *auth.Auth, now time.Time) string {
++	if account.Disabled || account.Status == auth.StatusDisabled {
++		return "disabled"
++	}
++	if account.Quota.NextRecoverAt.After(now) || account.NextRetryAfter.After(now) {
++		return "cooldown"
++	}
++	if account.Status == auth.StatusError {
++		return "error"
++	}
++	if account.Status == auth.StatusPending || account.Status == auth.StatusRefreshing {
++		return "unavailable"
++	}
++	return ""
++}
++
++func (q *quotaEndpoint) refresh(accounts []*auth.Auth) {
++	defer func() { q.mu.Lock(); q.refreshing = false; q.mu.Unlock() }()
++	jobs := make(chan *auth.Auth)
++	var workers sync.WaitGroup
++	for i := 0; i < 4; i++ {
++		workers.Add(1)
++		go func() {
++			defer workers.Done()
++			for account := range jobs {
++				id := q.accountID(account)
++				q.mu.Lock()
++				cached, exists := q.cache[id]
++				q.mu.Unlock()
++				if exists && cached.version == account.CredentialVersion && cached.epoch == account.RegistrationEpoch && time.Since(cached.checked) < quotaTTL {
++					continue
++				}
++				if quotaLifecycleStatus(account, time.Now()) != "" {
++					continue
++				}
++				ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
++				limits, status := q.fetch(ctx, account)
++				cancel()
++				now := time.Now()
++				observation := quotaObservation{account: quotaAccount{Status: status, UpdatedAt: now.Unix(), Stale: status == "error", Limits: limits}, checked: now, version: account.CredentialVersion, epoch: account.RegistrationEpoch}
++				if status == "error" && exists && cached.version == account.CredentialVersion && cached.epoch == account.RegistrationEpoch && len(cached.account.Limits) > 0 && (cached.account.Status == "ok" || cached.account.Status == "error") {
++					observation.account.Limits = cached.account.Limits
++					observation.account.UpdatedAt = cached.account.UpdatedAt
++				}
++				if len(observation.account.Limits) > maxQuotaLimits {
++					observation.account.Limits = observation.account.Limits[:maxQuotaLimits]
++				}
++				q.mu.Lock()
++				q.cache[id] = observation
++				q.mu.Unlock()
++			}
++		}()
++	}
++	seen := make(map[string]bool)
++	for _, account := range accounts {
++		if account != nil {
++			id := q.accountID(account)
++			if !seen[id] {
++				seen[id] = true
++				jobs <- account
++			}
++		}
++	}
++	close(jobs)
++	workers.Wait()
++}
++
++func (q *quotaEndpoint) fetch(ctx context.Context, account *auth.Auth) ([]quotaLimit, string) {
++	limits := []quotaLimit{}
++	if provider := quotaAccountProvider(account); provider == "go" || provider == "zen" {
++		return limits, "unavailable"
++	}
++	// Prefer the host's registered quota capability, never its management routes or reset operations.
++	if q.plugins != nil {
++		response, handled, err := q.plugins.FetchQuota(ctx, pluginapi.QuotaFetchRequest{AuthID: account.ID, Provider: account.Provider, Metadata: account.Metadata, Attributes: account.Attributes})
++		if handled {
++			if err != nil {
++				return limits, "error"
++			}
++			for i, group := range response.Groups {
++				for j, bucket := range group.Buckets {
++					if len(limits) >= maxQuotaLimits {
++						return limits, quotaLimitsStatus(limits)
++					}
++					if percent := quotaNumber(bucket.RemainingFraction * 100); percent != nil {
++						limits = append(limits, quotaLimit{Label: fmt.Sprintf("group %d window %d", i+1, j+1), RemainingPercent: quotaPercent(*percent), ResetAt: quotaReset(bucket.ResetTime)})
++					}
++				}
++			}
++			return limits, quotaLimitsStatus(limits)
++		}
++	}
++	if account.AuthKind() == auth.AuthKindAPIKey {
++		return limits, "unavailable"
++	}
++	method, url, body := http.MethodGet, "", ""
++	switch account.Provider {
++	case "codex":
++		url = "https://chatgpt.com/backend-api/wham/usage"
++	case "claude":
++		url = "https://api.anthropic.com/api/oauth/usage"
++	case "meta":
++		token, _ := account.Metadata["dca_token"].(string)
++		if token == "" {
++			token = account.Attributes["dca_token"]
++		}
++		if token == "" {
++			token, _ = account.Metadata["access_token"].(string)
++		}
++		if token == "" {
++			token = account.Attributes["access_token"]
++		}
++		if !strings.HasPrefix(token, "dca:") || strings.ContainsAny(token, " \t\r\n") {
++			return limits, "unavailable"
++		}
++		method, url, body = http.MethodPost, "https://api.meta.ai/muse-code/key", "{}"
++	case "xai":
++		url = "https://cli-chat-proxy.grok.com/v1/billing?format=credits"
++	case "antigravity":
++		project, _ := account.Metadata["project_id"].(string)
++		if project == "" {
++			project = account.Attributes["project_id"]
++		}
++		if project == "" {
++			return limits, "unavailable"
++		}
++		encoded, _ := json.Marshal(map[string]string{"project": project})
++		method, url, body = http.MethodPost, "https://daily-cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary", string(encoded)
++	default:
++		return limits, "unavailable"
++	}
++	req, err := http.NewRequestWithContext(ctx, method, url, strings.NewReader(body))
++	if err != nil {
++		return limits, "error"
++	}
++	req.Header.Set("Accept", "application/json")
++	req.Header.Set("Content-Type", "application/json")
++	if account.Provider == "claude" {
++		req.Header.Set("anthropic-beta", "oauth-2025-04-20")
++		req.Header.Set("User-Agent", "claude-cli/2.1.280 (external, cli)")
++	}
++	if account.Provider == "codex" {
++		req.Header.Set("User-Agent", "codex-tui/0.149.1")
++		if accountID, ok := account.Metadata["account_id"].(string); ok {
++			req.Header.Set("Chatgpt-Account-Id", accountID)
++		}
++	}
++	if account.Provider == "meta" {
++		req.Header.Set("x-api-version", "1.0.0")
++	}
++	if account.Provider == "xai" {
++		req.Header.Set("x-xai-token-auth", "xai-grok-cli")
++		req.Header.Set("x-grok-client-version", "1.0.46")
++		req.Header.Set("User-Agent", "grok-pager/1.0.46 grok-shell/1.0.46 (macos; aarch64)")
++		if userID, ok := account.Metadata["user_id"].(string); ok {
++			req.Header.Set("x-userid", userID)
++		}
++	}
++	urls := []string{url}
++	if account.Provider == "xai" {
++		urls = append(urls, "https://cli-chat-proxy.grok.com/v1/billing")
++	}
++	if account.Provider == "antigravity" {
++		urls = append(urls, "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal:retrieveUserQuotaSummary", "https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary")
++	}
++	status := "unavailable"
++	for _, candidate := range urls {
++		request := req.Clone(ctx)
++		request.URL, _ = req.URL.Parse(candidate)
++		request.Body, _ = req.GetBody()
++		parsed, observedStatus := q.readQuota(ctx, account, request)
++		if observedStatus == "error" {
++			status = "error"
++		}
++		for _, limit := range parsed {
++			duplicate := false
++			for _, existing := range limits {
++				if existing.Label == limit.Label {
++					duplicate = true
++					break
++				}
++			}
++			if !duplicate && len(limits) < maxQuotaLimits {
++				limits = append(limits, limit)
++			}
++		}
++		if account.Provider == "antigravity" && len(limits) > 0 {
++			break
++		}
++	}
++	if len(limits) > 0 {
++		return limits, "ok"
++	}
++	return limits, status
++}
++
++func (q *quotaEndpoint) readQuota(ctx context.Context, account *auth.Auth, req *http.Request) ([]quotaLimit, string) {
++	limits := []quotaLimit{}
++	response, err := q.manager.HttpRequest(ctx, account, req)
++	if err != nil {
++		return limits, "error"
++	}
++	if response == nil || response.Body == nil {
++		return limits, "error"
++	}
++	defer response.Body.Close()
++	if response.StatusCode == http.StatusNotFound || response.StatusCode == http.StatusForbidden {
++		return limits, "unavailable"
++	}
++	if response.StatusCode < 200 || response.StatusCode >= 300 {
++		return limits, "error"
++	}
++	data, err := io.ReadAll(io.LimitReader(response.Body, (1<<20)+1))
++	if err != nil || len(data) > 1<<20 {
++		return limits, "error"
++	}
++	var payload map[string]any
++	if json.Unmarshal(data, &payload) != nil || payload == nil {
++		return limits, "error"
++	}
++	limits = parseQuotaLimits(account.Provider, payload, time.Now())
++	return limits, quotaLimitsStatus(limits)
++}
++
++func quotaLimitsStatus(limits []quotaLimit) string {
++	if len(limits) == 0 {
++		return "unavailable"
++	}
++	return "ok"
++}
++
++func quotaNumber(value any) *float64 {
++	var number float64
++	switch value := value.(type) {
++	case float64:
++		number = value
++	case string:
++		parsed, err := strconv.ParseFloat(value, 64)
++		if err != nil {
++			return nil
++		}
++		number = parsed
++	default:
++		return nil
++	}
++	if math.IsNaN(number) || math.IsInf(number, 0) || number < 0 {
++		return nil
++	}
++	return &number
++}
++
++func quotaPercent(number float64) *float64 {
++	number = math.Max(0, math.Min(100, number))
++	return &number
++}
++
++func quotaReset(value any) int64 {
++	if number := quotaNumber(value); number != nil && *number > 0 && *number < 1e11 {
++		return int64(*number)
++	}
++	if text, ok := value.(string); ok {
++		if parsed, err := time.Parse(time.RFC3339Nano, text); err == nil && parsed.Unix() > 0 {
++			return parsed.Unix()
++		}
++	}
++	return 0
++}
++
++func quotaObject(value any) map[string]any { object, _ := value.(map[string]any); return object }
++
++func quotaWindowLabel(window map[string]any, fallback string) string {
++	seconds := quotaNumber(window["limit_window_seconds"])
++	if seconds == nil || *seconds <= 0 || *seconds > 365*24*60*60 || math.Trunc(*seconds) != *seconds {
++		return fallback
++	}
++	duration := int64(*seconds)
++	for _, unit := range []struct {
++		seconds int64
++		label   string
++	}{{86400, "d"}, {3600, "h"}, {60, "m"}, {1, "s"}} {
++		if duration%unit.seconds == 0 {
++			return strconv.FormatInt(duration/unit.seconds, 10) + unit.label
++		}
++	}
++	return fallback
++}
++
++func parseQuotaLimits(provider string, payload map[string]any, now time.Time) []quotaLimit {
++	limits := []quotaLimit{}
++	addUsed := func(label string, window map[string]any, field, reset string) {
++		if used := quotaNumber(window[field]); used != nil {
++			limit := quotaLimit{Label: label, RemainingPercent: quotaPercent(100 - *used), ResetAt: quotaReset(window[reset])}
++			if limit.ResetAt == 0 {
++				if offset := quotaNumber(window["reset_after_seconds"]); offset != nil && *offset < 1e9 {
++					limit.ResetAt = now.Unix() + int64(*offset)
++				}
++			}
++			limits = append(limits, limit)
++		}
++	}
++	switch provider {
++	case "codex":
++		for _, key := range []string{"rate_limit", "code_review_rate_limit"} {
++			rate := quotaObject(payload[key])
++			for i, window := range []string{"primary_window", "secondary_window"} {
++				value := quotaObject(rate[window])
++				label := quotaWindowLabel(value, []string{"Primary", "Secondary"}[i])
++				if key == "code_review_rate_limit" {
++					label = "Review " + label
++				}
++				addUsed(label, value, "used_percent", "reset_at")
++			}
++		}
++	case "claude":
++		for _, window := range []struct{ key, label string }{{"five_hour", "5h"}, {"seven_day", "7d"}, {"seven_day_oauth_apps", "7d Apps"}, {"seven_day_opus", "7d Opus"}, {"seven_day_sonnet", "7d Sonnet"}, {"seven_day_cowork", "7d Cowork"}, {"iguana_necktie", "7d Fable"}} {
++			addUsed(window.label, quotaObject(payload[window.key]), "utilization", "resets_at")
++		}
++	case "meta":
++		usage := quotaObject(payload["subs_usage"])
++		for _, key := range []string{"window", "weekly"} {
++			addUsed(key, quotaObject(usage[key]), "used_percent", "resets_at")
++		}
++	case "antigravity":
++		groups, _ := payload["groups"].([]any)
++		for i, rawGroup := range groups {
++			group := quotaObject(rawGroup)
++			buckets, _ := group["buckets"].([]any)
++			for j, rawBucket := range buckets {
++				if len(limits) >= maxQuotaLimits {
++					return limits
++				}
++				bucket := quotaObject(rawBucket)
++				fraction := quotaNumber(bucket["remainingFraction"])
++				if fraction == nil {
++					fraction = quotaNumber(bucket["remaining_fraction"])
++				}
++				if fraction == nil {
++					continue
++				}
++				reset := quotaReset(bucket["resetTime"])
++				if reset == 0 {
++					reset = quotaReset(bucket["reset_time"])
++				}
++				limits = append(limits, quotaLimit{Label: fmt.Sprintf("group %d window %d", i+1, j+1), RemainingPercent: quotaPercent(*fraction * 100), ResetAt: reset})
++			}
++		}
++	case "xai":
++		config := quotaObject(payload["config"])
++		if config == nil {
++			config = payload
++		}
++		cents := func(value any) *float64 {
++			if object := quotaObject(value); object != nil {
++				value = object["val"]
++			}
++			return quotaNumber(value)
++		}
++		if used := quotaNumber(config["creditUsagePercent"]); used != nil {
++			period := quotaObject(config["currentPeriod"])
++			limits = append(limits, quotaLimit{Label: "credits", RemainingPercent: quotaPercent(100 - *used), ResetAt: quotaReset(period["end"])})
++		}
++		if total, used := cents(config["monthlyLimit"]), cents(config["used"]); total != nil && used != nil && *total > 0 {
++			remaining := math.Max(0, *total-*used)
++			limits = append(limits, quotaLimit{Label: "monthly", RemainingPercent: quotaPercent(remaining / *total * 100), Remaining: &remaining, Total: total, Unit: "USD cents", ResetAt: quotaReset(config["billingPeriodEnd"])})
++		}
++	}
++	if len(limits) > maxQuotaLimits {
++		limits = limits[:maxQuotaLimits]
++	}
++	return limits
++}
