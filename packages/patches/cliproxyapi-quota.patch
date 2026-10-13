@@ -1,16 +1,45 @@
 diff --git a/internal/api/server.go b/internal/api/server.go
-index 72cd21e..597fcb8 100644
+index 72cd21e..4afa7a3 100644
 --- a/internal/api/server.go
 +++ b/internal/api/server.go
-@@ -260,7 +260,7 @@ func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdk
+@@ -43,6 +43,7 @@ type Server struct {
+ 
+ 	// server is the underlying HTTP server.
+ 	server *http.Server
++	quota  *quotaEndpoint
+ 
+ 	// muxBaseListener is the shared TCP listener used to serve both HTTP and Redis protocol traffic.
+ 	listenerMu      sync.Mutex
+@@ -235,6 +236,8 @@ func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdk
+ 	engine.Use(s.exampleAPIKeySafeModeMiddleware())
+ 
+ 	// Setup routes
++	s.quota = newQuotaEndpoint(authManager, optionState.pluginHost, engine)
++	s.quota.config = s.getConfig
+ 	s.setupRoutes()
+ 
+ 	// Apply additional router configurators from options
+@@ -260,7 +263,7 @@ func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdk
  	// Create HTTP server
  	s.server = &http.Server{
  		Addr:    fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
 -		Handler: engine,
-+		Handler: newQuotaEndpoint(authManager, optionState.pluginHost, engine),
++		Handler: s.quota,
  	}
  
  	return s
+diff --git a/internal/api/server_management_v8.go b/internal/api/server_management_v8.go
+index 7f68dad..39a1b18 100644
+--- a/internal/api/server_management_v8.go
++++ b/internal/api/server_management_v8.go
+@@ -33,6 +33,7 @@ func (s *Server) registerManagementV8Routes() {
+ 	v8.GET("/routing/model-definitions/:channel", s.mgmt.GetStaticModelDefinitions)
+ 
+ 	v8.GET("/observability/logs", s.mgmt.GetLogs)
++	v8.GET("/observability/quota", func(c *gin.Context) { s.quota.snapshot(c.Writer, true) })
+ 	v8.DELETE("/observability/logs", s.mgmt.DeleteLogs)
+ 	v8.GET("/observability/logs/errors", s.mgmt.GetRequestErrorLogs)
+ 	v8.GET("/observability/logs/errors/:name", s.mgmt.DownloadRequestErrorLog)
 diff --git a/internal/runtime/executor/meta_executor.go b/internal/runtime/executor/meta_executor.go
 index 34d428d..487de34 100644
 --- a/internal/runtime/executor/meta_executor.go
@@ -34,10 +63,10 @@ index 34d428d..487de34 100644
  		return nil, err
 diff --git a/internal/api/quota_endpoint.go b/internal/api/quota_endpoint.go
 new file mode 100644
-index 0000000..07644a6
+index 0000000..46e6ff7
 --- /dev/null
 +++ b/internal/api/quota_endpoint.go
-@@ -0,0 +1,616 @@
+@@ -0,0 +1,771 @@
 +package api
 +
 +import (
@@ -59,6 +88,7 @@ index 0000000..07644a6
 +	"sync"
 +	"time"
 +
++	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 +	"github.com/router-for-me/CLIProxyAPI/v8/internal/pluginhost"
 +	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 +	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
@@ -68,18 +98,23 @@ index 0000000..07644a6
 +const maxQuotaLimits = 32
 +
 +type quotaLimit struct {
-+	Label            string   `json:"label"`
-+	RemainingPercent *float64 `json:"remaining_percent,omitempty"`
-+	Remaining        *float64 `json:"remaining,omitempty"`
-+	Total            *float64 `json:"total,omitempty"`
-+	Unit             string   `json:"unit,omitempty"`
-+	ResetAt          int64    `json:"reset_at,omitempty"`
++	legacyLabel      string
++	Label            string     `json:"label"`
++	RemainingPercent *float64   `json:"remaining_percent,omitempty"`
++	Remaining        *float64   `json:"remaining,omitempty"`
++	Total            *float64   `json:"total,omitempty"`
++	Unit             string     `json:"unit,omitempty"`
++	ResetAt          int64      `json:"reset_at,omitempty"`
++	WindowSeconds    float64    `json:"window_seconds,omitempty"`
++	Pace             *quotaPace `json:"pace,omitempty"`
 +}
 +
 +type quotaAccount struct {
 +	ID        string       `json:"id"`
 +	Provider  string       `json:"provider"`
 +	Label     string       `json:"label"`
++	Plan      string       `json:"plan,omitempty"`
++	Scope     string       `json:"scope,omitempty"`
 +	Status    string       `json:"status"`
 +	UpdatedAt int64        `json:"updated_at,omitempty"`
 +	Stale     bool         `json:"stale"`
@@ -95,6 +130,7 @@ index 0000000..07644a6
 +
 +type quotaEndpoint struct {
 +	manager    *auth.Manager
++	config     func() *config.Config
 +	plugins    *pluginhost.Host
 +	next       http.Handler
 +	key        []byte
@@ -164,10 +200,21 @@ index 0000000..07644a6
 +		_, _ = io.WriteString(w, `{"error":"method not allowed"}`)
 +		return
 +	}
++	q.snapshot(w, r.URL.Query().Get("schema") == "2")
++}
++
++func (q *quotaEndpoint) snapshot(w http.ResponseWriter, schema2 bool) {
++	w.Header().Set("Cache-Control", "no-store")
++	w.Header().Set("Content-Type", "application/json")
++	if q.manager == nil {
++		w.WriteHeader(http.StatusServiceUnavailable)
++		_, _ = io.WriteString(w, `{"error":"quota unavailable"}`)
++		return
++	}
 +	now := time.Now()
 +	groups := make(map[string]*auth.Auth)
 +	for _, account := range q.manager.List() {
-+		if account == nil {
++		if account == nil || !quotaInventoryAccount(account) {
 +			continue
 +		}
 +		id := q.accountID(account)
@@ -199,6 +246,10 @@ index 0000000..07644a6
 +		provider := quotaProviderLabel(quotaAccountProvider(account))
 +		counts[provider]++
 +		item := quotaAccount{ID: id, Provider: provider, Label: fmt.Sprintf("%s %d", provider, counts[provider]), Status: "unavailable", Stale: true, Limits: []quotaLimit{}}
++		if schema2 {
++			item.Label = quotaAccountLabel(account, provider)
++			item.Scope = "unknown"
++		}
 +		cached, exists := q.cache[id]
 +		if exists && cached.version == account.CredentialVersion && cached.epoch == account.RegistrationEpoch {
 +			item.Status, item.UpdatedAt, item.Limits = cached.account.Status, cached.account.UpdatedAt, cached.account.Limits
@@ -219,6 +270,34 @@ index 0000000..07644a6
 +		if len(item.Limits) > maxQuotaLimits {
 +			item.Limits = item.Limits[:maxQuotaLimits]
 +		}
++		// Pace is a read-time projection, never written back into the shared cache.
++		item.Limits = append([]quotaLimit{}, item.Limits...)
++		if schema2 {
++			if provider == "zen" && len(item.Limits) == 0 && q.config != nil && quotaZenFreeOnly(account, q.config()) {
++				item.Plan, item.Scope = "Zen Free", "free"
++			}
++			if len(item.Limits) > 0 {
++				switch provider {
++				case "go", "zen":
++					item.Plan, item.Scope = "Go", "subscription"
++				case "codex", "claude", "meta":
++					item.Scope = "subscription"
++				case "xai":
++					item.Scope = "credits"
++				}
++			}
++			for i := range item.Limits {
++				item.Limits[i].Pace = quotaLimitPace(item.Limits[i], now, item.Stale || item.Status != "ok")
++			}
++		} else {
++			for i := range item.Limits {
++				if item.Limits[i].legacyLabel != "" {
++					item.Limits[i].Label = item.Limits[i].legacyLabel
++				}
++				item.Limits[i].WindowSeconds = 0
++				item.Limits[i].Pace = nil
++			}
++		}
 +		result = append(result, item)
 +	}
 +	for id := range q.cache {
@@ -231,6 +310,15 @@ index 0000000..07644a6
 +		go q.refresh(accounts)
 +	}
 +	q.mu.Unlock()
++	if schema2 {
++		_ = json.NewEncoder(w).Encode(struct {
++			Schema    int            `json:"schema"`
++			UpdatedAt int64          `json:"updated_at"`
++			Accounts  []quotaAccount `json:"accounts"`
++			Summary   quotaSummary   `json:"summary"`
++		}{2, now.Unix(), result, summarizeQuota(result)})
++		return
++	}
 +	_ = json.NewEncoder(w).Encode(struct {
 +		Accounts  []quotaAccount `json:"accounts"`
 +		UpdatedAt int64          `json:"updated_at"`
@@ -242,11 +330,9 @@ index 0000000..07644a6
 +	provider := quotaAccountProvider(account)
 +	identity := account.ID
 +	// Console keys reused across protocol adapters identify one account; OAuth IDs stay distinct.
-+	if (provider == "go" || provider == "zen") && account.AuthKind() == auth.AuthKindAPIKey {
-+		key := account.Attributes[auth.AttributeAPIKey]
-+		if key == "" {
-+			key, _ = account.Metadata[auth.AttributeAPIKey].(string)
-+		}
++	if provider == "go" || provider == "zen" {
++		provider = "opencode"
++		key := quotaAPIKey(account)
 +		if key != "" {
 +			identity = "api-key\x00" + key
 +		}
@@ -256,7 +342,7 @@ index 0000000..07644a6
 +}
 +
 +func quotaAccountProvider(account *auth.Auth) string {
-+	if account.AuthKind() == auth.AuthKindAPIKey {
++	if account.AuthKind() != auth.AuthKindOAuth || quotaAPIKey(account) != "" {
 +		prefix := strings.ToLower(strings.TrimSpace(account.Prefix))
 +		if prefix == "go" || prefix == "zen" {
 +			return prefix
@@ -352,11 +438,9 @@ index 0000000..07644a6
 +
 +func (q *quotaEndpoint) fetch(ctx context.Context, account *auth.Auth) ([]quotaLimit, string) {
 +	limits := []quotaLimit{}
-+	if provider := quotaAccountProvider(account); provider == "go" || provider == "zen" {
-+		return limits, "unavailable"
-+	}
++	provider := quotaAccountProvider(account)
 +	// Prefer the host's registered quota capability, never its management routes or reset operations.
-+	if q.plugins != nil {
++	if q.plugins != nil && provider != "go" && provider != "zen" {
 +		response, handled, err := q.plugins.FetchQuota(ctx, pluginapi.QuotaFetchRequest{AuthID: account.ID, Provider: account.Provider, Metadata: account.Metadata, Attributes: account.Attributes})
 +		if handled {
 +			if err != nil {
@@ -368,18 +452,29 @@ index 0000000..07644a6
 +						return limits, quotaLimitsStatus(limits)
 +					}
 +					if percent := quotaNumber(bucket.RemainingFraction * 100); percent != nil {
-+						limits = append(limits, quotaLimit{Label: fmt.Sprintf("group %d window %d", i+1, j+1), RemainingPercent: quotaPercent(*percent), ResetAt: quotaReset(bucket.ResetTime)})
++						groupName := quotaSafeLimitText(account, group.DisplayName)
++						windowName := quotaSafeLimitText(account, bucket.Window)
++						label := quotaBucketLabel(groupName, fmt.Sprintf("group %d window %d", i+1, j+1), windowName)
++						if quotaSafeLimitText(account, label) == "" {
++							label = fmt.Sprintf("group %d window %d", i+1, j+1)
++						}
++						limits = append(limits, quotaLimit{legacyLabel: fmt.Sprintf("group %d window %d", i+1, j+1), Label: label, RemainingPercent: quotaPercent(*percent), ResetAt: quotaReset(bucket.ResetTime), WindowSeconds: quotaCadenceSeconds(windowName)})
 +					}
 +				}
 +			}
 +			return limits, quotaLimitsStatus(limits)
 +		}
 +	}
-+	if account.AuthKind() == auth.AuthKindAPIKey {
++	if account.AuthKind() == auth.AuthKindAPIKey && provider != "meta" && provider != "go" && provider != "zen" {
 +		return limits, "unavailable"
 +	}
 +	method, url, body := http.MethodGet, "", ""
-+	switch account.Provider {
++	switch provider {
++	case "go", "zen":
++		if quotaAPIKey(account) == "" {
++			return limits, "unavailable"
++		}
++		url = "https://opencode.ai/inference/go/v1/usage"
 +	case "codex":
 +		url = "https://chatgpt.com/backend-api/wham/usage"
 +	case "claude":
@@ -395,7 +490,8 @@ index 0000000..07644a6
 +		if token == "" {
 +			token = account.Attributes["access_token"]
 +		}
-+		if !strings.HasPrefix(token, "dca:") || strings.ContainsAny(token, " \t\r\n") {
++		token = strings.TrimSpace(token)
++		if !strings.HasPrefix(token, "dca:") || len(token) <= 4 || strings.ContainsAny(token, " \t\r\n") {
 +			return limits, "unavailable"
 +		}
 +		method, url, body = http.MethodPost, "https://api.meta.ai/muse-code/key", "{}"
@@ -420,20 +516,20 @@ index 0000000..07644a6
 +	}
 +	req.Header.Set("Accept", "application/json")
 +	req.Header.Set("Content-Type", "application/json")
-+	if account.Provider == "claude" {
++	if provider == "claude" {
 +		req.Header.Set("anthropic-beta", "oauth-2025-04-20")
 +		req.Header.Set("User-Agent", "claude-cli/2.1.280 (external, cli)")
 +	}
-+	if account.Provider == "codex" {
++	if provider == "codex" {
 +		req.Header.Set("User-Agent", "codex-tui/0.149.1")
 +		if accountID, ok := account.Metadata["account_id"].(string); ok {
 +			req.Header.Set("Chatgpt-Account-Id", accountID)
 +		}
 +	}
-+	if account.Provider == "meta" {
++	if provider == "meta" {
 +		req.Header.Set("x-api-version", "1.0.0")
 +	}
-+	if account.Provider == "xai" {
++	if provider == "xai" {
 +		req.Header.Set("x-xai-token-auth", "xai-grok-cli")
 +		req.Header.Set("x-grok-client-version", "1.0.46")
 +		req.Header.Set("User-Agent", "grok-pager/1.0.46 grok-shell/1.0.46 (macos; aarch64)")
@@ -442,10 +538,10 @@ index 0000000..07644a6
 +		}
 +	}
 +	urls := []string{url}
-+	if account.Provider == "xai" {
++	if provider == "xai" {
 +		urls = append(urls, "https://cli-chat-proxy.grok.com/v1/billing")
 +	}
-+	if account.Provider == "antigravity" {
++	if provider == "antigravity" {
 +		urls = append(urls, "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal:retrieveUserQuotaSummary", "https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary")
 +	}
 +	status := "unavailable"
@@ -469,7 +565,7 @@ index 0000000..07644a6
 +				limits = append(limits, limit)
 +			}
 +		}
-+		if account.Provider == "antigravity" && len(limits) > 0 {
++		if provider == "antigravity" && len(limits) > 0 {
 +			break
 +		}
 +	}
@@ -503,7 +599,14 @@ index 0000000..07644a6
 +	if json.Unmarshal(data, &payload) != nil || payload == nil {
 +		return limits, "error"
 +	}
-+	limits = parseQuotaLimits(account.Provider, payload, time.Now())
++	limits = parseQuotaLimits(quotaAccountProvider(account), payload, time.Now())
++	for i := range limits {
++		if label := quotaSafeLimitText(account, limits[i].Label); label != "" {
++			limits[i].Label = label
++		} else {
++			limits[i].Label = fmt.Sprintf("window %d", i+1)
++		}
++	}
 +	return limits, quotaLimitsStatus(limits)
 +}
 +
@@ -580,6 +683,7 @@ index 0000000..07644a6
 +					limit.ResetAt = now.Unix() + int64(*offset)
 +				}
 +			}
++			limit.WindowSeconds = quotaWindowSeconds(window, limit.ResetAt)
 +			limits = append(limits, limit)
 +		}
 +	}
@@ -599,34 +703,113 @@ index 0000000..07644a6
 +	case "claude":
 +		for _, window := range []struct{ key, label string }{{"five_hour", "5h"}, {"seven_day", "7d"}, {"seven_day_oauth_apps", "7d Apps"}, {"seven_day_opus", "7d Opus"}, {"seven_day_sonnet", "7d Sonnet"}, {"seven_day_cowork", "7d Cowork"}, {"iguana_necktie", "7d Fable"}} {
 +			addUsed(window.label, quotaObject(payload[window.key]), "utilization", "resets_at")
++			if len(limits) > 0 && limits[len(limits)-1].Label == window.label {
++				if window.key == "five_hour" {
++					limits[len(limits)-1].WindowSeconds = 5 * 3600
++				} else {
++					limits[len(limits)-1].WindowSeconds = 7 * 86400
++				}
++			}
 +		}
 +	case "meta":
 +		usage := quotaObject(payload["subs_usage"])
 +		for _, key := range []string{"window", "weekly"} {
 +			addUsed(key, quotaObject(usage[key]), "used_percent", "resets_at")
++			if key == "weekly" && len(limits) > 0 && limits[len(limits)-1].Label == key && limits[len(limits)-1].WindowSeconds == 0 {
++				limits[len(limits)-1].WindowSeconds = 7 * 86400
++			}
++		}
++	case "go", "zen":
++		usage := quotaObject(payload["usage"])
++		addMeters := func(prefix string, meters map[string]any) {
++			for _, key := range []string{"rolling", "weekly", "monthly"} {
++				window := quotaObject(meters[key])
++				used := quotaFirstNumber(window, "usagePercent", "usedPercent", "percentUsed", "percent", "pct", "usage_percent", "used_percent", "utilization", "utilizationPercent", "utilization_percent")
++				if used == nil {
++					if spent, total := quotaFirstNumber(window, "used", "usage", "consumed", "usedMicroCents"), quotaFirstNumber(window, "limit", "total", "quota", "limitMicroCents"); spent != nil && total != nil && *total > 0 {
++						used = quotaNumber(*spent / *total * 100)
++					}
++				}
++				if used == nil {
++					continue
++				}
++				var reset int64
++				if offset := quotaFirstNumber(window, "resetInSec", "resetInSeconds", "resetSeconds", "reset_sec", "reset_in_sec", "resetsInSec", "resetsInSeconds", "resetIn", "resetSec", "reset_after_seconds"); offset != nil && *offset < 1e9 {
++					reset = now.Unix() + int64(*offset)
++				}
++				if reset == 0 {
++					reset = quotaFirstReset(window, "resetAt", "resetsAt", "reset_at", "resets_at", "nextReset", "next_reset", "renewAt", "renew_at")
++				}
++				duration := quotaWindowSeconds(window, reset)
++				if duration == 0 && key == "rolling" {
++					duration = 5 * 3600
++				}
++				if duration == 0 && key == "weekly" {
++					duration = 7 * 86400
++				}
++				limits = append(limits, quotaLimit{Label: prefix + key, RemainingPercent: quotaPercent(100 - *used), ResetAt: reset, WindowSeconds: duration})
++				if len(limits) >= maxQuotaLimits {
++					return
++				}
++			}
++		}
++		addMeters("", usage)
++		models := quotaObject(usage["models"])
++		keys := make([]string, 0, len(models))
++		for key := range models {
++			keys = append(keys, key)
++		}
++		sort.Strings(keys)
++		for _, key := range keys {
++			if len(limits) >= maxQuotaLimits {
++				break
++			}
++			if label := quotaDisplayText(key); label != "" {
++				addMeters(label+" ", quotaObject(models[key]))
++			}
 +		}
 +	case "antigravity":
 +		groups, _ := payload["groups"].([]any)
 +		for i, rawGroup := range groups {
 +			group := quotaObject(rawGroup)
++			groupName := quotaFirstText(group, "displayName", "display_name", "name")
 +			buckets, _ := group["buckets"].([]any)
 +			for j, rawBucket := range buckets {
 +				if len(limits) >= maxQuotaLimits {
 +					return limits
 +				}
 +				bucket := quotaObject(rawBucket)
++				if disabled, _ := bucket["disabled"].(bool); disabled {
++					continue
++				}
 +				fraction := quotaNumber(bucket["remainingFraction"])
 +				if fraction == nil {
 +					fraction = quotaNumber(bucket["remaining_fraction"])
 +				}
 +				if fraction == nil {
++					remaining := quotaObject(bucket["remaining"])
++					fraction = quotaFirstNumber(remaining, "remainingFraction", "remaining_fraction")
++					if fraction == nil && remaining["case"] == "remainingFraction" {
++						fraction = quotaNumber(remaining["value"])
++					}
++				}
++				if fraction == nil {
 +					continue
 +				}
-+				reset := quotaReset(bucket["resetTime"])
++				reset := quotaFirstReset(bucket, "resetTime", "reset_time", "end", "endsAt", "endAt", "period_end")
++				window := quotaObject(bucket["window"])
 +				if reset == 0 {
-+					reset = quotaReset(bucket["reset_time"])
++					reset = quotaFirstReset(window, "resetTime", "reset_time", "end", "endsAt", "endAt", "period_end")
 +				}
-+				limits = append(limits, quotaLimit{Label: fmt.Sprintf("group %d window %d", i+1, j+1), RemainingPercent: quotaPercent(*fraction * 100), ResetAt: reset})
++				duration := quotaWindowSeconds(bucket, reset)
++				if duration == 0 && window != nil {
++					duration = quotaWindowSeconds(window, reset)
++				}
++				if duration == 0 {
++					duration = quotaCadenceSeconds(bucket["bucketId"], bucket["bucket_id"], bucket["id"], bucket["displayName"], bucket["display_name"], bucket["name"], bucket["window"])
++				}
++				label := quotaBucketLabel(groupName, fmt.Sprintf("group %d window %d", i+1, j+1), quotaFirstText(bucket, "displayName", "display_name", "name", "window", "bucketId", "bucket_id", "id"))
++				limits = append(limits, quotaLimit{legacyLabel: fmt.Sprintf("group %d window %d", i+1, j+1), Label: label, RemainingPercent: quotaPercent(*fraction * 100), ResetAt: reset, WindowSeconds: duration})
 +			}
 +		}
 +	case "xai":
@@ -642,7 +825,8 @@ index 0000000..07644a6
 +		}
 +		if used := quotaNumber(config["creditUsagePercent"]); used != nil {
 +			period := quotaObject(config["currentPeriod"])
-+			limits = append(limits, quotaLimit{Label: "credits", RemainingPercent: quotaPercent(100 - *used), ResetAt: quotaReset(period["end"])})
++			reset := quotaReset(period["end"])
++			limits = append(limits, quotaLimit{Label: "credits", RemainingPercent: quotaPercent(100 - *used), ResetAt: reset, WindowSeconds: quotaWindowSeconds(period, reset)})
 +		}
 +		if total, used := cents(config["monthlyLimit"]), cents(config["used"]); total != nil && used != nil && *total > 0 {
 +			remaining := math.Max(0, *total-*used)
@@ -653,4 +837,360 @@ index 0000000..07644a6
 +		limits = limits[:maxQuotaLimits]
 +	}
 +	return limits
++}
+diff --git a/internal/api/quota_pace.go b/internal/api/quota_pace.go
+new file mode 100644
+index 0000000..8b8731d
+--- /dev/null
++++ b/internal/api/quota_pace.go
+@@ -0,0 +1,350 @@
++package api
++
++import (
++	"fmt"
++	"math"
++	"strings"
++	"time"
++	"unicode"
++
++	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
++	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
++)
++
++type quotaPace struct {
++	State                    string   `json:"state"`
++	Label                    string   `json:"label"`
++	ExpectedRemainingPercent *float64 `json:"expected_remaining_percent,omitempty"`
++	MarginPercent            *float64 `json:"margin_percent,omitempty"`
++	RunsOutAt                int64    `json:"runs_out_at,omitempty"`
++}
++
++type quotaSummary struct {
++	quotaPace
++	RemainingPercent *float64 `json:"remaining_percent,omitempty"`
++	AccountID        string   `json:"account_id,omitempty"`
++	LimitLabel       string   `json:"limit_label,omitempty"`
++	MeasuredLimits   int      `json:"measured_limits"`
++	TotalLimits      int      `json:"total_limits"`
++	UnknownAccounts  int      `json:"unknown_accounts"`
++}
++
++func quotaLimitPace(limit quotaLimit, now time.Time, stale bool) *quotaPace {
++	pace := &quotaPace{State: "unknown", Label: "Pace unavailable"}
++	if stale || limit.RemainingPercent == nil || (limit.ResetAt > 0 && limit.ResetAt <= now.Unix()) {
++		return pace
++	}
++	remaining := *limit.RemainingPercent
++	if remaining == 0 {
++		pace.State, pace.Label = "exhausted", "Exhausted"
++	}
++	length := limit.WindowSeconds
++	left := float64(limit.ResetAt) - float64(now.Unix())
++	elapsed := length - left
++	if length <= 0 || limit.ResetAt == 0 || left <= 0 || elapsed < length/100 || elapsed > length {
++		return pace
++	}
++	expectedUsed := elapsed / length * 100
++	expectedRemaining := 100 - expectedUsed
++	margin := expectedUsed - (100 - remaining)
++	pace.ExpectedRemainingPercent, pace.MarginPercent = &expectedRemaining, &margin
++	if remaining == 0 {
++		pace.State, pace.Label = "exhausted", "Exhausted"
++	} else if margin >= .5 {
++		pace.State, pace.Label = "reserve", fmt.Sprintf("%.0f%% in reserve", margin)
++	} else if margin <= -.5 {
++		pace.State, pace.Label = "deficit", fmt.Sprintf("%.0f%% in deficit", -margin)
++	} else {
++		pace.State, pace.Label = "on_pace", "On pace"
++	}
++	used := 100 - remaining
++	if used > 0 {
++		seconds := remaining / (used / elapsed)
++		if seconds < left {
++			pace.RunsOutAt = now.Unix() + int64(seconds)
++		}
++	}
++	return pace
++}
++
++func summarizeQuota(accounts []quotaAccount) quotaSummary {
++	summary := quotaSummary{quotaPace: quotaPace{State: "unknown", Label: "Quota unavailable"}}
++	rank := map[string]int{"unknown": 0, "reserve": 1, "on_pace": 2, "deficit": 3, "exhausted": 4}
++	pending := false
++	for _, account := range accounts {
++		fresh := account.Status == "ok" && !account.Stale
++		known := fresh && len(account.Limits) > 0
++		if account.UpdatedAt == 0 && account.Stale {
++			pending = true
++		}
++		for _, limit := range account.Limits {
++			summary.TotalLimits++
++			pace := limit.Pace
++			if !fresh || pace == nil || pace.State == "unknown" {
++				known = false
++				continue
++			}
++			summary.MeasuredLimits++
++			worse := rank[pace.State] > rank[summary.State]
++			if rank[pace.State] == rank[summary.State] && pace.MarginPercent != nil && summary.MarginPercent != nil {
++				worse = *pace.MarginPercent < *summary.MarginPercent
++			}
++			if worse {
++				summary.quotaPace = *pace
++				summary.RemainingPercent, summary.AccountID, summary.LimitLabel = limit.RemainingPercent, account.ID, limit.Label
++				summary.Label = account.Label + " · " + limit.Label + " · " + pace.Label
++			}
++		}
++		if !known && account.Scope != "free" {
++			summary.UnknownAccounts++
++		}
++	}
++	if summary.State != "deficit" && summary.State != "exhausted" && (summary.UnknownAccounts > 0 || summary.MeasuredLimits < summary.TotalLimits) {
++		summary.quotaPace = quotaPace{State: "unknown", Label: "Incomplete quota coverage"}
++		summary.RemainingPercent, summary.AccountID, summary.LimitLabel = nil, "", ""
++	}
++	if pending && summary.MeasuredLimits == 0 && summary.State == "unknown" {
++		summary.Label = "Loading quota"
++	}
++	return summary
++}
++
++func quotaAPIKey(account *auth.Auth) string {
++	key := account.Attributes[auth.AttributeAPIKey]
++	if key == "" {
++		key, _ = account.Metadata[auth.AttributeAPIKey].(string)
++	}
++	return strings.TrimSpace(key)
++}
++
++func quotaInventoryAccount(account *auth.Auth) bool {
++	if quotaAPIKey(account) != "" {
++		return true
++	}
++	if account.AuthSourceKind() == auth.AuthSourceConfig || account.AuthKind() == auth.AuthKindAPIKey {
++		return false
++	}
++	return true
++}
++
++func quotaDisplayText(value string) string {
++	value = strings.TrimSpace(value)
++	if value == "" || len(value) > 160 {
++		return ""
++	}
++	for _, char := range value {
++		if unicode.IsControl(char) || char == '/' || char == '\\' {
++			return ""
++		}
++	}
++	return value
++}
++
++func quotaAccountLabel(account *auth.Auth, provider string) string {
++	console := provider == "go" || provider == "zen"
++	if provider != "other" && !console {
++		if label := quotaSafeAccountText(account, account.Label); label != "" && label != account.FileName && !strings.HasSuffix(label, ".json") && !strings.HasSuffix(label, "-apikey") && label != account.Provider {
++			return label
++		}
++	}
++	for _, key := range []string{"nickname", "email", "name"} {
++		if value, ok := account.Metadata[key].(string); ok {
++			if label := quotaSafeAccountText(account, value); label != "" {
++				return label
++			}
++		}
++		if console {
++			if label := quotaSafeAccountText(account, account.Attributes[key]); label != "" {
++				return label
++			}
++		}
++	}
++	if console {
++		return "OpenCode"
++	}
++	return provider
++}
++
++func quotaSafeAccountText(account *auth.Auth, value string) string {
++	label := quotaDisplayText(value)
++	if quotaContainsCredential(account, label) {
++		return ""
++	}
++	return label
++}
++
++func quotaContainsCredential(account *auth.Auth, label string) bool {
++	for _, key := range []string{"api_key", "access_token", "refresh_token", "id_token", "dca_token"} {
++		if token := strings.TrimSpace(account.Attributes[key]); token != "" && len(token) <= len(label) && strings.Contains(label, token) {
++			return true
++		}
++		if token, ok := account.Metadata[key].(string); ok {
++			token = strings.TrimSpace(token)
++			if token != "" && len(token) <= len(label) && strings.Contains(label, token) {
++				return true
++			}
++		}
++	}
++	return false
++}
++
++func quotaLimitText(value string) string {
++	value = strings.TrimSpace(value)
++	if value == "Claude/GPT" {
++		return value
++	}
++	if strings.HasPrefix(value, "Claude/GPT ") && len(value) <= 160 && quotaDisplayText(strings.TrimPrefix(value, "Claude/GPT ")) != "" {
++		return value
++	}
++	return quotaDisplayText(value)
++}
++
++func quotaSafeLimitText(account *auth.Auth, value string) string {
++	label := quotaLimitText(value)
++	if quotaContainsCredential(account, label) {
++		return ""
++	}
++	return label
++}
++
++func quotaFirstText(object map[string]any, keys ...string) string {
++	for _, key := range keys {
++		if value, ok := object[key].(string); ok {
++			if label := quotaLimitText(value); label != "" {
++				return label
++			}
++		}
++	}
++	return ""
++}
++
++func quotaBucketLabel(group, fallback string, windows ...string) string {
++	window := ""
++	for _, value := range windows {
++		if name := quotaLimitText(value); name != "" {
++			window = name
++			break
++		}
++	}
++	if group == "" && window == "" {
++		return fallback
++	}
++	if window == "" {
++		window = "Quota"
++	}
++	if label := quotaLimitText(strings.TrimSpace(group + " " + window)); label != "" {
++		return label
++	}
++	return fallback
++}
++
++func quotaCadenceSeconds(values ...any) float64 {
++	for _, value := range values {
++		raw, ok := value.(string)
++		if !ok {
++			continue
++		}
++		normalized := strings.ReplaceAll(strings.ToLower(strings.TrimSpace(raw)), "_", "-")
++		candidates := []string{normalized, strings.TrimSuffix(normalized, " limit")}
++		for _, candidate := range candidates {
++			for _, alias := range []string{"session", "5h", "5-hour", "five hour", "five-hour"} {
++				if candidate == alias || strings.HasSuffix(candidate, "-"+alias) {
++					return 5 * 3600
++				}
++			}
++			if candidate == "weekly" || strings.HasSuffix(candidate, "-weekly") {
++				return 7 * 86400
++			}
++		}
++	}
++	return 0
++}
++
++func quotaFirstReset(window map[string]any, keys ...string) int64 {
++	for _, key := range keys {
++		if reset := quotaReset(window[key]); reset != 0 {
++			return reset
++		}
++	}
++	return 0
++}
++
++func quotaZenFreeOnly(account *auth.Auth, cfg *config.Config) bool {
++	if cfg == nil || account.AuthSourceKind() != auth.AuthSourceConfig {
++		return false
++	}
++	free := func(names []string) bool {
++		if len(names) == 0 {
++			return false
++		}
++		for _, name := range names {
++			if !strings.HasSuffix(name, "-free") && name != "big-pickle" {
++				return false
++			}
++		}
++		return true
++	}
++	key := quotaAPIKey(account)
++	matched := false
++	for _, entry := range cfg.CodexKey {
++		if entry.Prefix == "zen" && strings.TrimSpace(entry.APIKey) == key {
++			matched = true
++			names := make([]string, 0, len(entry.Models))
++			for _, model := range entry.Models {
++				names = append(names, model.Name)
++			}
++			if !free(names) {
++				return false
++			}
++		}
++	}
++	for _, entry := range cfg.OpenAICompatibility {
++		if entry.Prefix != "zen" {
++			continue
++		}
++		matches := false
++		for _, credential := range entry.APIKeyEntries {
++			if strings.TrimSpace(credential.APIKey) == key {
++				matches = true
++			}
++		}
++		if matches {
++			matched = true
++			names := make([]string, 0, len(entry.Models))
++			for _, model := range entry.Models {
++				names = append(names, model.Name)
++			}
++			if !free(names) {
++				return false
++			}
++		}
++	}
++	return matched
++}
++
++func quotaFirstNumber(window map[string]any, keys ...string) *float64 {
++	for _, key := range keys {
++		if number := quotaNumber(window[key]); number != nil {
++			return number
++		}
++	}
++	return nil
++}
++
++func quotaWindowSeconds(window map[string]any, reset int64) float64 {
++	seconds := quotaFirstNumber(window, "limit_window_seconds", "window_seconds", "windowSeconds")
++	if seconds == nil {
++		if minutes := quotaNumber(window["window_duration_mins"]); minutes != nil {
++			seconds = quotaNumber(*minutes * 60)
++		}
++	}
++	if seconds != nil && *seconds > 0 && *seconds <= 366*86400 {
++		return *seconds
++	}
++	for _, key := range []string{"start", "begin", "startsAt", "startAt", "started_at", "period_start"} {
++		if start := quotaReset(window[key]); start > 0 && reset > start && reset-start <= 366*86400 {
++			return math.Max(0, float64(reset-start))
++		}
++	}
++	return 0
 +}

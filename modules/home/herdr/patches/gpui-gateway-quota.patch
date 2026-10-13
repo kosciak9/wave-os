@@ -98,6 +98,15 @@ Replace direct provider quota probes with read-only central gateway account quot
              prefix_armed: false,
              resize_mode: false,
              server_keys: None,
+@@ -810,6 +780,8 @@
+                 this.active = window.is_window_active();
+                 if this.active {
+                     this.publish_server_keymap(cx);
++                    this.usage
++                        .refresh_if_due(&this.config.usage, std::time::Instant::now());
+                 } else {
+                     this.shift_taps.cancel();
+                     this.disarm_prefix();
 --- a/crates/herdr-gpui/src/menu/page.rs
 +++ b/crates/herdr-gpui/src/menu/page.rs
 @@ -9,8 +9,8 @@
@@ -178,7 +187,7 @@ Replace direct provider quota probes with read-only central gateway account quot
              return;
 --- a/crates/herdr-gpui/src/usage.rs
 +++ b/crates/herdr-gpui/src/usage.rs
-@@ -1,527 +1,342 @@
+@@ -1,55 +1,49 @@
 -//! Plan usage of the AI services signed in on the selected host, for the
 -//! status bar and its panel. One worker thread reads one host at a time and
 -//! reports each provider as it answers; the UI thread only queues a host and
@@ -189,10 +198,10 @@ Replace direct provider quota probes with read-only central gateway account quot
 -mod access;
 -mod cookies;
 -mod headlines;
--mod icons;
--mod model;
 +//! Read-only account quotas from the central gateway, independent of the selected host.
 +
+ mod icons;
+-mod model;
  mod panel;
 -mod probe;
 -mod providers;
@@ -241,15 +250,11 @@ Replace direct provider quota probes with read-only central gateway account quot
 +use zeroize::Zeroizing;
 +
 +const REFRESH: Duration = Duration::from_secs(60);
++const WARMUP_REFRESH: Duration = Duration::from_secs(5);
++const WARMUP_ATTEMPTS: u8 = 12;
  const MANUAL_SPACING: Duration = Duration::from_secs(10);
 -/// Hosts are few; an unbounded catalog still cannot grow the cache past this.
 -const HOST_LIMIT: usize = 16;
--
--pub(crate) fn icon(path: &str) -> Option<&'static [u8]> {
--    icons::PROVIDER_ICONS
--        .iter()
--        .find(|(name, _)| *name == path)
--        .map(|(_, bytes)| *bytes)
 +const RESPONSE_LIMIT: u64 = 1024 * 1024;
 +
 +// Other host features use these platform identities, not provider probes.
@@ -270,15 +275,13 @@ Replace direct provider quota probes with read-only central gateway account quot
 +        }
 +    }
 +}
-+
-+pub(crate) fn icon(_: &str) -> Option<&'static [u8]> {
-+    None
+ 
+ pub(crate) fn icon(path: &str) -> Option<&'static [u8]> {
+     icons::PROVIDER_ICONS
+@@ -62,466 +56,412 @@
+     icons::PROVIDER_ICONS.iter().map(|(name, _)| *name)
  }
  
- pub(crate) fn icon_paths() -> impl Iterator<Item = &'static str> {
--    icons::PROVIDER_ICONS.iter().map(|(name, _)| *name)
--}
--
 -/// One provider on the shown host: its last good report, and why the latest
 -/// refresh failed if it did.
 -#[derive(Clone, Debug, PartialEq)]
@@ -386,14 +389,13 @@ Replace direct provider quota probes with read-only central gateway account quot
 -struct Worker {
 -    requests: mpsc::SyncSender<Job>,
 -    results: mpsc::Receiver<Message>,
-+    std::iter::empty()
-+}
-+
 +#[derive(Deserialize)]
 +#[serde(deny_unknown_fields)]
 +pub(super) struct Snapshot {
++    pub schema: Option<u8>,
 +    pub accounts: Vec<Account>,
 +    pub updated_at: u64,
++    pub summary: Option<Summary>,
 +}
 +
 +#[derive(Deserialize)]
@@ -402,6 +404,8 @@ Replace direct provider quota probes with read-only central gateway account quot
 +    pub id: String,
 +    pub provider: String,
 +    pub label: String,
++    pub plan: Option<String>,
++    pub scope: Option<Scope>,
 +    pub status: Status,
 +    pub updated_at: Option<u64>,
 +    pub stale: bool,
@@ -439,6 +443,53 @@ Replace direct provider quota probes with read-only central gateway account quot
 +    pub total: Option<f64>,
 +    pub unit: Option<String>,
 +    pub reset_at: Option<u64>,
++    pub window_seconds: Option<f64>,
++    pub pace: Option<Pace>,
++}
++
++#[derive(Clone, Copy, Deserialize)]
++#[serde(rename_all = "lowercase")]
++pub(super) enum Scope {
++    Subscription,
++    Free,
++    Credits,
++    Unknown,
++}
++
++#[derive(Clone, Copy, Deserialize, PartialEq, Eq)]
++#[serde(rename_all = "snake_case")]
++pub(super) enum PaceState {
++    Reserve,
++    OnPace,
++    Deficit,
++    Exhausted,
++    Unknown,
++}
++
++#[derive(Deserialize)]
++#[serde(deny_unknown_fields)]
++pub(super) struct Pace {
++    pub state: PaceState,
++    pub label: String,
++    pub expected_remaining_percent: Option<f64>,
++    pub margin_percent: Option<f64>,
++    pub runs_out_at: Option<u64>,
++}
++
++#[derive(Deserialize)]
++#[serde(deny_unknown_fields)]
++pub(super) struct Summary {
++    pub state: PaceState,
++    pub label: String,
++    pub remaining_percent: Option<f64>,
++    pub expected_remaining_percent: Option<f64>,
++    pub margin_percent: Option<f64>,
++    pub runs_out_at: Option<u64>,
++    pub account_id: Option<String>,
++    pub limit_label: Option<String>,
++    pub measured_limits: usize,
++    pub total_limits: usize,
++    pub unknown_accounts: usize,
 +}
 +
 +struct Reply {
@@ -477,6 +528,7 @@ Replace direct provider quota probes with read-only central gateway account quot
 -    /// Providers denied in a macOS prompt, for the window to take back the
 -    /// saved grant.
 -    denied: Vec<Provider>,
++    warmup_attempts: u8,
  }
  
  impl Usage {
@@ -515,6 +567,19 @@ Replace direct provider quota probes with read-only central gateway account quot
 -    }
 -
 -    /// Reads the tracked host on the next poll, unless it was just read.
++    fn stale(&self, now: u64) -> bool {
++        self.error.is_some()
++            || self.snapshot.as_ref().is_some_and(|snapshot| {
++                snapshot.updated_at == 0
++                    || now.saturating_sub(snapshot.updated_at) > 300
++                    || snapshot.accounts.iter().any(|account| account.stale)
++            })
++    }
++
++    pub fn refresh_if_due(&mut self, config: &UsageConfig, now: Instant) {
++        self.poll(config, true, now);
++    }
++
      pub fn refresh(&mut self, now: Instant) {
 -        let Some(host) = self.host.clone() else {
 -            return;
@@ -566,6 +631,7 @@ Replace direct provider quota probes with read-only central gateway account quot
 +            self.management_url = None;
 +            self.error = None;
 +            self.requested = None;
++            self.warmup_attempts = 0;
 +            self.due = Some(now);
 +            changed = true;
 +        }
@@ -583,12 +649,26 @@ Replace direct provider quota probes with read-only central gateway account quot
 +                    self.management_url = reply.management_url;
 +                    match reply.snapshot {
 +                        Ok(snapshot) => {
++                            let pending = snapshot.accounts.iter().any(|account| {
++                                account.status != Status::Disabled
++                                    && account.updated_at.is_none_or(|at| at == 0)
++                            });
++                            self.due = Some(
++                                now + if pending && self.warmup_attempts < WARMUP_ATTEMPTS {
++                                    self.warmup_attempts += 1;
++                                    WARMUP_REFRESH
++                                } else {
++                                    REFRESH
++                                },
++                            );
 +                            self.snapshot = Some(snapshot);
 +                            self.error = None;
 +                        }
-+                        Err(error) => self.error = Some(error),
++                        Err(error) => {
++                            self.error = Some(error);
++                            self.due = Some(now + REFRESH);
++                        }
 +                    }
-+                    self.due = Some(now + REFRESH);
 +                }
 +                self.flight = None;
 +                changed = true;
@@ -960,7 +1040,9 @@ Replace direct provider quota probes with read-only central gateway account quot
 +        .http_status_as_error(false)
 +        .build()
 +        .into();
-+    let endpoint = base.join("v1/quota").map_err(|_| "Gateway URL invalid")?;
++    let endpoint = base
++        .join("v1/quota?schema=2")
++        .map_err(|_| "Gateway URL invalid")?;
 +    let mut response = agent
 +        .get(endpoint.as_str())
 +        .header("Authorization", header)
@@ -987,17 +1069,54 @@ Replace direct provider quota probes with read-only central gateway account quot
 +
 +fn validate(snapshot: &Snapshot) -> Result<(), &'static str> {
 +    let text_ok = |text: &str| text.len() <= 256 && !text.chars().any(char::is_control);
++    let percent_ok =
++        |value: Option<f64>| value.is_none_or(|n| n.is_finite() && (0.0..=100.0).contains(&n));
++    let margin_ok =
++        |value: Option<f64>| value.is_none_or(|n| n.is_finite() && (-100.0..=100.0).contains(&n));
++    let timestamp_ok = |value: Option<u64>| value.is_none_or(|n| n <= 253402300799);
++    let pace_ok = |pace: &Pace| {
++        text_ok(&pace.label)
++            && percent_ok(pace.expected_remaining_percent)
++            && margin_ok(pace.margin_percent)
++            && timestamp_ok(pace.runs_out_at)
++    };
 +    let mut ids = std::collections::HashSet::new();
-+    if snapshot.accounts.len() > 256
++    if snapshot
++        .schema
++        .is_some_and(|schema| schema != 1 && schema != 2)
++        || !timestamp_ok(Some(snapshot.updated_at))
++        || snapshot.accounts.len() > 256
++        || snapshot.summary.as_ref().is_some_and(|summary| {
++            !text_ok(&summary.label)
++                || !percent_ok(summary.remaining_percent)
++                || !percent_ok(summary.expected_remaining_percent)
++                || !margin_ok(summary.margin_percent)
++                || !timestamp_ok(summary.runs_out_at)
++                || summary.account_id.as_ref().is_some_and(|id| !text_ok(id))
++                || summary
++                    .limit_label
++                    .as_ref()
++                    .is_some_and(|label| !text_ok(label))
++                || summary.total_limits > 256 * 32
++                || summary.measured_limits > summary.total_limits
++                || summary.unknown_accounts > 256
++        })
 +        || snapshot.accounts.iter().any(|account| {
 +            account.id.is_empty()
 +                || !text_ok(&account.id)
 +                || !ids.insert(&account.id)
 +                || !text_ok(&account.provider)
 +                || !text_ok(&account.label)
++                || account.plan.as_ref().is_some_and(|plan| !text_ok(plan))
++                || !timestamp_ok(account.updated_at)
 +                || account.limits.len() > 32
 +                || account.limits.iter().any(|limit| {
 +                    !text_ok(&limit.label)
++                        || !timestamp_ok(limit.reset_at)
++                        || limit
++                            .window_seconds
++                            .is_some_and(|n| !n.is_finite() || n <= 0.0 || n > 3155760000.0)
++                        || limit.pace.as_ref().is_some_and(|pace| !pace_ok(pace))
 +                        || limit.unit.as_ref().is_some_and(|unit| !text_ok(unit))
 +                        || limit
 +                            .remaining_percent
@@ -1005,7 +1124,7 @@ Replace direct provider quota probes with read-only central gateway account quot
 +                        || [limit.remaining, limit.total]
 +                            .into_iter()
 +                            .flatten()
-+                            .any(|n| !n.is_finite() || n < 0.0)
++                            .any(|n| !n.is_finite() || !(0.0..=1e18).contains(&n))
 +                })
 +        })
 +    {
@@ -1013,6 +1132,19 @@ Replace direct provider quota probes with read-only central gateway account quot
      }
      Ok(())
  }
+--- a/crates/herdr-gpui/src/usage/icons.rs
++++ b/crates/herdr-gpui/src/usage/icons.rs
+@@ -2,6 +2,10 @@
+ //! other embedded icons. See `assets/icons/providers/README.md`.
+ 
+ pub(crate) static PROVIDER_ICONS: &[(&str, &[u8])] = &[
++    (
++        "icons/wave.svg",
++        include_bytes!("../../../../assets/icons/wave.svg"),
++    ),
+     (
+         "icons/providers/codex.svg",
+         include_bytes!("../../../../assets/icons/providers/codex.svg"),
 --- a/crates/herdr-gpui/src/usage/settings.rs
 +++ b/crates/herdr-gpui/src/usage/settings.rs
 @@ -1,9 +1,5 @@
@@ -1204,26 +1336,65 @@ Replace direct provider quota probes with read-only central gateway account quot
 -}
 --- a/crates/herdr-gpui/src/usage/render.rs
 +++ b/crates/herdr-gpui/src/usage/render.rs
-@@ -1,302 +1,47 @@
+@@ -1,302 +1,142 @@
 -//! Two fixed usage positions, each showing only its tightest limit and reset.
 -//! Picking a provider in the panel changes the position that opened it.
--
++use super::{PaceState, unix_now};
++use crate::{menu::Page, window::HerdrWindow};
++use gpui::{prelude::*, *};
++use std::{cell::Cell, rc::Rc};
+ 
 -use super::{
 -    Headlines, Reading,
 -    model::{Provider, Severity, Window as Limit},
 -    panel::PANEL_GAP,
 -};
 -use crate::window::HerdrWindow;
-+use crate::{menu::Page, window::HerdrWindow};
- use gpui::{prelude::*, *};
+-use gpui::{prelude::*, *};
 -use std::{
 -    cell::Cell,
 -    rc::Rc,
 -    time::{Duration, SystemTime},
 -};
--
++pub(super) fn pace_color(theme: &crate::config::Theme, state: PaceState) -> u32 {
++    match state {
++        PaceState::Reserve | PaceState::OnPace => theme.ink(theme.palette[2]),
++        PaceState::Deficit => theme.ink(theme.palette[3]),
++        PaceState::Exhausted => theme.ink(theme.palette[1]),
++        PaceState::Unknown => theme.muted,
++    }
++}
+ 
 -const METER_WIDTH: f32 = 40.;
-+use std::{cell::Cell, rc::Rc};
++pub(super) fn quota_bar(
++    theme: &crate::config::Theme,
++    remaining: Option<f64>,
++    expected: Option<f64>,
++    state: PaceState,
++) -> Div {
++    div()
++        .relative()
++        .h(px(6.))
++        .w_full()
++        .rounded_full()
++        .bg(rgb(theme.active))
++        .children(remaining.map(|percent| {
++            div()
++                .h_full()
++                .w(relative(percent as f32 / 100.))
++                .rounded_full()
++                .bg(rgb(pace_color(theme, state)))
++        }))
++        .children(expected.map(|percent| {
++            div()
++                .absolute()
++                .top(px(-2.))
++                .h(px(10.))
++                .w(px(2.))
++                .left(relative(percent as f32 / 100.))
++                .bg(rgb(theme.foreground))
++        }))
++}
  
  impl HerdrWindow {
      pub(crate) fn render_usage(&self, cx: &mut Context<Self>) -> Option<impl IntoElement> {
@@ -1303,29 +1474,72 @@ Replace direct provider quota probes with read-only central gateway account quot
 -        // The segments clip when crowded; refresh stays in reach beside them.
 +        let bounds = Rc::new(Cell::new(Bounds::<Pixels>::default()));
 +        let painted = bounds.clone();
++        let stale = self.usage.stale(unix_now());
++        let summary = self
++            .usage
++            .snapshot
++            .as_ref()
++            .filter(|snapshot| snapshot.schema == Some(2))
++            .and_then(|snapshot| snapshot.summary.as_ref());
++        let state = if stale {
++            PaceState::Unknown
++        } else {
++            summary.map_or(PaceState::Unknown, |summary| summary.state)
++        };
++        let remaining = summary.and_then(|summary| summary.remaining_percent);
++        let expected = summary
++            .filter(|_| !stale)
++            .and_then(|summary| summary.expected_remaining_percent);
++        let label = if stale {
++            "Stale".to_owned()
++        } else if let Some(summary) = summary {
++            summary.label.clone()
++        } else if self.usage.flight.is_some() {
++            "Updating…".to_owned()
++        } else {
++            "Quota unknown".to_owned()
++        };
++        let text = match remaining {
++            Some(percent) => format!("{label} {percent:.0}%"),
++            None => label,
++        };
          Some(
              div()
--                .flex()
--                .flex_shrink_1()
--                .min_w_0()
--                .items_center()
--                .gap(px(4.))
--                .child(row)
 +                .id("usage")
 +                .debug_selector(|| "usage".into())
 +                .relative()
-+                .flex_none()
+                 .flex()
+                 .flex_shrink_1()
+                 .min_w_0()
++                .max_w(px(230.))
+                 .items_center()
+-                .gap(px(4.))
+-                .child(row)
++                .gap(px(6.))
 +                .whitespace_nowrap()
 +                .px(px(6.))
 +                .rounded(px(crate::config::corners::CONTROL))
 +                .cursor_pointer()
 +                .hover(|s| s.bg(rgb(self.theme.active)))
++                .active(|s| s.bg(rgb(self.theme.active)))
 +                .when(self.menu.page == Some(Page::Usage), |s| {
 +                    s.bg(rgb(self.theme.active))
 +                })
-+                .child("tokens @ wave")
++                .child(
++                    svg()
++                        .path("icons/wave.svg")
++                        .size(px(14.))
++                        .flex_none()
++                        .text_color(rgb(self.theme.foreground)),
++                )
++                .child(div().w(px(40.)).flex_none().child(quota_bar(
++                    &self.theme,
++                    remaining,
++                    expected,
++                    state,
++                )))
                  .child(
--                    div()
+                     div()
 -                        .id("usage-refresh")
 -                        .debug_selector(|| "usage-refresh".into())
 -                        .size(px(18.))
@@ -1356,6 +1570,13 @@ Replace direct provider quota probes with read-only central gateway account quot
 -                            cx.notify();
 -                        })),
 -                ),
++                        .flex_1()
++                        .min_w_0()
++                        .truncate()
++                        .text_color(rgb(pace_color(&self.theme, state)))
++                        .child(text),
++                )
++                .child(
 +                    canvas(|_, _, _| (), move |area, _, _, _| painted.set(area))
 +                        .absolute()
 +                        .inset_0()
@@ -1540,15 +1761,17 @@ Replace direct provider quota probes with read-only central gateway account quot
      pub(crate) foreground: u32,
 --- a/crates/herdr-gpui/src/usage/panel.rs
 +++ b/crates/herdr-gpui/src/usage/panel.rs
-@@ -1,90 +1,27 @@
+@@ -1,403 +1,370 @@
 -//! The usage panel a status bar segment opens: one tab per signed-in agent on
 -//! the selected host, its account, every limit with its pace, whatever else
 -//! its service reports, and links to the service's own pages.
 -
--use super::{
+ use super::{
 -    Access, KeychainGrants, Reading, model::Provider, render::ago, service::Service, ui::Ui,
--};
-+use super::{Account, Limit, Status, unix_now};
++    Account, Limit, PaceState, Scope, Status,
++    render::{pace_color, quota_bar},
++    unix_now,
+ };
  use crate::{menu::Page, window::HerdrWindow};
  use gpui::{prelude::*, *};
 -use std::time::{Instant, SystemTime};
@@ -1571,6 +1794,8 @@ Replace direct provider quota probes with read-only central gateway account quot
      ) {
          if self.open_menu(window, cx) {
 -            self.usage.headline_slot = slot;
++            self.usage
++                .refresh_if_due(&self.config.usage, Instant::now());
              self.menu.anchor = anchor;
 -            self.menu.page = Some(Page::Usage(provider));
 -        }
@@ -1642,7 +1867,8 @@ Replace direct provider quota probes with read-only central gateway account quot
              .id("usage-panel")
              .debug_selector(|| "usage-panel".into())
              .flex()
-@@ -92,312 +29,226 @@
+             .flex_col()
++            .min_w_0()
              .min_h_0()
              .overflow_y_scroll()
              .track_scroll(&self.menu.usage_scroll)
@@ -1683,13 +1909,15 @@ Replace direct provider quota probes with read-only central gateway account quot
 -                .px(px(8.))
 -                .py(px(6.))
                  .flex()
++                .flex_none()
++                .min_w_0()
 +                .items_center()
                  .justify_between()
                  .gap(px(12.))
                  .child(
                      div()
 -                        .flex_1()
--                        .min_w_0()
+                         .min_w_0()
 -                        .child(
 -                            div()
 -                                .text_size(px(font.size * 1.25))
@@ -1703,14 +1931,16 @@ Replace direct provider quota probes with read-only central gateway account quot
 -                                .text_color(rgb(theme.muted))
 -                                .child(format!("{updated} · {host}")),
 -                        ),
++                        .truncate()
 +                        .font_weight(FontWeight::SEMIBOLD)
-+                        .child("tokens @ wave"),
++                        .child("Wave quota"),
                  )
                  .child(
                      div()
--                        .flex_none()
++                        .flex()
+                         .flex_none()
 -                        .max_w(px(PANEL_WIDTH * 0.6))
-                         .flex()
+-                        .flex()
 -                        .flex_col()
 -                        .items_end()
 -                        .text_color(rgb(theme.muted))
@@ -1724,6 +1954,8 @@ Replace direct provider quota probes with read-only central gateway account quot
 +                                .id("usage-refresh")
 +                                .cursor_pointer()
 +                                .text_color(rgb(self.theme.muted))
++                                .hover(|s| s.text_color(rgb(self.theme.foreground)))
++                                .active(|s| s.text_color(rgb(self.theme.foreground)))
 +                                .child(if self.usage.flight.is_some() {
 +                                    "Updating…"
 +                                } else {
@@ -1741,6 +1973,8 @@ Replace direct provider quota probes with read-only central gateway account quot
 +                                    .id("usage-manage")
 +                                    .cursor_pointer()
 +                                    .text_color(rgb(self.theme.foreground))
++                                    .hover(|s| s.text_color(rgb(self.theme.muted)))
++                                    .active(|s| s.text_color(rgb(self.theme.muted)))
 +                                    .child("Manage")
 +                                    .on_click(move |_, _, cx| cx.open_url(&url)),
 +                            )
@@ -1761,8 +1995,19 @@ Replace direct provider quota probes with read-only central gateway account quot
 -                    .text_size(small)
 -                    .text_color(rgb(theme.ink(theme.palette[3])))
 -                    .child(error),
--            );
--        }
++        if let Some(error) = self.usage.error {
++            body = body.child(
++                div()
++                    .flex_none()
++                    .text_color(rgb(self.theme.ink(self.theme.palette[3])))
++                    .text_size(px(self.config.ui.size * 0.9))
++                    .child(if self.usage.snapshot.is_some() {
++                        format!("{error} · last snapshot is stale")
++                    } else {
++                        error.into()
++                    }),
+             );
+         }
 -        let ui = Ui {
 -            theme: self.theme.clone(),
 -            font_size: font.size,
@@ -1810,21 +2055,10 @@ Replace direct provider quota probes with read-only central gateway account quot
 -        // The tabs sit on the panel's bottom edge, beside the status bar it
 -        // rises from: switching agents changes the panel's height above them,
 -        // so they never move under the pointer.
-+        if let Some(error) = self.usage.error {
-+            body = body.child(
-+                div()
-+                    .text_color(rgb(self.theme.ink(self.theme.palette[3])))
-+                    .text_size(px(self.config.ui.size * 0.9))
-+                    .child(if self.usage.snapshot.is_some() {
-+                        format!("{error} · last snapshot is stale")
-+                    } else {
-+                        error.into()
-+                    }),
-+            );
-+        }
 +        if let Some(snapshot) = &self.usage.snapshot {
 +            body = body.child(
 +                div()
++                    .flex_none()
 +                    .text_color(rgb(self.theme.muted))
 +                    .text_size(px(self.config.ui.size * 0.9))
 +                    .child(format!("Updated {}", age(snapshot.updated_at, now))),
@@ -1858,29 +2092,85 @@ Replace direct provider quota probes with read-only central gateway account quot
 +            account.status.label(),
 +            if stale { " · stale" } else { "" }
 +        );
-+        let mut limits = div().flex_1().min_w_0().flex().flex_col().gap(px(3.));
++        let mut limits = div().min_w_0().flex().flex_col().gap(px(8.));
 +        for limit in &account.limits {
++            let pace = limit.pace.as_ref().filter(|_| {
++                self.usage
++                    .snapshot
++                    .as_ref()
++                    .is_some_and(|snapshot| snapshot.schema == Some(2))
++            });
++            let state = if stale {
++                PaceState::Unknown
++            } else {
++                pace.map_or(PaceState::Unknown, |pace| pace.state)
++            };
 +            limits = limits.child(
 +                div()
 +                    .flex()
-+                    .items_center()
-+                    .gap(px(8.))
-+                    .whitespace_nowrap()
++                    .flex_none()
++                    .flex_col()
++                    .min_w_0()
++                    .gap(px(4.))
 +                    .child(
 +                        div()
-+                            .w(px(88.))
-+                            .flex_none()
-+                            .truncate()
-+                            .child(limit.label.clone()),
++                            .flex()
++                            .min_w_0()
++                            .items_center()
++                            .justify_between()
++                            .gap(px(8.))
++                            .child(
++                                div()
++                                    .flex_1()
++                                    .min_w_0()
++                                    .truncate()
++                                    .child(limit.label.clone()),
++                            )
++                            .child(
++                                div()
++                                    .flex_none()
++                                    .text_color(rgb(self.theme.muted))
++                                    .child(reset(limit.reset_at, now)),
++                            )
++                            .child(
++                                div()
++                                    .flex_none()
++                                    .text_color(rgb(self.theme.muted))
++                                    .child("·"),
++                            )
++                            .child(div().flex_none().child(remaining(limit)))
++                            .children(pace.map(|pace| {
++                                div()
++                                    .flex()
++                                    .min_w_0()
++                                    .items_center()
++                                    .gap(px(8.))
++                                    .child(
++                                        div()
++                                            .flex_none()
++                                            .text_color(rgb(self.theme.muted))
++                                            .child("·"),
++                                    )
++                                    .child(
++                                        div()
++                                            .min_w_0()
++                                            .truncate()
++                                            .text_color(rgb(pace_color(&self.theme, state)))
++                                            .child(if stale {
++                                                "Stale".to_owned()
++                                            } else {
++                                                pace.label.clone()
++                                            }),
++                                    )
++                            })),
 +                    )
-+                    .child(div().flex_1().min_w_0().truncate().child(remaining(limit)))
-+                    .child(
-+                        div()
-+                            .w(px(100.))
-+                            .flex_none()
-+                            .text_color(rgb(self.theme.muted))
-+                            .child(reset(limit.reset_at, now)),
-+                    ),
++                    .child(quota_bar(
++                        &self.theme,
++                        limit.remaining_percent,
++                        pace.filter(|_| !stale)
++                            .and_then(|pace| pace.expected_remaining_percent),
++                        state,
++                    )),
 +            );
 +        }
 +        if account.limits.is_empty() {
@@ -1892,7 +2182,8 @@ Replace direct provider quota probes with read-only central gateway account quot
 +        }
          div()
              .flex()
--            .flex_col()
++            .flex_none()
+             .flex_col()
 -            .min_h_0()
 -            .child(body.flex_shrink_1())
 -            .when(!readings.is_empty(), |panel| {
@@ -1933,44 +2224,58 @@ Replace direct provider quota probes with read-only central gateway account quot
 -                    .id(SharedString::from(format!("usage-tab-{key}")))
 -                    .debug_selector(move || format!("usage-tab-{key}"))
 -                    .w(relative(width))
--                    .min_w_0()
-+            .items_start()
-+            .gap(px(12.))
++            .min_w_0()
++            .gap(px(8.))
 +            .py(px(8.))
 +            .border_t_1()
 +            .border_color(rgb(self.theme.active))
 +            .text_size(px(self.config.ui.size * 0.9))
 +            .child(
 +                div()
-+                    .w(px(132.))
-+                    .flex_none()
-                     .flex()
-                     .flex_col()
++                    .flex()
++                    .items_center()
+                     .min_w_0()
+-                    .flex()
+-                    .flex_col()
 -                    .items_center()
-                     .gap(px(2.))
+-                    .gap(px(2.))
 -                    .py(px(6.))
 -                    .rounded(px(crate::config::corners::CONTROL))
 -                    .cursor_pointer()
 -                    .text_color(rgb(text))
 -                    .when_some(background, |tab, background| tab.bg(rgb(background)))
 -                    .when(!chosen, |tab| tab.hover(|s| s.bg(rgb(theme.active))))
--                    .child(
--                        svg()
++                    .gap(px(8.))
+                     .child(
+                         svg()
 -                            .path(provider.icon())
--                            .size(px(16.))
++                            .path(provider_icon(&account.provider))
+                             .size(px(16.))
 -                            .text_color(rgb(text)),
-+                    .child(
-+                        div()
-+                            .truncate()
-+                            .font_weight(FontWeight::SEMIBOLD)
-+                            .child(account.label.clone()),
++                            .flex_none()
++                            .text_color(rgb(self.theme.foreground)),
                      )
 -                    .child(div().max_w_full().truncate().child(provider.name()))
 -                    .on_click(cx.listener(move |this, _, _, cx| {
 -                        cx.stop_propagation();
 -                        this.choose_usage(provider, cx);
 -                        cx.notify();
--                    }))
++                    .child(
++                        div()
++                            .flex_1()
++                            .min_w_0()
++                            .truncate()
++                            .font_weight(FontWeight::SEMIBOLD)
++                            .child(account.label.clone()),
++                    )
++                    .children(account.plan.as_ref().map(|plan| {
++                        div()
++                            .min_w_0()
++                            .max_w(relative(0.3))
++                            .truncate()
++                            .text_color(rgb(self.theme.muted))
++                            .child(plan.clone())
+                     }))
 -            }))
 -    }
 -
@@ -2011,21 +2316,30 @@ Replace direct provider quota probes with read-only central gateway account quot
 -                    .text_size(px(self.config.ui.size * 0.9))
 -                    .text_color(rgb(theme.muted))
 -                    .child(text),
-+                    .child(
++                    .children(account.scope.map(|scope| {
 +                        div()
-+                            .truncate()
++                            .flex_none()
 +                            .text_color(rgb(self.theme.muted))
-+                            .child(account.provider.clone()),
-+                    )
++                            .child(match scope {
++                                Scope::Subscription => "Plan",
++                                Scope::Free => "Free",
++                                Scope::Credits => "Credits",
++                                Scope::Unknown => "",
++                            })
++                    }))
 +                    .child(
 +                        div()
-+                            .truncate()
++                            .flex_none()
 +                            .text_color(rgb(if stale || account.status != Status::Ok {
 +                                self.theme.ink(self.theme.palette[3])
 +                            } else {
 +                                self.theme.muted
 +                            }))
-+                            .child(status),
++                            .child(if account.status == Status::Ok && !stale {
++                                String::new()
++                            } else {
++                                status
++                            }),
 +                    ),
              )
 -            .child(self.usage_action(
@@ -2105,13 +2419,13 @@ Replace direct provider quota probes with read-only central gateway account quot
 +fn remaining(limit: &Limit) -> String {
 +    let mut parts = Vec::new();
 +    if let Some(percent) = limit.remaining_percent {
-+        parts.push(format!("{percent:.0}% left"));
++        parts.push(format!("{percent:.0}%"));
 +    }
 +    if let Some(value) = limit.remaining {
 +        let unit = limit.unit.as_deref().unwrap_or("");
 +        parts.push(match limit.total {
 +            Some(total) => format!("{}/{} {unit}", amount(value), amount(total)),
-+            None => format!("{} {unit} left", amount(value)),
++            None => format!("{} {unit}", amount(value)),
 +        });
 +    }
 +    if parts.is_empty() {
@@ -2119,6 +2433,21 @@ Replace direct provider quota probes with read-only central gateway account quot
 +    } else {
 +        parts.join(" · ")
 +    }
++}
++
++fn provider_icon(provider: &str) -> &'static str {
++    let id = match provider {
++        "anthropic" => "claude",
++        "openai" => "codex",
++        "google" => "gemini",
++        "github" => "copilot",
++        "qwen" => "qwencloud",
++        "meta" => "muse",
++        "go" => "opencodego",
++        "zen" => "opencode",
++        id => id,
++    };
++    super::icons::for_id(id).unwrap_or("icons/wave.svg")
 +}
 +
 +fn amount(value: f64) -> String {

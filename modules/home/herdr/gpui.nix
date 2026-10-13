@@ -25,6 +25,7 @@
       ];
       # GPUI's Linux backend currently discards handles and cannot withdraw notifications.
       postPatch = (old.postPatch or "") + ''
+        cp ${./assets/wave.svg} assets/icons/wave.svg
         patch --batch --fuzz=0 -d "$cargoDepsCopy/gpui-pre-linux-0.3.6" -p1 \
           < ${./patches/gpui-linux-notification-handles.patch}
       '';
