@@ -9,6 +9,23 @@ let
   home = config.users.users.${user}.home;
   stateDirectory = "${home}/.local/state/cliproxyapi";
   goModels = import ./go-models.nix;
+  zenModels = import ./zen-models.nix;
+  opencodeHeaders = {
+    User-Agent = "$User-Agent";
+    x-opencode-client = "$x-opencode-client";
+    x-opencode-project = "$x-opencode-project";
+    x-opencode-session = "$x-opencode-session";
+    x-opencode-session-id = "$x-opencode-session-id";
+    x-opencode-parent-session-id = "$x-opencode-parent-session-id";
+    x-opencode-request-id = "$x-opencode-request-id";
+  };
+  zenUpstream = name: models: {
+    inherit name;
+    prefix = "zen";
+    base-url = "https://opencode.ai/inference/v1";
+    headers = opencodeHeaders;
+    models = map (model: { name = model; }) (builtins.attrNames models);
+  };
   managementPanel = pkgs.fetchurl {
     name = "management.html";
     url = "https://github.com/router-for-me/Cli-Proxy-API-Management-Center/releases/download/v1.26.2/management.html";
@@ -30,23 +47,6 @@ let
     };
     models = map (model: { name = model; }) models;
   };
-  # Free Zen models served through the Console inference API with a
-  # service-account key. Keep this list to free aliases only so shared agents
-  # cannot spend the workspace credit balance through the gateway.
-  zenFreeModels = [
-    "big-pickle"
-    "cat-jam-free"
-    "exo-free"
-    "ling-3.0-flash-fin-free"
-    "ling-3.1-flash-free"
-    "longcat-2.5-preview-free"
-    "mimo-v2.6-flash-free"
-    "muse-spark-1.3-contributor-free"
-    "nemotron-3-ultra-free"
-    "nemotron-3.5-lightning-free"
-    "space-bunny-free"
-    "step-5-preview-free"
-  ];
   settings = pkgs.writeText "cliproxyapi-settings.json" (
     builtins.toJSON {
       config-version = 8;
@@ -81,7 +81,10 @@ let
       };
       observability.usage.usage-statistics-enabled = true;
       api-keys = {
-        codex = [ (goUpstream "opencode-go-responses" goModels.responses) ];
+        codex = [
+          (goUpstream "opencode-go-responses" goModels.responses)
+          (zenUpstream "opencode-zen-responses" zenModels.responses)
+        ];
         # The Claude executor appends /v1/messages itself.
         claude = [
           (
@@ -93,16 +96,7 @@ let
         ];
         openai-compatibility = [
           (goUpstream "opencode-go-chat" goModels.chat)
-          {
-            name = "opencode-zen-free";
-            prefix = "zen";
-            base-url = "https://opencode.ai/inference/openai/v1";
-            headers = {
-              User-Agent = "$User-Agent";
-              x-opencode-session = "$CPA-SESSION-ID";
-            };
-            models = map (model: { name = model; }) zenFreeModels;
-          }
+          (zenUpstream "opencode-zen-chat" zenModels.chat)
         ];
       };
     }
@@ -138,7 +132,9 @@ let
             .access["api-keys"] = $clients[0] |
             .management["secret-key"] = $management_key |
             .["api-keys"] |= with_entries(.value |= map(
-              if .name == "opencode-zen-free" then with_keys($zen)
+              if .name == "opencode-zen-responses" then
+                with_keys($zen) | .keys |= map(. + {"disable-codex-cloaking": true})
+              elif (.name | startswith("opencode-zen-")) then with_keys($zen)
               else with_keys($go) end))
           else error("CLIProxyAPI requires valid client/Go/Zen key arrays and a separate management key") end
         ' ${settings} > "$config_file"

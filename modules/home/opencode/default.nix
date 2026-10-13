@@ -20,63 +20,41 @@ let
       apiKey = "{env:CLIPROXYAPI_API_KEY}";
     };
   };
+  zenModels = import ../../cliproxyapi/zen-models.nix;
   codexSubscriptionModels = {
-    "gpt-6.1-sol".name = "GPT-6.1 Sol";
-    "gpt-6-astra".name = "GPT-6 Astra";
-    "gpt-6-sol".name = "GPT-6 Sol";
-    "gpt-6-luna".name = "GPT-6 Luna";
-    "gpt-5.6-sol".name = "GPT-5.6 Sol";
-    "gpt-5.6-terra".name = "GPT-5.6 Terra";
-    "gpt-5.6-luna".name = "GPT-5.6 Luna";
+    "gpt-6.1-sol".name = "[OpenAI] GPT 6.1 Sol";
+    "gpt-6-astra".name = "[OpenAI] GPT 6 Astra";
+    "gpt-6-sol".name = "[OpenAI] GPT 6 Sol";
+    "gpt-6-luna".name = "[OpenAI] GPT 6 Luna";
+    "gpt-5.6-sol".name = "[OpenAI] GPT 5.6 Sol";
+    "gpt-5.6-terra".name = "[OpenAI] GPT 5.6 Terra";
+    "gpt-5.6-luna".name = "[OpenAI] GPT 5.6 Luna";
   };
   providers = {
     cliproxy = gatewayProvider // {
-      name = "tokens @ wave · Codex";
+      name = "tokens @ wave";
       canonical = "openai";
       package = "@opencode/ai/providers/openai/responses";
-      models = lib.mapAttrs (
-        _model: attrs: attrs // { capabilities.tools = true; }
-      ) codexSubscriptionModels;
-    };
-    cliproxy-xai = gatewayProvider // {
-      name = "tokens @ wave · Grok";
-      canonical = "xai";
-      models = {
-        "grok-4.7" = {
-          name = "Grok 4.7";
-          capabilities.tools = true;
-        };
-      };
-    };
-    cliproxy-muse = gatewayProvider // {
-      name = "tokens @ wave · Muse";
-      models."muse-spark-1.3" = {
-        name = "Muse Spark 1.3";
-        capabilities.tools = true;
-      };
-    };
-    cliproxy-zen-free = gatewayProvider // {
-      name = "tokens @ wave · Zen Free";
       models =
-        lib.genAttrs
-          [
-            "big-pickle"
-            "cat-jam-free"
-            "exo-free"
-            "ling-3.0-flash-fin-free"
-            "ling-3.1-flash-free"
-            "longcat-2.5-preview-free"
-            "mimo-v2.6-flash-free"
-            "muse-spark-1.3-contributor-free"
-            "nemotron-3-ultra-free"
-            "nemotron-3.5-lightning-free"
-            "space-bunny-free"
-            "step-5-preview-free"
-          ]
-          (model: {
-            modelID = "zen/${model}";
+        (lib.mapAttrs (_model: attrs: attrs // { capabilities.tools = true; }) codexSubscriptionModels)
+        // {
+          "grok-4.7" = {
+            name = "[xAI] Grok 4.7";
+            package = "@opencode/ai/providers/openai-compatible/responses";
             capabilities.tools = true;
-          });
+          };
+          "muse-spark-1.3" = {
+            name = "[Meta] Muse Spark 1.3";
+            package = "@opencode/ai/providers/openai-compatible/responses";
+            capabilities.tools = true;
+          };
+        }
+        // lib.mapAttrs (model: name: {
+          name = "[Zen] ${name}";
+          modelID = "zen/${model}";
+          package = "@opencode/ai/providers/openai-compatible/responses";
+          capabilities.tools = true;
+        }) (zenModels.chat // zenModels.responses);
     };
   };
 in
