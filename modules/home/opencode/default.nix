@@ -12,7 +12,6 @@ let
     apiKeyFile = osConfig.sops.secrets."cliproxyapi/api-key".path;
     baseUrlFile = osConfig.sops.secrets."cliproxyapi/base-url".path;
   };
-  goModels = import ../../cliproxyapi/go-models.nix;
   gatewayProvider = {
     env = [ "CLIPROXYAPI_API_KEY" ];
     package = "@opencode/ai/providers/openai-compatible/responses";
@@ -21,15 +20,33 @@ let
       apiKey = "{env:CLIPROXYAPI_API_KEY}";
     };
   };
+  codexSubscriptionModels = {
+    "gpt-6.1-sol".name = "GPT-6.1 Sol";
+    "gpt-6-astra".name = "GPT-6 Astra";
+    "gpt-6-sol".name = "GPT-6 Sol";
+    "gpt-6-luna".name = "GPT-6 Luna";
+    "gpt-5.6-sol".name = "GPT-5.6 Sol";
+    "gpt-5.6-terra".name = "GPT-5.6 Terra";
+    "gpt-5.6-luna".name = "GPT-5.6 Luna";
+  };
   providers = {
     cliproxy = gatewayProvider // {
       name = "CLIProxyAPI · Codex";
       canonical = "openai";
       package = "@opencode/ai/providers/openai/responses";
+      models = lib.mapAttrs (
+        _model: attrs: attrs // { capabilities.tools = true; }
+      ) codexSubscriptionModels;
     };
     cliproxy-xai = gatewayProvider // {
       name = "CLIProxyAPI · Grok";
       canonical = "xai";
+      models = {
+        "grok-4.7" = {
+          name = "Grok 4.7";
+          capabilities.tools = true;
+        };
+      };
     };
     cliproxy-muse = gatewayProvider // {
       name = "CLIProxyAPI · Muse";
@@ -37,21 +54,6 @@ let
         name = "Muse Spark 1.3";
         capabilities.tools = true;
       };
-    };
-    cliproxy-go = gatewayProvider // {
-      name = "CLIProxyAPI · OpenCode Go";
-      canonical = "opencode-go";
-      models =
-        lib.genAttrs
-          (lib.filter (model: !(lib.hasPrefix "claude-" model)) (
-            goModels.responses ++ goModels.messages ++ goModels.chat
-          ))
-          (model: {
-            modelID = "go/${model}";
-          })
-        // {
-          "claude-haiku-5-5".disabled = true;
-        };
     };
   };
 in
