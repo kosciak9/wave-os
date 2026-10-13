@@ -31,7 +31,7 @@ let
   };
   providers = {
     cliproxy = gatewayProvider // {
-      name = "CLIProxyAPI · Codex";
+      name = "tokens @ wave · Codex";
       canonical = "openai";
       package = "@opencode/ai/providers/openai/responses";
       models = lib.mapAttrs (
@@ -39,7 +39,7 @@ let
       ) codexSubscriptionModels;
     };
     cliproxy-xai = gatewayProvider // {
-      name = "CLIProxyAPI · Grok";
+      name = "tokens @ wave · Grok";
       canonical = "xai";
       models = {
         "grok-4.7" = {
@@ -49,14 +49,14 @@ let
       };
     };
     cliproxy-muse = gatewayProvider // {
-      name = "CLIProxyAPI · Muse";
+      name = "tokens @ wave · Muse";
       models."muse-spark-1.3" = {
         name = "Muse Spark 1.3";
         capabilities.tools = true;
       };
     };
     cliproxy-zen-free = gatewayProvider // {
-      name = "CLIProxyAPI · Zen Free";
+      name = "tokens @ wave · Zen Free";
       models =
         lib.genAttrs
           [
