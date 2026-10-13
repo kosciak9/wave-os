@@ -71,9 +71,13 @@ rustPlatform.buildRustPackage {
       --replace-fail /bin/cat ${coreutils}/bin/cat
     substituteInPlace src/trusted_command.rs \
       --replace-fail '    "/usr/sbin",' '    "${coreutils}/bin",'
+    substituteInPlace src/portal/dbus/tests.rs \
+      --replace-fail '"--session"' '"--config-file=${dbus}/share/dbus-1/session.conf"'
   '';
 
   env = {
+    CARGO_PROFILE_RELEASE_LTO = "off";
+    CARGO_PROFILE_RELEASE_CODEGEN_UNITS = "16";
     STRATA_BUILD_COMMIT = "0a086aa3bdb251842a1e8413e2a6b35970d0b409";
     STRATA_SANDBOX_ROOT = "/nix/store";
     STRATA_SANDBOX_PRLIMIT = "${util-linux}/bin/prlimit";
@@ -92,7 +96,7 @@ rustPlatform.buildRustPackage {
     export HOME=$(mktemp -d)
     export GTK_A11Y=none
     export STRATA_REQUIRE_GTK_TESTS=1
-    dbus-run-session -- xvfb-run -a \
+    dbus-run-session --config-file=${dbus}/share/dbus-1/session.conf -- xvfb-run -a \
       cargo test --offline --release --target ${stdenv.hostPlatform.rust.rustcTarget} \
       -- --test-threads="$NIX_BUILD_CORES"
     runHook postCheck
