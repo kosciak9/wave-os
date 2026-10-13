@@ -20,7 +20,6 @@ let
       tools = [
         "ha_get_app"
         "ha_list_floors_areas"
-        "ha_get_blueprint"
         "ha_get_camera_image"
         "ha_config_get_category"
         "ha_config_get_automation"
