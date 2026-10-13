@@ -130,6 +130,7 @@
         "cliproxyapi/client-keys"
         "cliproxyapi/management-key"
         "cliproxyapi/opencode-go-keys"
+        "cliproxyapi/opencode-zen-keys"
         "slack-mirror/mcp-token"
         "slack-mirror/session.json"
       ]

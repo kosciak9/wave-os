@@ -23,13 +23,30 @@ let
   goUpstream = name: models: {
     inherit name;
     prefix = "go";
-    base-url = "https://opencode.ai/zen/go/v1";
+    base-url = "https://opencode.ai/inference/go/v1";
     headers = {
       User-Agent = "$User-Agent";
       x-opencode-session = "$CPA-SESSION-ID";
     };
     models = map (model: { name = model; }) models;
   };
+  # Free Zen models served through the Console inference API with a
+  # service-account key. Keep this list to free aliases only so shared agents
+  # cannot spend the workspace credit balance through the gateway.
+  zenFreeModels = [
+    "big-pickle"
+    "cat-jam-free"
+    "exo-free"
+    "ling-3.0-flash-fin-free"
+    "ling-3.1-flash-free"
+    "longcat-2.5-preview-free"
+    "mimo-v2.6-flash-free"
+    "muse-spark-1.3-contributor-free"
+    "nemotron-3-ultra-free"
+    "nemotron-3.5-lightning-free"
+    "space-bunny-free"
+    "step-5-preview-free"
+  ];
   settings = pkgs.writeText "cliproxyapi-settings.json" (
     builtins.toJSON {
       config-version = 8;
@@ -70,11 +87,23 @@ let
           (
             (goUpstream "opencode-go-messages" goModels.messages)
             // {
-              base-url = "https://opencode.ai/zen/go";
+              base-url = "https://opencode.ai/inference/go";
             }
           )
         ];
-        openai-compatibility = [ (goUpstream "opencode-go-chat" goModels.chat) ];
+        openai-compatibility = [
+          (goUpstream "opencode-go-chat" goModels.chat)
+          {
+            name = "opencode-zen-free";
+            prefix = "zen";
+            base-url = "https://opencode.ai/inference/openai/v1";
+            headers = {
+              User-Agent = "$User-Agent";
+              x-opencode-session = "$CPA-SESSION-ID";
+            };
+            models = map (model: { name = model; }) zenFreeModels;
+          }
+        ];
       };
     }
   );
@@ -94,19 +123,24 @@ let
       trap 'rm -f "$config_file"' EXIT
       jq --slurpfile clients ${lib.escapeShellArg config.sops.secrets."cliproxyapi/client-keys".path} \
         --slurpfile go ${lib.escapeShellArg config.sops.secrets."cliproxyapi/opencode-go-keys".path} \
+        --slurpfile zen ${lib.escapeShellArg config.sops.secrets."cliproxyapi/opencode-zen-keys".path} \
         --rawfile management ${lib.escapeShellArg config.sops.secrets."cliproxyapi/management-key".path} '
           def valid_keys: type == "array" and
             all(.[]; type == "string" and length > 0 and test("^[^\\r\\n]+$"));
+          def with_keys($list):
+            if ($list[0] | length) == 0 then .keys = []
+            else .keys = ($list[0] | map({"api-key": .})) end;
           ($management | rtrimstr("\n")) as $management_key |
           if ($clients[0] | valid_keys and length > 0) and ($go[0] | valid_keys) and
+            ($zen[0] | valid_keys) and
             ($management_key | length > 0 and test("^[^\\r\\n]+$")) and
             ($clients[0] | index($management_key) == null) then
             .access["api-keys"] = $clients[0] |
             .management["secret-key"] = $management_key |
-            .["api-keys"] |= with_entries(.value |=
-              if ($go[0] | length) == 0 then []
-              else map(.keys = ($go[0] | map({"api-key": .}))) end)
-          else error("CLIProxyAPI requires valid client/Go key arrays and a separate management key") end
+            .["api-keys"] |= with_entries(.value |= map(
+              if .name == "opencode-zen-free" then with_keys($zen)
+              else with_keys($go) end))
+          else error("CLIProxyAPI requires valid client/Go/Zen key arrays and a separate management key") end
         ' ${settings} > "$config_file"
       chmod 600 "$config_file"
       mv -f "$config_file" "$state/config.json"
