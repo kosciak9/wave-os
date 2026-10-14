@@ -19,6 +19,7 @@ let
       ./patches/worktrunk-core.patch
       ./patches/worktrunk-terminal.patch
       ./patches/agents-pane-title.patch
+      ./patches/endpoint-diagnostics.patch
     ];
   });
   herdrWorktrunk = pkgs.applyPatches {

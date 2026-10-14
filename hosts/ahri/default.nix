@@ -9,6 +9,7 @@
 let
   # GNU ld rejects the debug and unwind sections of Zig's bundled compiler_rt on aarch64.
   herdr = inputs.herdr.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs (old: {
+    patches = (old.patches or [ ]) ++ [ ../../modules/home/herdr/patches/endpoint-diagnostics.patch ];
     nativeBuildInputs = old.nativeBuildInputs ++ [ pkgs.lld ];
     env = old.env // {
       RUSTFLAGS = "-C link-arg=-fuse-ld=lld";

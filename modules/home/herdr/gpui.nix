@@ -23,6 +23,7 @@
         ./patches/gpui-usage-reset-expiry.patch
         ./patches/gpui-gateway-quota.patch
         ./patches/gpui-dashboard-preview.patch
+        ./patches/gpui-endpoint-diagnostics.patch
       ];
       # GPUI's Linux backend currently discards handles and cannot withdraw notifications.
       postPatch = (old.postPatch or "") + ''

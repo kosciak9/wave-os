@@ -5,3 +5,4 @@ packages/patches/camofox-click-outcome.patch whitespace=-blank-at-eol,-space-bef
 packages/patches/himalaya-archive.patch whitespace=-blank-at-eol,-space-before-tab
 packages/patches/cliproxyapi-quota.patch whitespace=-blank-at-eol,-space-before-tab
 modules/home/herdr/patches/gpui-gateway-quota.patch whitespace=-blank-at-eol,-space-before-tab
+modules/home/herdr/patches/gpui-endpoint-diagnostics.patch whitespace=-blank-at-eol,-space-before-tab
