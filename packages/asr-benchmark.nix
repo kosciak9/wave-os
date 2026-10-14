@@ -11,6 +11,17 @@
 }:
 let
   py = python313.pkgs;
+  huggingfaceHub = py.huggingface-hub.overridePythonAttrs (old: {
+    version = "1.31.0";
+    src = fetchurl {
+      url = "https://files.pythonhosted.org/packages/9b/f0/61159db90b5cd275d55516fe27920828e7d3be4053fdbdb27c3f70e5f1ef/huggingface_hub-1.31.0.tar.gz";
+      sha256 = "f8e9e710a210613fa5d0f26bba6da05ef4aef9fba5a0f23f508f5ac4d08b6f90";
+    };
+    meta = old.meta // {
+      changelog = "https://github.com/huggingface/huggingface_hub/releases/tag/v1.31.0";
+    };
+  });
+  tokenizers = py.tokenizers.override { huggingface-hub = huggingfaceHub; };
   mlxMetal = py.buildPythonPackage {
     pname = "mlx-metal";
     version = "0.32.3";
@@ -68,14 +79,14 @@ let
   };
   transformersBase = py.buildPythonPackage {
     pname = "transformers";
-    version = "5.17.0";
+    version = "5.19.0";
     format = "wheel";
     src = fetchurl {
-      url = "https://files.pythonhosted.org/packages/e8/d0/c502b60d684adbd98a8dc7d5bb866842772b816ac4354e4608be240041ae/transformers-5.17.0-py3-none-any.whl";
-      sha256 = "78ec1ce21579b38dfb83950a0658cd119f87212a2fcfdff478096ce9d6c03801";
+      url = "https://files.pythonhosted.org/packages/b9/59/1e7f1212c215c73690ae6cab4678efe1555ff985953e145d88cc212859b0/transformers-5.19.0-py3-none-any.whl";
+      sha256 = "afcd2dd5f603ed28c1e1fcb00a338ccbb4ef5f878ed289635df8b58187afb518";
     };
     propagatedBuildInputs = with py; [
-      huggingface-hub
+      huggingfaceHub
       numpy
       packaging
       pyyaml
@@ -104,11 +115,11 @@ let
   };
   mlxLm = py.buildPythonPackage {
     pname = "mlx-lm";
-    version = "0.31.3";
+    version = "0.32.0";
     format = "wheel";
     src = fetchurl {
-      url = "https://files.pythonhosted.org/packages/90/02/9a67b8e4f87e3e2e5cd7b1ad79304b93c09a0db6af34bee75e6551c06c60/mlx_lm-0.31.3-py3-none-any.whl";
-      sha256 = "758cfddf1180053b7613db76fad3d246a331a2a905808e1164a275621fc983b8";
+      url = "https://files.pythonhosted.org/packages/88/ed/99cd7d36a1671851b41df06b59b73825bb95b8ab8b388ac871ddf9ae1523/mlx_lm-0.32.0-py3-none-any.whl";
+      sha256 = "9a0f3843135fd88d36ad791f0d82210cdc4130c5c1cb5416f5f0c4b56a135778";
     };
     propagatedBuildInputs = [
       mlx
@@ -128,17 +139,17 @@ let
   };
   mlxAudio = py.buildPythonPackage {
     pname = "mlx-audio";
-    version = "0.5.8";
+    version = "0.5.9";
     format = "wheel";
     src = fetchurl {
-      url = "https://files.pythonhosted.org/packages/77/b4/5fe7a122537321a1305c95d57280542691deddcd102fa8e84149525108bb/mlx_audio-0.5.8-py3-none-any.whl";
-      sha256 = "cf2eaef3d5d965d3a0a5c98ab68d4867db51daace190a77b3b9576577a7d2eab";
+      url = "https://files.pythonhosted.org/packages/57/3c/5864cf8c30661049db2ed22d6c2ab1137691f3f49df3c1fd4c7b885953da/mlx_audio-0.5.9-py3-none-any.whl";
+      sha256 = "fa662cf24cbca69cdd912612cdb677e65f77c6329a95906cc80b50e5b4689d6b";
     };
     propagatedBuildInputs = [
       mlx
       mlxLm
       transformersBase
-      py.huggingface-hub
+      huggingfaceHub
       py.miniaudio
       py.numpy
       py.scipy
@@ -164,10 +175,10 @@ let
     p.psutil
     mlxAudio
   ]);
-  needleVersion = "3.2.0";
+  needleVersion = "3.3.1";
   needleWheel = fetchurl {
-    url = "https://huggingface.co/Cactus-Compute/needle3/resolve/2ae11323dc000f5e70c49f7403efa6af12ba9e67/python/cactus_needle-${needleVersion}-py3-none-macosx_11_0_arm64.whl";
-    sha256 = "3b0887a43cd6e9a99009fabf35b231c11bb3a978ab8af94b8119b2eb76e19832";
+    url = "https://huggingface.co/Cactus-Compute/needle3/resolve/93e88ede867e4311c39151285e74df513e4b835b/python/cactus_needle-${needleVersion}-py3-none-macosx_11_0_arm64.whl";
+    sha256 = "19534f411ad71312031d6df5418d0e55b8d16075c28a217aef4b921349bdfb4a";
   };
   needleLibrary = runCommand "asr-needle-runtime-${needleVersion}" { } ''
     mkdir -p "$out/lib"

@@ -41,7 +41,6 @@ in
     gh
     httpie
     infisical
-    plannotator
     sops
     sqlit
     ssh-to-age

@@ -100,15 +100,15 @@ in
       overrideFolders = false;
     };
 
-    journald.extraConfig = ''
-      Storage=persistent
-      SystemMaxUse=256M
-      SystemKeepFree=1G
-      MaxRetentionSec=14day
-      RateLimitIntervalSec=30s
-      RateLimitBurst=1000
-      ForwardToSyslog=no
-    '';
+    journald.settings.Journal = {
+      Storage = "persistent";
+      SystemMaxUse = "256M";
+      SystemKeepFree = "1G";
+      MaxRetentionSec = "14day";
+      RateLimitIntervalSec = "30s";
+      RateLimitBurst = 1000;
+      ForwardToSyslog = false;
+    };
   };
 
   boot.tmp = {

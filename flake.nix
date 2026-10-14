@@ -3,13 +3,13 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    nixpkgs-ahri.url = "github:NixOS/nixpkgs/825e2028c29b702a4a5f085f08095d12099784f2";
+    nixpkgs-ahri.url = "github:NixOS/nixpkgs/7fd4004d0511991fff3a0524856a9be09e28c5f0";
     herdr = {
-      url = "github:jerryfane/herdr/6e165d6e9111a8b4863c26d627c49441a22528f9";
+      url = "github:jerryfane/herdr/3648fd14119433805be71d80edb150a098519eb3";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     herdr-gpui = {
-      url = "github:penso/herdr-gpui/v20261008.1";
+      url = "github:penso/herdr-gpui/v20261013.1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     herdr-worktrunk = {
@@ -17,11 +17,11 @@
       flake = false;
     };
     herdr-auto-title = {
-      url = "github:kryptamine/herdr-auto-title/9de68183c8a95141871cd3c0eff0c5be4e3fc6af";
+      url = "github:kryptamine/herdr-auto-title/8b2504514bb2aaa79ecbba6cb0e6c426652f4419";
       flake = false;
     };
-    deploy-rs.url = "github:serokell/deploy-rs/cf64c8cbadd9b13ea79ba7720aa2930500f2ece7";
-    devenv-nixpkgs.url = "github:NixOS/nixpkgs/e7439b6b14ad3cc35d05608ebca9bce01a25f5f8";
+    deploy-rs.url = "github:serokell/deploy-rs/45ba3f8c5cb28396fff71671806e2550b464ac86";
+    devenv-nixpkgs.url = "github:NixOS/nixpkgs/7fd4004d0511991fff3a0524856a9be09e28c5f0";
     # Keep the release-tested pin for Darwin's qtkeychain; Linux uses system packages in the home module.
     vicinae = {
       url = "github:vicinaehq/vicinae/v0.29.1";
@@ -54,7 +54,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    nix-flatpak.url = "github:gmodena/nix-flatpak?ref=v0.7.0";
+    nix-flatpak.url = "github:gmodena/nix-flatpak?ref=v0.8.0";
 
     sqlit = {
       url = "github:Maxteabag/sqlit";
@@ -62,7 +62,7 @@
     };
 
     spotifast = {
-      url = "github:crmne/spotifast/v0.12.0";
+      url = "github:crmne/spotifast/v0.13.1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -82,7 +82,7 @@
     };
 
     hyprland-scroll-overview = {
-      url = "github:yayuuu/hyprland-scroll-overview/10eeefa0519e09992b68a1d2949781a876230f5c";
+      url = "github:yayuuu/hyprland-scroll-overview/7ff22457dc016239eff1b19c3ea57de93404b5c9";
       flake = false;
     };
   };
@@ -116,7 +116,6 @@
           herdr-auto-title = final.callPackage ./packages/herdr-auto-title.nix {
             src = inputs.herdr-auto-title;
           };
-          plannotator = final.callPackage ./packages/plannotator.nix { };
           cliproxyapi = final.callPackage ./packages/cliproxyapi.nix { inherit prev; };
           wave-dashboard = final.callPackage ./packages/wave-dashboard.nix { };
           slack-mirror = final.callPackage ./packages/slack-mirror.nix { };
@@ -145,9 +144,6 @@
             inherit prev;
           }) "claude-code";
           codex = wrapAgentHarness (final.callPackage ./packages/codex.nix { inherit prev; }) "codex";
-          antigravity-cli = wrapAgentHarness (final.callPackage ./packages/antigravity-cli.nix {
-            inherit prev;
-          }) "antigravity";
         }
         // prev.lib.optionalAttrs prev.stdenv.hostPlatform.isLinux {
           pr-cockpit = final.callPackage ./packages/pr-cockpit.nix { };

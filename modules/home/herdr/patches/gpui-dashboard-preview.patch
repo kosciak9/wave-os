@@ -162,7 +162,7 @@
 +    pub(crate) fn render_dashboard_preview(&self, cx: &mut Context<Self>) -> Option<Stateful<Div>> {
 +        let catalog = self.dashboard_preview.catalog.as_ref()?;
 +        let endpoint = self.endpoints.get(self.selected_endpoint)?;
-+        if self.dashboard_preview.host.as_ref() != Some(&Host::from(&endpoint.connection.target)) {
++        if self.dashboard_preview.host.as_ref() != Host::of(&endpoint.connection.target).as_ref() {
 +            return None;
 +        }
 +        let host = catalog.host.as_str();
@@ -237,62 +237,62 @@
 +}
 --- a/crates/herdr-gpui/src/main.rs
 +++ b/crates/herdr-gpui/src/main.rs
-@@ -25,6 +25,7 @@
+@@ -42,6 +42,7 @@
  mod controls;
  mod copy_mode;
  mod daemon;
 +mod dashboard_preview;
- mod diagnostics;
- mod dialog_input;
- mod endpoint;
+ #[cfg(feature = "daytona")]
+ mod daytona;
+ mod devices_overview;
 --- a/crates/herdr-gpui/src/window.rs
 +++ b/crates/herdr-gpui/src/window.rs
-@@ -187,6 +187,7 @@
-     /// Remote ports forwarded to this machine; they end with the window.
-     pub(crate) port_forwards: crate::port_forward::PortForwards,
+@@ -252,6 +252,7 @@
+     #[cfg(feature = "cloud")]
+     pub(crate) cloud_jobs: crate::cloud::Jobs,
      pub(crate) listening_ports: crate::listening_ports::ListeningPorts,
 +    pub(crate) dashboard_preview: crate::dashboard_preview::Previews,
      /// SSH tunnels to remote ports that listen on their host's loopback only.
      pub(crate) tunnels: crate::listening_ports::Tunnels,
      pub(crate) install_warning_shown: bool,
-@@ -449,6 +450,16 @@
+@@ -544,6 +545,16 @@
              cx.notify();
          }
-         if self.update_usage(cx) {
-+            cx.notify();
-+        }
+         self.poll_devices_overview(cx);
 +        let preview_host = self
 +            .endpoints
 +            .get(self.selected_endpoint)
-+            .map(|endpoint| crate::usage::Host::from(&endpoint.connection.target));
++            .and_then(|endpoint| crate::usage::Host::of(&endpoint.connection.target));
 +        if self
 +            .dashboard_preview
 +            .poll(preview_host, self.active, std::time::Instant::now())
 +        {
++            cx.notify();
++        }
+         if self.update_system_load() {
              cx.notify();
          }
-         if self.update_system_load() {
-@@ -739,6 +750,7 @@
-             checkpoints: Default::default(),
-             port_forwards: Default::default(),
+@@ -864,6 +875,7 @@
+             #[cfg(feature = "cloud")]
+             cloud_jobs: Default::default(),
              listening_ports: Default::default(),
 +            dashboard_preview: Default::default(),
              tunnels: Default::default(),
              install_warning_shown: false,
              version_notice_shown: false,
---- a/crates/herdr-gpui/src/window/render.rs
-+++ b/crates/herdr-gpui/src/window/render.rs
-@@ -739,6 +739,7 @@
-                     .bg(rgb(self.theme.surface))
-                     .text_color(rgb(self.theme.foreground))
-                     .children(self.render_usage(cx))
-+                    .children(self.render_dashboard_preview(cx))
-                     .when_some(
-                         self.prefix_armed
-                             .then(|| self.keymap().prefix_label())
 --- a/crates/herdr-gpui/src/sidebar/render.rs
 +++ b/crates/herdr-gpui/src/sidebar/render.rs
-@@ -49,7 +49,7 @@
+@@ -36,7 +36,8 @@
+     ) -> Stateful<Div> {
+         let width = sidebar_width(self.sidebar_width, f32::from(window.viewport_size().width));
+         let split = self.sidebar_split.unwrap_or(0.5).clamp(0.1, 0.9);
+-        let look = layout::for_config(&self.config, self.fill()).with_font(&self.config.sidebar, window);
++        let look =
++            layout::for_config(&self.config, self.fill()).with_font(&self.config.sidebar, window);
+         let rows = layout_for(self.config.layout.mode);
+         // The row a workspace menu was opened for keeps looking hovered while
+         // the pointer is over the menu.
+@@ -50,7 +51,7 @@
          let repository_gap = if spaces_custom {
              f32::from(self.config.sidebar_layout.spaces.row_gap) * line_height(font)
          } else if self.config.layout.mode == LayoutMode::new(Density::Normal, Style::Flat) {
@@ -303,7 +303,7 @@
          };
 --- a/crates/herdr-gpui/src/sidebar/row.rs
 +++ b/crates/herdr-gpui/src/sidebar/row.rs
-@@ -525,8 +525,9 @@
+@@ -527,8 +527,9 @@
                                  ),
                          )
                          .when(show_detail, |column| {
@@ -317,9 +317,9 @@
                              // take, so a long branch ellipsizes before they do.
 --- a/crates/herdr-gpui/src/sidebar/layout_tests.rs
 +++ b/crates/herdr-gpui/src/sidebar/layout_tests.rs
-@@ -461,6 +461,7 @@
-         checkpoints: Default::default(),
-         port_forwards: Default::default(),
+@@ -516,6 +516,7 @@
+         #[cfg(feature = "cloud")]
+         cloud_jobs: Default::default(),
          listening_ports: Default::default(),
 +        dashboard_preview: Default::default(),
          tunnels: Default::default(),
@@ -387,3 +387,30 @@
                  .child(
                      canvas(|_, _, _| (), move |area, _, _, _| painted.set(area))
                          .absolute()
+--- a/crates/herdr-gpui/src/window/status_bar.rs
++++ b/crates/herdr-gpui/src/window/status_bar.rs
+@@ -2,7 +2,7 @@
+ //! its items show and how compactly, so a crowded bar can give room back.
+ 
+ use super::HerdrWindow;
+-use crate::{ config::status_bar::Button, state::ConnectionStatus};
++use crate::{config::status_bar::Button, state::ConnectionStatus};
+ use gpui::{prelude::*, *};
+ use std::time::Duration;
+ 
+@@ -42,6 +42,7 @@
+             .text_color(rgb(self.theme.foreground))
+             .children(self.render_agent_model(cx))
+             .children(self.render_usage(cx))
++            .children(self.render_dashboard_preview(cx))
+             .when_some(
+                 self.prefix_armed
+                     .then(|| self.keymap().prefix_label())
+@@ -95,7 +96,6 @@
+             )
+             .children(self.render_listening_ports(cx))
+             .children(self.render_system_load())
+-
+     }
+ 
+     /// The focused agent's model, from the `model` and `effort` tokens its

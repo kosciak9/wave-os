@@ -1,31 +1,18 @@
-diff --git a/crates/herdr-gpui/src/herdr_settings/persistence.rs b/crates/herdr-gpui/src/herdr_settings/persistence.rs
 --- a/crates/herdr-gpui/src/herdr_settings/persistence.rs
 +++ b/crates/herdr-gpui/src/herdr_settings/persistence.rs
-@@ -1,8 +1,9 @@
- //! Descriptor-relative Unix persistence. The lock coordinates this adapter's
- //! writers, not arbitrary editors: the last comparison is optimistic, not a
- //! filesystem compare-and-swap. No portable rename API can eliminate that final
--//! race with a non-cooperating writer. Config symlinks are never followed;
--//! root-owned system directory aliases (e.g. macOS /var) are permitted.
-+//! race with a non-cooperating writer. Config symlinks are read-only when they
-+//! resolve to immutable Nix store files; writes never follow config symlinks.
-+//! Root-owned system directory aliases (e.g. macOS /var) are permitted.
- use super::Error;
- use rustix::fs::{
-     AtFlags, FileType, FlockOperation, Mode, OFlags, flock, linkat, mkdirat, open, openat,
-@@ -137,7 +138,7 @@
+@@ -198,7 +198,7 @@
  }
  
- fn read_at(dir: &File, name: &OsStr) -> Result<Snapshot, Error> {
+ fn read_at(dir: &File, name: &OsStr, path: &Path) -> Result<Snapshot, Error> {
 -    let mut snapshot = Snapshot {
 +    let snapshot = Snapshot {
          directory: Some(Identity::of(&dir.metadata()?)),
          ..Snapshot::default()
      };
-@@ -154,6 +155,10 @@
+@@ -215,6 +215,10 @@
      };
      let before = file.metadata()?;
-     validate_file(&before)?;
+     validate_file(&before, path)?;
 +    read_file(file, before, snapshot)
 +}
 +
@@ -33,33 +20,25 @@ diff --git a/crates/herdr-gpui/src/herdr_settings/persistence.rs b/crates/herdr-
      if before.len() > LIMIT {
          return Err(Error::TooLarge);
      }
-@@ -185,7 +190,28 @@
-         }
-         Err(error) => return Err(error),
-     };
--    read_at(&dir, name)
-+    match read_at(&dir, name) {
-+        Err(Error::UnsafePath) if fs::symlink_metadata(path)?.is_symlink() => {
-+            let target = fs::canonicalize(path)?;
-+            if !target.starts_with("/nix/store") {
-+                return Err(Error::UnsafePath);
-+            }
-+            let file = File::from(
-+                open(
-+                    &target,
-+                    OFlags::RDONLY | OFlags::NOFOLLOW | OFlags::NONBLOCK | OFlags::CLOEXEC,
-+                    Mode::empty(),
-+                )
-+                .map_err(io)?,
-+            );
-+            let meta = file.metadata()?;
-+            if !meta.is_file() || meta.uid() != 0 || meta.mode() & 0o7222 != 0 {
-+                return Err(Error::UnsafePath);
-+            }
-+            read_file(file, meta, Snapshot::default())
-+        }
-+        result => result,
-+    }
- }
+@@ -239,6 +243,21 @@
  
- fn unchanged(original: &Snapshot, current: &Snapshot) -> Result<(), Error> {
+ pub(super) fn read(path: &Path) -> Result<Snapshot, Error> {
+     let path = resolve(path)?;
++    if path.starts_with("/nix/store") {
++        let file = File::from(
++            open(
++                &path,
++                OFlags::RDONLY | OFlags::NOFOLLOW | OFlags::NONBLOCK | OFlags::CLOEXEC,
++                Mode::empty(),
++            )
++            .map_err(io)?,
++        );
++        let meta = file.metadata()?;
++        if !meta.is_file() || meta.uid() != 0 || meta.mode() & 0o7222 != 0 {
++            return Err(Error::UnsafePath);
++        }
++        return read_file(file, meta, Snapshot::default());
++    }
+     let (parent, name) = parts(&path)?;
+     let dir = match directory(parent, false) {
+         Ok(dir) => dir,

@@ -9,7 +9,7 @@ inputs:
   nixpkgs:
     url: github:NixOS/nixpkgs/nixos-unstable
   deploy-rs:
-    url: github:serokell/deploy-rs/cf64c8cbadd9b13ea79ba7720aa2930500f2ece7
+    url: github:serokell/deploy-rs/45ba3f8c5cb28396fff71671806e2550b464ac86
     inputs:
       nixpkgs:
         follows: nixpkgs

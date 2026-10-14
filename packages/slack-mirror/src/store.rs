@@ -150,7 +150,7 @@ impl Store {
         )?;
         validate_storage(&self.path, Some(self.identity))?;
         connection.busy_timeout(deadline.saturating_duration_since(Instant::now()))?;
-        connection.progress_handler(1000, Some(move || Instant::now() >= deadline));
+        connection.progress_handler(1000, Some(move || Instant::now() >= deadline))?;
         connection.pragma_update(None, "query_only", true)?;
         if Instant::now() >= deadline {
             bail!("mirror query deadline exceeded");

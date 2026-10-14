@@ -19,6 +19,5 @@ in
       target = "${claudeDirectory}/CLAUDE.md";
       force = true;
     };
-    ".gemini/antigravity-cli/skills" = skills;
   };
 }

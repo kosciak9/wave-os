@@ -29,13 +29,13 @@
 
 let
   pname = "pr-cockpit";
-  version = "unstable-2026-10-08";
-  revision = "5c5b87f1bef95bb06aba72dc396c20c79e1f93c1";
+  version = "unstable-2026-10-14";
+  revision = "843d5391d2a933d0bc07f359ae397760438b3c0e";
   src = fetchFromGitHub {
     owner = "theolundqvist";
     repo = "pr-cockpit";
     rev = revision;
-    hash = "sha256-L0sqQz6z4XTmN90xsxosif06IG1EqMp8Q7bTTmFlVfE=";
+    hash = "sha256-WMoEfoMCmSGTzqQMTjsOksoa3uO6Ru3V30MzkdTgxK0=";
   };
   nodeModules = stdenvNoCC.mkDerivation {
     pname = "${pname}-node-modules";
@@ -60,7 +60,7 @@ let
       cp -R ui/node_modules $out/ui
       runHook postInstall
     '';
-    outputHash = "sha256-Ia87y4r8WjzwoPjJM8uDHUqpFpd7VyaOUDUWAw30gBA=";
+    outputHash = "sha256-ggy/F6TtxqDzysAmXgiNHEUxXElA50IuaZFlxBDOxJY=";
     outputHashMode = "recursive";
   };
   runtimePath = lib.makeBinPath [

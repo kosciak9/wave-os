@@ -61,9 +61,6 @@ let
     }
   );
   codexDirectory = config.home.sessionVariables.CODEX_HOME or "${config.home.homeDirectory}/.codex";
-  antigravityDirectory =
-    config.home.sessionVariables.ANTIGRAVITY_CLI_CONFIG_DIR
-      or "${config.home.homeDirectory}/.gemini/config";
   worktrunk = pkgs.worktrunk.overrideAttrs {
     # TODO: Re-enable checks when Worktrunk process-table tests support Darwin sandboxes.
     # Darwin sandboxes hide the process table, breaking upstream shell-probe tests.
@@ -173,9 +170,8 @@ in
       assertion = lib.all (lib.hasPrefix "/") [
         claudeDirectory
         codexDirectory
-        antigravityDirectory
       ];
-      message = "Herdr requires CLAUDE_CONFIG_DIR, CODEX_HOME, and ANTIGRAVITY_CLI_CONFIG_DIR to be declared as absolute paths (for example ${config.home.homeDirectory}/.claude, ${config.home.homeDirectory}/.codex, and ${config.home.homeDirectory}/.gemini/config); relative paths, tilde, and shell-variable expansion are unsupported.";
+      message = "Herdr requires CLAUDE_CONFIG_DIR and CODEX_HOME to be declared as absolute paths (for example ${config.home.homeDirectory}/.claude and ${config.home.homeDirectory}/.codex); relative paths, tilde, and shell-variable expansion are unsupported.";
     }
   ];
 
@@ -251,7 +247,6 @@ in
 
     packages = with pkgs; [
       herdr
-      antigravity-cli
       bash
       (gatewayPackage claude-code "claude")
       (gatewayPackage codex "codex")
@@ -266,11 +261,9 @@ in
         (
           claude=${lib.escapeShellArg claudeDirectory}
           codex=${lib.escapeShellArg codexDirectory}
-          antigravity=${lib.escapeShellArg antigravityDirectory}
-          directories=("$claude" "$claude/hooks" "$codex" "$antigravity" "$antigravity/hooks")
+          directories=("$claude" "$claude/hooks" "$codex")
           files=("$claude/settings.json" "$claude/hooks/herdr-agent-state.sh"
-            "$codex/config.toml" "$codex/hooks.json" "$codex/herdr-agent-state.sh"
-            "$antigravity/hooks.json" "$antigravity/hooks/herdr-agent-state.sh")
+            "$codex/config.toml" "$codex/hooks.json" "$codex/herdr-agent-state.sh")
 
           for path in "''${directories[@]}" "''${files[@]}"; do
             resolved=$(${pkgs.coreutils}/bin/realpath -m -- "$path") || exit $?
@@ -336,9 +329,9 @@ in
           fi
 
           run ${pkgs.coreutils}/bin/mkdir -p -- "''${directories[@]}" || exit $?
-          for integration in claude codex antigravity-cli; do
+          for integration in claude codex; do
             run ${pkgs.coreutils}/bin/env CLAUDE_CONFIG_DIR="$claude" CODEX_HOME="$codex" \
-              ANTIGRAVITY_CLI_CONFIG_DIR="$antigravity" ${lib.getExe herdr} integration install "$integration" || exit $?
+              ${lib.getExe herdr} integration install "$integration" || exit $?
           done
         )
       '';

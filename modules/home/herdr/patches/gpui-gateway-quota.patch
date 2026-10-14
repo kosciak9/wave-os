@@ -1,8 +1,6 @@
-Replace direct provider quota probes with read-only central gateway account quotas.
-
 --- a/crates/herdr-gpui/src/app.rs
 +++ b/crates/herdr-gpui/src/app.rs
-@@ -262,17 +262,6 @@
+@@ -282,17 +282,6 @@
      } else {
          crate::browser::Store::default()
      };
@@ -20,9 +18,9 @@ Replace direct provider quota probes with read-only central gateway account quot
      // Nor with saved editor groups, which they would overwrite.
      let group_layouts = if mode == LaunchMode::Normal {
          crate::browser::Layouts::load()
-@@ -289,8 +278,6 @@
-             browser_tabs.install(cx);
-             group_layouts.install(cx);
+@@ -323,8 +312,6 @@
+             worktree_notes.install(cx);
+             dispatch_history.install(cx);
              agent_skill.install_global(cx);
 -            keychain_grants.install(cx);
 -            usage_headlines.install(cx);
@@ -31,7 +29,7 @@ Replace direct provider quota probes with read-only central gateway account quot
                  crate::control::install(cx);
 --- a/crates/herdr-gpui/src/config.rs
 +++ b/crates/herdr-gpui/src/config.rs
-@@ -565,7 +565,6 @@
+@@ -782,7 +782,6 @@
              }
              known
          });
@@ -41,15 +39,15 @@ Replace direct provider quota probes with read-only central gateway account quot
          settings.devices.retain(|id, _| {
 --- a/crates/herdr-gpui/src/window.rs
 +++ b/crates/herdr-gpui/src/window.rs
-@@ -241,7 +241,6 @@
-     /// Browser tabs this window shows, and its pages for them.
-     pub(crate) browser: crate::browser::Browser,
+@@ -312,7 +312,6 @@
      pub(crate) _browser_tabs: Subscription,
+     /// Another window may edit a note this one shows.
+     pub(crate) _worktree_notes: Subscription,
 -    pub(crate) _usage_headlines: Subscription,
      /// The daemon's prefix was typed, so the next keystroke completes a chord.
      pub(crate) prefix_armed: bool,
      /// Herdr's resize mode: direction keys resize the focused pane until
-@@ -472,37 +471,9 @@
+@@ -565,37 +564,9 @@
          self.sync_window_title(window);
      }
  
@@ -62,7 +60,7 @@ Replace direct provider quota probes with read-only central gateway account quot
 -            .show
 -            .then(|| self.endpoints.get(self.selected_endpoint))
 -            .flatten()
--            .map(|endpoint| crate::usage::Host::from(&endpoint.connection.target));
+-            .and_then(|endpoint| crate::usage::Host::of(&endpoint.connection.target));
 -        let granted = crate::usage::KeychainGrants::granted(cx);
 -        let changed = self.usage.poll(
 -            host,
@@ -89,16 +87,16 @@ Replace direct provider quota probes with read-only central gateway account quot
 +            .poll(&self.config.usage, self.active, std::time::Instant::now())
      }
  
-     /// CPU and memory are sampled for every enabled host.
-@@ -800,7 +771,6 @@
-             browser: crate::browser::Browser::new(cx),
+     /// CPU and memory are sampled for every enabled host, while they are
+@@ -927,7 +898,6 @@
              // Another window, or an agent, may open or close a tab.
              _browser_tabs: cx.observe_global::<crate::browser::Store>(|_, cx| cx.notify()),
+             _worktree_notes: Self::observe_worktree_notes(window, cx),
 -            _usage_headlines: cx.observe_global::<crate::usage::Headlines>(|_, cx| cx.notify()),
              prefix_armed: false,
              resize_mode: false,
              server_keys: None,
-@@ -810,6 +780,8 @@
+@@ -937,6 +907,8 @@
                  this.active = window.is_window_active();
                  if this.active {
                      this.publish_server_keymap(cx);
@@ -109,7 +107,7 @@ Replace direct provider quota probes with read-only central gateway account quot
                      this.disarm_prefix();
 --- a/crates/herdr-gpui/src/menu/page.rs
 +++ b/crates/herdr-gpui/src/menu/page.rs
-@@ -9,8 +9,8 @@
+@@ -11,8 +11,8 @@
      Devices,
      /// Local sessions and remote devices, with the state of each.
      Sessions,
@@ -122,7 +120,16 @@ Replace direct provider quota probes with read-only central gateway account quot
      Host,
 --- a/crates/herdr-gpui/src/menu/chrome.rs
 +++ b/crates/herdr-gpui/src/menu/chrome.rs
-@@ -324,7 +324,7 @@
+@@ -270,7 +270,7 @@
+         let footer_anchored =
+             matches!(page, Page::Menu | Page::Devices | Page::Sessions) && !session_modal;
+         !footer_anchored
+-            && !matches!(page, Page::Usage(_) | Page::Application)
++            && !matches!(page, Page::Usage | Page::Application)
+             && !page.pointer_anchored()
+     }
+ 
+@@ -331,7 +331,7 @@
              .when(footer_anchored, |panel| {
                  self.anchor_footer_panel(panel, viewport, page)
              })
@@ -131,7 +138,7 @@ Replace direct provider quota probes with read-only central gateway account quot
                  // Rises from the status bar segment that opened it, kept inside
                  // the window and clear of the titlebar.
                  let chrome = px(crate::titlebar::HEIGHT
-@@ -410,7 +410,7 @@
+@@ -423,7 +423,7 @@
              )
              .when(
                  !footer_anchored
@@ -140,7 +147,7 @@ Replace direct provider quota probes with read-only central gateway account quot
                      && !pointer_anchored
                      && !matches!(page, Page::Dialog(_)),
                  |panel| {
-@@ -437,7 +437,7 @@
+@@ -453,7 +453,7 @@
                          | Page::GitHub
                          | Page::AddDevice
                          | Page::AddWsl
@@ -148,8 +155,8 @@ Replace direct provider quota probes with read-only central gateway account quot
 +                        | Page::Usage
                          | Page::RenameDevice
                          | Page::ForwardPort
-                 ),
-@@ -558,8 +558,8 @@
+                 ) && !self.cloud_dialog_open(),
+@@ -583,8 +583,8 @@
              panel = panel.child(self.render_devices(cx));
          } else if page == Page::Sessions {
              panel = panel.child(self.render_sessions(cx));
@@ -158,20 +165,11 @@ Replace direct provider quota probes with read-only central gateway account quot
 +        } else if page == Page::Usage {
 +            panel = panel.child(self.render_usage_panel(cx));
          } else if page == Page::AddDevice {
-             panel = panel.child(self.render_add_device(cx));
-         } else if page == Page::AddWsl {
-@@ -677,7 +677,7 @@
-         }
-         // Pages sit above everything GPUI draws, so the menu says what it
-         // covers: a dimmed dialog covers the window, a popover its panel.
--        let dims = !footer_anchored && !matches!(page, Page::Usage(_)) && !pointer_anchored;
-+        let dims = !footer_anchored && !matches!(page, Page::Usage) && !pointer_anchored;
-         let cover = self.menu.cover.clone();
-         if dims {
-             cover.set(super::state::Cover::All);
+             panel = panel.child(self.render_add_device(compact_rail, cx));
+         } else if let Some(dialog) = self.render_cloud_dialog(compact_rail, cx) {
 --- a/crates/herdr-gpui/src/menu/chrome/keys.rs
 +++ b/crates/herdr-gpui/src/menu/chrome/keys.rs
-@@ -139,13 +139,6 @@
+@@ -144,13 +144,6 @@
              self.pane_menu_key(event, window, cx);
              return;
          }
@@ -182,12 +180,12 @@ Replace direct provider quota probes with read-only central gateway account quot
 -            window.prevent_default();
 -            return;
 -        }
-         if self.menu.page == Some(Page::AddWsl) {
-             self.add_wsl_key(event, window, cx);
-             return;
+         if self
+             .menu
+             .page
 --- a/crates/herdr-gpui/src/usage.rs
 +++ b/crates/herdr-gpui/src/usage.rs
-@@ -1,55 +1,49 @@
+@@ -1,55 +1,53 @@
 -//! Plan usage of the AI services signed in on the selected host, for the
 -//! status bar and its panel. One worker thread reads one host at a time and
 -//! reports each provider as it answers; the UI thread only queues a host and
@@ -265,20 +263,24 @@ Replace direct provider quota probes with read-only central gateway account quot
 +    Wsl(String),
 +}
 +
-+impl From<&herdr_client::ConnectTarget> for Host {
-+    fn from(target: &herdr_client::ConnectTarget) -> Self {
++impl Host {
++    pub(crate) fn of(target: &herdr_client::ConnectTarget) -> Option<Self> {
 +        use herdr_client::ConnectTarget;
 +        match target {
-+            ConnectTarget::Ssh { target, .. } => Self::Ssh(target.clone()),
-+            ConnectTarget::Wsl { distro, .. } => Self::Wsl(distro.clone()),
-+            _ => Self::Local,
++            ConnectTarget::Ssh { target, .. } => Some(Self::Ssh(target.clone())),
++            ConnectTarget::Wsl { distro, .. } => Some(Self::Wsl(distro.clone())),
++            #[cfg(feature = "cloud")]
++            ConnectTarget::Cloud { .. } => None,
++            ConnectTarget::Local | ConnectTarget::Session { .. } | ConnectTarget::Socket(_) => {
++                Some(Self::Local)
++            }
 +        }
 +    }
 +}
  
  pub(crate) fn icon(path: &str) -> Option<&'static [u8]> {
      icons::PROVIDER_ICONS
-@@ -62,466 +56,412 @@
+@@ -62,466 +60,464 @@
      icons::PROVIDER_ICONS.iter().map(|(name, _)| *name)
  }
  
@@ -567,6 +569,58 @@ Replace direct provider quota probes with read-only central gateway account quot
 -    }
 -
 -    /// Reads the tracked host on the next poll, unless it was just read.
++    pub(crate) fn control_info(
++        &self,
++        now: u64,
++    ) -> (
++        Vec<crate::control::protocol::hosts::UsageInfo>,
++        Option<String>,
++    ) {
++        use crate::control::protocol::hosts::{UsageInfo, UsageWindow};
++        let usage = self
++            .snapshot
++            .as_ref()
++            .map(|snapshot| {
++                snapshot
++                    .accounts
++                    .iter()
++                    .map(|account| UsageInfo {
++                        provider: account.provider.clone(),
++                        account: Some(account.label.clone()),
++                        plan: account.plan.clone(),
++                        windows: account
++                            .limits
++                            .iter()
++                            .filter_map(|limit| {
++                                let remaining = limit.remaining_percent?;
++                                Some(UsageWindow {
++                                    label: limit.label.clone(),
++                                    used_percent: (100. - remaining) as f32,
++                                    resets_in_seconds: limit
++                                        .reset_at
++                                        .map(|reset| reset.saturating_sub(now)),
++                                })
++                            })
++                            .collect(),
++                        error: (account.status != Status::Ok)
++                            .then(|| account.status.label().to_owned()),
++                    })
++                    .collect()
++            })
++            .unwrap_or_default();
++        let note = self.error.map(str::to_owned).or_else(|| {
++            Some(
++                if self.snapshot.is_none() {
++                    "Herdr UI has not read usage from the gateway yet"
++                } else {
++                    "Gateway quotas are shared across hosts"
++                }
++                .to_owned(),
++            )
++        });
++        (usage, note)
++    }
++
 +    fn stale(&self, now: u64) -> bool {
 +        self.error.is_some()
 +            || self.snapshot.as_ref().is_some_and(|snapshot| {
@@ -1336,7 +1390,7 @@ Replace direct provider quota probes with read-only central gateway account quot
 -}
 --- a/crates/herdr-gpui/src/usage/render.rs
 +++ b/crates/herdr-gpui/src/usage/render.rs
-@@ -1,302 +1,142 @@
+@@ -1,313 +1,142 @@
 -//! Two fixed usage positions, each showing only its tightest limit and reset.
 -//! Picking a provider in the panel changes the position that opened it.
 +use super::{PaceState, unix_now};
@@ -1349,7 +1403,7 @@ Replace direct provider quota probes with read-only central gateway account quot
 -    model::{Provider, Severity, Window as Limit},
 -    panel::PANEL_GAP,
 -};
--use crate::window::HerdrWindow;
+-use crate::{config::status_bar::Detail, window::HerdrWindow};
 -use gpui::{prelude::*, *};
 -use std::{
 -    cell::Cell,
@@ -1366,6 +1420,9 @@ Replace direct provider quota probes with read-only central gateway account quot
 +}
  
 -const METER_WIDTH: f32 = 40.;
+-/// Windows a detailed segment names at most; the panel lists the rest. A
+-/// service with many model quotas would otherwise crowd out the whole bar.
+-pub(super) const BAR_WINDOWS: usize = 2;
 +pub(super) fn quota_bar(
 +    theme: &crate::config::Theme,
 +    remaining: Option<f64>,
@@ -1676,9 +1733,6 @@ Replace direct provider quota probes with read-only central gateway account quot
 -                    "Unavailable"
 -                });
 -        };
--        if let Some(tightest) = report.tightest() {
--            segment = segment.child(meter(tightest, theme));
--        }
 -        let mut labels = div()
 -            .flex()
 -            .min_w_0()
@@ -1723,6 +1777,17 @@ Replace direct provider quota probes with read-only central gateway account quot
      }
  }
  
+-/// The [`BAR_WINDOWS`] windows closest to their limits, in report order so
+-/// the session window keeps its place before the weekly one.
+-pub(super) fn bar_windows(windows: &[Limit]) -> impl Iterator<Item = &Limit> {
+-    let mut tightest: Vec<usize> = (0..windows.len()).collect();
+-    // Stable, so equally used windows keep report order.
+-    tightest.sort_by(|&a, &b| windows[b].used.total_cmp(&windows[a].used));
+-    tightest.truncate(BAR_WINDOWS);
+-    tightest.sort_unstable();
+-    tightest.into_iter().map(|index| &windows[index])
+-}
+-
 -fn color(severity: Severity, theme: &crate::config::Theme, normal: u32) -> u32 {
 -    match severity {
 -        Severity::Normal => normal,
@@ -2656,3 +2721,77 @@ Replace direct provider quota probes with read-only central gateway account quot
 +        }
 +    }
 +}
+--- a/crates/herdr-gpui/src/control/server/hosts.rs
++++ b/crates/herdr-gpui/src/control/server/hosts.rs
+@@ -14,7 +14,7 @@
+     browser::PageOpened,
+     control::protocol::{
+         Call, Caller, ErrorCode, Response,
+-        hosts::{HostOp, LoadInfo, Reply, UsageInfo, UsageWindow},
++        hosts::{HostOp, LoadInfo, Reply},
+     },
+ };
+ use gpui::App;
+@@ -170,55 +170,21 @@
+         .unwrap_or_default()
+ }
+ 
+-/// Plan usage on the selected host, as the status bar shows it.
++/// Gateway quotas, independent of the host this window selected.
+ fn usage(view: &HerdrWindow, now: SystemTime) -> Response {
+     let host = selected_label(view);
+-    let entry = view.usage.current();
+-    let usage: Vec<UsageInfo> = entry
+-        .map(|entry| {
+-            entry
+-                .readings
+-                .iter()
+-                .map(|reading| usage_info(reading, now))
+-                .collect()
+-        })
+-        .unwrap_or_default();
++    let now = now
++        .duration_since(SystemTime::UNIX_EPOCH)
++        .unwrap_or_default()
++        .as_secs();
++    let (usage, note) = view.usage.control_info(now);
+     let note = if !view.config.usage.show {
+         Some("Usage is turned off ([usage] show in the settings)".to_owned())
+-    } else if let Some(error) = entry.and_then(|entry| entry.error.clone()) {
+-        Some(error)
+-    } else if entry.is_none() {
+-        Some(format!("Herdr UI has not read usage on {host} yet"))
+-    } else if usage.is_empty() {
+-        Some(format!("No AI plan is signed in on {host}"))
+     } else {
+-        None
++        note
+     };
+     Response::Host {
+         reply: Reply::Usage { host, usage, note },
+-    }
+-}
+-
+-pub(super) fn usage_info(reading: &crate::usage::Reading, now: SystemTime) -> UsageInfo {
+-    let report = reading.report.as_ref();
+-    UsageInfo {
+-        provider: reading.provider.name().to_owned(),
+-        account: report.and_then(|report| report.account.email.clone()),
+-        plan: report.and_then(|report| report.account.plan.clone()),
+-        windows: report
+-            .map(|report| {
+-                report
+-                    .windows
+-                    .iter()
+-                    .map(|window| UsageWindow {
+-                        label: window.kind.title().to_owned(),
+-                        used_percent: window.used,
+-                        resets_in_seconds: window.resets_in(now).map(|left| left.as_secs()),
+-                    })
+-                    .collect()
+-            })
+-            .unwrap_or_default(),
+-        error: reading.error.clone(),
+     }
+ }
+ 

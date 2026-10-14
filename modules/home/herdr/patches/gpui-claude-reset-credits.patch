@@ -1,46 +1,45 @@
-diff --git a/crates/herdr-gpui/src/usage/providers/claude.rs b/crates/herdr-gpui/src/usage/providers/claude.rs
 --- a/crates/herdr-gpui/src/usage/providers/claude.rs
 +++ b/crates/herdr-gpui/src/usage/providers/claude.rs
-@@ -10,6 +10,7 @@
-     },
- };
+@@ -16,6 +16,7 @@
+ use cswap::{Accounts, Other};
+ use gpui::{prelude::*, *};
  use serde::Deserialize;
 +use std::time::SystemTime;
  
  pub(crate) const URL: &str = "https://api.anthropic.com/api/oauth/usage";
  pub(crate) const BETA: &str = "oauth-2025-04-20";
-@@ -50,11 +51,25 @@
-             tier: probe.text(&credentials, &["claudeAiOauth", "rateLimitTier"]),
-             email,
-         };
--        let request = Request::get(URL)
--            .bearer(&token)
--            .header("anthropic-beta", BETA)
--            .header("User-Agent", AGENT);
--        Some(probe.body(request).and_then(|body| parse(&body, sign_in)))
-+        let request = |url: String, agent: &str| {
-+            Request::get(url)
-+                .bearer(&token)
-+                .header("anthropic-beta", BETA)
-+                .header("User-Agent", agent)
-+        };
-+        Some((|| {
-+            let mut response = probe.http(request(
-+                format!("{URL}?cedar_ember=1"),
-+                "claude-cli/2.1.0 (external, cli)",
-+            ))?;
-+            // Older accounts may reject the optional inventory; keep their usual usage.
-+            if response.status == 400
-+                || (response.status == 403 && !response.body.contains("user:profile"))
-+            {
-+                response = probe.http(request(URL.into(), AGENT))?;
-+            }
-+            parse(&response.ok()?, sign_in)
-+        })())
-     }
+@@ -98,11 +99,25 @@
+         tier: probe.text(&credentials, &["claudeAiOauth", "rateLimitTier"]),
+         email,
+     };
+-    let request = Request::get(URL)
+-        .bearer(&token)
+-        .header("anthropic-beta", BETA)
+-        .header("User-Agent", AGENT);
+-    Some(probe.body(request).and_then(|body| parse(&body, sign_in)))
++    let request = |url: String, agent: &str| {
++        Request::get(url)
++            .bearer(&token)
++            .header("anthropic-beta", BETA)
++            .header("User-Agent", agent)
++    };
++    Some((|| {
++        let mut response = probe.http(request(
++            format!("{URL}?cedar_ember=1"),
++            "claude-cli/2.1.0 (external, cli)",
++        ))?;
++        // Older accounts may reject the optional inventory; keep their usual usage.
++        if response.status == 400
++            || (response.status == 403 && !response.body.contains("user:profile"))
++        {
++            response = probe.http(request(URL.into(), AGENT))?;
++        }
++        parse(&response.ok()?, sign_in)
++    })())
  }
  
-@@ -147,6 +162,7 @@
+ /// Claude Code keeps its sign-in under the user's account name. Asked by
+@@ -194,6 +209,7 @@
              vec![("Status".into(), "Off".into())]
          },
      });
@@ -48,7 +47,7 @@ diff --git a/crates/herdr-gpui/src/usage/providers/claude.rs b/crates/herdr-gpui
      Ok(
          Report::new(Provider(&Claude), account, windows).with_sections(
              (!shares.is_empty())
-@@ -155,7 +171,8 @@
+@@ -202,7 +218,8 @@
                      shares,
                  })
                  .into_iter()
@@ -58,7 +57,7 @@ diff --git a/crates/herdr-gpui/src/usage/providers/claude.rs b/crates/herdr-gpui
          ),
      )
  }
-@@ -182,6 +199,59 @@
+@@ -229,6 +246,59 @@
      seven_day: Option<FixedWindow>,
      seven_day_breakdown: Option<Breakdown>,
      spend: Option<Spend>,

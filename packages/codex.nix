@@ -6,12 +6,12 @@
 }:
 prev.codex.overrideAttrs (
   finalAttrs: _: {
-    version = "0.162.0";
+    version = "0.162.1";
     src = fetchFromGitHub {
       owner = "openai";
       repo = "codex";
-      tag = "rust-v0.162.0";
-      hash = "sha256-YG/9hFOCl4cMYzjaH/3gBid4osxcrvCYQUDDzdbIygo=";
+      tag = "rust-v0.162.1";
+      hash = "sha256-vYVQoXQdaK0bejUzcpf9uVrzNWWWAct9AsO/t261FAs=";
     };
     cargoHash = "sha256-UTu+ws1DqL375C+1jaVI9HBqDHnTuAQr7/h1rSzsEzg=";
     cargoDeps = rustPlatform.fetchCargoVendor {

@@ -51,11 +51,11 @@ let
   # model; neither is downloaded or executed at service startup.
   layaMlx = py.buildPythonPackage rec {
     pname = "laya-mlx";
-    version = "0.3.0";
+    version = "0.4.0";
     format = "wheel";
     src = fetchurl {
-      url = "https://files.pythonhosted.org/packages/48/84/f347d19c3d22e00a67e945f466b1319f784d66244d4dca4741bc9b433904/laya_mlx-0.3.0-py3-none-any.whl";
-      sha256 = "6f3be5f292440d80c1c8fb8810ef5e82159a15295bd9894df7e574de325b49c3";
+      url = "https://files.pythonhosted.org/packages/2f/7a/5aeb580e44782c2d803e26edd46479705a9252c1a7fdc9b1dac9a4e39711/laya_mlx-0.4.0-py3-none-any.whl";
+      sha256 = "f8f92dd6959ce22d7dc6c334ce68740b47aee607d1fa8271c010ce3d4f5857da";
     };
     propagatedBuildInputs = [
       mlx

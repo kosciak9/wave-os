@@ -1,7 +1,6 @@
-diff --git a/crates/herdr-gpui/src/terminal.rs b/crates/herdr-gpui/src/terminal.rs
 --- a/crates/herdr-gpui/src/terminal.rs
 +++ b/crates/herdr-gpui/src/terminal.rs
-@@ -23,6 +23,7 @@
+@@ -24,6 +24,7 @@
  pub const FOREGROUND: u32 = 0xd8dee9;
  pub const FONT_SIZE: f32 = 14.;
  pub const CELL_HEIGHT: f32 = 20.;
@@ -9,10 +8,9 @@ diff --git a/crates/herdr-gpui/src/terminal.rs b/crates/herdr-gpui/src/terminal.
  
  pub(crate) const BOLD: u16 = 1;
  pub(crate) const DIM: u16 = 1 << 1;
-diff --git a/crates/herdr-gpui/src/window/render.rs b/crates/herdr-gpui/src/window/render.rs
 --- a/crates/herdr-gpui/src/window/render.rs
 +++ b/crates/herdr-gpui/src/window/render.rs
-@@ -193,7 +193,8 @@
+@@ -236,7 +236,8 @@
          let terminal = div()
              .id("terminal")
              .debug_selector(|| "terminal".into())
@@ -22,10 +20,9 @@ diff --git a/crates/herdr-gpui/src/window/render.rs b/crates/herdr-gpui/src/wind
              .when(self.hovered_terminal_link, |terminal| {
                  terminal.cursor_pointer()
              })
-diff --git a/crates/herdr-gpui/src/group_terminals.rs b/crates/herdr-gpui/src/group_terminals.rs
 --- a/crates/herdr-gpui/src/group_terminals.rs
 +++ b/crates/herdr-gpui/src/group_terminals.rs
-@@ -579,7 +579,8 @@
+@@ -588,7 +588,8 @@
              .flex_1()
              .min_h_0()
              .min_w_0()
@@ -33,5 +30,5 @@ diff --git a/crates/herdr-gpui/src/group_terminals.rs b/crates/herdr-gpui/src/gr
 +            .p(px(crate::terminal::CONTENT_PADDING))
 +            .pl(px(gap + crate::terminal::CONTENT_PADDING))
              .overflow_hidden()
-             .bg(rgb(self.theme.background))
+             .bg(self.fill().base(self.theme.background))
              .child(

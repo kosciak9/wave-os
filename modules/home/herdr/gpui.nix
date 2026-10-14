@@ -7,6 +7,11 @@
 {
   home.packages = [
     (inputs.herdr-gpui.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs (old: {
+      patchFlags = [
+        "-p1"
+        "--fuzz=0"
+        "--forward"
+      ];
       patches = (old.patches or [ ]) ++ [
         ./patches/gpui-shortcut-hints.patch
         ./patches/gpui-worktree-name-branch.patch
@@ -28,7 +33,7 @@
       # GPUI's Linux backend currently discards handles and cannot withdraw notifications.
       postPatch = (old.postPatch or "") + ''
         cp ${./assets/wave.svg} assets/icons/wave.svg
-        patch --batch --fuzz=0 -d "$cargoDepsCopy/gpui-pre-linux-0.3.6" -p1 \
+        patch --batch --fuzz=0 --forward -d "$cargoDepsCopy/gpui-pre-linux-0.3.6" -p1 \
           < ${./patches/gpui-linux-notification-handles.patch}
       '';
     }))

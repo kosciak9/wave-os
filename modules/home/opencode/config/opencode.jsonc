@@ -6,7 +6,7 @@
   "disabled_providers": ["opencode"],
   // Nix owns the binary. Do not let the CLI replace it.
   "update": "disable",
-  "plugins": ["cc-safety-net@2.6.0"],
+  "plugins": ["cc-safety-net@2.6.11"],
   // Use the anonymous Parallel MCP instead of a separate search provider.
   "websearch": false,
   "mcp": {
@@ -16,7 +16,7 @@
         "command": [
           "sh",
           "-c",
-          "if CONTEXT7_API_KEY=$(pass show context7.com/api-key 2>/dev/null); then export CONTEXT7_API_KEY; else unset CONTEXT7_API_KEY; fi; exec npx -y @upstash/context7-mcp@4.1.1",
+          "if CONTEXT7_API_KEY=$(pass show context7.com/api-key 2>/dev/null); then export CONTEXT7_API_KEY; else unset CONTEXT7_API_KEY; fi; exec npx -y @upstash/context7-mcp@4.4.1",
         ],
         "codemode": false,
       },

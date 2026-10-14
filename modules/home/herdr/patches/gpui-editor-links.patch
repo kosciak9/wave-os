@@ -1,36 +1,36 @@
 --- a/crates/herdr-gpui/src/terminal/links.rs
 +++ b/crates/herdr-gpui/src/terminal/links.rs
-@@ -36,6 +36,8 @@
-     /// A local path as the pane printed it, with `~/` and relative paths left
-     /// for the click to resolve, or the absolute path of a `file://` link.
-     Path(String),
+@@ -37,6 +37,8 @@
+     /// for the click to resolve, or the absolute path of a `file://` link,
+     /// and the line a `:line` suffix named.
+     Path { path: String, line: Option<u32> },
 +    /// An explicit OSC 8 target activated only by the pane's daemon.
 +    Editor(String),
  }
  
  /// A link read from one row, and the frame columns it covers.
-@@ -63,7 +65,7 @@
+@@ -64,7 +66,7 @@
  ) -> Option<String> {
      match located(surface, x, y, cell_width, cell_height)?.1.target {
          RowTarget::Web(url) => Some(url),
--        RowTarget::Path(_) => None,
-+        RowTarget::Path(_) | RowTarget::Editor(_) => None,
+-        RowTarget::Path { .. } => None,
++        RowTarget::Path { .. } | RowTarget::Editor(_) => None,
      }
  }
  
-@@ -150,6 +152,9 @@
+@@ -197,6 +199,9 @@
          let destination = frame.hyperlinks.get(index as usize)?;
          let target = match web_url(destination) {
              Some(url) => RowTarget::Web(url),
 +            None if destination.starts_with("herdr-edit:///") => {
 +                RowTarget::Editor(destination.clone())
 +            }
-             None => RowTarget::Path(file_url_path(destination)?),
-         };
-         let on_link = |i: &usize| cells[*i].skip || cells[*i].hyperlink == Some(index);
+             None => RowTarget::Path {
+                 path: file_url_path(destination)?,
+                 line: None,
 --- a/crates/herdr-gpui/src/window/file_links.rs
 +++ b/crates/herdr-gpui/src/window/file_links.rs
-@@ -171,8 +171,9 @@
+@@ -182,8 +182,9 @@
              self.cell_width,
              self.config.terminal.line_height(),
          )?;
@@ -44,7 +44,7 @@
      /// The file path under `position`, with the directory it is relative to.
 --- a/crates/herdr-gpui/src/window/input.rs
 +++ b/crates/herdr-gpui/src/window/input.rs
-@@ -54,6 +54,8 @@
+@@ -60,6 +60,8 @@
          modifiers: gpui::Modifiers,
      ) -> bool {
          modifiers.shift
@@ -53,7 +53,7 @@
              || (modifiers.secondary()
                  && (self.terminal_link_at(position).is_some()
                      || self.daemon_link_at(position).is_some()
-@@ -74,6 +76,8 @@
+@@ -80,6 +82,8 @@
                      .terminal_mouse_at(position)
                      .is_none_or(|hit| !hit.mouse_reporting));
          web || (modifiers.secondary() && self.file_link_at(position).is_some())
@@ -61,27 +61,27 @@
 +                && self.editor_link_at(position).is_some())
      }
  
-     pub(crate) fn terminal_link_at(&self, position: gpui::Point<gpui::Pixels>) -> Option<String> {
+     /// Whether wheel scrolling may draw panes between rows. Off in settings,
 --- a/crates/herdr-gpui/src/window/links.rs
 +++ b/crates/herdr-gpui/src/window/links.rs
-@@ -9,7 +9,7 @@
+@@ -11,7 +11,7 @@
  use crate::{
      browser::WebUrl,
-     links::{LinkCell, LinkInbox, LinkRequest, ResolvedLink, activation_fallback},
+     links::{Activation, LinkCell, LinkInbox, LinkRequest, ResolvedLink},
 -    terminal::RowLink,
 +    terminal::{RowLink, RowTarget},
  };
  use gpui::{Context, Modifiers, Pixels, Point, Task, Window};
  use std::{
-@@ -73,6 +73,7 @@
+@@ -75,6 +75,7 @@
      /// daemon neither handles nor reads a web address there.
-     fallback: Option<WebUrl>,
+     fallback: Option<Fallback>,
      in_tab: bool,
 +    daemon_only: bool,
  }
  
- /// A press that may become a click on a link.
-@@ -100,6 +101,13 @@
+ /// What this client opens itself for a click no plugin handler claimed.
+@@ -113,6 +114,13 @@
  }
  
  impl HerdrWindow {
@@ -95,7 +95,7 @@
      fn link_cell_at(&self, position: Point<Pixels>) -> Option<LinkCell> {
          if self.menu.page.is_some()
              || !self.live.surface_ready()
-@@ -149,10 +157,12 @@
+@@ -184,10 +192,12 @@
          modifiers: Modifiers,
          cx: &mut Context<Self>,
      ) {
@@ -110,18 +110,7 @@
              .map(|link| link.link);
          if local != self.links.local {
              self.links.local = local;
-@@ -267,8 +277,9 @@
-                 PollResult::Answered(result) => {
-                     let in_tab = flight.context.in_tab;
-                     let fallback = flight.context.fallback.clone();
-+                    let daemon_only = flight.context.daemon_only;
-                     self.links.activating = None;
--                    if let Some(url) = activation_fallback(result, fallback) {
-+                    if !daemon_only && let Some(url) = activation_fallback(result, fallback) {
-                         self.open_web_link(url, in_tab, window, cx);
-                     }
-                 }
-@@ -286,6 +297,17 @@
+@@ -323,6 +333,17 @@
          position: Point<Pixels>,
          modifiers: Modifiers,
      ) -> Option<PressedLink> {
@@ -138,11 +127,11 @@
 +        }
          let url = self.terminal_link_at(position);
          let daemon = self.daemon_link_at(position);
-         if url.is_some() || daemon.is_some() {
-@@ -339,7 +361,9 @@
-             .url
-             .as_deref()
-             .and_then(|url| WebUrl::try_from(url).ok());
+         // Read whether or not a hover already resolved the cell, so a press
+@@ -385,7 +406,9 @@
+                 .and_then(|url| WebUrl::try_from(url).ok())
+                 .map(Fallback::Web),
+         };
 -        if let Some(cell) = &release.cell {
 +        if self.live.supports_link_activate
 +            && let Some(cell) = &release.cell
@@ -150,7 +139,7 @@
              // One click at a time: a second while the first is unanswered
              // would race its handler.
              if self.links.activating.is_some() {
-@@ -351,7 +375,14 @@
+@@ -397,7 +420,14 @@
                      self.links.activating = Some(InFlight {
                          id,
                          inbox: connection.links.clone(),
@@ -166,12 +155,33 @@
                      });
                      return true;
                  }
+@@ -411,7 +441,11 @@
+     fn finish_activation(
+         &mut self,
+         activation: Activation,
+-        PendingActivation { fallback, in_tab }: PendingActivation,
++        PendingActivation {
++            fallback,
++            in_tab,
++            daemon_only,
++        }: PendingActivation,
+         window: &mut Window,
+         cx: &mut Context<Self>,
+     ) {
+@@ -421,6 +455,7 @@
+                 self.local_error = Some(format!("Link handler failed: {error}"));
+                 cx.notify();
+             }
++            Activation::Declined(_) if daemon_only => {}
+             Activation::Declined(url) => {
+                 self.open_link(url.map(Fallback::Web).or(fallback), in_tab, window, cx);
+             }
 --- a/crates/herdr-gpui/src/terminal/links/tests/paths.rs
 +++ b/crates/herdr-gpui/src/terminal/links/tests/paths.rs
-@@ -8,7 +8,7 @@
- fn path(text: &str, column: u16) -> Option<(String, Range<u16>)> {
+@@ -12,7 +12,7 @@
+ fn located(text: &str, column: u16) -> Option<(String, Option<u32>, Range<u16>)> {
      read(text, column).and_then(|link| match link.target {
-         RowTarget::Path(path) => Some((path, link.columns)),
+         RowTarget::Path { path, line } => Some((path, line, link.columns)),
 -        RowTarget::Web(_) => None,
 +        RowTarget::Web(_) | RowTarget::Editor(_) => None,
      })
@@ -179,9 +189,9 @@
  
 --- a/crates/herdr-gpui/src/window/links/tests.rs
 +++ b/crates/herdr-gpui/src/window/links/tests.rs
-@@ -285,6 +285,7 @@
+@@ -287,6 +287,7 @@
              context: PendingActivation {
-                 fallback: WebUrl::try_from(URL).ok(),
+                 fallback: WebUrl::try_from(URL).ok().map(Fallback::Web),
                  in_tab: false,
 +                daemon_only: false,
              },

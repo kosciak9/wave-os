@@ -1,4 +1,3 @@
-diff --git a/crates/herdr-gpui/src/sidebar/render.rs b/crates/herdr-gpui/src/sidebar/render.rs
 --- a/crates/herdr-gpui/src/sidebar/render.rs
 +++ b/crates/herdr-gpui/src/sidebar/render.rs
 @@ -19,7 +19,7 @@
@@ -10,7 +9,7 @@ diff --git a/crates/herdr-gpui/src/sidebar/render.rs b/crates/herdr-gpui/src/sid
      fonts::StyledFont,
  };
  use gpui::{prelude::*, *};
-@@ -46,6 +46,13 @@
+@@ -47,6 +47,13 @@
          let font = &self.config.sidebar;
          let spaces_custom = self.config.usage.inline
              && self.config.sidebar_layout.spaces != crate::config::SpaceLayout::default();
@@ -22,9 +21,9 @@ diff --git a/crates/herdr-gpui/src/sidebar/render.rs b/crates/herdr-gpui/src/sid
 +            0.
 +        };
          let theme = &self.theme;
-         let mut spaces = div()
-             .id("spaces-scroll")
-@@ -143,9 +150,8 @@
+         self.sidebar_search.input.update(cx, |input, cx| {
+             input.set_appearance(self.config.ui.clone(), theme.clone(), cx);
+@@ -182,9 +189,8 @@
                          self.sidebar_scroll[0].bounds_for_item(base + position),
                      ) {
                          heights[unit] += f32::from(bounds.size.height);
@@ -36,7 +35,7 @@ diff --git a/crates/herdr-gpui/src/sidebar/render.rs b/crates/herdr-gpui/src/sid
                          }
                      }
                  }
-@@ -247,15 +253,9 @@
+@@ -286,15 +292,9 @@
                  } else {
                      Vec::new()
                  };
@@ -55,10 +54,9 @@ diff --git a/crates/herdr-gpui/src/sidebar/render.rs b/crates/herdr-gpui/src/sid
                  };
                  let removing_row = selected
                      && self.live.status.is_connected()
-diff --git a/crates/herdr-gpui/src/titlebar.rs b/crates/herdr-gpui/src/titlebar.rs
 --- a/crates/herdr-gpui/src/titlebar.rs
 +++ b/crates/herdr-gpui/src/titlebar.rs
-@@ -248,78 +248,14 @@
+@@ -274,78 +274,14 @@
              .into_any_element()
      }
  
@@ -135,13 +133,12 @@ diff --git a/crates/herdr-gpui/src/titlebar.rs b/crates/herdr-gpui/src/titlebar.
 -                            ),
 -                    ),
 -            )
-             .children(controls(window, &self.theme, |window, _| {
-                 window.remove_window();
-             }))
-diff --git a/crates/herdr-gpui/src/window/tab_strip.rs b/crates/herdr-gpui/src/window/tab_strip.rs
+             .when(!cfg!(target_os = "linux"), |end| {
+                 end.children(controls(window, &self.theme, |window, _| {
+                     window.remove_window();
 --- a/crates/herdr-gpui/src/window/tab_strip.rs
 +++ b/crates/herdr-gpui/src/window/tab_strip.rs
-@@ -469,25 +469,6 @@
+@@ -479,25 +479,6 @@
                      })),
              )
              .child(self.strip_room(ends, window))
@@ -167,7 +164,7 @@ diff --git a/crates/herdr-gpui/src/window/tab_strip.rs b/crates/herdr-gpui/src/w
              .when(ends.is_some_and(|ends| ends.trailing), |strip| {
                  strip.child(self.strip_trailing(window, cx))
              })
-@@ -625,38 +606,6 @@
+@@ -630,38 +611,6 @@
          .size_full()
      }
  
@@ -203,6 +200,6 @@ diff --git a/crates/herdr-gpui/src/window/tab_strip.rs b/crates/herdr-gpui/src/w
 -            }))
 -    }
 -
-     /// Stands in for a tab live in another group, or for nothing. Pressing
-     /// the group, as the button invites, brings the tab here.
-     pub(super) fn render_stand_in(
+     /// Stands in for a tab the group's connection has not reached yet, or
+     /// for nothing: a group without tabs says how to open one. Pressing the
+     /// group, as the button invites, gives it the window's connection.

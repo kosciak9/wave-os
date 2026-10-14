@@ -1,10 +1,9 @@
-diff --git a/crates/herdr-gpui/src/sidebar/render.rs b/crates/herdr-gpui/src/sidebar/render.rs
 --- a/crates/herdr-gpui/src/sidebar/render.rs
 +++ b/crates/herdr-gpui/src/sidebar/render.rs
-@@ -277,8 +277,15 @@
-                             } else {
-                                 0.
-                             };
+@@ -350,8 +350,15 @@
+                     .flatten()
+                     .and_then(|daemon| self.listening_ports.get(daemon, &workspace.workspace_id))
+                     .map(|listed| {
 +                        let tree_width = layout.child_indent() - STATUS_WIDTH - layout.gap();
 +                        let continue_tree =
 +                            matches!(self.config.layout.mode, LayoutMode::Classic { .. })
@@ -17,7 +16,7 @@ diff --git a/crates/herdr-gpui/src/sidebar/render.rs b/crates/herdr-gpui/src/sid
                              .h(px(line_height(font)))
                              .flex_none()
                              .w_full()
-@@ -296,6 +303,35 @@
+@@ -367,6 +374,35 @@
                                  (font.size * 0.85).round(),
                                  cx,
                              ))

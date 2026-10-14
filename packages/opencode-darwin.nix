@@ -6,25 +6,24 @@
   makeBinaryWrapper,
   ripgrep,
   sysctl,
-  plannotator,
   lib,
 }:
 
 let
-  version = "2.0.26";
+  version = "2.0.29";
   release =
     {
       "aarch64-darwin" = {
         target = "darwin-arm64";
-        hash = "sha256-e03cpeY9OKHSrd02gnCEPCOuugCWE9/Q4zhS05uGEHY=";
+        hash = "sha256-5PeaFufm/9fx4EB+EPV2hbudvGcO0rwlxbjdoU9pLhU=";
       };
       "aarch64-linux" = {
         target = "linux-arm64";
-        hash = "sha256-HXEX27MZaEVviVN7Vi+14g5I2envAyX8iEWr3abvSEI=";
+        hash = "sha256-CvOeddvfrMIPj1Me81+03MC0TAgIQgNRhhQnLyMig64=";
       };
       "x86_64-linux" = {
         target = "linux-x64";
-        hash = "sha256-ChFuAzoCgEdB1GRDN9ASvfWiSqwzo0wMllNNLVOWERk=";
+        hash = "sha256-FLWmY4oaCTrJ1IRZnIRLEMKbRF0EhEtoLMxmjOJlMKI=";
       };
     }
     .${stdenv.hostPlatform.system};
@@ -61,11 +60,6 @@ stdenv.mkDerivation {
           ripgrep
           sysctl
         ]
-      } \
-      ${
-        lib.optionalString (
-          stdenv.hostPlatform.system != "aarch64-linux"
-        ) "--set PLANNOTATOR_BIN ${lib.getExe plannotator}"
       } \
       --set CAMOFOX_USER_ID opencode \
       --set OPENCODE_DISABLE_AUTOUPDATE true

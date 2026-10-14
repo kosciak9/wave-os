@@ -1,8 +1,6 @@
-diff --git a/crates/herdr-gpui/src/menu/devices.rs b/crates/herdr-gpui/src/menu/devices.rs
-index 27cb599..69f67f0 100644
 --- a/crates/herdr-gpui/src/menu/devices.rs
 +++ b/crates/herdr-gpui/src/menu/devices.rs
-@@ -244,6 +244,7 @@ impl HerdrWindow {
+@@ -367,6 +367,7 @@
                              .text_color(rgb(self.theme.foreground)),
                      )
                      .on_click(cx.listener(|this, _, window, cx| {
@@ -10,11 +8,9 @@ index 27cb599..69f67f0 100644
                          this.command(Command::Settings, window, cx);
                      })),
              )
-diff --git a/crates/herdr-gpui/src/menu/workspace.rs b/crates/herdr-gpui/src/menu/workspace.rs
-index 9620dc0..7d9a1e0 100644
 --- a/crates/herdr-gpui/src/menu/workspace.rs
 +++ b/crates/herdr-gpui/src/menu/workspace.rs
-@@ -682,7 +682,19 @@ impl HerdrWindow {
+@@ -715,7 +715,19 @@
          cx: &mut Context<Self>,
      ) {
          match action {
@@ -35,23 +31,9 @@ index 9620dc0..7d9a1e0 100644
              WorkspaceMenuAction::Collapse | WorkspaceMenuAction::Expand => {
                  self.toggle_selected_group(cx)
              }
-diff --git a/crates/herdr-gpui/src/new_tab_menu.rs b/crates/herdr-gpui/src/new_tab_menu.rs
-index 7ef09b2..cb2f2ca 100644
---- a/crates/herdr-gpui/src/new_tab_menu.rs
-+++ b/crates/herdr-gpui/src/new_tab_menu.rs
-@@ -105,6 +105,7 @@ impl HerdrWindow {
-             // The tab arrives from the daemon later; it lands in `group`.
-             Row::Terminal => {
-                 self.expect_new_tab_in(group);
-+                self.hint_shortcut(Command::Tab, cx);
-                 self.command(Command::Tab, window, cx);
-             }
-             Row::Browser => self.open_browser_tab_in(group, window, cx),
-diff --git a/crates/herdr-gpui/src/palette.rs b/crates/herdr-gpui/src/palette.rs
-index f6a2a3b..9096693 100644
 --- a/crates/herdr-gpui/src/palette.rs
 +++ b/crates/herdr-gpui/src/palette.rs
-@@ -669,6 +669,7 @@ impl HerdrWindow {
+@@ -758,6 +758,7 @@
          }
          if let Action::Native(command) = action {
              self.dismiss_menu(window, cx);
@@ -59,20 +41,18 @@ index f6a2a3b..9096693 100644
              self.command(command, window, cx);
              return;
          }
-diff --git a/crates/herdr-gpui/src/pane_menu.rs b/crates/herdr-gpui/src/pane_menu.rs
-index afbf09d..2c9797c 100644
 --- a/crates/herdr-gpui/src/pane_menu.rs
 +++ b/crates/herdr-gpui/src/pane_menu.rs
-@@ -1,4 +1,7 @@
--use crate::{HerdrWindow, close_modal::CloseConfirmation, menu::Page, search_input::SearchInput};
-+use crate::{
+@@ -1,6 +1,6 @@
+ use crate::{
+-    HerdrWindow, close_modal::CloseConfirmation, menu::Page, pane_move::Destination,
+-    search_input::SearchInput,
 +    HerdrWindow, close_modal::CloseConfirmation, controls::Command, menu::Page,
-+    search_input::SearchInput,
-+};
++    pane_move::Destination, search_input::SearchInput,
+ };
  use gpui::{prelude::*, *};
  use herdr_client::{Method, protocol::ClientShellSnapshot};
- use serde_json::{Value, json};
-@@ -93,6 +96,20 @@ enum Action {
+@@ -104,6 +104,25 @@
  }
  
  impl Action {
@@ -86,14 +66,19 @@ index afbf09d..2c9797c 100644
 +            Self::Zoom => Command::Zoom,
 +            Self::EditScrollback => Command::EditScrollback,
 +            Self::Close => Command::ClosePane,
-+            Self::Swap | Self::RightClick | Self::Processes => return None,
++            Self::Swap
++            | Self::RightClick
++            | Self::Processes
++            | Self::MoveToNewTab
++            | Self::MoveToNewWorkspace
++            | Self::MoveTo => return None,
 +        })
 +    }
 +
      fn request(self, target: &Target) -> Option<(Method, Value)> {
          Some(match self {
              Self::SplitRight | Self::SplitDown => (
-@@ -305,6 +322,9 @@ impl HerdrWindow {
+@@ -355,6 +374,9 @@
                  return;
              }
          };
@@ -101,13 +86,11 @@ index afbf09d..2c9797c 100644
 +            self.hint_shortcut(command, cx);
 +        }
          match action {
-             Action::Rename => {
-                 let input = cx.new(SearchInput::new);
-diff --git a/crates/herdr-gpui/src/sidebar/rail.rs b/crates/herdr-gpui/src/sidebar/rail.rs
-index 2bb079b..99de5d6 100644
+             Action::MoveToNewTab => self.move_pane(
+                 Destination::NewTab {
 --- a/crates/herdr-gpui/src/sidebar/rail.rs
 +++ b/crates/herdr-gpui/src/sidebar/rail.rs
-@@ -420,6 +420,7 @@ impl HerdrWindow {
+@@ -420,6 +420,7 @@
                      .hover(|s| s.text_color(rgb(theme.foreground)))
                      .tooltip(hint.with("New workspace"))
                      .on_click(cx.listener(|this, _, window, cx| {
@@ -115,11 +98,9 @@ index 2bb079b..99de5d6 100644
                          this.command(Command::Workspace, window, cx);
                      }))
                      .child(label_text("+")),
-diff --git a/crates/herdr-gpui/src/sidebar/render.rs b/crates/herdr-gpui/src/sidebar/render.rs
-index 5ed25d5..c312631 100644
 --- a/crates/herdr-gpui/src/sidebar/render.rs
 +++ b/crates/herdr-gpui/src/sidebar/render.rs
-@@ -597,6 +597,7 @@ impl HerdrWindow {
+@@ -681,6 +681,7 @@
                                      .hover(|s| s.text_color(rgb(theme.foreground)))
                                      .child("new")
                                      .on_click(cx.listener(|this, _, window, cx| {
@@ -127,14 +108,14 @@ index 5ed25d5..c312631 100644
                                          this.command(Command::Workspace, window, cx)
                                      })),
                              )
-diff --git a/crates/herdr-gpui/src/tab_menu.rs b/crates/herdr-gpui/src/tab_menu.rs
-index 56ad699..30a588f 100644
 --- a/crates/herdr-gpui/src/tab_menu.rs
 +++ b/crates/herdr-gpui/src/tab_menu.rs
-@@ -63,6 +63,18 @@ enum Action {
+@@ -57,6 +57,18 @@
+     NewTab,
+     Rename,
      Close,
- }
- 
++}
++
 +impl Action {
 +    /// The command doing the same to the focused tab, whose shortcut the
 +    /// row teaches.
@@ -145,12 +126,10 @@ index 56ad699..30a588f 100644
 +            Self::Close => Command::CloseTab,
 +        }
 +    }
-+}
-+
+ }
+ 
  /// Herdr's own tab menu, in its order.
- const ACTIONS: [(Action, &str); 3] = [
-     (Action::NewTab, "New Tab"),
-@@ -160,6 +172,7 @@ impl HerdrWindow {
+@@ -156,6 +168,7 @@
              }
          };
          let group = self.menu.tab.as_ref().and_then(|tab| tab.group);
@@ -158,11 +137,9 @@ index 56ad699..30a588f 100644
          match action {
              Action::NewTab => {
                  self.dismiss_menu(window, cx);
-diff --git a/crates/herdr-gpui/src/titlebar.rs b/crates/herdr-gpui/src/titlebar.rs
-index 6781763..30f0e57 100644
 --- a/crates/herdr-gpui/src/titlebar.rs
 +++ b/crates/herdr-gpui/src/titlebar.rs
-@@ -241,6 +241,7 @@ impl HerdrWindow {
+@@ -267,6 +267,7 @@
              .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
              .on_click(cx.listener(|this, _, window, cx| {
                  cx.stop_propagation();
@@ -170,14 +147,14 @@ index 6781763..30f0e57 100644
                  this.command(crate::controls::Command::ToggleSidebar, window, cx);
              }))
              .child(sidebar_glyph(self.sidebar_visible, &self.theme))
-diff --git a/crates/herdr-gpui/src/window/commands.rs b/crates/herdr-gpui/src/window/commands.rs
-index acd3c98..f37f0c9 100644
 --- a/crates/herdr-gpui/src/window/commands.rs
 +++ b/crates/herdr-gpui/src/window/commands.rs
-@@ -172,6 +172,17 @@ impl HerdrWindow {
+@@ -198,6 +198,17 @@
+         // The console follows the rendered terminal face, as a reload makes it.
+         log_window::set_appearance(&self.config, &self.theme, cx);
          cx.notify();
-     }
- 
++    }
++
 +    /// Names the shortcut of a command chosen by pointer or from the
 +    /// palette, so the keyboard way is learned. Runs before the command, so
 +    /// a flash the command raises itself replaces this one.
@@ -187,32 +164,28 @@ index acd3c98..f37f0c9 100644
 +            let text = format!("Shortcut: {shortcut}");
 +            self.show_flash(Flash::success(text), cx);
 +        }
-+    }
-+
+     }
+ 
      pub(crate) fn command(
-         &mut self,
-         command: Command,
-diff --git a/crates/herdr-gpui/src/window/tab_strip.rs b/crates/herdr-gpui/src/window/tab_strip.rs
-index c52bd7d..15e6aca 100644
 --- a/crates/herdr-gpui/src/window/tab_strip.rs
 +++ b/crates/herdr-gpui/src/window/tab_strip.rs
-@@ -6,6 +6,7 @@ use super::{HerdrWindow, tab_drag::StripDrag};
- use crate::{
-     TAB_HEIGHT, TAB_WIDTH,
-     browser::{Fold, GroupId, Leaving, Listed, Pick, Shown, Slot, ThumbDrag},
-+    controls::Command,
-     fonts::StyledFont,
-     herdr_settings::TabBarPosition,
-     sidebar::{Indicators, status_indicator},
-@@ -314,6 +315,7 @@ impl HerdrWindow {
-                                 // an editor's does.
+@@ -321,6 +321,7 @@
+                                 })
                                  .on_click(cx.listener(move |this, _, window, cx| {
                                      cx.stop_propagation();
 +                                    this.hint_shortcut(Command::CloseTab, cx);
                                      let pick = Pick::Herdr(close_id.clone());
-                                     this.close_strip_tab(slot.id, pick, window, cx);
+                                     this.close_strip_tab(pick, window, cx);
                                  })),
-@@ -472,7 +474,10 @@ impl HerdrWindow {
+@@ -473,6 +474,7 @@
+                     // other kinds of tab are behind "…".
+                     .on_click(cx.listener(move |this, _, window, cx| {
+                         this.expect_new_tab_in(slot.id);
++                        this.hint_shortcut(Command::Tab, cx);
+                         this.command(Command::Tab, window, cx);
+                     })),
+             )
+@@ -482,7 +484,10 @@
                  "split-editor",
                  "icons/split.svg",
                  cx,

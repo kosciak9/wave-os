@@ -1,8 +1,6 @@
-diff --git a/crates/herdr-gpui/src/checkpoint/tests.rs b/crates/herdr-gpui/src/checkpoint/tests.rs
-index 452e987..8b1614f 100644
 --- a/crates/herdr-gpui/src/checkpoint/tests.rs
 +++ b/crates/herdr-gpui/src/checkpoint/tests.rs
-@@ -13,6 +13,7 @@ fn snapshot() -> ClientShellSnapshot {
+@@ -15,6 +15,7 @@
          key: KEY.into(),
          label: "repo".into(),
          is_linked_worktree: true,
@@ -10,23 +8,19 @@ index 452e987..8b1614f 100644
      });
      snapshot.workspaces[4].branch = Some("feature".into());
      snapshot.agents[0].workspace_id = "w4".into();
-diff --git a/crates/herdr-gpui/src/menu.rs b/crates/herdr-gpui/src/menu.rs
-index 1a9c8d7..0373aeb 100644
 --- a/crates/herdr-gpui/src/menu.rs
 +++ b/crates/herdr-gpui/src/menu.rs
-@@ -24,6 +24,7 @@ mod workspace_close;
- mod worktree_open;
+@@ -29,6 +29,7 @@
  mod worktree_render;
+ mod worktree_shortcut;
  mod worktree_source;
 +pub(crate) use worktree_source::Preparation;
  
  #[cfg(test)]
  mod announcement_tests;
-diff --git a/crates/herdr-gpui/src/menu/pr/tests.rs b/crates/herdr-gpui/src/menu/pr/tests.rs
-index 940ab86..a6a8064 100644
 --- a/crates/herdr-gpui/src/menu/pr/tests.rs
 +++ b/crates/herdr-gpui/src/menu/pr/tests.rs
-@@ -328,6 +328,7 @@ fn snapshot_metadata_is_the_lookup_key_and_leaves_checkout_to_git() {
+@@ -328,6 +328,7 @@
          key: repo_key.clone(),
          label: "repo".into(),
          is_linked_worktree: true,
@@ -34,24 +28,20 @@ index 940ab86..a6a8064 100644
      };
      let input = repository_input(Some(&tree), Some("feature")).unwrap();
      // No daemon request supplies a path; the worker resolves it from the
-diff --git a/crates/herdr-gpui/src/menu/workspace.rs b/crates/herdr-gpui/src/menu/workspace.rs
-index f8c16f6..028e90a 100644
 --- a/crates/herdr-gpui/src/menu/workspace.rs
 +++ b/crates/herdr-gpui/src/menu/workspace.rs
-@@ -178,7 +178,7 @@ impl WorkspaceTarget {
-                     }
-                     None => "HEAD".to_owned(),
-                 };
+@@ -177,7 +177,7 @@
+             WorkspaceAction::NewWorktree => {
+                 self.validate_repository(snapshot)?;
+                 let base = self.base_ref()?;
 -                let mut params = serde_json::json!({"workspace_id": self.id, "base": base, "focus": true, "trust_repository": false});
 +                let mut params = serde_json::json!({"workspace_id": self.id, "base": base, "focus": true, "trust_repository": false, "terminal": true});
                  if !text.trim().is_empty() {
                      crate::worktree::validate_branch(text.trim())?;
                      params["branch"] = text.trim().into();
-diff --git a/crates/herdr-gpui/src/menu/workspace/requests.rs b/crates/herdr-gpui/src/menu/workspace/requests.rs
-index d8f38f8..00dd81a 100644
 --- a/crates/herdr-gpui/src/menu/workspace/requests.rs
 +++ b/crates/herdr-gpui/src/menu/workspace/requests.rs
-@@ -173,7 +173,8 @@ impl HerdrWindow {
+@@ -202,7 +202,8 @@
          } else {
              "worktree_created"
          };
@@ -61,7 +51,7 @@ index d8f38f8..00dd81a 100644
              .then(|| result["workspace"]["workspace_id"].as_str())
              .flatten()
              .filter(|id| !id.is_empty())
-@@ -188,11 +189,13 @@ impl HerdrWindow {
+@@ -217,7 +218,9 @@
          };
          // The note names what the checkout is for, so it is taken from the
          // dialog's own pending row before dismissal drops it.
@@ -70,6 +60,10 @@ index d8f38f8..00dd81a 100644
 +            self.remember_worktree_preparation(&created);
 +        } else if !opening {
              self.write_worktree_note(result, cx);
+             // Staying put is a pick too, so the ranking learns it.
+             if let Some(repo) = self.menu.dispatch_repo() {
+@@ -226,7 +229,7 @@
+             }
          }
          // Only a new checkout is set up; an opened one already exists as it is.
 -        let setup = (!opening)
@@ -77,11 +71,9 @@ index d8f38f8..00dd81a 100644
              .then(|| self.setup_launch(result, &created))
              .flatten();
          let endpoint = self.endpoints[self.selected_endpoint].id.clone();
-diff --git a/crates/herdr-gpui/src/menu/workspace_tests/targets.rs b/crates/herdr-gpui/src/menu/workspace_tests/targets.rs
-index f4edcfd..6b9259d 100644
 --- a/crates/herdr-gpui/src/menu/workspace_tests/targets.rs
 +++ b/crates/herdr-gpui/src/menu/workspace_tests/targets.rs
-@@ -50,7 +50,7 @@ fn actions_target_clicked_workspace_and_match_daemon_schemas() {
+@@ -50,7 +50,7 @@
              .request(&snapshot, WorkspaceAction::NewWorktree, branch)
              .unwrap();
          assert_eq!(method, Method::WorktreeCreate);
@@ -90,11 +82,9 @@ index f4edcfd..6b9259d 100644
          if !branch.trim().is_empty() {
              expected["branch"] = branch.trim().into();
          }
-diff --git a/crates/herdr-gpui/src/menu/workspace_tests/worktree_create.rs b/crates/herdr-gpui/src/menu/workspace_tests/worktree_create.rs
-index 902db30..ebae402 100644
 --- a/crates/herdr-gpui/src/menu/workspace_tests/worktree_create.rs
 +++ b/crates/herdr-gpui/src/menu/workspace_tests/worktree_create.rs
-@@ -140,7 +140,7 @@ fn linked_checkouts_create_from_their_own_branch() {
+@@ -140,7 +140,7 @@
          (
              Method::WorktreeCreate,
              serde_json::json!({"workspace_id": "w3", "base": "refs/heads/worktree/sidebar-child",
@@ -103,7 +93,7 @@ index 902db30..ebae402 100644
          )
      );
      // The branch came from the daemon, so it is checked like a typed one.
-@@ -180,7 +180,7 @@ fn branch_only_workspace_can_create_until_git_identity_disappears() {
+@@ -180,7 +180,7 @@
          (
              Method::WorktreeCreate,
              serde_json::json!({"workspace_id": "w3", "base": "HEAD", "focus": true,
@@ -112,11 +102,9 @@ index 902db30..ebae402 100644
          )
      );
  
-diff --git a/crates/herdr-gpui/src/menu/worktree_open_tests/fences.rs b/crates/herdr-gpui/src/menu/worktree_open_tests/fences.rs
-index 8a247d4..1e1f553 100644
 --- a/crates/herdr-gpui/src/menu/worktree_open_tests/fences.rs
 +++ b/crates/herdr-gpui/src/menu/worktree_open_tests/fences.rs
-@@ -114,6 +114,7 @@ fn open_worktree_parent_establishment_requires_pending_source_identity_and_fence
+@@ -114,6 +114,7 @@
                      key: "/remote/repo/.git".into(),
                      label: "repo".into(),
                      is_linked_worktree: false,
@@ -124,7 +112,7 @@ index 8a247d4..1e1f553 100644
                  };
                  match change {
                      "repo" => membership.key = "/other/repo/.git".into(),
-@@ -289,6 +290,7 @@ fn open_worktree_branch_only_parent_membership_preserves_correlated_navigation(
+@@ -289,6 +290,7 @@
                          key: "/remote/repo/.git".into(),
                          label: "repo".into(),
                          is_linked_worktree: false,
@@ -132,14 +120,13 @@ index 8a247d4..1e1f553 100644
                      });
                      view.endpoints[0]
                          .connection
-diff --git a/crates/herdr-gpui/src/menu/worktree_source.rs b/crates/herdr-gpui/src/menu/worktree_source.rs
-index 3ec0a00..8abebcd 100644
 --- a/crates/herdr-gpui/src/menu/worktree_source.rs
 +++ b/crates/herdr-gpui/src/menu/worktree_source.rs
-@@ -13,6 +13,16 @@ use crate::{
+@@ -13,6 +13,16 @@
+ };
  use gpui::{Entity, Subscription, Task, UniformListScrollHandle, prelude::*};
  use herdr_client::Method;
- 
++
 +pub(crate) struct Preparation {
 +    endpoint_id: String,
 +    boot: String,
@@ -149,11 +136,10 @@ index 3ec0a00..8abebcd 100644
 +    note: Option<(Item, repo_items::Origin)>,
 +    observed: bool,
 +}
-+
+ 
  /// Which part of the new worktree dialog is showing. A closed set: the tab
  /// strip, the key routing, and the panel geometry all match on it.
- #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-@@ -771,6 +781,16 @@ impl HerdrWindow {
+@@ -814,6 +824,16 @@
              self.local_error = Some("The daemon did not report the new checkout path, so no agent context note was written.".into());
              return;
          };
@@ -170,10 +156,11 @@ index 3ec0a00..8abebcd 100644
          let write = cx
              .background_executor()
              .spawn(async move { repo_items::write_context(&checkout, &item, &origin) });
-@@ -785,6 +805,118 @@ impl HerdrWindow {
+@@ -827,6 +847,118 @@
+             });
          })
          .detach();
-     }
++    }
 +
 +    pub(super) fn remember_worktree_preparation(&mut self, workspace: &str) {
 +        let Some(target) = self.menu.target.as_ref() else {
@@ -285,15 +272,12 @@ index 3ec0a00..8abebcd 100644
 +                job.preserve_focus = true;
 +            }
 +        }
-+    }
+     }
  }
  
- /// The request a picked row makes: an existing checkout is opened, anything
-diff --git a/crates/herdr-gpui/src/menu/worktree_tests/name_field.rs b/crates/herdr-gpui/src/menu/worktree_tests/name_field.rs
-index 1349aee..d82706b 100644
 --- a/crates/herdr-gpui/src/menu/worktree_tests/name_field.rs
 +++ b/crates/herdr-gpui/src/menu/worktree_tests/name_field.rs
-@@ -189,7 +189,7 @@ fn a_typed_name_labels_the_created_worktree(cx: &mut gpui::TestAppContext) {
+@@ -203,7 +203,7 @@
              }
          };
          let mut params = json!({"workspace_id": "w3", "base": "HEAD", "focus": true,
@@ -302,11 +286,9 @@ index 1349aee..d82706b 100644
          if !name.trim().is_empty() {
              params["label"] = json!("Login work");
          }
-diff --git a/crates/herdr-gpui/src/pull_request/tests/workspace_directory.rs b/crates/herdr-gpui/src/pull_request/tests/workspace_directory.rs
-index 7d3dc90..74fdea1 100644
 --- a/crates/herdr-gpui/src/pull_request/tests/workspace_directory.rs
 +++ b/crates/herdr-gpui/src/pull_request/tests/workspace_directory.rs
-@@ -47,6 +47,7 @@ fn daemon_metadata_still_wins_and_remote_devices_still_require_it() {
+@@ -47,6 +47,7 @@
          key: key.to_str().unwrap().into(),
          label: "other".into(),
          is_linked_worktree: false,
@@ -314,23 +296,19 @@ index 7d3dc90..74fdea1 100644
      });
      let input = workspace_input(&known, &Origin::Local).unwrap();
      assert_eq!(input.repo_key.as_deref(), key.to_str());
-diff --git a/crates/herdr-gpui/src/sidebar/layout_tests.rs b/crates/herdr-gpui/src/sidebar/layout_tests.rs
-index 69e9e7b..0d4090d 100644
 --- a/crates/herdr-gpui/src/sidebar/layout_tests.rs
 +++ b/crates/herdr-gpui/src/sidebar/layout_tests.rs
-@@ -422,6 +422,7 @@ pub(crate) fn fixture_window(window: &mut Window, cx: &mut Context<HerdrWindow>)
-         daemon_text: Default::default(),
-         removal: None,
+@@ -462,6 +462,7 @@
          worktree_script: None,
+         editor_open: None,
+         editor_panes: Vec::new(),
 +        worktree_preparations: Vec::new(),
          teleport: None,
          teleport_marks: crate::teleport::Marks::detached(),
          teleport_follow: None,
-diff --git a/crates/herdr-gpui/src/sidebar/layout_tests/worktree_rows.rs b/crates/herdr-gpui/src/sidebar/layout_tests/worktree_rows.rs
-index 0aa4df0..8fcaebe 100644
 --- a/crates/herdr-gpui/src/sidebar/layout_tests/worktree_rows.rs
 +++ b/crates/herdr-gpui/src/sidebar/layout_tests/worktree_rows.rs
-@@ -27,6 +27,7 @@ fn worktree_rows_wear_their_cached_pull_request(cx: &mut gpui::TestAppContext) {
+@@ -27,6 +27,7 @@
                  key: solo_key.into(),
                  label: "solo".into(),
                  is_linked_worktree: false,
@@ -338,23 +316,9 @@ index 0aa4df0..8fcaebe 100644
              });
              let now = std::time::Instant::now();
              for (key, branch, number, state, additions, deletions) in [
-diff --git a/crates/herdr-gpui/src/sidebar/reorder.rs b/crates/herdr-gpui/src/sidebar/reorder.rs
-index 122ddbd..6608114 100644
---- a/crates/herdr-gpui/src/sidebar/reorder.rs
-+++ b/crates/herdr-gpui/src/sidebar/reorder.rs
-@@ -433,6 +433,7 @@ mod tests {
-                 key: key.into(),
-                 label: key.into(),
-                 is_linked_worktree: linked,
-+                checkout_path: None,
-             }),
-             focused: false,
-             agent_status: herdr_client::protocol::AgentStatus::Idle,
-diff --git a/crates/herdr-gpui/src/sidebar/tests/hierarchy.rs b/crates/herdr-gpui/src/sidebar/tests/hierarchy.rs
-index 12678eb..46ed260 100644
 --- a/crates/herdr-gpui/src/sidebar/tests/hierarchy.rs
 +++ b/crates/herdr-gpui/src/sidebar/tests/hierarchy.rs
-@@ -20,6 +20,7 @@ fn hierarchy_uses_git_metadata_and_emits_each_workspace_once() {
+@@ -20,6 +20,7 @@
              key: key.into(),
              label: "same repo name".into(),
              is_linked_worktree: linked,
@@ -362,7 +326,7 @@ index 12678eb..46ed260 100644
          });
      }
      workspaces[2].branch = Some("develop".into());
-@@ -48,6 +49,7 @@ fn worktree(key: &str, linked: bool) -> Option<herdr_client::protocol::ClientShe
+@@ -48,6 +49,7 @@
          key: key.into(),
          label: "repo".into(),
          is_linked_worktree: linked,
@@ -370,39 +334,35 @@ index 12678eb..46ed260 100644
      })
  }
  
-diff --git a/crates/herdr-gpui/src/window.rs b/crates/herdr-gpui/src/window.rs
-index 3de9c7c..7fef738 100644
 --- a/crates/herdr-gpui/src/window.rs
 +++ b/crates/herdr-gpui/src/window.rs
-@@ -157,6 +157,7 @@ pub(crate) struct HerdrWindow {
-     pub(crate) removal: Option<menu::Removal>,
-     /// The worktree script being located, read, trusted, or opened.
-     pub(crate) worktree_script: Option<crate::worktree_scripts::Job>,
+@@ -195,6 +195,7 @@
+     pub(crate) editor_open: Option<crate::editor::Job>,
+     /// Editor panes whose Neovim later files open in.
+     pub(crate) editor_panes: Vec<crate::editor::EditorPane>,
 +    pub(crate) worktree_preparations: Vec<menu::Preparation>,
      /// A teleport being set up or under way; a move outlives its dialog.
      pub(crate) teleport: Option<crate::teleport::Teleport>,
      /// Checkouts this client teleported away from, marked in the sidebar.
-@@ -422,6 +423,7 @@ impl HerdrWindow {
-         self.poll_fan_out(window, cx);
+@@ -513,6 +514,7 @@
          self.poll_device_setup(window, cx);
          self.poll_worktree_script(window, cx);
+         self.poll_editor_open(cx);
 +        self.poll_worktree_preparations(cx);
          self.poll_worktree_source(cx);
          self.poll_hover_menu(std::time::Instant::now(), window, cx);
          if self.tick_flash(std::time::Instant::now()) {
-@@ -741,6 +743,7 @@ impl HerdrWindow {
-             menu: menu::MenuState::new(cx),
-             removal: None,
+@@ -853,6 +855,7 @@
              worktree_script: None,
+             editor_open: None,
+             editor_panes: Vec::new(),
 +            worktree_preparations: Vec::new(),
              teleport: None,
              teleport_marks: crate::teleport::Marks::start(),
              teleport_follow: None,
-diff --git a/crates/herdr-gpui/src/worktree_scripts.rs b/crates/herdr-gpui/src/worktree_scripts.rs
-index 0215174..7d0b367 100644
 --- a/crates/herdr-gpui/src/worktree_scripts.rs
 +++ b/crates/herdr-gpui/src/worktree_scripts.rs
-@@ -100,6 +100,7 @@ enum Step {
+@@ -100,6 +100,7 @@
  pub(crate) struct Job {
      launch: Launch,
      step: Step,
@@ -410,7 +370,7 @@ index 0215174..7d0b367 100644
      /// Stops a remote read once nothing waits for it; also the job's identity.
      cancel: Arc<AtomicBool>,
  }
-@@ -158,6 +159,7 @@ impl HerdrWindow {
+@@ -158,6 +159,7 @@
          self.worktree_script = Some(Job {
              launch,
              step,
@@ -418,7 +378,7 @@ index 0215174..7d0b367 100644
              cancel: Arc::new(AtomicBool::new(false)),
          });
          if located {
-@@ -180,6 +182,7 @@ impl HerdrWindow {
+@@ -180,6 +182,7 @@
          self.worktree_script = Some(Job {
              launch,
              step: Step::Reading,
@@ -426,7 +386,7 @@ index 0215174..7d0b367 100644
              cancel: Arc::new(AtomicBool::new(false)),
          });
          let offered = self.offer_worktree_script(config, cx);
-@@ -226,6 +229,10 @@ impl HerdrWindow {
+@@ -226,6 +229,10 @@
          result: crate::Result<Option<Config>>,
          cx: &mut Context<Self>,
      ) {
@@ -437,7 +397,7 @@ index 0215174..7d0b367 100644
          let Some(job) = &self.worktree_script else {
              return;
          };
-@@ -285,13 +292,13 @@ impl HerdrWindow {
+@@ -285,13 +292,13 @@
          else {
              return Err(crate::Error::WorktreeScriptsCheckout);
          };
@@ -456,7 +416,7 @@ index 0215174..7d0b367 100644
          job.step = Step::Opening(request);
          Ok(())
      }
-@@ -422,8 +429,14 @@ impl HerdrWindow {
+@@ -422,8 +429,14 @@
              return self.fail_worktree_script(error, cx);
          }
          let endpoint = job.launch.endpoint_id.clone();
@@ -472,11 +432,9 @@ index 0215174..7d0b367 100644
      }
  
      /// Whether the trust question has been up long enough for a click on it
-diff --git a/crates/herdr-protocol/src/wire.rs b/crates/herdr-protocol/src/wire.rs
-index ac48cf2..0db4aca 100644
 --- a/crates/herdr-protocol/src/wire.rs
 +++ b/crates/herdr-protocol/src/wire.rs
-@@ -391,6 +391,8 @@ pub struct ClientShellWorktree {
+@@ -391,6 +391,8 @@
      pub key: String,
      pub label: String,
      pub is_linked_worktree: bool,
@@ -485,3 +443,13 @@ index ac48cf2..0db4aca 100644
  }
  #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
  pub struct ClientShellTab {
+--- a/crates/herdr-gpui/src/sidebar/reorder/tests.rs
++++ b/crates/herdr-gpui/src/sidebar/reorder/tests.rs
+@@ -18,6 +18,7 @@
+             key: key.into(),
+             label: key.into(),
+             is_linked_worktree: linked,
++            checkout_path: None,
+         }),
+         focused: false,
+         agent_status: herdr_client::protocol::AgentStatus::Idle,
