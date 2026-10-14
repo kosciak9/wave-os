@@ -343,6 +343,7 @@ Scope {
                 hideTimer.stop()
             } else {
                 root.panelShown = false
+                root.section = ""
                 root.passwordFor = ""
                 root.bluetoothScan = false
                 hideTimer.restart()
