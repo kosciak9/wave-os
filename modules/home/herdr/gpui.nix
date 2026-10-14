@@ -22,6 +22,7 @@
         ./patches/gpui-terminal-padding.patch
         ./patches/gpui-usage-reset-expiry.patch
         ./patches/gpui-gateway-quota.patch
+        ./patches/gpui-dashboard-preview.patch
       ];
       # GPUI's Linux backend currently discards handles and cannot withdraw notifications.
       postPatch = (old.postPatch or "") + ''
@@ -37,6 +38,7 @@
     force = true;
     source = (pkgs.formats.toml { }).generate "herdr-gpui-settings" {
       show_system_load = false;
+      show_listening_ports = false;
       agent_checkpoints = false;
       theme = "light:kanagawa,dark:kanagawa";
       usage.gateway = {
@@ -54,7 +56,7 @@
       sidebar = {
         family = "Overpass";
         size = 14.0;
-        row_padding = 4.0;
+        row_padding = 2.0;
         hosts = {
           Local = "#2B3328";
           renekton = "#2D4F67";

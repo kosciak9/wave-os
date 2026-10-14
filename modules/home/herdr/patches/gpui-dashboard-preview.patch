@@ -1,0 +1,389 @@
+--- /dev/null
++++ b/crates/herdr-gpui/src/dashboard_preview.rs
+@@ -0,0 +1,234 @@
++use crate::{browser::WebUrl, usage::Host, window::HerdrWindow};
++use gpui::{prelude::*, *};
++use serde::Deserialize;
++use std::{
++    io::Read,
++    sync::mpsc,
++    time::{Duration, Instant},
++};
++
++const API: &str = "https://wave.exposed/api/apps";
++const REFRESH: Duration = Duration::from_secs(15);
++
++#[derive(Deserialize)]
++struct Catalog {
++    host: String,
++    hosts: Vec<Device>,
++    apps: Vec<Preview>,
++}
++
++#[derive(Deserialize)]
++struct Device {
++    name: String,
++    addresses: Vec<String>,
++}
++
++#[derive(Deserialize)]
++struct Preview {
++    host: String,
++    project: String,
++    branch: String,
++    url: String,
++    status: String,
++}
++
++#[derive(Default)]
++pub(crate) struct Previews {
++    host: Option<Host>,
++    catalog: Option<Catalog>,
++    flight: Option<(Host, mpsc::Receiver<Option<Catalog>>)>,
++    due: Option<Instant>,
++}
++
++impl Previews {
++    pub(crate) fn poll(&mut self, host: Option<Host>, active: bool, now: Instant) -> bool {
++        let mut changed = false;
++        if self.host != host {
++            self.host = host;
++            self.catalog = None;
++            self.due = Some(now);
++            changed = true;
++        }
++        if let Some((requested_host, flight)) = &self.flight {
++            match flight.try_recv() {
++                Ok(catalog) => {
++                    // A failed read cannot confirm that a preview still exists.
++                    if self.host.as_ref() == Some(requested_host) {
++                        self.catalog = catalog;
++                        self.due = Some(now + REFRESH);
++                    }
++                    self.flight = None;
++                    changed = true;
++                }
++                Err(mpsc::TryRecvError::Disconnected) => {
++                    if self.host.as_ref() == Some(requested_host) {
++                        self.catalog = None;
++                        self.due = Some(now + REFRESH);
++                    }
++                    self.flight = None;
++                    changed = true;
++                }
++                Err(mpsc::TryRecvError::Empty) => {}
++            }
++        }
++        if active && self.flight.is_none() && self.due.is_none_or(|due| now >= due) {
++            let Some(host) = self.host.clone() else {
++                return changed;
++            };
++            let requested_host = host.clone();
++            let (sender, receiver) = mpsc::sync_channel(1);
++            if std::thread::Builder::new()
++                .name("herdr-dashboard-preview".into())
++                .spawn(move || {
++                    let _ = sender.send(fetch(&requested_host));
++                })
++                .is_ok()
++            {
++                self.flight = Some((host, receiver));
++            } else {
++                self.due = Some(now + REFRESH);
++            }
++        }
++        changed
++    }
++}
++
++fn fetch(host: &Host) -> Option<Catalog> {
++    let destination = match host {
++        Host::Ssh(target) => Some(herdr_client::resolve_destination(target).ok()?.host),
++        Host::Local => None,
++        Host::Wsl(_) => return None,
++    };
++    let agent: ureq::Agent = ureq::Agent::config_builder()
++        .timeout_global(Some(Duration::from_secs(10)))
++        .proxy(None)
++        .https_only(true)
++        .max_redirects(0)
++        .build()
++        .into();
++    let mut response = agent
++        .get(API)
++        .header("Accept", "application/json")
++        .call()
++        .ok()?;
++    let mut body = Vec::new();
++    response
++        .body_mut()
++        .as_reader()
++        .take(1024 * 1024 + 1)
++        .read_to_end(&mut body)
++        .ok()?;
++    if body.len() > 1024 * 1024 {
++        return None;
++    }
++    let mut catalog: Catalog = serde_json::from_slice(&body).ok()?;
++    if catalog.apps.len() > 4096 || catalog.hosts.len() > 256 {
++        return None;
++    }
++    if let Some(destination) = destination {
++        let name = destination.trim_end_matches('.').split('.').next()?;
++        let mut matches = catalog.hosts.iter().filter(|device| {
++            device.name == destination
++                || device.name == name
++                || device.addresses.contains(&destination)
++        });
++        let device = matches.next()?;
++        if matches.next().is_some() {
++            return None;
++        }
++        catalog.host = device.name.clone();
++    }
++    Some(catalog)
++}
++
++// Match the dashboard's DNS-label normalization, not display/worktree labels.
++fn label(text: &str) -> String {
++    let mut label = String::new();
++    for ch in text.to_lowercase().chars() {
++        if ch.is_ascii_alphanumeric() {
++            label.push(ch);
++        } else if !label.is_empty() && !label.ends_with('-') {
++            label.push('-');
++        }
++    }
++    label.truncate(63);
++    label.trim_end_matches('-').to_owned()
++}
++
++impl HerdrWindow {
++    pub(crate) fn render_dashboard_preview(&self, cx: &mut Context<Self>) -> Option<Stateful<Div>> {
++        let catalog = self.dashboard_preview.catalog.as_ref()?;
++        let endpoint = self.endpoints.get(self.selected_endpoint)?;
++        if self.dashboard_preview.host.as_ref() != Some(&Host::from(&endpoint.connection.target)) {
++            return None;
++        }
++        let host = catalog.host.as_str();
++        let snapshot = self.live.snapshot.as_ref()?;
++        let workspace = snapshot.workspaces.iter().find(|workspace| {
++            Some(workspace.workspace_id.as_str()) == snapshot.focused_workspace_id.as_deref()
++        })?;
++        let project = label(&workspace.worktree.as_ref()?.label);
++        let branch = label(workspace.branch.as_deref()?);
++        let mut matches = catalog
++            .apps
++            .iter()
++            .filter(|app| app.host == host && app.project == project && app.branch == branch);
++        let preview = matches.next()?;
++        if matches.next().is_some() {
++            return None;
++        }
++        let parsed = url::Url::parse(&preview.url).ok()?;
++        if parsed.scheme() != "https"
++            || parsed.host_str()?
++                != format!(
++                    "{}.{}.{}.wave.exposed",
++                    preview.branch, preview.project, preview.host
++                )
++            || !parsed.username().is_empty()
++            || parsed.password().is_some()
++            || parsed.port().is_some()
++            || parsed.path() != "/"
++            || parsed.query().is_some()
++            || parsed.fragment().is_some()
++        {
++            return None;
++        }
++        let url = WebUrl::try_from(preview.url.as_str()).ok()?;
++        let hint = SharedString::from(format!("{} · {}", preview.url, preview.status));
++        let endpoint = endpoint.id.clone();
++        let workspace = workspace.workspace_id.clone();
++        let (foreground, surface) = (self.theme.foreground, self.theme.surface);
++        Some(
++            div()
++                .id("dashboard-preview")
++                .debug_selector(|| "dashboard-preview".into())
++                .flex_none()
++                .flex()
++                .items_center()
++                .gap(px(6.))
++                .px(px(6.))
++                .rounded(px(crate::config::corners::CONTROL))
++                .cursor_pointer()
++                .hover(|style| style.bg(rgb(self.theme.active)))
++                .active(|style| style.bg(rgb(self.theme.active)))
++                .child(
++                    svg()
++                        .path("icons/globe.svg")
++                        .size(px(14.))
++                        .text_color(rgb(foreground)),
++                )
++                .child("Preview")
++                .tooltip(move |_, cx| {
++                    cx.new(|_| crate::usage::Hint {
++                        text: hint.clone(),
++                        foreground,
++                        surface,
++                    })
++                    .into()
++                })
++                .on_click(cx.listener(move |this, _, window, cx| {
++                    this.open_workspace_page(&endpoint, &workspace, url.clone(), window, cx);
++                })),
++        )
++    }
++}
+--- a/crates/herdr-gpui/src/main.rs
++++ b/crates/herdr-gpui/src/main.rs
+@@ -25,6 +25,7 @@
+ mod controls;
+ mod copy_mode;
+ mod daemon;
++mod dashboard_preview;
+ mod diagnostics;
+ mod dialog_input;
+ mod endpoint;
+--- a/crates/herdr-gpui/src/window.rs
++++ b/crates/herdr-gpui/src/window.rs
+@@ -187,6 +187,7 @@
+     /// Remote ports forwarded to this machine; they end with the window.
+     pub(crate) port_forwards: crate::port_forward::PortForwards,
+     pub(crate) listening_ports: crate::listening_ports::ListeningPorts,
++    pub(crate) dashboard_preview: crate::dashboard_preview::Previews,
+     /// SSH tunnels to remote ports that listen on their host's loopback only.
+     pub(crate) tunnels: crate::listening_ports::Tunnels,
+     pub(crate) install_warning_shown: bool,
+@@ -449,6 +450,16 @@
+             cx.notify();
+         }
+         if self.update_usage(cx) {
++            cx.notify();
++        }
++        let preview_host = self
++            .endpoints
++            .get(self.selected_endpoint)
++            .map(|endpoint| crate::usage::Host::from(&endpoint.connection.target));
++        if self
++            .dashboard_preview
++            .poll(preview_host, self.active, std::time::Instant::now())
++        {
+             cx.notify();
+         }
+         if self.update_system_load() {
+@@ -739,6 +750,7 @@
+             checkpoints: Default::default(),
+             port_forwards: Default::default(),
+             listening_ports: Default::default(),
++            dashboard_preview: Default::default(),
+             tunnels: Default::default(),
+             install_warning_shown: false,
+             version_notice_shown: false,
+--- a/crates/herdr-gpui/src/window/render.rs
++++ b/crates/herdr-gpui/src/window/render.rs
+@@ -739,6 +739,7 @@
+                     .bg(rgb(self.theme.surface))
+                     .text_color(rgb(self.theme.foreground))
+                     .children(self.render_usage(cx))
++                    .children(self.render_dashboard_preview(cx))
+                     .when_some(
+                         self.prefix_armed
+                             .then(|| self.keymap().prefix_label())
+--- a/crates/herdr-gpui/src/sidebar/render.rs
++++ b/crates/herdr-gpui/src/sidebar/render.rs
+@@ -49,7 +49,7 @@
+         let repository_gap = if spaces_custom {
+             f32::from(self.config.sidebar_layout.spaces.row_gap) * line_height(font)
+         } else if self.config.layout.mode == LayoutMode::new(Density::Normal, Style::Flat) {
+-            look.row_height(2. * line_height(font)) / 2.
++            look.row_height(2. * line_height(font)) / 4.
+         } else {
+             0.
+         };
+--- a/crates/herdr-gpui/src/sidebar/row.rs
++++ b/crates/herdr-gpui/src/sidebar/row.rs
+@@ -525,8 +525,9 @@
+                                 ),
+                         )
+                         .when(show_detail, |column| {
+-                            let detail_x =
+-                                agent_detail.map_or(0., |_| agent_reserve.min(label_width));
++                            let detail_x = (icon_reserve
++                                + agent_detail.map_or(0., |_| agent_reserve))
++                            .min(label_width);
+                             let room = (label_width - detail_x).max(0.);
+                             // The counts follow the branch and win the room it would
+                             // take, so a long branch ellipsizes before they do.
+--- a/crates/herdr-gpui/src/sidebar/layout_tests.rs
++++ b/crates/herdr-gpui/src/sidebar/layout_tests.rs
+@@ -461,6 +461,7 @@
+         checkpoints: Default::default(),
+         port_forwards: Default::default(),
+         listening_ports: Default::default(),
++        dashboard_preview: Default::default(),
+         tunnels: Default::default(),
+         sidebar_visible: true,
+         sidebar_start_pending: true,
+--- a/crates/herdr-gpui/src/usage/render.rs
++++ b/crates/herdr-gpui/src/usage/render.rs
+@@ -66,27 +66,24 @@
+             .filter(|_| !stale)
+             .and_then(|summary| summary.expected_remaining_percent);
+         let label = if stale {
+-            "Stale".to_owned()
+-        } else if let Some(summary) = summary {
+-            summary.label.clone()
++            "Stale quota"
+         } else if self.usage.flight.is_some() {
+-            "Updating…".to_owned()
++            "Updating quota…"
+         } else {
+-            "Quota unknown".to_owned()
++            "Quota"
+         };
+-        let text = match remaining {
+-            Some(percent) => format!("{label} {percent:.0}%"),
+-            None => label,
+-        };
++        let hint = SharedString::from(match remaining {
++            Some(percent) => format!("{label}: {percent:.0}% remaining"),
++            None => format!("{label}: unknown"),
++        });
++        let (foreground, surface) = (self.theme.foreground, self.theme.surface);
+         Some(
+             div()
+                 .id("usage")
+                 .debug_selector(|| "usage".into())
+                 .relative()
+                 .flex()
+-                .flex_shrink_1()
+-                .min_w_0()
+-                .max_w(px(230.))
++                .flex_none()
+                 .items_center()
+                 .gap(px(6.))
+                 .whitespace_nowrap()
+@@ -111,14 +108,14 @@
+                     expected,
+                     state,
+                 )))
+-                .child(
+-                    div()
+-                        .flex_1()
+-                        .min_w_0()
+-                        .truncate()
+-                        .text_color(rgb(pace_color(&self.theme, state)))
+-                        .child(text),
+-                )
++                .tooltip(move |_, cx| {
++                    cx.new(|_| Hint {
++                        text: hint.clone(),
++                        foreground,
++                        surface,
++                    })
++                    .into()
++                })
+                 .child(
+                     canvas(|_, _, _| (), move |area, _, _, _| painted.set(area))
+                         .absolute()

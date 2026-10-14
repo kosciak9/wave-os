@@ -31,6 +31,7 @@ defmodule WaveDashboardWeb.Router do
 
   scope "/api", WaveDashboardWeb do
     pipe_through :api
+    get "/apps", AppController, :index
     post "/apps", AppController, :create
     delete "/apps/:project/:branch", AppController, :delete
   end

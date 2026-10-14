@@ -7,6 +7,34 @@ defmodule WaveDashboardWeb.AppController do
   use WaveDashboardWeb, :controller
 
   alias WaveDashboard.Apps
+  alias WaveDashboard.Tailnet
+
+  def index(conn, _params) do
+    with {:ok, address} <- caller_address(conn),
+         {:ok, host} <- Tailnet.host_for_address(address) do
+      apps =
+        Enum.map(Apps.list(), fn app ->
+          %{
+            host: app.host,
+            project: app.project,
+            branch: app.branch,
+            url: Apps.url(app),
+            status: app.status
+          }
+        end)
+
+      conn
+      |> put_resp_header("cache-control", "no-store")
+      |> json(%{
+        host: host.name,
+        hosts: Enum.map(Tailnet.hosts(), &Map.take(&1, [:name, :addresses])),
+        apps: apps
+      })
+    else
+      :error -> error(conn, :unknown_host)
+      {:error, reason} -> error(conn, reason)
+    end
+  end
 
   def create(conn, %{"project" => project, "branch" => branch, "port" => port}) do
     with {:ok, address} <- caller_address(conn),
