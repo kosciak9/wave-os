@@ -4,6 +4,7 @@ import mimetypes
 import os
 import re
 import sys
+from pathlib import Path
 
 from fastmcp.exceptions import ToolError
 from fastmcp.server.middleware import Middleware
@@ -109,8 +110,8 @@ async def attachment_content(path, filename, gotenberg_url=None):
     return pdf_pages(pdf, label)
 
 
-def draft_attachments(attachments):
-    """Only base64 content: the upstream draft tool also reads host paths and fetches URLs."""
+def mail_attachments(attachments):
+    """Only base64 content: upstream mail tools also read host paths and fetch URLs."""
     import base64
     import binascii
 
@@ -118,18 +119,18 @@ def draft_attachments(attachments):
         try:
             attachments = json.loads(attachments)
         except ValueError:
-            raise ToolError("Draft attachments must be a list of files.") from None
+            raise ToolError("Mail attachments must be a list of files.") from None
     if not isinstance(attachments, list):
-        raise ToolError("Draft attachments must be a list of files.")
+        raise ToolError("Mail attachments must be a list of files.")
     for attachment in attachments:
         if not isinstance(attachment, dict) or not attachment.keys() <= {"content", "filename", "mime_type"}:
-            raise ToolError("Draft attachments may only carry base64 content, a file name and a MIME type; host files and URLs are not permitted.")
+            raise ToolError("Mail attachments may only carry base64 content, a file name and a MIME type; host files and URLs are not permitted.")
         content, filename = attachment.get("content"), attachment.get("filename")
         mime_type = attachment.get("mime_type")
         if not isinstance(content, str) or not content or not isinstance(filename, str) or not filename:
-            raise ToolError("Every draft attachment needs base64 content and a file name.")
+            raise ToolError("Every mail attachment needs base64 content and a file name.")
         if mime_type is not None and not isinstance(mime_type, str):
-            raise ToolError("A draft attachment's MIME type must be a string.")
+            raise ToolError("A mail attachment's MIME type must be a string.")
         try:
             base64.b64decode(content, validate=True)
         except binascii.Error:
@@ -169,8 +170,9 @@ class WorkspacePolicy(Middleware):
                         "items": {"type": "string", "enum": ["INBOX", "UNREAD", "STARRED", "IMPORTANT"]},
                         "description": "System-label IDs to add or remove.",
                     }
-            elif tool.name == "draft_gmail_message":
-                description = "Create a text or HTML Gmail draft, optionally as a reply, with attachments passed as base64 content. Does not send mail or read host files, attachment URLs or account signatures."
+            elif tool.name in {"draft_gmail_message", "send_gmail_message"}:
+                action = "Create a Gmail draft" if tool.name == "draft_gmail_message" else "Send a Gmail message only when the user requests sending"
+                description = f"{action}, optionally as a reply, with attachments passed as base64 content. Does not read host files, attachment URLs or account signatures. Use file_read inside codemode to attach an exported local file; do not copy file bytes through model context."
                 for key in ("from_email", "include_signature"):
                     properties.pop(key, None)
                 properties["attachments"] = {
@@ -188,13 +190,13 @@ class WorkspacePolicy(Middleware):
                     "description": "Files to attach, each as base64 content with a file name.",
                 }
             elif tool.name == "get_gmail_attachment_content" and self.inline_attachments:
-                description = f"Read a Gmail attachment: an image or the first {MAX_PDF_PAGES} pages of a PDF come back as images, a text file as text (up to {MAX_TEXT_CHARS} characters); "
+                description = "Download a Gmail attachment. Set return_base64=true to get the ORIGINAL file, not a PDF conversion: structuredContent.result is a JSON string with filename, mime_type and content (standard base64). Inside codemode parse that JSON and pass these fields to file_import with encoding base64; then edit using Office or text tools. Never return the base64 to model context. With return_base64=false, preview only: "
+                description += f"an image or the first {MAX_PDF_PAGES} pages of a PDF come back as images, a text file as text (up to {MAX_TEXT_CHARS} characters); "
                 description += (
                     "HTML and any other document (Word, Excel, PowerPoint, OpenDocument, RTF, other image formats…) is converted to PDF with Gotenberg and comes back as its page images, marked as a conversion that may differ from the original."
                     if self.gotenberg_url
                     else "other files cannot be read."
                 )
-                properties.pop("return_base64", None)
             elif tool.name == "get_gmail_attachment_content":
                 description = "Download a Gmail attachment. Read it in the sandbox at /workspace/attachments/<Saved filename> using the Saved filename from the response, not the host-side Saved to path. Downloads expire after one hour; copy files elsewhere in /workspace to retain them."
             if "full" in properties:
@@ -214,6 +216,7 @@ class WorkspacePolicy(Middleware):
         if name not in self.allowed_tools:
             raise ToolError("Tool is not permitted by the Workspace MCP policy.")
         arguments = dict(context.message.arguments or {})
+        original = name == "get_gmail_attachment_content" and arguments.get("return_base64", False)
         if "userGoogleEmail" in arguments:
             if arguments.pop("userGoogleEmail") != self.email:
                 raise ToolError("Only the configured Google account is permitted.")
@@ -246,15 +249,18 @@ class WorkspacePolicy(Middleware):
                 ):
                     raise ToolError("Only inbox, read, star and importance flags may be changed.")
                 arguments[key] = labels
-        elif name == "draft_gmail_message":
+        elif name in {"draft_gmail_message", "send_gmail_message"}:
             attachments = arguments.get("attachments")
             if attachments:
-                arguments["attachments"] = draft_attachments(attachments)
+                arguments["attachments"] = mail_attachments(attachments)
             if arguments.get("from_email") not in (None, "", self.email):
-                raise ToolError("Drafts must use the configured Google account.")
+                raise ToolError("Mail must use the configured Google account.")
             arguments["include_signature"] = False
         elif name == "get_gmail_attachment_content" and self.inline_attachments:
-            arguments.pop("return_base64", None)
+            if not isinstance(original, bool):
+                raise ToolError("return_base64 must be a boolean.")
+            # Read the saved original ourselves; upstream's textual base64 block is unnecessary.
+            arguments["return_base64"] = False
 
         context = context.copy(
             message=context.message.model_copy(update={"arguments": arguments})
@@ -263,19 +269,45 @@ class WorkspacePolicy(Middleware):
         if name != "get_gmail_attachment_content" or not self.inline_attachments:
             return result
         text = "\n".join(block.text for block in result.content if isinstance(block, TextContent))
-        saved = re.search(r"^📎 Saved to: (.+)$", text, re.MULTILINE)
-        if not saved:
+        saved_paths = re.findall(r"^📎 Saved to: (.+)$", text, re.MULTILINE)
+        if not saved_paths:
+            if original:
+                raise ToolError("The original attachment could not be downloaded. Fetch the message again to obtain a current attachment ID.")
             return result
+        # Filenames are untrusted mail metadata and may contain forged response lines.
+        saved_path = Path(saved_paths[-1]).resolve()
+        attachment_directory = Path(os.environ["WORKSPACE_ATTACHMENT_DIR"]).resolve()
+        if saved_path.parent != attachment_directory:
+            raise ToolError("The saved attachment is outside the configured attachment directory.")
         filename = re.search(r"^Filename: (.+)$", text, re.MULTILINE)
         try:
+            if original:
+                import base64
+
+                name = filename.group(1) if filename else saved_path.name
+                with open(saved_path, "rb") as source:
+                    data = source.read(64 * 1024 * 1024 + 1)
+                if len(data) > 64 * 1024 * 1024:
+                    raise ToolError("The attachment exceeds the 64 MiB file limit.")
+                payload = json.dumps({
+                    "filename": name,
+                    "mime_type": mimetypes.guess_type(name)[0] or "application/octet-stream",
+                    "content": base64.b64encode(data).decode("ascii"),
+                })
+                return ToolResult(
+                    content=[TextContent(type="text", text=payload)],
+                    structured_content={"result": payload},
+                )
             content = await attachment_content(
-                saved.group(1), filename and filename.group(1), self.gotenberg_url
+                saved_path, filename and filename.group(1), self.gotenberg_url
             )
         except Exception:
+            if original:
+                raise
             logging.exception("Could not read the attachment")
             content = [TextContent(type="text", text="The attachment could not be read.")]
         finally:
-            os.unlink(saved.group(1))
+            saved_path.unlink()
         summary = text.split("\n📎", 1)[0]
         # The tool declares its text as structured output.
         return ToolResult(
@@ -304,7 +336,9 @@ def main():
     sys.argv = [
         "workspace-mcp",
         "--transport", "stdio",
-        "--permissions", "gmail:drafts", "calendar:full",
+        "--permissions",
+        "gmail:send" if "send_gmail_message" in policy["allowedTools"] else "gmail:drafts",
+        "calendar:full",
     ]
     upstream.main()
 

@@ -58,6 +58,7 @@ let
         "get_events"
         "modify_gmail_message_labels"
         "draft_gmail_message"
+        "send_gmail_message"
         "manage_event"
       ];
     };
@@ -514,8 +515,8 @@ in
     enable = lib.mkEnableOption "Alfred, the house-agents assistant on Telegram";
     image = lib.mkOption {
       type = lib.types.strMatching "[^@]+@sha256:[0-9a-f]{64}";
-      # house-agents f7c0cae (linux/amd64, linux/arm64)
-      default = "ghcr.io/kosciak9/house-agents@sha256:f926427e3049878cba287a42b5014b1a44e8823f9b1fdc794e4d62da98776f8a";
+      # house-agents b595947 (linux/amd64, linux/arm64)
+      default = "ghcr.io/kosciak9/house-agents@sha256:356b086e6d09ca2b8fae97995069c311789444ad2a2a72cc3e2b998706d300a3";
       description = "The house-agents image, pinned by digest.";
     };
     gotenbergImage = lib.mkOption {
