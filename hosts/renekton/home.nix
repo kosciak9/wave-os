@@ -4,6 +4,7 @@
     ../../modules/home/agents
     ../../modules/home/alfred
     ../../modules/home/frida
+    ../../modules/home/fugate
     ../../modules/home/podman/darwin.nix
     ../../modules/home/slack-mirror
     ../../modules/home/camofox
@@ -44,6 +45,24 @@
       machineName = "openclaw-sandbox";
     };
     frida.enable = true;
+    fugate = {
+      enable = true;
+      hosts = {
+        renekton.harnesses = [
+          "claude"
+          "codex"
+          "opencode"
+        ];
+        jayce = {
+          herdrAlias = "9717018a05f556969843d066b82d2988";
+          harnesses = [
+            "claude"
+            "codex"
+            "opencode"
+          ];
+        };
+      };
+    };
     slack-mirror = {
       enable = true;
       sync.enable = true;

@@ -119,6 +119,7 @@
           cliproxyapi = final.callPackage ./packages/cliproxyapi.nix { inherit prev; };
           wave-dashboard = final.callPackage ./packages/wave-dashboard.nix { };
           slack-mirror = final.callPackage ./packages/slack-mirror.nix { };
+          fugate = final.callPackage ./packages/fugate.nix { };
           slack-mirror-context = final.callPackage ./packages/slack-mirror-context.nix { };
           slack-mirror-image = final.callPackage ./packages/slack-mirror-image.nix {
             context = final.slack-mirror-context;
