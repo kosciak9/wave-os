@@ -8,6 +8,7 @@
   openssh,
   nvd,
   deploy-rs,
+  deployNodes ? [ ],
 }:
 rustPlatform.buildRustPackage {
   pname = "wave";
@@ -24,12 +25,13 @@ rustPlatform.buildRustPackage {
   ];
   postInstall = ''
     installShellCompletion --cmd wave \
-      --bash <($out/bin/wave completion bash) \
-      --fish <($out/bin/wave completion fish) \
-      --zsh <($out/bin/wave completion zsh)
+      --bash <(COMPLETE=bash $out/bin/wave) \
+      --fish <(COMPLETE=fish $out/bin/wave) \
+      --zsh <(COMPLETE=zsh $out/bin/wave)
   '';
   postFixup = ''
     wrapProgram "$out/bin/wave" \
+      --set WAVE_DEPLOY_NODES ${lib.escapeShellArg (builtins.toJSON deployNodes)} \
       --prefix PATH : "/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:${
         lib.makeBinPath [
           curl

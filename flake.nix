@@ -112,6 +112,7 @@
         {
           wave = final.callPackage ./packages/wave.nix {
             deploy-rs = inputs.deploy-rs.packages.${final.stdenv.hostPlatform.system}.deploy-rs;
+            deployNodes = builtins.attrNames self.deploy.nodes;
           };
           herdr-auto-title = final.callPackage ./packages/herdr-auto-title.nix {
             src = inputs.herdr-auto-title;

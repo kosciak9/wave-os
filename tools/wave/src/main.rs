@@ -27,6 +27,7 @@ mod watch;
 
 use anyhow::{Result, ensure};
 use clap::{CommandFactory, Parser, Subcommand};
+use clap_complete::engine::{ArgValueCandidates, CompletionCandidate};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -56,12 +57,12 @@ enum Action {
     },
     /// Deploy a node of the flake from latest main through deploy-rs over SSH
     Deploy {
-        #[arg(value_name = "NODE")]
+        #[arg(value_name = "NODE", add = ArgValueCandidates::new(deploy_nodes))]
         node: String,
     },
     /// Deploy latest main once CI passes: this host first, the nodes on a later run
     Autodeploy {
-        #[arg(value_name = "NODE")]
+        #[arg(value_name = "NODE", add = ArgValueCandidates::new(deploy_nodes))]
         nodes: Vec<String>,
     },
     /// Health checks declared by the active system
@@ -120,6 +121,16 @@ enum DashboardAction {
     },
     /// Unregister an app; succeeds when it was not registered
     Remove { project: String, branch: String },
+}
+
+fn deploy_nodes() -> Vec<CompletionCandidate> {
+    std::env::var("WAVE_DEPLOY_NODES")
+        .ok()
+        .and_then(|nodes| serde_json::from_str::<Vec<String>>(&nodes).ok())
+        .unwrap_or_default()
+        .into_iter()
+        .map(CompletionCandidate::new)
+        .collect()
 }
 
 /// The short hostname names this host's configuration in the flake.
@@ -201,6 +212,10 @@ fn run(action: Action) -> Result<i32> {
 }
 
 fn main() {
+    clap_complete::CompleteEnv::with_factory(Cli::command)
+        // The public wrapper supplies deployment metadata; argv[0] is .wave-wrapped.
+        .completer("wave")
+        .complete();
     let code = run(Cli::parse().command).unwrap_or_else(|error| {
         presentation::enable(true);
         presentation::error(&format!("{error:#}"));
