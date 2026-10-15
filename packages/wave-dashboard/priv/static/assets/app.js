@@ -10,28 +10,30 @@
     if (event.target.closest("#theme-toggle")) toggleTheme();
   });
 
-  // Only the patch that completes a navigation animates; live updates such as
-  // polls and the minute tick apply at once.
-  let navigating = false;
+  // A navigation renders its new page outside the patch hooks (into a detached
+  // element swapped in later), so the transition spans the whole navigation:
+  // it holds the old page from loading start and animates once loading stops.
+  // Live updates such as polls and the minute tick do not start a navigation.
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  let finishNavigation = null;
+
   window.addEventListener("phx:page-loading-start", (event) => {
-    navigating = ["redirect", "patch"].includes(event.detail.kind);
-  });
-  window.addEventListener("phx:page-loading-stop", () => {
-    navigating = false;
+    if (!["redirect", "patch"].includes(event.detail.kind)) return;
+    if (!document.startViewTransition || reducedMotion.matches) return;
+    finishNavigation?.();
+    // Created up front: a quick navigation can stop before the transition asks for its update.
+    const loaded = new Promise((resolve) => (finishNavigation = resolve));
+    document.startViewTransition(() => loaded);
   });
 
-  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-  const onDocumentPatch = (start) => {
-    const animate = navigating && document.startViewTransition && !reducedMotion.matches;
-    navigating = false;
-    if (animate) document.startViewTransition(start);
-    else start();
-  };
+  window.addEventListener("phx:page-loading-stop", () => {
+    finishNavigation?.();
+    finishNavigation = null;
+  });
 
   const csrfToken = document.querySelector("meta[name='csrf-token']").content;
   const liveSocket = new LiveView.LiveSocket("/live", Phoenix.Socket, {
     params: { _csrf_token: csrfToken },
-    dom: { onDocumentPatch },
   });
   liveSocket.connect();
 })();
