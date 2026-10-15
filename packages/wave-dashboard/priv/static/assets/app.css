@@ -32,26 +32,10 @@
   --font-mono: 'Overpass Mono', ui-monospace, monospace;
 }
 
-/* Kanagawa Lotus */
-[data-theme="kanagawa-lotus"] {
-  color-scheme: light;
-  --bg: oklch(89.3% 0.06 99.1);          /* lotusWhite2 */
-  --surface: oklch(93.6% 0.063 101.6);   /* lotusWhite3 */
-  --surface-raised: oklch(87.6% 0.039 99.1);
-  --border: oklch(84.6% 0.058 99.8);
-  --text: oklch(45.2% 0.026 285.3);      /* lotusInk1 */
-  --text-muted: oklch(55.1% 0.058 82.3);
-  --text-faint: oklch(62.8% 0.013 101.6);
-  --accent: oklch(52.1% 0.086 261.5);    /* lotusBlue4 */
-  --accent-ink: var(--surface);
-  --ok: oklch(59.5% 0.089 128.3);        /* lotusGreen */
-  --warning: oklch(63.1% 0.152 57.3);    /* lotusOrange */
-  --error: oklch(57.1% 0.171 16.5);      /* lotusRed */
-  --info: oklch(55.2% 0.058 298.1);      /* lotusViolet */
-}
-
 /* Base */
 *, *::before, *::after { box-sizing: border-box; }
+/* Everything is sized in rem, so this scales the whole page like a 110% zoom. */
+html { font-size: 110%; }
 html, body, h1, h2, h3, p, dl, dd, ul, ol, pre { margin: 0; }
 h1, h2, h3 { font-size: inherit; }
 ul, ol { padding: 0; list-style: none; }
@@ -143,9 +127,6 @@ code, .mono { font-family: var(--font-mono); font-size: inherit; }
   stroke-width: 11;
 }
 
-.search-form { flex: 1 1 16rem; }
-
-.search-input,
 .deadline-form input,
 .job-form :is(input[type="text"], input[type="datetime-local"], select, textarea) {
   inline-size: 100%;
@@ -157,36 +138,14 @@ code, .mono { font-family: var(--font-mono); font-size: inherit; }
   transition: border-color var(--fade);
 }
 
-.search-input::placeholder,
 .deadline-form input::placeholder,
 .job-form input::placeholder { color: var(--text-faint); }
 
-:is(.search-input, .deadline-form input, .job-form :is(input, select, textarea)):focus-visible {
+:is(.deadline-form input, .job-form :is(input, select, textarea)):focus-visible {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent);
 }
-
-.icon-button {
-  display: grid;
-  place-items: center;
-  inline-size: 2.75rem;
-  block-size: 2.75rem;
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--text-faint);
-  cursor: pointer;
-  transition: color var(--fade);
-}
-
-.icon-button:active { color: var(--text); }
-.theme-icon { inline-size: 1.25rem; block-size: 1.25rem; stroke: currentColor; }
-
-/* Only the icon of the theme to switch to is shown. */
-[data-theme="kanagawa-dragon"] .theme-icon-dark,
-[data-theme="kanagawa-lotus"] .theme-icon-light { display: none; }
 
 .crumbs {
   display: flex;
@@ -354,7 +313,6 @@ a.row-title, a.row .row-title { transition: color var(--fade); }
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .icon-button:hover,
   .crumbs a:hover { color: var(--text); }
   .card-link:hover, .link-button:hover, a.row-title:hover, a.row:hover .row-title { color: var(--accent); }
   a.row:hover { background: var(--surface-raised); }

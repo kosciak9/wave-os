@@ -1,15 +1,4 @@
 (() => {
-  const toggleTheme = () => {
-    const root = document.documentElement;
-    const theme = root.dataset.theme === "kanagawa-dragon" ? "kanagawa-lotus" : "kanagawa-dragon";
-    root.dataset.theme = theme;
-    document.cookie = `theme=${theme}; Max-Age=31536000; Path=/; SameSite=Lax; Secure`;
-  };
-
-  document.addEventListener("click", (event) => {
-    if (event.target.closest("#theme-toggle")) toggleTheme();
-  });
-
   // A navigation renders its new page outside the patch hooks (into a detached
   // element swapped in later), so the transition spans the whole navigation:
   // it holds the old page from loading start and animates once loading stops.
