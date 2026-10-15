@@ -1,13 +1,12 @@
 import QtQuick
 import Quickshell
-import "Theme.js" as Theme
 
 Item {
     id: root
 
     property real level: 0
     property bool charging: false
-    property color fillColor: level < 0.15 ? Theme.waveRed : "white"
+    property color fillColor: "white"
     readonly property real unit: width / 24
 
     implicitWidth: 18

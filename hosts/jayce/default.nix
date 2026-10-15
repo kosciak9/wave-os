@@ -165,7 +165,10 @@
       percentageAction = 5;
       criticalPowerAction = "Hibernate";
     };
-    tailscale.enable = true;
+    tailscale = {
+      enable = true;
+      extraSetFlags = [ "--operator=kosciak" ];
+    };
     syncthing = {
       enable = true;
       user = "kosciak";

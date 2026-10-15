@@ -11,6 +11,15 @@ ShellRoot {
         id: notifications
     }
 
+    BatteryService {
+        id: battery
+        notificationService: notifications
+    }
+
+    Tailscale {
+        id: tailscale
+    }
+
     readonly property bool slackFocused: {
         const window = ToplevelManager.activeToplevel
         const appId = window ? String(window.appId).toLowerCase() : ""
@@ -66,6 +75,7 @@ ShellRoot {
             Bar {
                 primary: modelData === root.primaryScreen
                 notificationService: notifications
+                batteryService: battery
                 mail: mailPanel
             }
         }
@@ -105,6 +115,8 @@ ShellRoot {
         lidOverrideService: lidOverride
         watchService: watch
         weatherService: weather
+        batteryService: battery
+        tailscaleService: tailscale
     }
 
     TranscriptionBubble {

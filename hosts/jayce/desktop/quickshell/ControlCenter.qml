@@ -15,6 +15,8 @@ Scope {
     required property var lidOverrideService
     required property var watchService
     required property var weatherService
+    required property var batteryService
+    required property var tailscaleService
     required property var targetScreen
     property string section: ""
     property string passwordFor: ""
@@ -338,6 +340,7 @@ Scope {
             if (root.service.centerOpen) {
                 root.windowVisible = true
                 root.weatherService.reload()
+                root.tailscaleService.refresh()
                 root.rebuildLater()
                 root.panelShown = true
                 hideTimer.stop()
@@ -491,10 +494,27 @@ Scope {
                         }
 
                         Tile {
+                            icon: Quickshell.shellDir + "/assets/globe.svg"
+                            title: "Tailscale"
+                            subtitle: root.tailscaleService.status
+                            checked: root.tailscaleService.active
+                            expandable: true
+                            expanded: root.section === "tailscale"
+                            alert: root.tailscaleService.error.length > 0
+                                || (root.tailscaleService.active && root.tailscaleService.exitNodeId.length > 0 && !root.tailscaleService.exitNodeOnline)
+                            opacity: root.tailscaleService.pending ? 0.65 : 1
+                            onToggled: root.tailscaleService.toggle()
+                            onExpandToggled: {
+                                root.toggleSection("tailscale")
+                                root.tailscaleService.refresh()
+                            }
+                        }
+
+                        Tile {
                             title: root.hasBattery ? "Battery" : "Power"
                             subtitle: (root.hasBattery ? root.batteryStatus() + " · " : "") + root.profileName()
                             checked: PowerProfiles.profile === PowerProfile.Performance
-                            alert: root.hasBattery && root.battery.percentage < 0.15
+                            alert: root.batteryService.low
                             onToggled: root.toggleProfile()
 
                             BatteryIcon {
@@ -502,6 +522,7 @@ Scope {
                                 visible: root.hasBattery
                                 level: root.battery.percentage
                                 charging: root.battery.state === UPowerDeviceState.Charging
+                                fillColor: root.batteryService.low ? Theme.waveRed : "white"
                             }
                         }
 
@@ -561,7 +582,7 @@ Scope {
                                     width: parent.width; height: 24
                                     Text {
                                         anchors.left: parent.left; anchors.leftMargin: 8; anchors.verticalCenter: parent.verticalCenter
-                                        text: root.section === "wifi" ? "Networks" : "Devices"
+                                        text: root.section === "wifi" ? "Networks" : root.section === "tailscale" ? "Exit nodes" : "Devices"
                                         color: Theme.fujiGray; font.family: Theme.fontFamily; font.pixelSize: 10; font.weight: Font.DemiBold
                                     }
                                     Text {
@@ -582,6 +603,35 @@ Scope {
                                     width: parent.width; leftPadding: 8
                                     visible: root.wifiError.length > 0 && root.section === "wifi"
                                     text: root.wifiError; color: Theme.waveRed; font.family: Theme.fontFamily; font.pixelSize: 10; wrapMode: Text.Wrap
+                                }
+
+                                Repeater {
+                                    model: root.section === "tailscale" && root.tailscaleService.active
+                                        ? [{ id: "", name: "No exit node", address: "", online: true }].concat(root.tailscaleService.exitNodes) : []
+                                    delegate: ListRow {
+                                        required property var modelData
+                                        icon: Quickshell.shellDir + "/assets/globe.svg"
+                                        title: modelData.name
+                                        subtitle: modelData.id === "" ? "Use the local internet connection"
+                                            : !modelData.online ? "Offline"
+                                            : modelData.id === root.tailscaleService.exitNodeId ? "Active" : "Available"
+                                        highlighted: modelData.id === root.tailscaleService.exitNodeId
+                                        busy: root.tailscaleService.pending
+                                        enabled: !root.tailscaleService.pending && (modelData.online || modelData.id === root.tailscaleService.exitNodeId)
+                                        onClicked: root.tailscaleService.selectExitNode(modelData.address)
+                                        Icon {
+                                            visible: modelData.id === root.tailscaleService.exitNodeId
+                                            source: Quickshell.shellDir + "/assets/check.svg"
+                                        }
+                                    }
+                                }
+
+                                Text {
+                                    width: parent.width; leftPadding: 8; topPadding: 4; bottomPadding: 6
+                                    visible: root.section === "tailscale" && (!root.tailscaleService.active || root.tailscaleService.error.length > 0)
+                                    text: root.tailscaleService.status
+                                    color: root.tailscaleService.error.length > 0 ? Theme.waveRed : Theme.fujiGray
+                                    font.family: Theme.fontFamily; font.pixelSize: 10; wrapMode: Text.Wrap
                                 }
 
                                 Repeater {

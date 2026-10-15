@@ -15,6 +15,7 @@ PanelWindow {
     required property var modelData
     required property bool primary
     required property var notificationService
+    required property var batteryService
     required property var mail
 
     screen: modelData
@@ -285,7 +286,18 @@ PanelWindow {
             anchors.verticalCenter: parent.verticalCenter
             level: batteryWidget.battery.percentage
             charging: batteryWidget.battery.state === UPowerDeviceState.Charging
-            opacity: 0.8
+            fillColor: root.batteryService.low ? Theme.waveRed : "white"
+            opacity: root.batteryService.low ? 1 : 0.8
+        }
+
+        Text {
+            visible: root.batteryService.low
+            anchors.verticalCenter: parent.verticalCenter
+            text: Math.floor(batteryWidget.battery.percentage * 100) + "%"
+            color: Theme.waveRed
+            font.family: Theme.fontFamily
+            font.pixelSize: 11
+            font.weight: Font.Bold
         }
     }
 
@@ -410,7 +422,10 @@ PanelWindow {
         }
         height: 32
         radius: 6
-        color: Theme.sumiInk0
+        color: root.batteryService.low ? Qt.tint(Theme.sumiInk0, Qt.rgba(1, 0, 0, 0.16)) : Theme.sumiInk0
+        border.width: root.batteryService.low ? 1 : 0
+        border.color: Theme.waveRed
+        Behavior on color { ColorAnimation { duration: Theme.normalDuration } }
         property bool revealed: false
         opacity: revealed ? 1 : 0
         transform: Translate {

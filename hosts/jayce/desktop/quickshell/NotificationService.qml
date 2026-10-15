@@ -247,6 +247,22 @@ Scope {
         cancelTransientExpiry(key)
     }
 
+    function warnBattery(body: string): void {
+        const key = newKey()
+        const notification = { id: 0, appName: "Battery", appIcon: "battery-caution",
+            summary: "Low battery", body: body, urgency: NotificationUrgency.Critical }
+        const row = scalar(notification, key, Date.now(), !centerOpen)
+        row.live = false
+        historyModel.insert(0, row)
+        if (mode !== noneMode && !centerOpen)
+            addToast(key, notification)
+        if (mode === allMode)
+            sound.play()
+        recalculateUnread()
+        trimHistory()
+        schedulePersist()
+    }
+
     function onNotification(notification): void {
         notification.tracked = true
         const app = appKey(notification)
