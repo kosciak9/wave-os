@@ -92,6 +92,7 @@ defmodule Fugate.Scheduling.Run do
         :terminal_id,
         :agent_session,
         :last_turn,
+        :turn_epoch,
         :status_check_sent,
         :wake_at,
         :checkpoint_at,
@@ -100,6 +101,8 @@ defmodule Fugate.Scheduling.Run do
 
       argument :event, :string, allow_nil?: false
       argument :event_data, :map, default: %{}
+      # A terminal run is final, even when the scheduler holds an older copy of it.
+      change filter(expr(state in ^@active_states))
       change Run.RecordEvent
     end
 
@@ -107,6 +110,7 @@ defmodule Fugate.Scheduling.Run do
       description "Marks an active run abandoned without touching its agent."
       require_atomic? false
       validate attribute_in(:state, @active_states), message: "run is not active"
+      change filter(expr(state in ^@active_states))
       change set_attribute(:state, :abandoned)
       change set_attribute(:finished_at, &DateTime.utc_now/0)
       change {Run.RecordEvent, kind: "abandoned"}
@@ -179,6 +183,10 @@ defmodule Fugate.Scheduling.Run do
     attribute :terminal_id, :string, public?: true
     attribute :agent_session, :string, public?: true
     attribute :last_turn, :integer, public?: true
+
+    attribute :turn_epoch, :integer,
+      public?: true,
+      description: "Herdr turn counter epoch of `last_turn`; a new epoch restarts the counter."
 
     attribute :status_check_sent, :boolean,
       allow_nil?: false,

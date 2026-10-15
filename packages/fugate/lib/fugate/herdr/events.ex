@@ -54,13 +54,20 @@ defmodule Fugate.Herdr.Events do
     }
 
     with {:ok, socket} <- Fugate.Herdr.connect(),
-         :ok <- :gen_tcp.send(socket, JSON.encode!(request) <> "\n") do
+         :ok <- subscribe(socket, request) do
       :inet.setopts(socket, active: :once)
       reset_watchdog(%{state | socket: socket, buffer: ""})
     else
       error ->
         Logger.warning("Herdr events connection failed: #{inspect(error)}")
         retry(state)
+    end
+  end
+
+  defp subscribe(socket, request) do
+    with {:error, _reason} = error <- :gen_tcp.send(socket, JSON.encode!(request) <> "\n") do
+      :gen_tcp.close(socket)
+      error
     end
   end
 

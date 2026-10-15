@@ -33,31 +33,33 @@ defmodule Fugate.Web.Access do
   defp client_name(ip) do
     now = System.monotonic_time(:millisecond)
 
-    case Agent.get(__MODULE__, &Map.get(&1, ip)) do
-      {name, expires_at} when expires_at > now ->
+    case :ets.lookup(__MODULE__, ip) do
+      [{^ip, name, expires_at}] when expires_at > now ->
         name
 
-      _ ->
-        name = whois(ip)
-        Agent.update(__MODULE__, &Map.put(&1, ip, {name, now + @whois_ttl}))
+      _missing_or_expired ->
+        name = whois(Application.fetch_env!(:fugate, :tailscale), ip)
+        :ets.insert(__MODULE__, {ip, name, now + @whois_ttl})
         name
     end
   end
 
   @doc false
-  def child_spec(_opts),
-    do: %{id: __MODULE__, start: {Agent, :start_link, [&Map.new/0, [name: __MODULE__]]}}
+  # The whois cache table lives as long as this supervised process.
+  def child_spec(_opts) do
+    %{
+      id: __MODULE__,
+      start: {Agent, :start_link, [&create_cache/0, [name: __MODULE__]]}
+    }
+  end
+
+  defp create_cache,
+    do: :ets.new(__MODULE__, [:named_table, :public, read_concurrency: true])
 
   # The first label of the node's MagicDNS name, e.g. "ahri" for "ahri.tailnet.ts.net.".
-  defp whois(ip) do
-    case Application.fetch_env!(:fugate, :tailscale) do
-      nil ->
-        Logger.warning("Denied #{:inet.ntoa(ip)}: tailscale executable not found")
-        nil
-
-      tailscale ->
-        whois(tailscale, ip)
-    end
+  defp whois(nil = _tailscale, ip) do
+    Logger.warning("Denied #{:inet.ntoa(ip)}: tailscale executable not found")
+    nil
   end
 
   defp whois(tailscale, ip) do
@@ -67,7 +69,7 @@ defmodule Fugate.Web.Access do
       end)
 
     with {:ok, {output, 0}} <- Task.yield(task, @whois_timeout) || Task.shutdown(task),
-         {:ok, %{"Node" => %{"Name" => name}}} <- JSON.decode(output) do
+         {:ok, %{"Node" => %{"Name" => name}}} when is_binary(name) <- JSON.decode(output) do
       name |> String.split(".") |> hd()
     else
       other ->

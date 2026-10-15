@@ -9,9 +9,9 @@ defmodule Fugate.Application do
     children = [
       Fugate.Repo,
       {Ecto.Migrator, repos: Application.fetch_env!(:fugate, :ecto_repos)},
-      Fugate.Web.Access,
       Fugate.Scheduler,
       Fugate.Herdr.Events,
+      Fugate.Web.Access,
       {
         Bandit,
         # Only HTTP/1.1 is served; Bandit's HTTP/2 has an open advisory.

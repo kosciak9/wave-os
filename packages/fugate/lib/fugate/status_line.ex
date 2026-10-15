@@ -57,7 +57,8 @@ defmodule Fugate.StatusLine do
         %{"fugate_status" => status, "fugate_run" => run_id, "fugate_at" => at} = tokens,
         run_id,
         since
-      ) do
+      )
+      when is_binary(at) do
     with {at_ms, ""} <- Integer.parse(at),
          true <- since == nil or at_ms >= DateTime.to_unix(since, :millisecond) do
       build(status, run_id, tokens["fugate_until"])

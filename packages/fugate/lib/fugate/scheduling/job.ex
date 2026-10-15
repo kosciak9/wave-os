@@ -56,7 +56,7 @@ defmodule Fugate.Scheduling.Job do
     destroy :destroy do
       primary? true
       require_atomic? false
-      validate Job.NoActiveRun
+      validate Job.NoActiveRun, before_action?: true
     end
 
     read :due do

@@ -6,29 +6,48 @@ defmodule Fugate.RunLifecycle do
   """
 
   alias Fugate.{Herdr, StatusLine}
-  alias Fugate.Scheduling.Run
+  alias Fugate.Herdr.Agent
+  alias Fugate.Scheduling.{Job, Run, RunEvent}
 
   # agent.start waits up to 30 s (Herdr default) for the harness to become ready.
   @start_timeout 45_000
   @prompt_timeout 30_000
   @screen_lines 80
 
-  @spec start(Run.t(), map(), Fugate.Config.Host.t()) :: Run.t()
+  # Events recording a prompt delivery; a "*_sending" one without its outcome
+  # means the delivery was interrupted and its result is unknown.
+  @delivery_events ~w(prompt_sent continuation_sending continuation_sent continuation_failed
+                      status_check_sending status_check_sent status_check_failed)
+  @interrupted_deliveries %{
+    "continuation_sending" => "continuation_interrupted",
+    "status_check_sending" => "status_check_interrupted"
+  }
+
+  @type result :: {:ok, Run.t()} | {:error, :not_active}
+
+  @spec start(Run.t(), Job.t(), Fugate.Config.Host.t()) :: result()
   def start(run, job, host) do
     agent_name = "fugate-" <> (run.id |> String.replace("-", "") |> binary_part(0, 8))
 
-    run =
-      transition!(run, "starting", %{state: :starting, host: host.name, agent_name: agent_name})
+    with {:ok, run} <-
+           transition(run, "starting", %{
+             state: :starting,
+             host: host.name,
+             agent_name: agent_name
+           }) do
+      case launch(run, job, host) do
+        {:ok, %Run{}} = launched ->
+          launched
 
-    case launch(run, job, host) do
-      {:ok, run} ->
-        run
+        {:error, :not_active} = not_active ->
+          not_active
 
-      {:error, step, run, reason} ->
-        transition!(run, "start_failed", %{state: :failed, finished_at: now()}, %{
-          "step" => step,
-          "error" => format_error(reason)
-        })
+        {:error, step, run, reason} ->
+          transition(run, "start_failed", %{state: :failed, finished_at: now()}, %{
+            "step" => step,
+            "error" => format_error(reason)
+          })
+      end
     end
   end
 
@@ -36,78 +55,74 @@ defmodule Fugate.RunLifecycle do
     workspace =
       put_machine(%{cwd: job.repo_path, label: "fugate: #{job.name}", focus: false}, host)
 
-    with {:ok, created} <-
-           step(run, "workspace.create", Herdr.request("workspace.create", workspace)),
-         run =
-           transition!(run, "workspace_created", %{
-             workspace_id: created["workspace"]["workspace_id"],
-             pane_id: created["root_pane"]["pane_id"]
-           }),
+    with {:ok, created} <- step(run, "workspace.create", Herdr.create_workspace(workspace)),
+         {:ok, run} <- transition(run, "workspace_created", created),
          start = %{name: run.agent_name, kind: Atom.to_string(job.harness), pane_id: run.pane_id},
-         {:ok, _} <-
-           step(run, "agent.start", Herdr.request("agent.start", start, @start_timeout)),
-         {:ok, %{"agent" => agent}} <-
-           step(run, "agent.get", Herdr.request("agent.get", %{target: run.pane_id})),
-         run =
-           transition!(
+         :ok <- step(run, "agent.start", Herdr.start_agent(start, @start_timeout)),
+         {:ok, agent} <- step(run, "agent.get", Herdr.get_agent(run.pane_id)),
+         {:ok, run} <-
+           transition(
              run,
              "agent_started",
-             Map.merge(agent_identity(agent), %{
-               last_turn: completed_turn(agent),
-               checkpoint_at: now()
-             })
+             agent
+             |> agent_identity()
+             |> Map.merge(turn_attrs(agent.completed_turn))
+             |> Map.put(:checkpoint_at, now())
            ),
-         prompt = %{target: run.pane_id, text: preamble(run) <> job.prompt},
-         {:ok, prompted} <-
-           step(run, "agent.prompt", Herdr.request("agent.prompt", prompt, @prompt_timeout)) do
-      {:ok,
-       transition!(run, "prompt_sent", %{state: :running}, %{"delivery" => prompted["delivery"]})}
+         text = preamble(run) <> job.prompt,
+         {:ok, delivery} <-
+           step(run, "agent.prompt", Herdr.prompt_agent(run.pane_id, text, @prompt_timeout)) do
+      transition(run, "prompt_sent", %{state: :running}, %{"delivery" => delivery})
     end
   end
 
   defp put_machine(params, %{herdr_alias: nil}), do: params
   defp put_machine(params, %{herdr_alias: alias}), do: Map.put(params, :machine, alias)
 
+  defp step(_run, _name, :ok), do: :ok
   defp step(_run, _name, {:ok, result}), do: {:ok, result}
   defp step(run, name, {:error, reason}), do: {:error, name, run, reason}
 
   @doc "Sends the scheduled continuation of a waiting run."
-  @spec continue(Run.t()) :: Run.t()
+  @spec continue(Run.t()) :: result()
   def continue(run) do
     wake_at = run.wake_at
 
-    run =
-      transition!(
-        run,
-        "continuation_sending",
-        %{state: :running, wake_at: nil, checkpoint_at: now()},
-        %{"wake_at" => wake_at}
-      )
+    with {:ok, run} <-
+           transition(
+             run,
+             "continuation_sending",
+             %{state: :running, wake_at: nil, checkpoint_at: now()},
+             %{"wake_at" => wake_at}
+           ) do
+      text =
+        "Fugate: continue run #{run.id} now (scheduled continuation at #{DateTime.to_iso8601(wake_at)}). " <>
+          "End with the status line."
 
-    text =
-      "Fugate: continue run #{run.id} now (scheduled continuation at #{DateTime.to_iso8601(wake_at)}). " <>
-        "End with the status line."
+      case Herdr.prompt_agent(run.pane_id, text, @prompt_timeout) do
+        {:ok, delivery} ->
+          transition(run, "continuation_sent", %{}, %{"delivery" => delivery})
 
-    case Herdr.request("agent.prompt", %{target: run.pane_id, text: text}, @prompt_timeout) do
-      {:ok, prompted} ->
-        transition!(run, "continuation_sent", %{}, %{"delivery" => prompted["delivery"]})
-
-      {:error, reason} ->
-        transition!(run, "continuation_failed", %{state: :blocked}, %{
-          "error" => format_error(reason)
-        })
+        {:error, reason} ->
+          transition(run, "continuation_failed", %{state: :blocked}, %{
+            "error" => format_error(reason)
+          })
+      end
     end
   end
+
+  @doc "Whether `turn` completed after the last turn the run has settled."
+  @spec new_turn?(Run.t(), Agent.turn()) :: boolean()
+  def new_turn?(run, turn), do: Agent.turn_after?(turn, {run.turn_epoch, run.last_turn || 0})
 
   @doc "The status the hook reported for the latest turn, if it has landed yet."
   @spec reported_status(Run.t()) :: {:ok, StatusLine.t()} | :none
   def reported_status(run) do
-    with {:ok, %{"agent" => agent}} <- Herdr.request("agent.get", %{target: run.pane_id}),
-         {:ok, status} <-
-           StatusLine.from_tokens(agent["tokens"] || %{}, run.id, run.checkpoint_at) do
+    with {:ok, agent} <- Herdr.get_agent(run.pane_id),
+         {:ok, status} <- StatusLine.from_tokens(agent.tokens, run.id, run.checkpoint_at) do
       {:ok, status}
     else
-      _ -> :none
+      _unavailable -> :none
     end
   end
 
@@ -115,7 +130,7 @@ defmodule Fugate.RunLifecycle do
   Settles a completed turn whose hook tokens never arrived: the turn's last
   message, then the screen, then one status question.
   """
-  @spec settle_unreported_turn(Run.t(), non_neg_integer(), String.t() | nil) :: Run.t()
+  @spec settle_unreported_turn(Run.t(), Agent.turn(), String.t() | nil) :: result()
   def settle_unreported_turn(run, turn, message) do
     with :error <- message |> StatusLine.find_last(run.id) |> tag("turn_message"),
          :error <- run |> screen_status() |> tag("screen") do
@@ -129,15 +144,13 @@ defmodule Fugate.RunLifecycle do
   defp tag(:error, _source), do: :error
 
   defp screen_status(run) do
-    read = %{target: run.pane_id, source: "recent_unwrapped", lines: @screen_lines}
-
-    case Herdr.request("agent.read", read) do
-      {:ok, %{"read" => %{"text" => text}}} -> StatusLine.find_last(text, run.id)
-      {:error, _} -> :error
+    case Herdr.read_agent(run.pane_id, @screen_lines) do
+      {:ok, text} -> StatusLine.find_last(text, run.id)
+      {:error, _reason} -> :error
     end
   end
 
-  @spec apply_status(Run.t(), non_neg_integer(), StatusLine.t(), String.t()) :: Run.t()
+  @spec apply_status(Run.t(), Agent.turn(), StatusLine.t(), String.t()) :: result()
   def apply_status(run, turn, %StatusLine{} = status, source) do
     attrs =
       case status.status do
@@ -147,69 +160,77 @@ defmodule Fugate.RunLifecycle do
         :waiting -> %{state: :waiting, wake_at: status.until}
       end
 
-    transition!(
+    transition(
       run,
       "turn_status",
-      Map.merge(attrs, %{last_turn: turn, checkpoint_at: now(), status_check_sent: false}),
-      %{"turn" => turn, "status" => status.status, "until" => status.until, "source" => source}
+      attrs
+      |> Map.merge(turn_attrs(turn))
+      |> Map.merge(%{checkpoint_at: now(), status_check_sent: false}),
+      Map.merge(turn_data(turn), %{
+        "status" => status.status,
+        "until" => status.until,
+        "source" => source
+      })
     )
   end
 
   defp ask_status(%{status_check_sent: true} = run, turn) do
-    transition!(run, "turn_without_status", %{state: :unknown, last_turn: turn}, %{
-      "turn" => turn
-    })
+    transition(
+      run,
+      "turn_without_status",
+      Map.put(turn_attrs(turn), :state, :unknown),
+      turn_data(turn)
+    )
   end
 
   defp ask_status(run, turn) do
-    run =
-      transition!(
-        run,
-        "status_check_sending",
-        %{state: :unknown, last_turn: turn, status_check_sent: true, checkpoint_at: now()},
-        %{"turn" => turn}
-      )
+    with {:ok, run} <-
+           transition(
+             run,
+             "status_check_sending",
+             Map.merge(turn_attrs(turn), %{
+               state: :unknown,
+               status_check_sent: true,
+               checkpoint_at: now()
+             }),
+             turn_data(turn)
+           ) do
+      text =
+        "Fugate status check for run #{run.id}: reply only with the status line " <>
+          "`fugate: <completed|waiting|blocked|failed> run=#{run.id}` " <>
+          "(add ` until=<ISO-8601 datetime with offset>` for waiting) describing where this run stands."
 
-    text =
-      "Fugate status check for run #{run.id}: reply only with the status line " <>
-        "`fugate: <completed|waiting|blocked|failed> run=#{run.id}` " <>
-        "(add ` until=<ISO-8601 datetime with offset>` for waiting) describing where this run stands."
+      case Herdr.prompt_agent(run.pane_id, text, @prompt_timeout) do
+        {:ok, delivery} ->
+          transition(run, "status_check_sent", %{}, %{"delivery" => delivery})
 
-    case Herdr.request("agent.prompt", %{target: run.pane_id, text: text}, @prompt_timeout) do
-      {:ok, prompted} ->
-        transition!(run, "status_check_sent", %{}, %{"delivery" => prompted["delivery"]})
-
-      {:error, reason} ->
-        transition!(run, "status_check_failed", %{}, %{"error" => format_error(reason)})
+        {:error, reason} ->
+          transition(run, "status_check_failed", %{}, %{"error" => format_error(reason)})
+      end
     end
   end
 
   @doc """
   Brings a placed run in line with Herdr's agent list after events may have
   been missed. Returns the run and the latest completed turn still to be
-  processed, if any.
+  processed, if any. A prompt whose delivery was interrupted is never re-sent:
+  unless the agent shows it arrived, the run becomes blocked.
   """
-  @spec reconcile(Run.t(), [map()]) :: {Run.t(), non_neg_integer() | nil}
+  @spec reconcile(Run.t(), [Agent.t()]) ::
+          {:ok, Run.t(), Agent.turn() | nil} | {:error, :not_active}
   def reconcile(%{state: :starting} = run, agents) do
     case find_agent(run, agents) do
       nil when is_nil(run.workspace_id) ->
-        {transition!(run, "start_interrupted", %{state: :failed, finished_at: now()}), nil}
+        run
+        |> transition("start_interrupted", %{state: :failed, finished_at: now()})
+        |> without_missed_turn()
 
       nil ->
-        {transition!(run, "start_interrupted", %{state: :lost}), nil}
+        run |> transition("start_interrupted", %{state: :lost}) |> without_missed_turn()
 
       agent ->
-        run = adopt(run, agent)
-        last_turn = run.last_turn || 0
-        turn = completed_turn(agent)
-
-        if turn > last_turn or agent["agent_status"] == "working" do
-          run = transition!(run, "start_resumed", %{state: :running, last_turn: last_turn})
-          {run, missed(turn, last_turn)}
-        else
-          {transition!(run, "start_interrupted", %{state: :blocked}, %{
-             "reason" => "start interrupted; prompt delivery unknown"
-           }), nil}
+        with {:ok, run} <- adopt(run, agent) do
+          resume(run, agent, "start_interrupted", "start_resumed")
         end
     end
   end
@@ -217,50 +238,77 @@ defmodule Fugate.RunLifecycle do
   def reconcile(run, agents) do
     case find_agent(run, agents) do
       nil when run.state == :lost ->
-        {run, nil}
+        {:ok, run, nil}
 
       nil ->
-        {transition!(run, "agent_missing", %{state: :lost}), nil}
+        run |> transition("agent_missing", %{state: :lost}) |> without_missed_turn()
 
       agent ->
-        run = adopt(run, agent)
-
-        run =
-          if run.state == :lost,
-            do: transition!(run, "agent_found", %{state: :running}),
-            else: run
-
-        {run, missed(completed_turn(agent), run.last_turn || 0)}
+        with {:ok, run} <- adopt(run, agent),
+             {:ok, run} <- recover_lost(run) do
+          case Map.fetch(@interrupted_deliveries, latest_delivery(run)) do
+            {:ok, interrupted_event} -> resume(run, agent, interrupted_event, nil)
+            :error -> {:ok, run, missed_turn(run, agent)}
+          end
+        end
     end
   end
 
-  defp missed(turn, last_turn) when turn > last_turn, do: turn
-  defp missed(_turn, _last_turn), do: nil
+  # The prompt arrived if the agent completed a turn since or is working on one.
+  defp resume(run, agent, interrupted_event, resumed_event) do
+    case {missed_turn(run, agent), agent.status} do
+      {nil, status} when status != "working" ->
+        run
+        |> transition(interrupted_event, %{state: :blocked}, %{
+          "reason" => "prompt delivery interrupted; not re-sent"
+        })
+        |> without_missed_turn()
+
+      {missed, _status} ->
+        with {:ok, run} <- mark_resumed(run, resumed_event), do: {:ok, run, missed}
+    end
+  end
+
+  defp mark_resumed(run, nil = _event), do: {:ok, run}
+  defp mark_resumed(run, event), do: transition(run, event, %{state: :running})
+
+  defp latest_delivery(run) do
+    case RunEvent.latest_of_kinds!(run.id, @delivery_events) do
+      nil -> nil
+      event -> event.kind
+    end
+  end
+
+  defp recover_lost(%{state: :lost} = run), do: transition(run, "agent_found", %{state: :running})
+  defp recover_lost(run), do: {:ok, run}
+
+  defp missed_turn(run, agent) do
+    if new_turn?(run, agent.completed_turn), do: agent.completed_turn
+  end
+
+  defp without_missed_turn({:ok, run}), do: {:ok, run, nil}
+  defp without_missed_turn(not_active), do: not_active
 
   defp find_agent(run, agents) do
-    Enum.find(agents, &(&1["pane_id"] == run.pane_id and &1["name"] == run.agent_name)) ||
-      Enum.find(agents, &(run.agent_name != nil and &1["name"] == run.agent_name)) ||
-      Enum.find(agents, &(run.terminal_id != nil and &1["terminal_id"] == run.terminal_id))
+    Enum.find(agents, &(&1.pane_id == run.pane_id and &1.name == run.agent_name)) ||
+      Enum.find(agents, &(run.agent_name != nil and &1.name == run.agent_name)) ||
+      Enum.find(agents, &(run.terminal_id != nil and &1.terminal_id == run.terminal_id))
   end
 
   defp adopt(run, agent) do
-    identity = Map.put(agent_identity(agent), :pane_id, agent["pane_id"])
+    identity = Map.put(agent_identity(agent), :pane_id, agent.pane_id)
 
     if Enum.all?(identity, fn {key, value} -> Map.get(run, key) == value end) do
-      run
+      {:ok, run}
     else
-      transition!(run, "agent_moved", identity, %{"pane_id" => agent["pane_id"]})
+      transition(run, "agent_moved", identity, %{"pane_id" => agent.pane_id})
     end
   end
 
-  defp agent_identity(agent) do
-    %{
-      terminal_id: agent["terminal_id"],
-      agent_session: get_in(agent, ["agent_session", "value"])
-    }
-  end
+  defp agent_identity(agent), do: %{terminal_id: agent.terminal_id, agent_session: agent.session}
 
-  defp completed_turn(agent), do: get_in(agent, ["last_completed_turn", "turn"]) || 0
+  defp turn_attrs({epoch, turn}), do: %{turn_epoch: epoch, last_turn: turn}
+  defp turn_data({epoch, turn}), do: %{"turn" => turn, "turn_epoch" => epoch}
 
   defp preamble(run) do
     """
@@ -280,12 +328,25 @@ defmodule Fugate.RunLifecycle do
     """
   end
 
-  defp transition!(run, event, attrs, data \\ %{}) do
-    Run.transition!(run, event, Map.put(attrs, :event_data, data))
+  # A run finished through the API meanwhile (abandoned) is no longer driven.
+  defp transition(run, event, attrs, data \\ %{}) do
+    case Run.transition(run, event, Map.put(attrs, :event_data, data)) do
+      {:ok, run} ->
+        {:ok, run}
+
+      {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Changes.StaleRecord{}]}} ->
+        {:error, :not_active}
+
+      {:error, error} ->
+        raise error
+    end
   end
 
   defp format_error(%{"code" => code} = error),
     do: %{"code" => code, "message" => error["message"]}
+
+  defp format_error({:unexpected_response, method}),
+    do: %{"code" => "unexpected_response", "message" => method}
 
   defp format_error(reason), do: %{"code" => "transport", "message" => inspect(reason)}
 

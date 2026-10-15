@@ -4,10 +4,9 @@ defmodule Fugate.Scheduling.Job.NoActiveRun do
 
   @impl true
   def validate(changeset, _opts, _context) do
-    if Fugate.Scheduling.Run.active_for_job!(changeset.data.id) do
-      {:error, field: :id, message: "job has an active run; abandon it first"}
-    else
-      :ok
+    case Fugate.Scheduling.Run.active_for_job!(changeset.data.id) do
+      nil -> :ok
+      _active -> {:error, field: :id, message: "job has an active run; abandon it first"}
     end
   end
 end

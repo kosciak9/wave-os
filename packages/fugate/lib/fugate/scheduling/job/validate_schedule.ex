@@ -5,18 +5,23 @@ defmodule Fugate.Scheduling.Job.ValidateSchedule do
   alias Fugate.Scheduling.Job.Schedule
 
   @impl true
-  def validate(changeset, [check: :timezone], _context) do
-    if Schedule.valid_timezone?(Ash.Changeset.get_attribute(changeset, :timezone)),
+  def validate(changeset, [check: field], _context) do
+    check(field, Ash.Changeset.get_attribute(changeset, field))
+  end
+
+  # A missing value is reported by the attribute's own presence rules.
+  defp check(_field, nil), do: :ok
+
+  defp check(:timezone, timezone) do
+    if Schedule.valid_timezone?(timezone),
       do: :ok,
       else: {:error, field: :timezone, message: "is not a known time zone"}
   end
 
-  def validate(changeset, [check: :cron], _context) do
-    with cron when is_binary(cron) <- Ash.Changeset.get_attribute(changeset, :cron),
-         {:error, reason} <- Schedule.parse_cron(cron) do
-      {:error, field: :cron, message: "is invalid: #{reason}"}
-    else
-      _valid_or_absent -> :ok
+  defp check(:cron, cron) do
+    case Schedule.parse_cron(cron) do
+      {:ok, _expression} -> :ok
+      {:error, reason} -> {:error, field: :cron, message: "is invalid: #{reason}"}
     end
   end
 end

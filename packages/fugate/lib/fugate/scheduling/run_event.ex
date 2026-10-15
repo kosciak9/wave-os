@@ -21,10 +21,18 @@ defmodule Fugate.Scheduling.RunEvent do
 
   code_interface do
     define :record, action: :create, args: [:run_id, :kind, :data]
+    define :latest_of_kinds, args: [:run_id, :kinds], get?: true, not_found_error?: false
   end
 
   actions do
     defaults [:read]
+
+    read :latest_of_kinds do
+      argument :run_id, :uuid, allow_nil?: false
+      argument :kinds, {:array, :string}, allow_nil?: false
+      filter expr(run_id == ^arg(:run_id) and kind in ^arg(:kinds))
+      prepare build(sort: [inserted_at: :desc], limit: 1)
+    end
 
     create :create do
       primary? true

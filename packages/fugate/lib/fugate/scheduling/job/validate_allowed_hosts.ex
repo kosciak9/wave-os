@@ -7,7 +7,7 @@ defmodule Fugate.Scheduling.Job.ValidateAllowedHosts do
     harness = Ash.Changeset.get_attribute(changeset, :harness)
     hosts = Ash.Changeset.get_attribute(changeset, :allowed_hosts) || []
 
-    case Enum.reject(hosts, &supports?(&1, harness)) do
+    case Enum.reject(hosts, &(&1 |> Fugate.Config.host() |> supports?(harness))) do
       [] ->
         :ok
 
@@ -18,10 +18,6 @@ defmodule Fugate.Scheduling.Job.ValidateAllowedHosts do
     end
   end
 
-  defp supports?(name, harness) do
-    case Fugate.Config.host(name) do
-      nil -> false
-      host -> harness in host.harnesses
-    end
-  end
+  defp supports?(nil = _unconfigured, _harness), do: false
+  defp supports?(host, harness), do: harness in host.harnesses
 end
