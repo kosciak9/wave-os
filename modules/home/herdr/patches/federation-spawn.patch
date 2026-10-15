@@ -1,0 +1,326 @@
+diff --git a/docs/next/api/herdr-api.schema.json b/docs/next/api/herdr-api.schema.json
+index e6f8b14..ef25c22 100644
+--- a/docs/next/api/herdr-api.schema.json
++++ b/docs/next/api/herdr-api.schema.json
+@@ -5781,6 +5781,13 @@
+                 "null"
+               ]
+             },
++            "machine": {
++              "description": "Saved SSH machine alias to create the workspace on. The coordinator\nroutes the request there and returns `<alias>/`-qualified ids.",
++              "type": [
++                "string",
++                "null"
++              ]
++            },
+             "source_workspace_id": {
+               "description": "Workspace whose focused pane supplies the `follow` cwd policy.",
+               "type": [
+diff --git a/src/api/federation.rs b/src/api/federation.rs
+index f73c7c6..87b938d 100644
+--- a/src/api/federation.rs
++++ b/src/api/federation.rs
+@@ -172,10 +172,14 @@ pub(crate) fn federation_method_policy(method_wire_name: &str) -> FederationMeth
+         | "pane.rename" | "pane.set_pty_size" => (AllowedAt(Admin), true),
+         // Admin methods whose payload has no remote ownership target.
+         "agent.view.set" | "agent.view.clear" => (AllowedAt(Admin), false),
++        // Outbound only, and only to saved SSH machines (see
++        // `PeerRoute::is_saved_ssh`): OpenSSH access already grants full
++        // control of that machine, while inbound TCP peers stay denied.
++        "agent.start" | "workspace.create" => (FederationAccess::Denied, true),
+         // Everything else (all server.*, plugin.*, integration.*, gram.*,
+-        // notification(s).*, client.window_title.*, agent.start,
+-        // agent.transfer_session, pane.close, popup.close, and other mutations)
+-        // is denied to federation regardless of tier.
++        // notification(s).*, client.window_title.*, agent.transfer_session,
++        // pane.close, popup.close, and other mutations) is denied to
++        // federation regardless of tier.
+         _ => (FederationAccess::Denied, false),
+     };
+     FederationMethodPolicy {
+diff --git a/src/api/federation_manager.rs b/src/api/federation_manager.rs
+index 82b1895..b01bfc7 100644
+--- a/src/api/federation_manager.rs
++++ b/src/api/federation_manager.rs
+@@ -165,6 +165,12 @@ impl PeerRoute {
+         &self.target
+     }
+ 
++    /// Saved SSH machines reach the peer through the manager-owned local
++    /// `remote-api-bridge` socket; explicit TCP peers use a token stream.
++    pub(crate) fn is_saved_ssh(&self) -> bool {
++        matches!(self.target, ConnectionTarget::SocketPath(_))
++    }
++
+     pub(crate) fn identity_validated(&self) -> bool {
+         self.state.identity_validated.load(Ordering::Acquire)
+     }
+diff --git a/src/api/federation_relay.rs b/src/api/federation_relay.rs
+index ff8dd67..a87a736 100644
+--- a/src/api/federation_relay.rs
++++ b/src/api/federation_relay.rs
+@@ -563,7 +563,7 @@ fn qualify_workspace(
+     Some(())
+ }
+ 
+-fn qualify_pane(alias: &str, pane: &mut PaneInfo) -> Option<()> {
++pub(super) fn qualify_pane(alias: &str, pane: &mut PaneInfo) -> Option<()> {
+     qualify_id(alias, &mut pane.pane_id)?;
+     qualify_id(alias, &mut pane.terminal_id)?;
+     qualify_id(alias, &mut pane.workspace_id)?;
+diff --git a/src/api/schema/tests.rs b/src/api/schema/tests.rs
+index b71f449..99634b0 100644
+--- a/src/api/schema/tests.rs
++++ b/src/api/schema/tests.rs
+@@ -152,6 +152,7 @@ fn request_uses_dot_method_names() {
+             focus: true,
+             label: Some("api".into()),
+             env: Default::default(),
++            machine: None,
+         }),
+     };
+ 
+diff --git a/src/api/schema/workspaces.rs b/src/api/schema/workspaces.rs
+index 87237c9..f9d150c 100644
+--- a/src/api/schema/workspaces.rs
++++ b/src/api/schema/workspaces.rs
+@@ -26,6 +26,10 @@ pub struct WorkspaceCreateParams {
+     pub label: Option<String>,
+     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+     pub env: HashMap<String, String>,
++    /// Saved SSH machine alias to create the workspace on. The coordinator
++    /// routes the request there and returns `<alias>/`-qualified ids.
++    #[serde(default, skip_serializing_if = "Option::is_none")]
++    pub machine: Option<String>,
+ }
+ 
+ #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
+diff --git a/src/api/server.rs b/src/api/server.rs
+index cc98087..d465ff2 100644
+--- a/src/api/server.rs
++++ b/src/api/server.rs
+@@ -1055,7 +1055,7 @@ pub(super) fn qualify_remote_tab(
+     Some(tab)
+ }
+ 
+-/// Qualify the ids in a routed `workspace.get`/`tab.get`/`tab.list` reply so the
++/// Qualify the ids in a routed `workspace.get`/`workspace.create`/`tab.get`/`tab.list` reply so the
+ /// client keeps seeing federated identities it can route again. Every other
+ /// line (errors, other methods' results) passes through verbatim. A peer reply
+ /// whose ids are already qualified is refused as `peer_invalid_response`
+@@ -1078,6 +1078,17 @@ fn qualify_routed_response(alias: &str, presentation: &PeerPresentation, line: S
+             .map(|tab| qualify_remote_tab(alias, presentation, tab))
+             .collect::<Option<Vec<_>>>()
+             .map(|tabs| ResponseResult::TabList { tabs }),
++        ResponseResult::WorkspaceCreated {
++            workspace,
++            tab,
++            mut root_pane,
++        } => crate::api::federation_relay::qualify_pane(alias, &mut root_pane).and_then(|()| {
++            Some(ResponseResult::WorkspaceCreated {
++                workspace: qualify_remote_workspace(alias, presentation, workspace)?,
++                tab: qualify_remote_tab(alias, presentation, tab)?,
++                root_pane,
++            })
++        }),
+         _ => return line,
+     };
+     match result {
+@@ -1892,6 +1903,8 @@ fn routable_target_mut(method: &mut Method) -> Option<&mut String> {
+         Method::WorkspaceGet(params) => Some(&mut params.workspace_id),
+         Method::TabGet(params) => Some(&mut params.tab_id),
+         Method::TabList(params) => params.workspace_id.as_mut(),
++        // Saved SSH machines only; `maybe_route_to_peer` refuses other peers.
++        Method::AgentStart(params) => Some(&mut params.pane_id),
+         _ => None,
+     }
+ }
+@@ -1932,17 +1945,48 @@ fn maybe_route_to_peer(
+     method: &'static str,
+     changes_ui: bool,
+ ) -> Option<std::io::Result<()>> {
+-    // Empty registry (the default-off, no-endpoint case) → never route.
+-    if peers.is_empty() {
+-        return None;
+-    }
+-    let target = routable_target_mut(&mut request.method)?;
+-    // Decide from owned copies so the mutable borrow is free for the rewrite.
+-    let (alias, rest) = {
++    // `workspace.create` names its peer in `machine` rather than in an
++    // alias-qualified id. It is consumed here, so local dispatch never sees it.
++    let machine = match &mut request.method {
++        Method::WorkspaceCreate(params) => params.machine.take(),
++        _ => None,
++    };
++    let (alias, peer_route) = if let Some(alias) = machine {
++        let Some(peer_route) = peers.get(&alias).cloned() else {
++            return Some(write_routing_refusal(
++                stream,
++                request_id,
++                method,
++                changes_ui,
++                "machine_not_found",
++                format!("no saved machine {alias:?} is configured"),
++            ));
++        };
++        (alias, peer_route)
++    } else {
++        // Empty registry (the default-off, no-endpoint case) → never route.
++        if peers.is_empty() {
++            return None;
++        }
++        let target = routable_target_mut(&mut request.method)?;
++        // Decide from owned copies so the mutable borrow is free for the rewrite.
+         let (alias, rest) = federated_split(target, peers)?;
+-        (alias.to_string(), rest.to_string())
++        let (alias, rest) = (alias.to_string(), rest.to_string());
++        let peer_route = peers.get(&alias)?.clone();
++        // Federated: strip the `<alias>/` prefix so the peer sees its own local id.
++        *target = rest;
++        (alias, peer_route)
+     };
+-    let peer_route = peers.get(&alias)?.clone();
++    if matches!(method, "agent.start" | "workspace.create") && !peer_route.is_saved_ssh() {
++        return Some(write_routing_refusal(
++            stream,
++            request_id,
++            method,
++            changes_ui,
++            "forbidden",
++            format!("'{method}' is only routed to saved SSH machines, not {alias:?}"),
++        ));
++    }
+     if !peer_route.identity_validated() {
+         let response = federation_identity_unverified_error(request_id.to_owned(), &alias);
+         let result = write_json_line_allow_disconnect(stream, &response);
+@@ -1958,12 +2002,13 @@ fn maybe_route_to_peer(
+         return Some(result);
+     }
+     let peer_target = peer_route;
+-    // Federated: strip the `<alias>/` prefix so the peer sees its own local id.
+-    *target = rest;
+ 
+     let stamp = peer_target.stamp();
+     let response = proxy_federated_response(&peer_target, &stamp, request, running);
+-    let response = if matches!(method, "workspace.get" | "tab.get" | "tab.list") {
++    let response = if matches!(
++        method,
++        "workspace.get" | "tab.get" | "tab.list" | "workspace.create"
++    ) {
+         qualify_routed_response(&alias, &peer_target.presentation(&alias), response)
+     } else {
+         response
+@@ -1989,6 +2034,29 @@ fn maybe_route_to_peer(
+     Some(result)
+ }
+ 
++fn write_routing_refusal(
++    stream: &mut ApiStream,
++    request_id: &str,
++    method: &'static str,
++    changes_ui: bool,
++    code: &'static str,
++    message: String,
++) -> std::io::Result<()> {
++    let response = ErrorResponse {
++        id: request_id.to_owned(),
++        error: ErrorBody {
++            code: code.into(),
++            message,
++        },
++    };
++    let result = write_json_line_allow_disconnect(stream, &response);
++    match &result {
++        Ok(()) => crate::logging::api_request_completed(request_id, method, code, changes_ui),
++        Err(err) => crate::logging::api_request_failed(request_id, method, &err.to_string()),
++    }
++    result
++}
++
+ /// Forward `request` to the peer reached by `client` and return the response LINE
+ /// to write back to the originating client.
+ ///
+diff --git a/src/app/api/workspaces.rs b/src/app/api/workspaces.rs
+index 8286a42..bcf7146 100644
+--- a/src/app/api/workspaces.rs
++++ b/src/app/api/workspaces.rs
+@@ -456,6 +456,7 @@ mod tests {
+                 focus: false,
+                 label: None,
+                 env: Default::default(),
++                machine: None,
+             },
+         );
+ 
+@@ -517,6 +518,7 @@ mod tests {
+                 focus: false,
+                 label: None,
+                 env: Default::default(),
++                machine: None,
+             },
+         );
+         let success: SuccessResponse = serde_json::from_str(&response).unwrap();
+@@ -537,6 +539,7 @@ mod tests {
+                 focus: false,
+                 label: None,
+                 env: Default::default(),
++                machine: None,
+             },
+         );
+         let error: ErrorResponse = serde_json::from_str(&invalid).unwrap();
+@@ -550,6 +553,7 @@ mod tests {
+                 focus: false,
+                 label: None,
+                 env: Default::default(),
++                machine: None,
+             },
+         );
+         let success: SuccessResponse = serde_json::from_str(&captured).unwrap();
+diff --git a/src/cli/workspace.rs b/src/cli/workspace.rs
+index 525398b..7db7b51 100644
+--- a/src/cli/workspace.rs
++++ b/src/cli/workspace.rs
+@@ -99,6 +99,7 @@ fn workspace_create(args: &[String]) -> std::io::Result<i32> {
+         focus,
+         label,
+         env,
++        machine: None,
+     })
+ }
+ 
+diff --git a/src/client/shell/actions.rs b/src/client/shell/actions.rs
+index ed79409..75a3a57 100644
+--- a/src/client/shell/actions.rs
++++ b/src/client/shell/actions.rs
+@@ -92,6 +92,7 @@ impl ClientShellState {
+                                     focus: true,
+                                     label: None,
+                                     env: Default::default(),
++                                    machine: None,
+                                 },
+                             ),
+                             outcome,
+diff --git a/src/client/shell/overlay_input.rs b/src/client/shell/overlay_input.rs
+index 653826a..96378b2 100644
+--- a/src/client/shell/overlay_input.rs
++++ b/src/client/shell/overlay_input.rs
+@@ -941,6 +941,7 @@ impl ClientShellState {
+                     label: (!trimmed.is_empty() && trimmed != suggested_name)
+                         .then(|| trimmed.to_owned()),
+                     env: Default::default(),
++                    machine: None,
+                 },
+             )),
+             ClientRenameTarget::Workspace { workspace_id } => (!trimmed.is_empty()).then(|| {
+diff --git a/src/client/shell/tests/workspace_navigation.rs b/src/client/shell/tests/workspace_navigation.rs
+index 1408149..080e770 100644
+--- a/src/client/shell/tests/workspace_navigation.rs
++++ b/src/client/shell/tests/workspace_navigation.rs
+@@ -950,6 +950,7 @@ fn navigation_highlight_ends_for_noop_focus_and_focused_creation() {
+                     focus,
+                     label: None,
+                     env: Default::default(),
++                    machine: None,
+                 },
+             ),
+             crate::api::schema::Method::TabCreate(crate::api::schema::TabCreateParams {
