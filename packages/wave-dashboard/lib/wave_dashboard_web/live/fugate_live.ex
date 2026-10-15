@@ -250,7 +250,7 @@ defmodule WaveDashboardWeb.FugateLive do
   def render(assigns) do
     ~H"""
     <div class="page">
-      <.page_header title="Fugate" crumbs={[{"ahri.wave", ~p"/"}]}>
+      <.page_header title="Fugate">
         <:actions :if={@live_action == :index and @snapshot.status != :not_configured}>
           <.link patch={~p"/fugate/jobs/new"} class="button">New job</.link>
         </:actions>

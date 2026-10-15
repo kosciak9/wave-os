@@ -17,10 +17,6 @@ defmodule WaveDashboardWeb.Router do
     plug :put_theme
   end
 
-  pipeline :fugate do
-    plug :put_favicon, "/images/fugate-favicon.png"
-  end
-
   pipeline :api do
     plug :accepts, ["json"]
   end
@@ -30,19 +26,15 @@ defmodule WaveDashboardWeb.Router do
     get "/*path", OAuthRelayController, :callback
   end
 
-  scope "/", WaveDashboardWeb do
-    pipe_through :browser
-    live "/", HomeLive
-  end
-
-  # A separate live session, so navigating here reloads the root layout with Fugate's favicon.
-  live_session :fugate do
-    scope "/fugate", WaveDashboardWeb do
-      pipe_through [:browser, :fugate]
-      live "/", FugateLive, :index
-      live "/jobs/new", FugateLive, :new
-      live "/jobs/:id/edit", FugateLive, :edit
-      live "/runs/:id", FugateRunLive
+  # One live session, so every page change happens in place and can animate.
+  live_session :default do
+    scope "/", WaveDashboardWeb do
+      pipe_through :browser
+      live "/", HomeLive
+      live "/fugate", FugateLive, :index
+      live "/fugate/jobs/new", FugateLive, :new
+      live "/fugate/jobs/:id/edit", FugateLive, :edit
+      live "/fugate/runs/:id", FugateRunLive
     end
   end
 
@@ -56,8 +48,6 @@ defmodule WaveDashboardWeb.Router do
     post "/apps", AppController, :create
     delete "/apps/:project/:branch", AppController, :delete
   end
-
-  defp put_favicon(conn, path), do: assign(conn, :favicon, path)
 
   # The theme lives in a cookie set by the browser, so the first render already uses it.
   defp put_theme(conn, _opts) do

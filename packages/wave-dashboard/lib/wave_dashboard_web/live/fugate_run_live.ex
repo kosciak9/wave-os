@@ -93,7 +93,7 @@ defmodule WaveDashboardWeb.FugateRunLive do
   def render(assigns) do
     ~H"""
     <div class="page">
-      <.page_header title="Run" crumbs={[{"ahri.wave", ~p"/"}, {"Fugate", ~p"/fugate"}]}>
+      <.page_header title="Run" crumbs={[{"Fugate", ~p"/fugate"}]}>
         <:actions :if={@run && Run.active?(@run)}>
           <button
             type="button"

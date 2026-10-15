@@ -10,7 +10,7 @@ defmodule WaveDashboardWeb.Layouts do
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="csrf-token" content={get_csrf_token()} />
         <.live_title default="ahri.wave">{assigns[:page_title]}</.live_title>
-        <link rel="icon" type="image/png" href={assigns[:favicon] || ~p"/images/favicon.png"} />
+        <link rel="icon" type="image/png" href={~p"/images/favicon.png"} />
         <link rel="stylesheet" href={~p"/assets/app.css"} />
         <script defer src="/vendor/phoenix.min.js">
         </script>

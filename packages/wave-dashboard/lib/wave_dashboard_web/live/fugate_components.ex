@@ -9,16 +9,19 @@ defmodule WaveDashboardWeb.FugateComponents do
   alias WaveDashboard.Fugate.Client.Run
 
   attr :title, :string, required: true
-  attr :crumbs, :list, required: true, doc: "`{label, path}` pairs leading to this page"
+
+  attr :crumbs, :list,
+    default: [],
+    doc: "`{label, path}` pairs between the home page and this one"
+
   slot :actions
 
   def page_header(assigns) do
     ~H"""
     <header class="topbar">
-      <.link navigate={~p"/"} class="brand" aria-label="ahri.wave">
-        <.wave_logo />
-      </.link>
       <nav class="crumbs" aria-label="Breadcrumb">
+        <.link navigate={~p"/"} class="brand"><.wave_logo /> ahri.wave</.link>
+        <span aria-hidden="true">/</span>
         <%= for {label, path} <- @crumbs do %>
           <.link navigate={path}>{label}</.link>
           <span aria-hidden="true">/</span>
