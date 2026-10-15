@@ -19,8 +19,8 @@ unless the user explicitly requests it.
 Before editing files in a git repository, check the checkout:
 
 - On the default branch with a clean working tree, work there directly. When the
-  work is done, ask whether to move it to a new worktree with `wt switch
-  --create <branch>`, carrying the uncommitted changes over.
+  work is done, ask whether to move it to a new worktree with
+  `wt switch --create <branch>`, carrying the uncommitted changes over.
 - On the default branch with uncommitted changes, which belong to work already
   in progress, create a worktree with `wt switch --create <branch>` without
   asking and work there.
