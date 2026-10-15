@@ -34,6 +34,40 @@ jobs:
       - name: Run nix-eval ahri
         run: devenv shell -- nix-eval ahri
 
+  jayce-build:
+    name: jayce-build
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build patched desktop packages
+        uses: ./.github/actions/build-jayce
+
+  jayce-cache:
+    name: jayce-cache
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    environment: cachix
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build patched desktop packages
+        uses: ./.github/actions/build-jayce
+        with:
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+      - name: Publish a bounded runtime closure
+        run: |
+          bytes=$(nix path-info --json --recursive ./jayce-cache | jq '[.[].narSize] | add')
+          limit=$((512 * 1024 * 1024))
+          echo "Selected runtime closure: $bytes bytes; publishing budget: $limit bytes" >> "$GITHUB_STEP_SUMMARY"
+          if ((bytes > limit)); then
+            echo "::warning::Builds passed; skipping cache upload because the runtime closure exceeds 512 MiB."
+            exit 0
+          fi
+          cachix push wave-os ./jayce-cache
+          cachix pin wave-os jayce-current "$(readlink -f ./jayce-cache)" --keep-revisions 1
+
   ahri-build:
     name: ahri-build
     if: github.event_name == 'pull_request'
@@ -58,7 +92,9 @@ jobs:
         with:
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
       - name: Push ahri's runtime closure
-        run: cachix push wave-os ./ahri
+        run: |
+          cachix push wave-os ./ahri
+          cachix pin wave-os ahri-current "$(readlink -f ./ahri)" --keep-revisions 1
 
   betterleaks:
     name: betterleaks

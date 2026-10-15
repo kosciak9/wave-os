@@ -272,6 +272,16 @@
       packages = {
         ${system} = {
           deploy-rs = inputs.deploy-rs.packages.${system}.deploy-rs;
+          jayce-cache = pkgs.linkFarm "jayce-cache" [
+            {
+              name = "herdr";
+              path = self.checks.${system}.herdr;
+            }
+            {
+              name = "herdr-gpui";
+              path = self.checks.${system}.herdr-gpui;
+            }
+          ];
           inherit kanagawa-kvantum;
           inherit (pkgs)
             wave
@@ -313,11 +323,30 @@
         renekton = renektonNode;
         ahri = ahriNode;
       };
-      checks.${darwinSystem} = inputs.deploy-rs.lib.${darwinSystem}.deployChecks {
-        nodes.renekton = renektonNode;
-      };
-      checks.${ahriSystem} = inputs.deploy-rs.lib.${ahriSystem}.deployChecks {
-        nodes.ahri = ahriNode;
+      checks = {
+        ${system} =
+          let
+            configuration = self.nixosConfigurations.jayce.config;
+            home = configuration.home-manager.users.kosciak;
+            homePackage =
+              name:
+              pkgs.lib.findSingle (package: (package.pname or "") == name)
+                (throw "Missing jayce package: ${name}")
+                (throw "Multiple jayce packages named ${name}")
+                home.home.packages;
+          in
+          {
+            herdr = homePackage "herdr";
+            herdr-gpui = homePackage "herdr-gpui";
+            quickshell = home.programs.quickshell.package;
+            hyprland = configuration.programs.hyprland.package;
+          };
+        ${darwinSystem} = inputs.deploy-rs.lib.${darwinSystem}.deployChecks {
+          nodes.renekton = renektonNode;
+        };
+        ${ahriSystem} = inputs.deploy-rs.lib.${ahriSystem}.deployChecks {
+          nodes.ahri = ahriNode;
+        };
       };
     };
 }
