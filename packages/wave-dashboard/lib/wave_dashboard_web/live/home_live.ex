@@ -4,7 +4,7 @@ defmodule WaveDashboardWeb.HomeLive do
   import WaveDashboardWeb.FugateComponents,
     only: [stats: 1, state_badge: 1, time: 1, job_name: 2, by_urgency: 1]
 
-  import WaveDashboardWeb.Layouts, only: [wave_logo: 1]
+  import WaveDashboardWeb.Layouts, only: [wave_logo: 1, fugate_logo: 1]
 
   alias WaveDashboard.{Apps, Clock, Deadline, Fugate, Tailnet}
 
@@ -238,7 +238,7 @@ defmodule WaveDashboardWeb.HomeLive do
     <section class="card">
       <div class="card-header">
         <h2 class="card-title">
-          <img src={~p"/images/fugate-favicon.png"} alt="" class="avatar" /> Agents
+          <.fugate_logo /> Agents
         </h2>
         <.link navigate={~p"/fugate"} class="card-link">Open Fugate →</.link>
       </div>

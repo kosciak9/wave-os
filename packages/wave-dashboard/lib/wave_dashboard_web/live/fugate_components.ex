@@ -2,7 +2,7 @@ defmodule WaveDashboardWeb.FugateComponents do
   @moduledoc false
   use WaveDashboardWeb, :html
 
-  import WaveDashboardWeb.Layouts, only: [wave_logo: 1]
+  import WaveDashboardWeb.Layouts, only: [wave_logo: 1, fugate_logo: 1]
 
   alias WaveDashboard.Clock
   alias WaveDashboard.Fugate.{Client, Snapshot}
@@ -22,6 +22,7 @@ defmodule WaveDashboardWeb.FugateComponents do
       <nav class="crumbs" aria-label="Breadcrumb">
         <.link navigate={~p"/"} class="brand"><.wave_logo /> ahri.wave</.link>
         <span aria-hidden="true">/</span>
+        <.fugate_logo />
         <%= for {label, path} <- @crumbs do %>
           <.link navigate={path}>{label}</.link>
           <span aria-hidden="true">/</span>
