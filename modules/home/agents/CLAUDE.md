@@ -16,12 +16,3 @@ changes phase (investigation, planning, implementation, reporting).
 The user prefers Polish. Write all user-facing text in Polish, including
 progress updates, questions, and final reports, even when tool output or
 subagent results are in English.
-
-# Git
-
-- Keep branch history: never squash and never rewrite commits (no `rebase -i`,
-  no amending or force-pushing commits that exist on a branch) unless asked.
-- Merge with `wt merge` (worktrunk: rebase onto the target, fast-forward,
-  commits kept; `[merge] squash = false` in ~/.config/worktrunk/config.toml).
-- If a rebase hits a conflict, abort it (`git rebase --abort`) and report; don't
-  resolve it on your own.

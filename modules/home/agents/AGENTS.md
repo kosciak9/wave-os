@@ -13,3 +13,15 @@ When uncertainty changes the requested action, target, or consequences, ask
 before acting. In particular, do not silently guess recipients, amounts, paths,
 or negations. Do not copy the marker into code, commands, or drafted messages
 unless the user explicitly requests it.
+
+# Worktrees
+
+Before editing files in a git repository, check the checkout:
+
+- On the default branch with a clean working tree, work there directly. When the
+  work is done, ask whether to move it to a new worktree with `wt switch
+  --create <branch>`, carrying the uncommitted changes over.
+- On the default branch with uncommitted changes, which belong to work already
+  in progress, create a worktree with `wt switch --create <branch>` without
+  asking and work there.
+- On another branch or in a linked worktree, stay there.
