@@ -32,13 +32,19 @@ defmodule WaveDashboardWeb.FugateLive do
        form: nil,
        job_id: nil,
        form_errors: [],
-       pending: nil
+       pending: nil,
+       repositories: []
      )}
   end
 
   @impl true
-  def handle_params(params, _uri, socket),
-    do: {:noreply, apply_action(socket, socket.assigns.live_action, params)}
+  def handle_params(params, _uri, socket) do
+    socket = apply_action(socket, socket.assigns.live_action, params)
+
+    if socket.assigns.form && connected?(socket),
+      do: {:noreply, start_async(socket, :repositories, &Client.repositories/0)},
+      else: {:noreply, socket}
+  end
 
   defp apply_action(socket, :index, _params),
     do: assign(socket, form: nil, job_id: nil, page_title: "Fugate")
@@ -137,6 +143,12 @@ defmodule WaveDashboardWeb.FugateLive do
     do: {:noreply, socket |> assign(pending: pending) |> start_async(:request, request)}
 
   @impl true
+  # Without the list the field still takes any path, so a failed fetch is not shown.
+  def handle_async(:repositories, {:ok, {:ok, repositories}}, socket),
+    do: {:noreply, assign(socket, repositories: repositories)}
+
+  def handle_async(:repositories, _failed, socket), do: {:noreply, socket}
+
   def handle_async(:request, result, socket) do
     {event, _id} = socket.assigns.pending
     socket = assign(socket, pending: nil)
@@ -258,6 +270,7 @@ defmodule WaveDashboardWeb.FugateLive do
               errors={@form_errors}
               job_id={@job_id}
               hosts={host_options(@snapshot, @form)}
+              repositories={@repositories}
               pending={@pending}
             />
             <.active_runs
@@ -419,7 +432,7 @@ defmodule WaveDashboardWeb.FugateLive do
             title={reachability_title(host.reachable)}
           ></span>
           <div class="row-stack">
-            <span class="row-title mono">{host.name}</span>
+            <span class="row-title">{host.name}</span>
             <span :if={host.harnesses != []} class="row-meta">{Enum.join(host.harnesses, ", ")}</span>
           </div>
           <span
@@ -453,6 +466,7 @@ defmodule WaveDashboardWeb.FugateLive do
   attr :errors, :list, required: true
   attr :job_id, :string, required: true
   attr :hosts, :list, required: true
+  attr :repositories, :list, required: true
   attr :pending, :any, required: true
 
   defp job_form(assigns) do
@@ -489,10 +503,17 @@ defmodule WaveDashboardWeb.FugateLive do
             id={@form[:repo_path].id}
             name={@form[:repo_path].name}
             value={@form[:repo_path].value}
-            placeholder="/Users/…/project"
+            list="repositories"
+            placeholder="Type to search ~/Developer"
+            autocomplete="off"
             class="mono"
             required
           />
+          <datalist id="repositories">
+            <option :for={repository <- @repositories} value={repository.path}>
+              {repository.name}
+            </option>
+          </datalist>
         </.field>
         <div class="field-row">
           <.field field={@form[:harness]} label="Harness">

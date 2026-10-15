@@ -216,30 +216,32 @@ defmodule WaveDashboardWeb.HomeLive do
         </h2>
         <span class="card-detail">ends {Calendar.strftime(@deadline.end_date, "%a %d %b")}</span>
       </div>
-      <div class="countdown">
-        <span :if={!@expired?} class="countdown-value">
-          <span>{div(@minutes_left, 60)}<small>h</small></span>
-          <span>{@minutes_left |> rem(60) |> Integer.to_string() |> String.pad_leading(2, "0")}<small>m</small></span>
-        </span>
-        <span :if={@expired?} class="countdown-value">Passed</span>
-        <span class="countdown-caption">
-          <%= if @expired? do %>
-            <button type="button" class="link-button" phx-click="edit_deadline">Set a new deadline</button>
-          <% else %>
-            <span class="sep">
-              <span>{@remaining} {if @remaining == 1, do: "day", else: "days"} left</span>
-              <span>day {@elapsed} of {@total}</span>
-            </span>
-          <% end %>
-        </span>
-      </div>
-      <div class="deadline-grid" role="img" aria-label={"Day #{@elapsed} of #{@total}"}>
-        <div :for={block <- Deadline.grid(@deadline, @today)} class="deadline-week">
-          <div
-            :for={{date, kind} <- block}
-            class={["deadline-day", Atom.to_string(kind)]}
-            title={Date.to_iso8601(date)}
-          >
+      <div class="deadline-body">
+        <div class="countdown">
+          <span :if={!@expired?} class="countdown-value">
+            <span>{div(@minutes_left, 60)}<span class="unit">h</span></span>
+            <span>{@minutes_left |> rem(60) |> Integer.to_string() |> String.pad_leading(2, "0")}<span class="unit">m</span></span>
+          </span>
+          <span :if={@expired?} class="countdown-value">Passed</span>
+          <span class="countdown-caption">
+            <%= if @expired? do %>
+              <button type="button" class="link-button" phx-click="edit_deadline">Set a new deadline</button>
+            <% else %>
+              <span class="sep">
+                <span>{@remaining} {if @remaining == 1, do: "day", else: "days"} left</span>
+                <span>day {@elapsed} of {@total}</span>
+              </span>
+            <% end %>
+          </span>
+        </div>
+        <div class="deadline-grid" role="img" aria-label={"Day #{@elapsed} of #{@total}"}>
+          <div :for={block <- Deadline.grid(@deadline, @today)} class="deadline-week">
+            <div
+              :for={{date, kind} <- block}
+              class={["deadline-day", Atom.to_string(kind)]}
+              title={Date.to_iso8601(date)}
+            >
+            </div>
           </div>
         </div>
       </div>
@@ -312,7 +314,7 @@ defmodule WaveDashboardWeb.HomeLive do
           <li :for={app <- apps}>
             <a href={Apps.url(app)} target="_blank" rel="noopener noreferrer" class="row">
               <span class={["status", Atom.to_string(app.status)]} title={status_title(app.status)}></span>
-              <span class="row-title mono">{app.branch}</span>
+              <span class="row-title">{app.branch}</span>
               <span class="row-meta">{app.host}</span>
             </a>
           </li>
@@ -345,7 +347,7 @@ defmodule WaveDashboardWeb.HomeLive do
             class={["status", if(host.online?, do: "up", else: "down")]}
             title={if host.online?, do: "Online", else: "Offline"}
           ></span>
-          <span class="row-title mono">{host.name}</span>
+          <span class="row-title">{host.name}</span>
           <span class="row-meta">
             <%= cond do %>
               <% host.online? -> %>

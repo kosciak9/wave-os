@@ -124,7 +124,7 @@ defmodule WaveDashboardWeb.FugateRunLive do
             <ol :if={@events != []} class="timeline">
               <li :for={event <- @events}>
                 <div class="timeline-head">
-                  <span class="mono">{event.kind}</span>
+                  <span class="event-kind">{event.kind}</span>
                   <span class="row-meta">{Clock.format(event.inserted_at)}</span>
                 </div>
                 <pre :if={event.data != %{}} class="event-data">{JSON.encode!(event.data)}</pre>

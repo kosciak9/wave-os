@@ -2,7 +2,7 @@ defmodule WaveDashboard.Fugate.Client do
   @moduledoc """
   JSON:API client of the Fugate agent scheduler at `FUGATE_URL`.
 
-  Resources come back as `Job`, `Run`, `Host` and `Event` structs; attributes
+  Resources come back as `Job`, `Run`, `Host`, `Repository` and `Event` structs; attributes
   the dashboard does not know are dropped rather than turned into atoms.
   """
 
@@ -61,6 +61,12 @@ defmodule WaveDashboard.Fugate.Client do
     defstruct @enforce_keys ++ [:reachable, :max_concurrent, harnesses: [], active_runs: 0]
   end
 
+  defmodule Repository do
+    @moduledoc false
+    @enforce_keys [:name, :path]
+    defstruct @enforce_keys
+  end
+
   defmodule Event do
     @moduledoc false
     @enforce_keys [:id, :kind]
@@ -74,6 +80,16 @@ defmodule WaveDashboard.Fugate.Client do
   def hosts do
     with {:ok, document} <- request(:get, "/api/hosts") do
       {:ok, Enum.map(document["data"], &host/1), get_in(document, ["meta", "max_concurrent"])}
+    end
+  end
+
+  @doc "Returns the git checkouts under `~/Developer` on Fugate's host, offered as job repositories."
+  def repositories do
+    with {:ok, document} <- request(:get, "/api/repositories") do
+      {:ok,
+       Enum.map(document["data"], fn %{"id" => id, "attributes" => attributes} ->
+         %Repository{name: id, path: attributes["path"]}
+       end)}
     end
   end
 
