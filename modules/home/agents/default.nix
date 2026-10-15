@@ -2,6 +2,7 @@
 let
   claudeDirectory =
     config.home.sessionVariables.CLAUDE_CONFIG_DIR or "${config.home.homeDirectory}/.claude";
+  codexDirectory = config.home.sessionVariables.CODEX_HOME or "${config.home.homeDirectory}/.codex";
   skills = {
     source = ./skills;
     force = true;
@@ -15,9 +16,18 @@ in
       target = "${claudeDirectory}/skills";
     };
     "claude-instructions" = {
-      source = ./CLAUDE.md;
+      text = builtins.readFile ./CLAUDE.md + "\n" + builtins.readFile ./AGENTS.md;
       target = "${claudeDirectory}/CLAUDE.md";
       force = true;
     };
+    "codex-instructions" = {
+      source = ./AGENTS.md;
+      target = "${codexDirectory}/AGENTS.md";
+      force = true;
+    };
+  };
+  xdg.configFile."opencode/AGENTS.md" = {
+    source = ./AGENTS.md;
+    force = true;
   };
 }

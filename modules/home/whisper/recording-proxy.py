@@ -108,6 +108,13 @@ def archive_warning(error):
     print(f"whisper recording: archive failed ({type(error).__name__})", file=sys.stderr)
 
 
+def prefix_transcription(body):
+    response = json.loads(body)
+    if response["text"].strip():
+        response["text"] = "[transkrypcja] " + response["text"]
+    return json.dumps(response, ensure_ascii=False).encode("utf-8")
+
+
 def make_app(args):
     root = Path(args.archive_dir)
     backend = {"model": args.backend_model, "runtime": "whisper.cpp", "version": args.backend_version}
@@ -123,6 +130,11 @@ def make_app(args):
             yield
 
     async def transcribe(request):
+        tagged = request.query.get("transcription_prefix") == "true"
+        headers = proxy_headers(request.headers)
+        if tagged:
+            headers = [(name, value) for name, value in headers if name.lower() != "accept-encoding"]
+            headers.append(("Accept-Encoding", "identity"))
         received_at = datetime.now(timezone.utc)
         started = time.monotonic()
         body = await request.read()
@@ -149,15 +161,17 @@ def make_app(args):
             async with request.app[session_key].post(
                 args.upstream + INFERENCE_PATH,
                 data=body,
-                headers=proxy_headers(request.headers),
+                headers=headers,
                 allow_redirects=False,
             ) as response:
                 status = response.status
                 response_body = await response.read()
                 content_type = response.headers.get("Content-Type", "")
                 state = "completed" if 200 <= status < 300 else "http_error"
+                # Only opted-in clients see the marker; the archive retains the raw ASR response.
+                client_body = prefix_transcription(response_body) if tagged and state == "completed" else response_body
                 return web.Response(
-                    status=status, body=response_body, headers=proxy_headers(response.headers)
+                    status=status, body=client_body, headers=proxy_headers(response.headers)
                 )
         except asyncio.CancelledError:
             state = "client_disconnected"

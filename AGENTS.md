@@ -1,5 +1,9 @@
 # Agent guidance
 
+- Messages prefixed with `[transkrypcja]` come from speech recognition and may
+  misrender proper names, acronyms, or technical terms. Use conversation and
+  implementation context to resolve them; ask when ambiguity changes the action
+  or target. Shared guidance lives in `modules/home/agents/AGENTS.md`.
 - Home Manager installs `devenv` and `direnv` for the human's trusted-repo
   interactive auto-activation. Keep Zsh aliases and plugins in
   `modules/home/zsh`.

@@ -353,12 +353,12 @@ let
     });
 
     export default {
-    	prompt: readFileSync("/run/secrets/prompt.md", "utf8"),
+        prompt: readFileSync("/run/secrets/prompt.md", "utf8") + "\n\n" + ${builtins.toJSON (builtins.readFile ../agents/AGENTS.md)},
     	model: { provider: "openai-codex", modelId: "gpt-6.1-sol", thinkingLevel: "medium" },
     	fallbackModel: { provider: "xai", modelId: "grok-4.7", thinkingLevel: "medium" },
     	telegram: { chatId: Number(process.env.TELEGRAM_CHAT_ID) },
     	// whisper-recording-proxy on the host.
-    	whisperUrl: "http://host.containers.internal:18080/v1/audio/transcriptions",
+        whisperUrl: "http://host.containers.internal:18080/v1/audio/transcriptions?transcription_prefix=true",
     	gotenbergUrl: "http://host.containers.internal:${toString gotenbergPort}",
     	mcpServers: {
     ${lib.concatMapAttrsStringSep "\n" (

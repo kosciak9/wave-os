@@ -157,6 +157,12 @@ in
         output = {
           mode = "paste";
           paste_keys = "shift+insert";
+          post_process.command = ''
+            text="$(${lib.getExe' pkgs.coreutils "cat"})"
+            case "$text" in
+              *[![:space:]]*) printf '[transkrypcja] %s' "$text" ;;
+            esac
+          '';
           pre_type_delay_ms = 200;
           auto_submit = false;
           wait_for_modifier_release = false;
