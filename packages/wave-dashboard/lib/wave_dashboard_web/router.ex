@@ -10,10 +10,15 @@ defmodule WaveDashboardWeb.Router do
   pipeline :browser do
     plug :accepts, ["html"]
     plug :fetch_session
+    plug :fetch_live_flash
     plug :protect_from_forgery
     plug :put_root_layout, html: {WaveDashboardWeb.Layouts, :root}
     plug :put_secure_browser_headers, %{"content-security-policy" => @content_security_policy}
     plug :put_theme
+  end
+
+  pipeline :fugate do
+    plug :put_favicon, "/images/fugate-favicon.png"
   end
 
   pipeline :api do
@@ -30,6 +35,17 @@ defmodule WaveDashboardWeb.Router do
     live "/", HomeLive
   end
 
+  # A separate live session, so navigating here reloads the root layout with Fugate's favicon.
+  live_session :fugate do
+    scope "/fugate", WaveDashboardWeb do
+      pipe_through [:browser, :fugate]
+      live "/", FugateLive, :index
+      live "/jobs/new", FugateLive, :new
+      live "/jobs/:id/edit", FugateLive, :edit
+      live "/runs/:id", FugateRunLive
+    end
+  end
+
   scope "/", WaveDashboardWeb do
     get "/healthz", HealthController, :show
   end
@@ -40,6 +56,8 @@ defmodule WaveDashboardWeb.Router do
     post "/apps", AppController, :create
     delete "/apps/:project/:branch", AppController, :delete
   end
+
+  defp put_favicon(conn, path), do: assign(conn, :favicon, path)
 
   # The theme lives in a cookie set by the browser, so the first render already uses it.
   defp put_theme(conn, _opts) do

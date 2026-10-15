@@ -1,7 +1,7 @@
 defmodule WaveDashboardWeb.HomeLive do
   use WaveDashboardWeb, :live_view
 
-  alias WaveDashboard.{Apps, Deadline, Tailnet}
+  alias WaveDashboard.{Apps, Deadline, Fugate, Tailnet}
 
   @day_check_interval :timer.minutes(1)
 
@@ -11,12 +11,14 @@ defmodule WaveDashboardWeb.HomeLive do
       Apps.subscribe()
       Tailnet.subscribe()
       Deadline.subscribe()
+      Fugate.subscribe()
       :timer.send_interval(@day_check_interval, :day_check)
     end
 
     {:ok,
      socket
      |> assign(apps: Apps.list(), hosts: Tailnet.hosts(), today: Deadline.today())
+     |> assign(fugate: Fugate.snapshot())
      |> assign(editing?: false, deadline_error: nil, draft: nil)
      |> assign_deadline()}
   end
@@ -24,6 +26,7 @@ defmodule WaveDashboardWeb.HomeLive do
   @impl true
   def handle_info({:apps, apps}, socket), do: {:noreply, assign(socket, apps: apps)}
   def handle_info({:hosts, hosts}, socket), do: {:noreply, assign(socket, hosts: hosts)}
+  def handle_info({:fugate, snapshot}, socket), do: {:noreply, assign(socket, fugate: snapshot)}
   def handle_info(:deadline_changed, socket), do: {:noreply, assign_deadline(socket)}
   def handle_info(:day_check, socket), do: {:noreply, assign(socket, today: Deadline.today())}
 
@@ -94,6 +97,7 @@ defmodule WaveDashboardWeb.HomeLive do
       <main>
         <.apps apps={@apps} />
         <.hosts hosts={@hosts} />
+        <.fugate snapshot={@fugate} />
       </main>
 
       <footer class="theme-toggle-footer">
@@ -269,6 +273,37 @@ defmodule WaveDashboardWeb.HomeLive do
       </ul>
     </div>
     """
+  end
+
+  attr :snapshot, Fugate.Snapshot, required: true
+
+  defp fugate(assigns) do
+    ~H"""
+    <div class="project">
+      <div class="project-header">Agents</div>
+      <ul class="branch-list">
+        <li class="branch-item">
+          <.link navigate={~p"/fugate"}>
+            <span class={["status", fugate_status(@snapshot.status)]}></span>
+            <img src={~p"/images/fugate-favicon.png"} alt="" class="avatar" /> Fugate
+            <span class="host-badge">{fugate_summary(@snapshot)}</span>
+          </.link>
+        </li>
+      </ul>
+    </div>
+    """
+  end
+
+  defp fugate_status(:ok), do: "up"
+  defp fugate_status({:error, _reason}), do: "down"
+  defp fugate_status(_status), do: "unknown"
+
+  defp fugate_summary(%{status: :not_configured}), do: "not configured"
+  defp fugate_summary(%{status: :loading}), do: "loading"
+  defp fugate_summary(%{status: {:error, _reason}}), do: "unreachable"
+
+  defp fugate_summary(snapshot) do
+    "#{length(snapshot.active_runs)} active · #{length(snapshot.jobs)} jobs"
   end
 
   defp last_seen(nil), do: "offline"

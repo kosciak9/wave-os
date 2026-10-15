@@ -58,6 +58,7 @@ in
       # Distribution is off, so the cookie never authenticates anything.
       RELEASE_COOKIE = "wave-dashboard";
       RELEASE_TMP = "/run/wave-dashboard";
+      FUGATE_URL = "http://renekton:4747";
     };
     serviceConfig = {
       ExecStart = "${lib.getExe pkgs.wave-dashboard} start";
