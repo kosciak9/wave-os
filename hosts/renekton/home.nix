@@ -47,21 +47,10 @@
     frida.enable = true;
     fugate = {
       enable = true;
-      hosts = {
-        renekton.harnesses = [
-          "claude"
-          "codex"
-          "opencode"
-        ];
-        jayce = {
-          herdrAlias = "9717018a05f556969843d066b82d2988";
-          harnesses = [
-            "claude"
-            "codex"
-            "opencode"
-          ];
-        };
-      };
+      hosts = [
+        "renekton"
+        "jayce"
+      ];
     };
     slack-mirror = {
       enable = true;
@@ -75,8 +64,14 @@
     herdr.federation = {
       coordinator = true;
       savedMachines = {
-        "9717018a05f556969843d066b82d2988" = "machine_77c29d300c7ac622a2dfc783ac227170";
-        "0afacf5716a819425394bbf65d6d0a86" = "machine_9026bebb6184fc9965a24b867836dce9";
+        jayce = {
+          profileId = "9717018a05f556969843d066b82d2988";
+          machineId = "machine_77c29d300c7ac622a2dfc783ac227170";
+        };
+        ahri = {
+          profileId = "0afacf5716a819425394bbf65d6d0a86";
+          machineId = "machine_9026bebb6184fc9965a24b867836dce9";
+        };
       };
     };
     zen-browser = {

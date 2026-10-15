@@ -1,5 +1,6 @@
 {
   config,
+  osConfig,
   lib,
   pkgs,
   ...
@@ -7,17 +8,25 @@
 
 let
   cfg = config.services.fugate;
+  localHost = osConfig.networking.hostName;
+  savedMachines = config.programs.herdr.federation.savedMachines;
+  # Every execution host gets all harnesses from the shared herdr and opencode modules.
+  harnesses = [
+    "claude"
+    "codex"
+    "opencode"
+  ];
   stateDirectory = "${config.home.homeDirectory}/.local/state/fugate";
   configFile = pkgs.writeText "fugate.json" (
     builtins.toJSON {
       inherit (cfg) bind port;
       max_concurrent = cfg.maxConcurrent;
       allowed_clients = cfg.allowedClients;
-      hosts = lib.mapAttrs (_name: host: {
-        herdr_alias = host.herdrAlias;
-        inherit (host) harnesses;
-        max_concurrent = host.maxConcurrent;
-      }) cfg.hosts;
+      hosts = lib.genAttrs cfg.hosts (host: {
+        herdr_alias = if host == localHost then null else savedMachines.${host}.profileId;
+        inherit harnesses;
+        max_concurrent = cfg.maxConcurrentPerHost;
+      });
     }
   );
 in
@@ -46,33 +55,13 @@ in
       description = "Tailscale host names allowed to use the API besides loopback.";
     };
     hosts = lib.mkOption {
-      description = "Execution hosts reachable through the local Herdr daemon.";
-      type = lib.types.attrsOf (
-        lib.types.submodule {
-          options = {
-            herdrAlias = lib.mkOption {
-              type = lib.types.nullOr lib.types.str;
-              default = null;
-              description = "Herdr saved-machine alias; null for the local Herdr.";
-            };
-            harnesses = lib.mkOption {
-              type = lib.types.listOf (
-                lib.types.enum [
-                  "claude"
-                  "codex"
-                  "opencode"
-                ]
-              );
-              description = "Agent harnesses the host can run.";
-            };
-            maxConcurrent = lib.mkOption {
-              type = lib.types.ints.positive;
-              default = 1;
-              description = "Runs occupying this host at once.";
-            };
-          };
-        }
-      );
+      type = lib.types.listOf lib.types.str;
+      description = "Execution hosts: this host or Herdr saved machines.";
+    };
+    maxConcurrentPerHost = lib.mkOption {
+      type = lib.types.ints.positive;
+      default = 1;
+      description = "Runs occupying one host at once.";
     };
   };
 
@@ -83,8 +72,12 @@ in
         message = "Fugate launchd supervision requires Darwin.";
       }
       {
-        assertion = cfg.hosts != { };
-        message = "services.fugate.hosts must configure at least one execution host.";
+        assertion = cfg.hosts != [ ];
+        message = "services.fugate.hosts must list at least one execution host.";
+      }
+      {
+        assertion = lib.all (host: host == localHost || savedMachines ? ${host}) cfg.hosts;
+        message = "services.fugate.hosts must be ${localHost} or programs.herdr.federation.savedMachines entries.";
       }
     ];
     home.activation.fugateState = lib.hm.dag.entryBetween [ "setupLaunchAgents" ] [ "writeBoundary" ] ''

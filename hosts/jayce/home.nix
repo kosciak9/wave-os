@@ -147,8 +147,14 @@ in
     herdr.federation = {
       coordinator = true;
       savedMachines = {
-        "9bb12fa0ed8a8e7cf7c014b24abcb2fb" = "machine_77b726453c93d640ca177e4d8ac56139";
-        "8ac324f745614d28882c5758333e4b42" = "machine_9026bebb6184fc9965a24b867836dce9";
+        renekton = {
+          profileId = "9bb12fa0ed8a8e7cf7c014b24abcb2fb";
+          machineId = "machine_77b726453c93d640ca177e4d8ac56139";
+        };
+        ahri = {
+          profileId = "8ac324f745614d28882c5758333e4b42";
+          machineId = "machine_9026bebb6184fc9965a24b867836dce9";
+        };
       };
     };
     home-manager.enable = true;
