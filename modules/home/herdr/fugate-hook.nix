@@ -6,11 +6,10 @@
 }:
 
 let
-  inherit (import ./fugate-status.nix { inherit lib pkgs; }) statusHook;
+  inherit (import ./fugate-status.nix { inherit lib pkgs; }) statusHook statusHookPackage;
   claudeDirectory =
     config.home.sessionVariables.CLAUDE_CONFIG_DIR or "${config.home.homeDirectory}/.claude";
   codexDirectory = config.home.sessionVariables.CODEX_HOME or "${config.home.homeDirectory}/.codex";
-  python = pkgs.python3.withPackages (ps: [ ps.tomlkit ]);
 in
 {
   # Herdr's installers keep foreign hook entries, so the Stop hook is merged
@@ -24,7 +23,7 @@ in
         "claudeSettings"
       ]
       ''
-        run ${lib.getExe python} ${./fugate-status-install.py} ${statusHook} ${builtins.storeDir} \
+        run ${lib.getExe' statusHookPackage "fugate-hook-install"} ${statusHook} ${builtins.storeDir} \
           ${lib.escapeShellArg "${claudeDirectory}/settings.json"} ${lib.escapeShellArg codexDirectory}
       '';
 }
