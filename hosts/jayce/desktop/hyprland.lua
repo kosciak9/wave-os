@@ -700,7 +700,7 @@ hl.bind(mod .. " + SPACE", hl.dsp.exec_cmd("vicinae toggle"), { description = "T
 hl.bind(mod .. " + CTRL + SPACE", hl.dsp.exec_cmd("vicinae cmd launch @tinkerbells/pass:pass"), { description = "Open passwords" })
 hl.bind(mod .. " + X", hl.dsp.exec_cmd("qs -c wave ipc call notifications toggle"), { description = "Toggle control center" })
 hl.bind(mod .. " + A", hl.dsp.exec_cmd("qs -c wave ipc call agenda toggle"), { description = "Toggle agenda" })
-hl.bind(mod .. " + G", hl.dsp.exec_cmd("vicinae cmd launch @wave-os/himalaya:inbox"), { description = "Open mail" })
+hl.bind(mod .. " + G", hl.dsp.exec_cmd("vicinae 'vicinae://launch/@wave-os/himalaya/inbox?toggle=true'"), { description = "Toggle mail" })
 hl.bind(mod .. " + D", hl.dsp.exec_cmd("voxtype record toggle"), { description = "Toggle dictation" })
 hl.bind(mod .. " + CTRL + D", hl.dsp.exec_cmd("voxtype record cancel"), { description = "Cancel dictation" })
 hl.bind(mod .. " + ALT + L", hl.dsp.exec_cmd("loginctl lock-session"), { description = "Lock session" })
