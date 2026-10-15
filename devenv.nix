@@ -18,9 +18,22 @@ let
     '';
   };
 
+  beam = pkgs.beamMinimalPackages.overrideScope (_: prev: { elixir = prev.elixir_1_19; });
+
 in
 {
+  # Mix and Hex state stays in the devenv, using the Hex and rebar3 from nixpkgs
+  # rather than archives installed into the user's ~/.mix.
+  env = {
+    MIX_HOME = "${config.devenv.state}/mix";
+    HEX_HOME = "${config.devenv.state}/hex";
+    ERL_LIBS = "${beam.hex}/lib/erlang/lib";
+    MIX_REBAR3 = lib.getExe beam.rebar3;
+  };
+
   packages = with pkgs; [
+    beam.elixir
+    beam.erlang
     betterleaks
     cargo
     clippy
