@@ -160,7 +160,6 @@
           };
         }
         // prev.lib.optionalAttrs prev.stdenv.hostPlatform.isDarwin {
-          asr-benchmark = final.callPackage ./packages/asr-benchmark.nix { };
           browser-decision = final.callPackage ./packages/browser-decision.nix { };
         };
       pkgs = import nixpkgs {
@@ -299,7 +298,6 @@
             substack-mcp
             workspace-mcp
             camofox-browser-source
-            asr-benchmark
             browser-decision
             camofox-browser-cli
             ;
