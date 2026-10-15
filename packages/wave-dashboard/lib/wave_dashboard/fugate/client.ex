@@ -2,7 +2,7 @@ defmodule WaveDashboard.Fugate.Client do
   @moduledoc """
   JSON:API client of the Fugate agent scheduler at `FUGATE_URL`.
 
-  Resources come back as `Job`, `Run`, `Host`, `Repository` and `Event` structs; attributes
+  Resources come back as `Job`, `Run`, `Host`, `Agent`, `Repository` and `Event` structs; attributes
   the dashboard does not know are dropped rather than turned into atoms.
   """
 
@@ -61,6 +61,15 @@ defmodule WaveDashboard.Fugate.Client do
     defstruct @enforce_keys ++ [:reachable, :max_concurrent, harnesses: [], active_runs: 0]
   end
 
+  defmodule Agent do
+    @moduledoc false
+    @enforce_keys [:id, :status]
+    defstruct @enforce_keys ++ [:machine, :kind, :title, :status_since, :cwd]
+
+    @doc "Whether the agent is waiting for a person, by Herdr's status."
+    def needs_attention?(%__MODULE__{status: status}), do: status == "blocked"
+  end
+
   defmodule Repository do
     @moduledoc false
     @enforce_keys [:name, :path]
@@ -80,6 +89,24 @@ defmodule WaveDashboard.Fugate.Client do
   def hosts do
     with {:ok, document} <- request(:get, "/api/hosts") do
       {:ok, Enum.map(document["data"], &host/1), get_in(document, ["meta", "max_concurrent"])}
+    end
+  end
+
+  @doc "Returns every agent in Herdr's directory, as relayed by Fugate."
+  def agents do
+    with {:ok, document} <- request(:get, "/api/agents") do
+      {:ok,
+       Enum.map(document["data"], fn %{"id" => id, "attributes" => attributes} ->
+         %Agent{
+           id: id,
+           status: attributes["status"],
+           machine: attributes["machine"],
+           kind: attributes["kind"],
+           title: attributes["title"],
+           status_since: datetime(attributes["status_since"]),
+           cwd: attributes["cwd"]
+         }
+       end)}
     end
   end
 

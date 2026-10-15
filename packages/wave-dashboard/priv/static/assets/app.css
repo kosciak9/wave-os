@@ -425,10 +425,10 @@ a.row-title, a.row .row-title { transition: color var(--fade); }
   transition: background-color var(--change), box-shadow var(--change);
 }
 
-.state-running, .state-starting, .state-queued { --state: var(--accent); }
+.state-running, .state-starting, .state-queued, .state-working { --state: var(--accent); }
 .state-waiting { --state: var(--info); }
 .state-blocked, .state-unknown, .state-lost { --state: var(--warning); }
-.state-completed { --state: var(--ok); }
+.state-completed, .state-done { --state: var(--ok); }
 .state-failed { --state: var(--error); }
 
 /* Active runs */

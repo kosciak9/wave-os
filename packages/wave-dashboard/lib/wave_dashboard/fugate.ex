@@ -1,8 +1,8 @@
 defmodule WaveDashboard.Fugate do
   @moduledoc """
-  The last known state of the Fugate scheduler: hosts, jobs, active runs and
-  the latest finished runs, polled in the background and broadcast whenever it
-  changes.
+  The last known state of the Fugate scheduler: hosts, jobs, active runs, the
+  latest finished runs and the Herdr agents Fugate relays, polled in the
+  background and broadcast whenever it changes.
   """
   use GenServer
   require Logger
@@ -16,14 +16,16 @@ defmodule WaveDashboard.Fugate do
   defmodule Snapshot do
     @moduledoc """
     `status` is `:not_configured`, `:loading`, `:ok` or `{:error, reason}`;
-    after an error the previous data is kept and shown as stale.
+    after an error the previous data is kept and shown as stale. `agents` is
+    `nil` while Herdr's directory cannot be read, which leaves the rest usable.
     """
     defstruct status: :loading,
               hosts: [],
               max_concurrent: nil,
               jobs: [],
               active_runs: [],
-              finished_runs: []
+              finished_runs: [],
+              agents: nil
   end
 
   def start_link(_opts), do: GenServer.start_link(__MODULE__, nil, name: __MODULE__)
@@ -96,8 +98,16 @@ defmodule WaveDashboard.Fugate do
          max_concurrent: max_concurrent,
          jobs: jobs,
          active_runs: active_runs,
-         finished_runs: finished_runs
+         finished_runs: finished_runs,
+         agents: agents()
        }}
+    end
+  end
+
+  defp agents do
+    case Client.agents() do
+      {:ok, agents} -> agents
+      {:error, _reason} -> nil
     end
   end
 

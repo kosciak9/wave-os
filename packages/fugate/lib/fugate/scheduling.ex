@@ -2,7 +2,7 @@ defmodule Fugate.Scheduling do
   @moduledoc "Jobs, their runs and the execution hosts they may use."
   use Ash.Domain, otp_app: :fugate, extensions: [AshJsonApi.Domain, AshAi]
 
-  alias Fugate.Scheduling.{Host, Job, Repository, Run, RunEvent}
+  alias Fugate.Scheduling.{Agent, Host, Job, Repository, Run, RunEvent}
 
   json_api do
     routes do
@@ -30,6 +30,10 @@ defmodule Fugate.Scheduling do
       base_route "/repositories", Repository do
         index :read
       end
+
+      base_route "/agents", Agent do
+        index :read
+      end
     end
   end
 
@@ -50,5 +54,6 @@ defmodule Fugate.Scheduling do
     resource RunEvent
     resource Host
     resource Repository
+    resource Agent
   end
 end

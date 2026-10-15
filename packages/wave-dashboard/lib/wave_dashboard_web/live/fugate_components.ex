@@ -6,7 +6,7 @@ defmodule WaveDashboardWeb.FugateComponents do
 
   alias WaveDashboard.Clock
   alias WaveDashboard.Fugate.{Client, Snapshot}
-  alias WaveDashboard.Fugate.Client.Run
+  alias WaveDashboard.Fugate.Client.{Agent, Run}
 
   attr :title, :string, required: true
 
@@ -85,8 +85,10 @@ defmodule WaveDashboardWeb.FugateComponents do
 
     assigns =
       assign(assigns,
-        running: length(assigns.snapshot.active_runs),
-        stuck: Enum.count(assigns.snapshot.active_runs, &Run.needs_attention?/1),
+        working:
+          assigns.snapshot.agents &&
+            Enum.count(assigns.snapshot.agents, &(&1.status == "working")),
+        stuck: needs_attention(assigns.snapshot),
         failed:
           Enum.count(
             assigns.snapshot.finished_runs,
@@ -98,11 +100,9 @@ defmodule WaveDashboardWeb.FugateComponents do
 
     ~H"""
     <dl class="stats">
-      <div class={["stat", @running > 0 && "stat-running"]}>
-        <dt>Running</dt>
-        <dd>
-          {@running}<span :if={@snapshot.max_concurrent} class="stat-of">/{@snapshot.max_concurrent}</span>
-        </dd>
+      <div class={["stat", @working && @working > 0 && "stat-running"]}>
+        <dt>Working</dt>
+        <dd>{@working || "—"}</dd>
       </div>
       <div class={["stat", @stuck > 0 && "stat-warning"]}>
         <dt>Needs attention</dt>
@@ -124,6 +124,25 @@ defmodule WaveDashboardWeb.FugateComponents do
     """
   end
 
+  # Herdr's blocked agents, plus stuck Fugate runs whose pane is not already among them.
+  defp needs_attention(snapshot) do
+    blocked = Enum.filter(snapshot.agents || [], &Agent.needs_attention?/1)
+
+    stuck_runs =
+      Enum.count(snapshot.active_runs, fn run ->
+        Run.needs_attention?(run) and
+          not Enum.any?(blocked, &same_pane?(&1, run))
+      end)
+
+    length(blocked) + stuck_runs
+  end
+
+  # Herdr prefixes federated pane ids, so a run's pane id is the tail of the agent's.
+  defp same_pane?(agent, run),
+    do:
+      run.pane_id != nil and agent.machine == run.host and
+        String.ends_with?(agent.id, run.pane_id)
+
   defp next_job(jobs) do
     jobs
     |> Enum.filter(&(&1.enabled and &1.next_run_at != nil))
@@ -143,7 +162,8 @@ defmodule WaveDashboardWeb.FugateComponents do
 
   # Unknown states from a newer Fugate fall back to the neutral style.
   defp state_class(state)
-       when state in ~w(queued starting running waiting blocked unknown lost completed failed abandoned),
+       when state in ~w(queued starting running waiting blocked unknown lost completed failed abandoned
+                        working idle done),
        do: state
 
   defp state_class(_state), do: "other"
