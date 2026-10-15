@@ -78,12 +78,7 @@ defmodule WaveDashboard.Fugate.Client do
          do: {:ok, document["data"] |> Enum.map(&job/1) |> Enum.sort_by(& &1.name)}
   end
 
-  def job(id) when is_binary(id) do
-    with {:ok, document} <- request(:get, "/api/jobs/" <> URI.encode(id)),
-         do: {:ok, job(document["data"])}
-  end
-
-  def job(%{"id" => id, "attributes" => attributes}) do
+  defp job(%{"id" => id, "attributes" => attributes}) do
     %Job{
       id: id,
       name: attributes["name"],
@@ -113,7 +108,7 @@ defmodule WaveDashboard.Fugate.Client do
 
   @doc "Returns a run with its events in the order they happened."
   def run_with_events(id) do
-    with {:ok, document} <- request(:get, "/api/runs/#{URI.encode(id)}?include=events") do
+    with {:ok, document} <- request(:get, "/api/runs/" <> segment(id) <> "?include=events") do
       events =
         (document["included"] || [])
         |> Enum.filter(&(&1["type"] == "run_event"))
@@ -127,10 +122,10 @@ defmodule WaveDashboard.Fugate.Client do
   def create_job(attributes), do: write_job(:post, "/api/jobs", nil, attributes)
 
   def update_job(id, attributes),
-    do: write_job(:patch, "/api/jobs/" <> URI.encode(id), id, attributes)
+    do: write_job(:patch, "/api/jobs/" <> segment(id), id, attributes)
 
   def delete_job(id) do
-    with {:ok, _document} <- request(:delete, "/api/jobs/" <> URI.encode(id)), do: :ok
+    with {:ok, _document} <- request(:delete, "/api/jobs/" <> segment(id)), do: :ok
   end
 
   @doc "Queues a manual run of a job."
@@ -142,7 +137,7 @@ defmodule WaveDashboard.Fugate.Client do
   def abandon(run_id) do
     body = %{"data" => %{"type" => "run", "id" => run_id, "attributes" => %{}}}
 
-    with {:ok, document} <- request(:patch, "/api/runs/#{URI.encode(run_id)}/abandon", body),
+    with {:ok, document} <- request(:patch, "/api/runs/" <> segment(run_id) <> "/abandon", body),
          do: {:ok, run(document["data"])}
   end
 
@@ -217,6 +212,9 @@ defmodule WaveDashboard.Fugate.Client do
   defp before_or_equal?(nil, _other), do: true
   defp before_or_equal?(_datetime, nil), do: false
   defp before_or_equal?(a, b), do: DateTime.compare(a, b) != :gt
+
+  # Ids come from URLs and events, so `/`, `?` and `#` must not change the request path.
+  defp segment(id), do: URI.encode(id, &URI.char_unreserved?/1)
 
   defp base_url do
     case Application.get_env(:wave_dashboard, :fugate_url) do

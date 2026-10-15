@@ -33,15 +33,16 @@ defmodule WaveDashboard.Fugate do
   def snapshot, do: GenServer.call(__MODULE__, :snapshot)
 
   @doc "Polls now, after an action changed the scheduler's state."
-  def refresh, do: send(__MODULE__, :poll)
+  def refresh, do: send(__MODULE__, :refresh)
 
   @impl true
   def init(nil) do
     if Client.configured?() do
       send(self(), :poll)
-      {:ok, %{snapshot: %Snapshot{}, poll: nil, timer: nil}}
+      {:ok, %{snapshot: %Snapshot{}, poll: nil, timer: nil, refresh?: false}}
     else
-      {:ok, %{snapshot: %Snapshot{status: :not_configured}, poll: nil, timer: nil}}
+      {:ok,
+       %{snapshot: %Snapshot{status: :not_configured}, poll: nil, timer: nil, refresh?: false}}
     end
   end
 
@@ -52,7 +53,6 @@ defmodule WaveDashboard.Fugate do
   def handle_info(:poll, %{snapshot: %Snapshot{status: :not_configured}} = state),
     do: {:noreply, state}
 
-  # A refresh during a poll waits for the next one, which is at most one interval away.
   def handle_info(:poll, %{poll: nil} = state) do
     if state.timer, do: Process.cancel_timer(state.timer)
     # Unlinked, so a response the client cannot parse never takes the dashboard down.
@@ -62,20 +62,26 @@ defmodule WaveDashboard.Fugate do
 
   def handle_info(:poll, state), do: {:noreply, state}
 
+  def handle_info(:refresh, %{poll: nil} = state), do: handle_info(:poll, state)
+
+  # The poll in flight may have read the state from before the action, so poll again after it.
+  def handle_info(:refresh, state), do: {:noreply, %{state | refresh?: true}}
+
   def handle_info({ref, result}, %{poll: ref} = state) do
     Process.demonitor(ref, [:flush])
-    snapshot = apply_result(state.snapshot, result)
-    if snapshot != state.snapshot, do: publish(snapshot)
-    timer = Process.send_after(self(), :poll, @poll_interval)
-    {:noreply, %{state | snapshot: snapshot, poll: nil, timer: timer}}
+    {:noreply, finish_poll(state, apply_result(state.snapshot, result))}
   end
 
   def handle_info({:DOWN, ref, :process, _pid, reason}, %{poll: ref} = state) do
     Logger.warning("Fugate poll crashed: #{inspect(reason)}")
-    timer = Process.send_after(self(), :poll, @poll_interval)
+    {:noreply, finish_poll(state, %{state.snapshot | status: {:error, reason}})}
+  end
 
-    {:noreply,
-     %{state | snapshot: %{state.snapshot | status: {:error, reason}}, poll: nil, timer: timer}}
+  defp finish_poll(state, snapshot) do
+    if snapshot != state.snapshot, do: publish(snapshot)
+    delay = if state.refresh?, do: 0, else: @poll_interval
+    timer = Process.send_after(self(), :poll, delay)
+    %{state | snapshot: snapshot, poll: nil, timer: timer, refresh?: false}
   end
 
   defp fetch do

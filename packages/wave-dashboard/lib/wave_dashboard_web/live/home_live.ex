@@ -18,7 +18,7 @@ defmodule WaveDashboardWeb.HomeLive do
     {:ok,
      socket
      |> assign(apps: Apps.list(), hosts: Tailnet.hosts(), today: Deadline.today())
-     |> assign(fugate: Fugate.snapshot())
+     |> assign_fugate(Fugate.snapshot())
      |> assign(editing?: false, deadline_error: nil, draft: nil)
      |> assign_deadline()}
   end
@@ -26,7 +26,7 @@ defmodule WaveDashboardWeb.HomeLive do
   @impl true
   def handle_info({:apps, apps}, socket), do: {:noreply, assign(socket, apps: apps)}
   def handle_info({:hosts, hosts}, socket), do: {:noreply, assign(socket, hosts: hosts)}
-  def handle_info({:fugate, snapshot}, socket), do: {:noreply, assign(socket, fugate: snapshot)}
+  def handle_info({:fugate, snapshot}, socket), do: {:noreply, assign_fugate(socket, snapshot)}
   def handle_info(:deadline_changed, socket), do: {:noreply, assign_deadline(socket)}
   def handle_info(:day_check, socket), do: {:noreply, assign(socket, today: Deadline.today())}
 
@@ -56,6 +56,13 @@ defmodule WaveDashboardWeb.HomeLive do
   end
 
   defp assign_deadline(socket), do: assign(socket, deadline: Deadline.load())
+
+  defp assign_fugate(socket, snapshot),
+    do:
+      assign(socket,
+        fugate_status: fugate_status(snapshot.status),
+        fugate_summary: fugate_summary(snapshot)
+      )
 
   @impl true
   def render(assigns) do
@@ -97,7 +104,7 @@ defmodule WaveDashboardWeb.HomeLive do
       <main>
         <.apps apps={@apps} />
         <.hosts hosts={@hosts} />
-        <.fugate snapshot={@fugate} />
+        <.fugate status={@fugate_status} summary={@fugate_summary} />
       </main>
 
       <footer class="theme-toggle-footer">
@@ -275,7 +282,8 @@ defmodule WaveDashboardWeb.HomeLive do
     """
   end
 
-  attr :snapshot, Fugate.Snapshot, required: true
+  attr :status, :string, required: true
+  attr :summary, :string, required: true
 
   defp fugate(assigns) do
     ~H"""
@@ -283,10 +291,10 @@ defmodule WaveDashboardWeb.HomeLive do
       <div class="project-header">Agents</div>
       <ul class="branch-list">
         <li class="branch-item">
-          <.link navigate={~p"/fugate"}>
-            <span class={["status", fugate_status(@snapshot.status)]}></span>
+          <.link href={~p"/fugate"}>
+            <span class={["status", @status]}></span>
             <img src={~p"/images/fugate-favicon.png"} alt="" class="avatar" /> Fugate
-            <span class="host-badge">{fugate_summary(@snapshot)}</span>
+            <span class="host-badge">{@summary}</span>
           </.link>
         </li>
       </ul>

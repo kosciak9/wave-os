@@ -6,10 +6,20 @@ defmodule WaveDashboardWeb.FugateRunLive do
 
   alias WaveDashboard.Fugate
   alias WaveDashboard.Fugate.Client
+  alias WaveDashboard.Fugate.Client.Run
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
-    socket = assign(socket, id: id, snapshot: Fugate.snapshot(), run: nil, events: [], error: nil)
+    socket =
+      assign(socket,
+        id: id,
+        snapshot: Fugate.snapshot(),
+        run: nil,
+        events: [],
+        error: nil,
+        abandoning?: false,
+        page_title: "Run · Fugate"
+      )
 
     if connected?(socket) do
       Fugate.subscribe()
@@ -34,6 +44,22 @@ defmodule WaveDashboardWeb.FugateRunLive do
   def handle_async(:load, {:exit, reason}, socket),
     do: {:noreply, assign(socket, error: Client.describe(reason))}
 
+  def handle_async(:abandon, result, socket) do
+    socket = socket |> assign(abandoning?: false) |> clear_flash()
+
+    case result do
+      {:ok, {:ok, run}} ->
+        Fugate.refresh()
+        {:noreply, socket |> assign(run: run) |> put_flash(:info, "Run abandoned") |> load()}
+
+      {:ok, {:error, reason}} ->
+        {:noreply, put_flash(socket, :error, Client.describe(reason))}
+
+      {:exit, reason} ->
+        {:noreply, put_flash(socket, :error, Client.describe(reason))}
+    end
+  end
+
   @impl true
   def handle_info({:fugate, snapshot}, socket) do
     socket = assign(socket, snapshot: snapshot)
@@ -46,21 +72,14 @@ defmodule WaveDashboardWeb.FugateRunLive do
   end
 
   @impl true
+  def handle_event("abandon", _params, %{assigns: %{abandoning?: true}} = socket),
+    do: {:noreply, socket}
+
   def handle_event("abandon", _params, socket) do
-    case Client.abandon(socket.assigns.id) do
-      {:ok, run} ->
-        Fugate.refresh()
+    id = socket.assigns.id
 
-        {:noreply,
-         socket
-         |> assign(run: run)
-         |> clear_flash()
-         |> put_flash(:info, "Run abandoned")
-         |> load()}
-
-      {:error, reason} ->
-        {:noreply, socket |> clear_flash() |> put_flash(:error, Client.describe(reason))}
-    end
+    {:noreply,
+     socket |> assign(abandoning?: true) |> start_async(:abandon, fn -> Client.abandon(id) end)}
   end
 
   @impl true
@@ -68,14 +87,15 @@ defmodule WaveDashboardWeb.FugateRunLive do
     ~H"""
     <div class="container fugate">
       <.page_header title="Run" back={~p"/fugate"} back_label="Fugate">
-        <:actions :if={@run && active?(@run)}>
+        <:actions :if={@run && Run.active?(@run)}>
           <button
             type="button"
             class="button button-danger"
             phx-click="abandon"
+            disabled={@abandoning?}
             data-confirm="Abandon this run? The agent itself is left running."
           >
-            Abandon
+            {if @abandoning?, do: "Abandoning…", else: "Abandon"}
           </button>
         </:actions>
       </.page_header>

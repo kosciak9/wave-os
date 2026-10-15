@@ -20,14 +20,23 @@ defmodule WaveDashboardWeb.FugateLive do
   @impl true
   def mount(_params, _session, socket) do
     if connected?(socket), do: Fugate.subscribe()
-    {:ok, assign(socket, snapshot: Fugate.snapshot(), form: nil, job_id: nil, form_errors: [])}
+
+    {:ok,
+     assign(socket,
+       snapshot: Fugate.snapshot(),
+       form: nil,
+       job_id: nil,
+       form_errors: [],
+       pending: nil
+     )}
   end
 
   @impl true
   def handle_params(params, _uri, socket),
     do: {:noreply, apply_action(socket, socket.assigns.live_action, params)}
 
-  defp apply_action(socket, :index, _params), do: assign(socket, form: nil, job_id: nil)
+  defp apply_action(socket, :index, _params),
+    do: assign(socket, form: nil, job_id: nil, page_title: "Fugate")
 
   defp apply_action(socket, :new, _params) do
     params = %{
@@ -38,7 +47,12 @@ defmodule WaveDashboardWeb.FugateLive do
       "enabled" => "true"
     }
 
-    assign(socket, form: to_form(params, as: :job), job_id: nil, form_errors: [])
+    assign(socket,
+      form: to_form(params, as: :job),
+      job_id: nil,
+      form_errors: [],
+      page_title: "New job · Fugate"
+    )
   end
 
   defp apply_action(socket, :edit, %{"id" => id}) do
@@ -49,7 +63,12 @@ defmodule WaveDashboardWeb.FugateLive do
         |> push_patch(to: ~p"/fugate")
 
       job ->
-        assign(socket, form: to_form(job_params(job), as: :job), job_id: id, form_errors: [])
+        assign(socket,
+          form: to_form(job_params(job), as: :job),
+          job_id: id,
+          form_errors: [],
+          page_title: "#{job.name} · Fugate"
+        )
     end
   end
 
@@ -77,66 +96,111 @@ defmodule WaveDashboardWeb.FugateLive do
       {:noreply,
        assign(socket, form: to_form(params, as: :job, errors: socket.assigns.form.errors))}
 
+  # One request at a time: the buttons are disabled meanwhile, and events sent anyway are dropped.
+  def handle_event(_event, _params, %{assigns: %{pending: {_, _}}} = socket),
+    do: {:noreply, socket}
+
   def handle_event("save_job", %{"job" => params}, socket) do
     attributes = attributes(params)
+    job_id = socket.assigns.job_id
 
-    result =
-      case socket.assigns.job_id do
+    socket
+    |> assign(form: to_form(params, as: :job, errors: socket.assigns.form.errors))
+    |> start_request({"save_job", job_id}, fn ->
+      case job_id do
         nil -> Client.create_job(attributes)
         id -> Client.update_job(id, attributes)
       end
+    end)
+  end
 
-    case result do
-      {:ok, job} ->
-        Fugate.refresh()
+  def handle_event("toggle_job", %{"id" => id}, socket) do
+    case Enum.find(socket.assigns.snapshot.jobs, &(&1.id == id)) do
+      nil ->
+        {:noreply, put_flash(socket, :error, "Job not found")}
 
-        {:noreply,
-         socket
-         |> put_flash(:info, "Saved #{job.name}")
-         |> push_patch(to: ~p"/fugate")}
+      job ->
+        enabled = not job.enabled
 
-      {:error, {:api, _status, errors}} ->
-        {field_errors, form_errors} =
-          Enum.split_with(errors, fn {field, _} -> field in @fields end)
-
-        errors =
-          Enum.map(field_errors, fn {field, detail} ->
-            {String.to_existing_atom(field), {detail, []}}
-          end)
-
-        {:noreply,
-         assign(socket,
-           form: to_form(params, as: :job, errors: errors, action: :validate),
-           form_errors: Enum.map(form_errors, &elem(&1, 1))
-         )}
-
-      {:error, reason} ->
-        {:noreply, assign(socket, form_errors: [Client.describe(reason)])}
+        start_request(socket, {"toggle_job", id}, fn ->
+          Client.update_job(id, %{"enabled" => enabled})
+        end)
     end
   end
 
-  def handle_event("toggle_job", %{"id" => id, "enabled" => enabled}, socket),
-    do: {:noreply, act(socket, Client.update_job(id, %{"enabled" => enabled != "true"}))}
-
   def handle_event("delete_job", %{"id" => id}, socket),
-    do: {:noreply, act(socket, Client.delete_job(id), "Job deleted")}
+    do: start_request(socket, {"delete_job", id}, fn -> Client.delete_job(id) end)
 
   def handle_event("run_now", %{"id" => id}, socket),
-    do: {:noreply, act(socket, Client.run_now(id), "Run queued")}
+    do: start_request(socket, {"run_now", id}, fn -> Client.run_now(id) end)
 
   def handle_event("abandon", %{"id" => id}, socket),
-    do: {:noreply, act(socket, Client.abandon(id), "Run abandoned")}
+    do: start_request(socket, {"abandon", id}, fn -> Client.abandon(id) end)
 
-  defp act(socket, result, message \\ nil)
+  defp start_request(socket, pending, request),
+    do: {:noreply, socket |> assign(pending: pending) |> start_async(:request, request)}
 
-  defp act(socket, {:error, reason}, _message),
-    do: socket |> clear_flash() |> put_flash(:error, Client.describe(reason))
+  @impl true
+  def handle_async(:request, result, socket) do
+    {event, _id} = socket.assigns.pending
+    socket = assign(socket, pending: nil)
 
-  defp act(socket, _ok, message) do
+    case {event, result} do
+      {"save_job", {:ok, result}} ->
+        {:noreply, saved(socket, result)}
+
+      {"save_job", {:exit, reason}} ->
+        {:noreply, assign(socket, form_errors: [Client.describe(reason)])}
+
+      {_event, {:ok, {:error, reason}}} ->
+        {:noreply, error_flash(socket, reason)}
+
+      {_event, {:exit, reason}} ->
+        {:noreply, error_flash(socket, reason)}
+
+      {event, {:ok, _ok}} ->
+        {:noreply, done(socket, event)}
+    end
+  end
+
+  defp saved(socket, {:ok, job}) do
+    Fugate.refresh()
+
+    socket
+    |> put_flash(:info, "Saved #{job.name}")
+    |> push_patch(to: ~p"/fugate")
+  end
+
+  defp saved(socket, {:error, {:api, _status, errors}}) do
+    {field_errors, form_errors} = Enum.split_with(errors, fn {field, _} -> field in @fields end)
+
+    errors =
+      Enum.map(field_errors, fn {field, detail} ->
+        {String.to_existing_atom(field), {detail, []}}
+      end)
+
+    assign(socket,
+      form: to_form(socket.assigns.form.params, as: :job, errors: errors, action: :validate),
+      form_errors: Enum.map(form_errors, &elem(&1, 1))
+    )
+  end
+
+  defp saved(socket, {:error, reason}), do: assign(socket, form_errors: [Client.describe(reason)])
+
+  defp done(socket, event) do
     Fugate.refresh()
     socket = clear_flash(socket)
-    if message, do: put_flash(socket, :info, message), else: socket
+
+    case event do
+      "toggle_job" -> socket
+      "delete_job" -> put_flash(socket, :info, "Job deleted")
+      "run_now" -> put_flash(socket, :info, "Run queued")
+      "abandon" -> put_flash(socket, :info, "Run abandoned")
+    end
   end
+
+  defp error_flash(socket, reason),
+    do: socket |> clear_flash() |> put_flash(:error, Client.describe(reason))
 
   # Fields that do not apply to the chosen schedule are cleared, so a job never
   # keeps a stale cron expression or one-off time.
@@ -194,12 +258,13 @@ defmodule WaveDashboardWeb.FugateLive do
         errors={@form_errors}
         editing?={@job_id != nil}
         hosts={host_options(@snapshot, @form)}
+        saving?={match?({"save_job", _id}, @pending)}
       />
 
       <main :if={@snapshot.status != :not_configured}>
         <.hosts snapshot={@snapshot} />
-        <.active_runs runs={@snapshot.active_runs} jobs={@snapshot.jobs} />
-        <.jobs jobs={@snapshot.jobs} />
+        <.active_runs runs={@snapshot.active_runs} jobs={@snapshot.jobs} pending={@pending} />
+        <.jobs jobs={@snapshot.jobs} pending={@pending} />
         <.recent_runs
           runs={@snapshot.finished_runs}
           jobs={@snapshot.jobs}
@@ -254,6 +319,7 @@ defmodule WaveDashboardWeb.FugateLive do
 
   attr :runs, :list, required: true
   attr :jobs, :list, required: true
+  attr :pending, :any, required: true
 
   defp active_runs(assigns) do
     ~H"""
@@ -287,9 +353,10 @@ defmodule WaveDashboardWeb.FugateLive do
               class="button button-danger"
               phx-click="abandon"
               phx-value-id={run.id}
+              disabled={@pending != nil}
               data-confirm="Abandon this run? The agent itself is left running."
             >
-              Abandon
+              {if @pending == {"abandon", run.id}, do: "Abandoning…", else: "Abandon"}
             </button>
           </div>
         </li>
@@ -300,6 +367,7 @@ defmodule WaveDashboardWeb.FugateLive do
   end
 
   attr :jobs, :list, required: true
+  attr :pending, :any, required: true
 
   defp jobs(assigns) do
     ~H"""
@@ -323,16 +391,21 @@ defmodule WaveDashboardWeb.FugateLive do
             </div>
           </dl>
           <div class="row-actions">
-            <button type="button" class="button" phx-click="run_now" phx-value-id={job.id}>
-              Run now
+            <button
+              type="button"
+              class="button"
+              phx-click="run_now"
+              phx-value-id={job.id}
+              disabled={@pending != nil}
+            >
+              {if @pending == {"run_now", job.id}, do: "Queuing…", else: "Run now"}
             </button>
             <button
               type="button"
               class="button button-quiet"
               phx-click="toggle_job"
               phx-value-id={job.id}
-              phx-value-enabled={to_string(job.enabled)}
-              aria-pressed={to_string(job.enabled)}
+              disabled={@pending != nil}
             >
               {if job.enabled, do: "Disable", else: "Enable"}
             </button>
@@ -342,9 +415,10 @@ defmodule WaveDashboardWeb.FugateLive do
               class="button button-danger"
               phx-click="delete_job"
               phx-value-id={job.id}
+              disabled={@pending != nil}
               data-confirm={"Delete #{job.name} and its run history?"}
             >
-              Delete
+              {if @pending == {"delete_job", job.id}, do: "Deleting…", else: "Delete"}
             </button>
           </div>
         </li>
@@ -385,6 +459,7 @@ defmodule WaveDashboardWeb.FugateLive do
   attr :errors, :list, required: true
   attr :editing?, :boolean, required: true
   attr :hosts, :list, required: true
+  attr :saving?, :boolean, required: true
 
   defp job_form(assigns) do
     assigns =
@@ -489,7 +564,9 @@ defmodule WaveDashboardWeb.FugateLive do
           /> Enabled
         </label>
         <div class="row-actions">
-          <button type="submit" class="button" phx-disable-with="Saving…">Save</button>
+          <button type="submit" class="button" disabled={@saving?}>
+            {if @saving?, do: "Saving…", else: "Save"}
+          </button>
           <.link patch={~p"/fugate"} class="button button-quiet">Cancel</.link>
         </div>
       </.form>

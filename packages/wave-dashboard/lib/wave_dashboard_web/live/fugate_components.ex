@@ -3,7 +3,6 @@ defmodule WaveDashboardWeb.FugateComponents do
   use WaveDashboardWeb, :html
 
   alias WaveDashboard.Fugate.{Client, Snapshot}
-  alias WaveDashboard.Fugate.Client.Run
 
   attr :title, :string, required: true
   attr :back, :string, required: true
@@ -78,8 +77,6 @@ defmodule WaveDashboardWeb.FugateComponents do
        do: state
 
   defp state_class(_state), do: "other"
-
-  def active?(%Run{} = run), do: Run.active?(run)
 
   def job_name(jobs, job_id) do
     case Enum.find(jobs, &(&1.id == job_id)) do

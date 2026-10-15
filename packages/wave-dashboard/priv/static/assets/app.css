@@ -639,7 +639,6 @@ a.run-line:focus-visible,
   flex-direction: column;
   gap: 0.25rem;
   min-inline-size: 0;
-  flex: 1 1 14rem;
   border: 0;
   padding: 0;
   margin: 0;
@@ -657,6 +656,8 @@ a.run-line:focus-visible,
   flex-wrap: wrap;
   gap: 1rem;
 }
+
+.field-row > .field { flex: 1 1 14rem; }
 
 .job-form :is(input[type="text"], input[type="datetime-local"], select, textarea) {
   inline-size: 100%;
@@ -690,4 +691,3 @@ a.run-line:focus-visible,
 
 .check input { accent-color: var(--kn-accent); }
 
-.status.unknown { background: var(--kn-text-muted); }
