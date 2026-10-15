@@ -4,7 +4,7 @@ defmodule WaveDashboardWeb.FugateRunLive do
 
   import WaveDashboardWeb.FugateComponents
 
-  alias WaveDashboard.Fugate
+  alias WaveDashboard.{Clock, Fugate}
   alias WaveDashboard.Fugate.Client
   alias WaveDashboard.Fugate.Client.Run
 
@@ -13,6 +13,7 @@ defmodule WaveDashboardWeb.FugateRunLive do
     socket =
       assign(socket,
         id: id,
+        now: DateTime.utc_now(),
         snapshot: Fugate.snapshot(),
         run: nil,
         events: [],
@@ -23,6 +24,7 @@ defmodule WaveDashboardWeb.FugateRunLive do
 
     if connected?(socket) do
       Fugate.subscribe()
+      Clock.tick_next_minute(:tick)
       {:ok, load(socket)}
     else
       {:ok, socket}
@@ -61,6 +63,11 @@ defmodule WaveDashboardWeb.FugateRunLive do
   end
 
   @impl true
+  def handle_info(:tick, socket) do
+    Clock.tick_next_minute(:tick)
+    {:noreply, assign(socket, now: DateTime.utc_now())}
+  end
+
   def handle_info({:fugate, snapshot}, socket) do
     socket = assign(socket, snapshot: snapshot)
 
@@ -85,8 +92,8 @@ defmodule WaveDashboardWeb.FugateRunLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="container fugate">
-      <.page_header title="Run" back={~p"/fugate"} back_label="Fugate">
+    <div class="page">
+      <.page_header title="Run" crumbs={[{"ahri.wave", ~p"/"}, {"Fugate", ~p"/fugate"}]}>
         <:actions :if={@run && Run.active?(@run)}>
           <button
             type="button"
@@ -102,65 +109,71 @@ defmodule WaveDashboardWeb.FugateRunLive do
 
       <.flash flash={@flash} />
       <.connection snapshot={@snapshot} />
-      <p :if={@error} class="error" role="alert">{@error}</p>
+      <p :if={@error} class="banner banner-error" role="alert">{@error}</p>
+      <p :if={!@run and !@error} class="muted">Loading…</p>
 
-      <section :if={@run} class="project">
-        <div class="project-header section-header">
-          {job_name(@snapshot.jobs, @run.job_id)}
-          <.state_badge state={@run.state} />
-        </div>
-        <dl class="run-facts run-details">
-          <div>
-            <dt>Run</dt><dd class="mono">{@run.id}</dd>
-          </div>
-          <div>
-            <dt>Trigger</dt><dd>{@run.trigger || "—"}</dd>
-          </div>
-          <div>
-            <dt>Host</dt><dd>{@run.host || "—"}</dd>
-          </div>
-          <div>
-            <dt>Agent</dt><dd>{@run.agent_name || "—"}</dd>
-          </div>
-          <div>
-            <dt>Workspace</dt><dd class="mono">{@run.workspace_id || "—"}</dd>
-          </div>
-          <div>
-            <dt>Pane</dt><dd class="mono">{@run.pane_id || "—"}</dd>
-          </div>
-          <div>
-            <dt>Last turn</dt><dd>{@run.last_turn || "—"}</dd>
-          </div>
-          <div>
-            <dt>Wakes</dt><dd>{format_time(@run.wake_at)}</dd>
-          </div>
-          <div>
-            <dt>Checkpoint</dt><dd>{format_time(@run.checkpoint_at)}</dd>
-          </div>
-          <div>
-            <dt>Created</dt><dd>{format_time(@run.inserted_at)}</dd>
-          </div>
-          <div>
-            <dt>Finished</dt><dd>{format_time(@run.finished_at)}</dd>
-          </div>
-        </dl>
-      </section>
-
-      <section :if={@run} class="project">
-        <div class="project-header">Events</div>
-        <ol class="branch-list event-list">
-          <li :for={event <- @events} class="branch-item event-item">
-            <div class="run-line">
-              <span class="run-job mono">{event.kind}</span>
-              <span class="host-badge">{format_time(event.inserted_at)}</span>
+      <div :if={@run} class="columns">
+        <main class="column-main">
+          <section class="card">
+            <div class="card-header">
+              <h2 class="card-title">{job_name(@snapshot.jobs, @run.job_id)}</h2>
+              <.state_badge state={@run.state} />
             </div>
-            <pre :if={event.data != %{}} class="event-data">{JSON.encode!(event.data)}</pre>
-          </li>
-          <li :if={@events == []} class="branch-item muted">No events.</li>
-        </ol>
-      </section>
+            <h3 class="group-title">Events</h3>
+            <p :if={@events == []} class="muted">No events.</p>
+            <ol :if={@events != []} class="timeline">
+              <li :for={event <- @events}>
+                <div class="timeline-head">
+                  <span class="mono">{event.kind}</span>
+                  <span class="row-meta">{Clock.format(event.inserted_at)}</span>
+                </div>
+                <pre :if={event.data != %{}} class="event-data">{JSON.encode!(event.data)}</pre>
+              </li>
+            </ol>
+          </section>
+        </main>
 
-      <p :if={!@run and !@error} class="notice">Loading…</p>
+        <aside class="column-side">
+          <section class="card">
+            <h2 class="card-title">Details</h2>
+            <dl class="facts facts-list">
+              <div>
+                <dt>Host</dt><dd>{@run.host || "—"}</dd>
+              </div>
+              <div>
+                <dt>Trigger</dt><dd>{@run.trigger || "—"}</dd>
+              </div>
+              <div>
+                <dt>Created</dt><dd><.time at={@run.inserted_at} now={@now} /></dd>
+              </div>
+              <div>
+                <dt>Checkpoint</dt><dd><.time at={@run.checkpoint_at} now={@now} /></dd>
+              </div>
+              <div>
+                <dt>Wakes</dt><dd><.time at={@run.wake_at} now={@now} /></dd>
+              </div>
+              <div>
+                <dt>Finished</dt><dd><.time at={@run.finished_at} now={@now} /></dd>
+              </div>
+              <div>
+                <dt>Last turn</dt><dd>{@run.last_turn || "—"}</dd>
+              </div>
+              <div>
+                <dt>Agent</dt><dd>{@run.agent_name || "—"}</dd>
+              </div>
+              <div>
+                <dt>Workspace</dt><dd class="mono">{@run.workspace_id || "—"}</dd>
+              </div>
+              <div>
+                <dt>Pane</dt><dd class="mono">{@run.pane_id || "—"}</dd>
+              </div>
+              <div>
+                <dt>Run</dt><dd class="mono">{@run.id}</dd>
+              </div>
+            </dl>
+          </section>
+        </aside>
+      </div>
     </div>
     """
   end

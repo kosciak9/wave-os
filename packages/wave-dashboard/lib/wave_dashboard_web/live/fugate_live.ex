@@ -9,8 +9,9 @@ defmodule WaveDashboardWeb.FugateLive do
 
   import WaveDashboardWeb.FugateComponents
 
-  alias WaveDashboard.Fugate
+  alias WaveDashboard.{Clock, Fugate}
   alias WaveDashboard.Fugate.Client
+  alias WaveDashboard.Fugate.Client.Run
 
   @harnesses ~w(claude codex opencode)
   @schedules [{"Manual", "manual"}, {"Cron", "cron"}, {"Once", "once"}]
@@ -19,10 +20,14 @@ defmodule WaveDashboardWeb.FugateLive do
 
   @impl true
   def mount(_params, _session, socket) do
-    if connected?(socket), do: Fugate.subscribe()
+    if connected?(socket) do
+      Fugate.subscribe()
+      Clock.tick_next_minute(:tick)
+    end
 
     {:ok,
      assign(socket,
+       now: DateTime.utc_now(),
        snapshot: Fugate.snapshot(),
        form: nil,
        job_id: nil,
@@ -90,6 +95,11 @@ defmodule WaveDashboardWeb.FugateLive do
   @impl true
   def handle_info({:fugate, snapshot}, socket), do: {:noreply, assign(socket, snapshot: snapshot)}
 
+  def handle_info(:tick, socket) do
+    Clock.tick_next_minute(:tick)
+    {:noreply, assign(socket, now: DateTime.utc_now())}
+  end
+
   @impl true
   def handle_event("change_job", %{"job" => params}, socket),
     do:
@@ -112,20 +122,6 @@ defmodule WaveDashboardWeb.FugateLive do
         id -> Client.update_job(id, attributes)
       end
     end)
-  end
-
-  def handle_event("toggle_job", %{"id" => id}, socket) do
-    case Enum.find(socket.assigns.snapshot.jobs, &(&1.id == id)) do
-      nil ->
-        {:noreply, put_flash(socket, :error, "Job not found")}
-
-      job ->
-        enabled = not job.enabled
-
-        start_request(socket, {"toggle_job", id}, fn ->
-          Client.update_job(id, %{"enabled" => enabled})
-        end)
-    end
   end
 
   def handle_event("delete_job", %{"id" => id}, socket),
@@ -192,8 +188,7 @@ defmodule WaveDashboardWeb.FugateLive do
     socket = clear_flash(socket)
 
     case event do
-      "toggle_job" -> socket
-      "delete_job" -> put_flash(socket, :info, "Job deleted")
+      "delete_job" -> socket |> put_flash(:info, "Job deleted") |> push_patch(to: ~p"/fugate")
       "run_now" -> put_flash(socket, :info, "Run queued")
       "abandon" -> put_flash(socket, :info, "Run abandoned")
     end
@@ -242,8 +237,8 @@ defmodule WaveDashboardWeb.FugateLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="container fugate">
-      <.page_header title="Fugate" back={~p"/"} back_label="Wave">
+    <div class="page">
+      <.page_header title="Fugate" crumbs={[{"ahri.wave", ~p"/"}]}>
         <:actions :if={@live_action == :index and @snapshot.status != :not_configured}>
           <.link patch={~p"/fugate/jobs/new"} class="button">New job</.link>
         </:actions>
@@ -252,24 +247,34 @@ defmodule WaveDashboardWeb.FugateLive do
       <.flash flash={@flash} />
       <.connection snapshot={@snapshot} />
 
-      <.job_form
-        :if={@form}
-        form={@form}
-        errors={@form_errors}
-        editing?={@job_id != nil}
-        hosts={host_options(@snapshot, @form)}
-        saving?={match?({"save_job", _id}, @pending)}
-      />
+      <div :if={@snapshot.status != :not_configured} class="stack">
+        <.stats snapshot={@snapshot} now={@now} />
 
-      <main :if={@snapshot.status != :not_configured}>
-        <.hosts snapshot={@snapshot} />
-        <.active_runs runs={@snapshot.active_runs} jobs={@snapshot.jobs} pending={@pending} />
-        <.jobs jobs={@snapshot.jobs} pending={@pending} />
-        <.recent_runs
-          runs={@snapshot.finished_runs}
-          jobs={@snapshot.jobs}
-        />
-      </main>
+        <div class="columns">
+          <main class="column-main">
+            <.job_form
+              :if={@form}
+              form={@form}
+              errors={@form_errors}
+              job_id={@job_id}
+              hosts={host_options(@snapshot, @form)}
+              pending={@pending}
+            />
+            <.active_runs
+              runs={by_urgency(@snapshot.active_runs)}
+              jobs={@snapshot.jobs}
+              pending={@pending}
+              now={@now}
+            />
+            <.recent_runs runs={@snapshot.finished_runs} jobs={@snapshot.jobs} now={@now} />
+          </main>
+
+          <aside class="column-side">
+            <.jobs jobs={@snapshot.jobs} pending={@pending} now={@now} />
+            <.hosts snapshot={@snapshot} />
+          </aside>
+        </div>
+      </div>
     </div>
     """
   end
@@ -280,30 +285,157 @@ defmodule WaveDashboardWeb.FugateLive do
     |> Enum.uniq()
   end
 
+  attr :runs, :list, required: true
+  attr :jobs, :list, required: true
+  attr :pending, :any, required: true
+  attr :now, DateTime, required: true
+
+  defp active_runs(assigns) do
+    ~H"""
+    <section class="card">
+      <div class="card-header">
+        <h2 class="card-title">Active runs</h2>
+        <span class="card-detail">{length(@runs)}</span>
+      </div>
+      <p :if={@runs == []} class="muted">Nothing running.</p>
+      <ul class="run-cards">
+        <li :for={run <- @runs} class={["run-card", Run.needs_attention?(run) && "run-card-stuck"]}>
+          <div class="run-card-head">
+            <.state_badge state={run.state} />
+            <.link navigate={~p"/fugate/runs/#{run.id}"} class="row-title">
+              {job_name(@jobs, run.job_id)}
+            </.link>
+            <span class="row-meta">{run.host || "unassigned"}</span>
+          </div>
+          <dl class="facts">
+            <div>
+              <dt>Started</dt><dd><.time at={run.inserted_at} now={@now} /></dd>
+            </div>
+            <div>
+              <dt>Checkpoint</dt><dd><.time at={run.checkpoint_at} now={@now} /></dd>
+            </div>
+            <div :if={run.wake_at}>
+              <dt>Wakes</dt><dd><.time at={run.wake_at} now={@now} /></dd>
+            </div>
+            <div :if={run.last_turn}>
+              <dt>Turn</dt><dd>{run.last_turn}</dd>
+            </div>
+          </dl>
+          <button
+            type="button"
+            class="button button-small button-quiet button-quiet-danger run-card-action"
+            phx-click="abandon"
+            phx-value-id={run.id}
+            disabled={@pending != nil}
+            data-confirm="Abandon this run? The agent itself is left running."
+          >
+            {if @pending == {"abandon", run.id}, do: "Abandoning…", else: "Abandon"}
+          </button>
+        </li>
+      </ul>
+    </section>
+    """
+  end
+
+  attr :runs, :list, required: true
+  attr :jobs, :list, required: true
+  attr :now, DateTime, required: true
+
+  defp recent_runs(assigns) do
+    ~H"""
+    <section class="card">
+      <h2 class="card-title">Recent runs</h2>
+      <p :if={@runs == []} class="muted">No finished runs.</p>
+      <ul :if={@runs != []} class="rows">
+        <li :for={run <- @runs}>
+          <.link navigate={~p"/fugate/runs/#{run.id}"} class="row">
+            <.state_badge state={run.state} />
+            <span class="row-title">{job_name(@jobs, run.job_id)}</span>
+            <span class="row-meta sep">
+              <span>{run.host || "—"}</span>
+              <.time at={run.finished_at || run.updated_at} now={@now} />
+            </span>
+          </.link>
+        </li>
+      </ul>
+    </section>
+    """
+  end
+
+  attr :jobs, :list, required: true
+  attr :pending, :any, required: true
+  attr :now, DateTime, required: true
+
+  defp jobs(assigns) do
+    ~H"""
+    <section class="card">
+      <div class="card-header">
+        <h2 class="card-title">Jobs</h2>
+        <span class="card-detail">{Enum.count(@jobs, & &1.enabled)}/{length(@jobs)} enabled</span>
+      </div>
+      <p :if={@jobs == []} class="muted">No jobs yet.</p>
+      <ul :if={@jobs != []} class="rows">
+        <li :for={job <- @jobs} class={["row", not job.enabled && "row-dim"]}>
+          <div class="row-stack">
+            <.link patch={~p"/fugate/jobs/#{job.id}/edit"} class="row-title">{job.name}</.link>
+            <span class="row-meta sep">
+              <span>{job.harness}</span>
+              <span>{schedule(job)}</span>
+              <span :if={job.enabled and job.next_run_at}>
+                next <.time at={job.next_run_at} now={@now} />
+              </span>
+              <span :if={not job.enabled}>disabled</span>
+            </span>
+          </div>
+          <button
+            type="button"
+            class="button button-small button-quiet"
+            phx-click="run_now"
+            phx-value-id={job.id}
+            disabled={@pending != nil}
+          >
+            {if @pending == {"run_now", job.id}, do: "Queuing…", else: "Run"}
+          </button>
+        </li>
+      </ul>
+    </section>
+    """
+  end
+
+  defp schedule(%{schedule: "cron"} = job), do: job.cron
+  defp schedule(job), do: job.schedule
+
   attr :snapshot, :any, required: true
 
   defp hosts(assigns) do
     ~H"""
-    <section class="project">
-      <div class="project-header section-header">
-        Hosts
-        <span :if={@snapshot.max_concurrent} class="section-detail">
-          {@snapshot.hosts |> Enum.map(& &1.active_runs) |> Enum.sum()}/{@snapshot.max_concurrent} running
-        </span>
-      </div>
-      <ul class="branch-list">
-        <li :for={host <- @snapshot.hosts} class="branch-item host-item">
+    <section class="card">
+      <h2 class="card-title">Hosts</h2>
+      <p :if={@snapshot.hosts == []} class="muted">No hosts.</p>
+      <ul :if={@snapshot.hosts != []} class="rows">
+        <li :for={host <- @snapshot.hosts} class="row">
           <span
             class={["status", reachability(host.reachable)]}
             title={reachability_title(host.reachable)}
           ></span>
-          <span class="host-name">{host.name}</span>
-          <span class="host-detail">
-            {host.active_runs}/{host.max_concurrent || "—"}
-            <span :if={host.harnesses != []}>· {Enum.join(host.harnesses, ", ")}</span>
+          <div class="row-stack">
+            <span class="row-title mono">{host.name}</span>
+            <span :if={host.harnesses != []} class="row-meta">{Enum.join(host.harnesses, ", ")}</span>
+          </div>
+          <span
+            :if={host.max_concurrent}
+            class="slots"
+            role="img"
+            aria-label={"#{host.active_runs} of #{host.max_concurrent} slots busy"}
+            title={"#{host.active_runs}/#{host.max_concurrent} running"}
+          >
+            <span
+              :for={slot <- 1..host.max_concurrent//1}
+              class={["slot", slot <= host.active_runs && "busy"]}
+            ></span>
           </span>
+          <span :if={!host.max_concurrent} class="row-meta">{host.active_runs} running</span>
         </li>
-        <li :if={@snapshot.hosts == []} class="branch-item muted">No hosts.</li>
       </ul>
     </section>
     """
@@ -317,153 +449,17 @@ defmodule WaveDashboardWeb.FugateLive do
   defp reachability_title(false), do: "Unreachable"
   defp reachability_title(nil), do: "Not checked yet"
 
-  attr :runs, :list, required: true
-  attr :jobs, :list, required: true
-  attr :pending, :any, required: true
-
-  defp active_runs(assigns) do
-    ~H"""
-    <section class="project">
-      <div class="project-header">Active runs</div>
-      <ul class="branch-list">
-        <li :for={run <- @runs} class="branch-item run-item">
-          <div class="run-line">
-            <.link navigate={~p"/fugate/runs/#{run.id}"} class="run-job">{job_name(@jobs, run.job_id)}</.link>
-            <.state_badge state={run.state} />
-            <span class="host-badge">{run.host || "unassigned"}</span>
-          </div>
-          <dl class="run-facts">
-            <div :if={run.wake_at}>
-              <dt>Wakes</dt><dd>{format_time(run.wake_at)}</dd>
-            </div>
-            <div>
-              <dt>Turn</dt><dd>{run.last_turn || "—"}</dd>
-            </div>
-            <div>
-              <dt>Checkpoint</dt><dd>{format_time(run.checkpoint_at)}</dd>
-            </div>
-            <div :if={run.workspace_id || run.pane_id}>
-              <dt>Pane</dt>
-              <dd class="mono">{run.workspace_id || "—"} / {run.pane_id || "—"}</dd>
-            </div>
-          </dl>
-          <div class="row-actions">
-            <button
-              type="button"
-              class="button button-danger"
-              phx-click="abandon"
-              phx-value-id={run.id}
-              disabled={@pending != nil}
-              data-confirm="Abandon this run? The agent itself is left running."
-            >
-              {if @pending == {"abandon", run.id}, do: "Abandoning…", else: "Abandon"}
-            </button>
-          </div>
-        </li>
-        <li :if={@runs == []} class="branch-item muted">Nothing running.</li>
-      </ul>
-    </section>
-    """
-  end
-
-  attr :jobs, :list, required: true
-  attr :pending, :any, required: true
-
-  defp jobs(assigns) do
-    ~H"""
-    <section class="project">
-      <div class="project-header">Jobs</div>
-      <ul class="branch-list">
-        <li :for={job <- @jobs} class={["branch-item", "job-item", not job.enabled && "disabled"]}>
-          <div class="run-line">
-            <.link patch={~p"/fugate/jobs/#{job.id}/edit"} class="run-job">{job.name}</.link>
-            <span class="host-badge">{job.harness} · {schedule(job)}</span>
-          </div>
-          <dl class="run-facts">
-            <div>
-              <dt>Repo</dt><dd class="mono">{job.repo_path}</dd>
-            </div>
-            <div>
-              <dt>Hosts</dt><dd>{Enum.join(job.allowed_hosts, ", ")}</dd>
-            </div>
-            <div>
-              <dt>Next</dt><dd>{format_time(job.next_run_at)}</dd>
-            </div>
-          </dl>
-          <div class="row-actions">
-            <button
-              type="button"
-              class="button"
-              phx-click="run_now"
-              phx-value-id={job.id}
-              disabled={@pending != nil}
-            >
-              {if @pending == {"run_now", job.id}, do: "Queuing…", else: "Run now"}
-            </button>
-            <button
-              type="button"
-              class="button button-quiet"
-              phx-click="toggle_job"
-              phx-value-id={job.id}
-              disabled={@pending != nil}
-            >
-              {if job.enabled, do: "Disable", else: "Enable"}
-            </button>
-            <.link patch={~p"/fugate/jobs/#{job.id}/edit"} class="button button-quiet">Edit</.link>
-            <button
-              type="button"
-              class="button button-danger"
-              phx-click="delete_job"
-              phx-value-id={job.id}
-              disabled={@pending != nil}
-              data-confirm={"Delete #{job.name} and its run history?"}
-            >
-              {if @pending == {"delete_job", job.id}, do: "Deleting…", else: "Delete"}
-            </button>
-          </div>
-        </li>
-        <li :if={@jobs == []} class="branch-item muted">No jobs yet.</li>
-      </ul>
-    </section>
-    """
-  end
-
-  defp schedule(%{schedule: "cron"} = job), do: "#{job.cron} #{job.timezone}"
-  defp schedule(%{schedule: "once"} = job), do: "once #{format_time(job.run_at)}"
-  defp schedule(job), do: job.schedule
-
-  attr :runs, :list, required: true
-  attr :jobs, :list, required: true
-
-  defp recent_runs(assigns) do
-    ~H"""
-    <section class="project">
-      <div class="project-header">Recent runs</div>
-      <ul class="branch-list">
-        <li :for={run <- @runs} class="branch-item">
-          <.link navigate={~p"/fugate/runs/#{run.id}"} class="run-line">
-            <span class="run-job">{job_name(@jobs, run.job_id)}</span>
-            <.state_badge state={run.state} />
-            <span class="host-badge">
-              {run.host || "—"} · {format_time(run.finished_at || run.updated_at)}
-            </span>
-          </.link>
-        </li>
-        <li :if={@runs == []} class="branch-item muted">No finished runs.</li>
-      </ul>
-    </section>
-    """
-  end
-
   attr :form, Phoenix.HTML.Form, required: true
   attr :errors, :list, required: true
-  attr :editing?, :boolean, required: true
+  attr :job_id, :string, required: true
   attr :hosts, :list, required: true
-  attr :saving?, :boolean, required: true
+  attr :pending, :any, required: true
 
   defp job_form(assigns) do
     assigns =
       assign(assigns,
+        editing?: assigns.job_id != nil,
+        saving?: match?({"save_job", _id}, assigns.pending),
         harnesses: @harnesses,
         schedules: @schedules,
         schedule: assigns.form[:schedule].value,
@@ -471,8 +467,8 @@ defmodule WaveDashboardWeb.FugateLive do
       )
 
     ~H"""
-    <section class="deadline job-editor">
-      <h2 class="project-header editor-title">{if @editing?, do: "Edit job", else: "New job"}</h2>
+    <section class="card card-focus">
+      <h2 class="card-title">{if @editing?, do: "Edit job", else: "New job"}</h2>
       <p :for={error <- @errors} class="form-error" role="alert">{error}</p>
       <.form for={@form} id="job-form" phx-change="change_job" phx-submit="save_job" class="job-form">
         <.field field={@form[:name]} label="Name">
@@ -568,6 +564,17 @@ defmodule WaveDashboardWeb.FugateLive do
             {if @saving?, do: "Saving…", else: "Save"}
           </button>
           <.link patch={~p"/fugate"} class="button button-quiet">Cancel</.link>
+          <button
+            :if={@editing?}
+            type="button"
+            class="button button-danger row-actions-end"
+            phx-click="delete_job"
+            phx-value-id={@job_id}
+            disabled={@pending != nil}
+            data-confirm={"Delete #{@form[:name].value} and its run history?"}
+          >
+            {if @pending == {"delete_job", @job_id}, do: "Deleting…", else: "Delete job"}
+          </button>
         </div>
       </.form>
     </section>

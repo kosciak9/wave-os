@@ -59,6 +59,12 @@ defmodule WaveDashboard.Deadline do
 
   def expired?(%__MODULE__{end_date: end_date}, today), do: Date.after?(today, end_date)
 
+  @doc "Whole minutes from `now`, in local time, to the end of the deadline's last day."
+  def minutes_left(%__MODULE__{end_date: end_date}, %NaiveDateTime{} = now) do
+    end_of_last_day = NaiveDateTime.new!(Date.add(end_date, 1), ~T[00:00:00])
+    max(0, NaiveDateTime.diff(end_of_last_day, now, :minute))
+  end
+
   @doc "Total, elapsed (including today) and remaining days."
   def days(%__MODULE__{} = deadline, today) do
     total = Date.diff(deadline.end_date, deadline.start_date) + 1

@@ -1,9 +1,14 @@
 defmodule WaveDashboardWeb.HomeLive do
   use WaveDashboardWeb, :live_view
 
-  alias WaveDashboard.{Apps, Deadline, Fugate, Tailnet}
+  import WaveDashboardWeb.FugateComponents,
+    only: [stats: 1, state_badge: 1, time: 1, job_name: 2, by_urgency: 1]
 
-  @day_check_interval :timer.minutes(1)
+  import WaveDashboardWeb.Layouts, only: [wave_logo: 1]
+
+  alias WaveDashboard.{Apps, Clock, Deadline, Fugate, Tailnet}
+
+  @shown_runs 5
 
   @impl true
   def mount(_params, _session, socket) do
@@ -12,27 +17,34 @@ defmodule WaveDashboardWeb.HomeLive do
       Tailnet.subscribe()
       Deadline.subscribe()
       Fugate.subscribe()
-      :timer.send_interval(@day_check_interval, :day_check)
+      Clock.tick_next_minute(:tick)
     end
 
     {:ok,
      socket
-     |> assign(apps: Apps.list(), hosts: Tailnet.hosts(), today: Deadline.today())
-     |> assign_fugate(Fugate.snapshot())
+     |> assign(apps: Apps.list(), hosts: Tailnet.hosts(), fugate: Fugate.snapshot())
      |> assign(editing?: false, deadline_error: nil, draft: nil)
+     |> assign_now()
      |> assign_deadline()}
   end
 
   @impl true
   def handle_info({:apps, apps}, socket), do: {:noreply, assign(socket, apps: apps)}
   def handle_info({:hosts, hosts}, socket), do: {:noreply, assign(socket, hosts: hosts)}
-  def handle_info({:fugate, snapshot}, socket), do: {:noreply, assign_fugate(socket, snapshot)}
+  def handle_info({:fugate, snapshot}, socket), do: {:noreply, assign(socket, fugate: snapshot)}
   def handle_info(:deadline_changed, socket), do: {:noreply, assign_deadline(socket)}
-  def handle_info(:day_check, socket), do: {:noreply, assign(socket, today: Deadline.today())}
+
+  def handle_info(:tick, socket) do
+    Clock.tick_next_minute(:tick)
+    {:noreply, assign_now(socket)}
+  end
 
   @impl true
   def handle_event("edit_deadline", _params, socket),
     do: {:noreply, assign(socket, editing?: true)}
+
+  def handle_event("cancel_deadline", _params, socket),
+    do: {:noreply, assign(socket, editing?: false, deadline_error: nil, draft: nil)}
 
   def handle_event("save_deadline", %{"label" => label, "end_date" => end_date}, socket) do
     case Deadline.save(label, end_date) do
@@ -57,100 +69,76 @@ defmodule WaveDashboardWeb.HomeLive do
 
   defp assign_deadline(socket), do: assign(socket, deadline: Deadline.load())
 
-  defp assign_fugate(socket, snapshot),
-    do:
-      assign(socket,
-        fugate_status: fugate_status(snapshot.status),
-        fugate_summary: fugate_summary(snapshot)
-      )
+  defp assign_now(socket) do
+    now = DateTime.utc_now()
+    assign(socket, now: now, local_now: Clock.to_local(now))
+  end
 
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="container">
-      <header>
-        <img src={~p"/images/logo.png"} alt="Wave" class="logo" />
+    <div class="page">
+      <header class="topbar">
+        <span class="brand"><.wave_logo /> ahri.wave</span>
+        <form action="https://duckduckgo.com/" method="get" class="search-form">
+          <label class="visually-hidden" for="search">Search</label>
+          <input
+            id="search"
+            type="search"
+            name="q"
+            class="search-input"
+            placeholder="Search DuckDuckGo"
+            autocomplete="off"
+            autofocus
+          />
+        </form>
+        <.theme_toggle />
       </header>
 
-      <.countdown deadline={@deadline} today={@today} />
+      <div class="columns">
+        <main class="column-main">
+          <.deadline_form
+            :if={@editing? or not is_struct(@deadline, Deadline)}
+            deadline={@deadline}
+            draft={@draft}
+            error={@deadline_error}
+            editing?={@editing?}
+          />
+          <.deadline
+            :if={not @editing? and is_struct(@deadline, Deadline)}
+            deadline={@deadline}
+            now={@local_now}
+          />
+          <.agents snapshot={@fugate} now={@now} />
+        </main>
 
-      <form action="https://duckduckgo.com/" method="get" class="search-form">
-        <label class="visually-hidden" for="search">Search</label>
-        <input
-          id="search"
-          type="text"
-          name="q"
-          class="search-input"
-          placeholder="Search DuckDuckGo..."
-          autocomplete="off"
-          autofocus
-        />
-      </form>
-
-      <section>
-        <.deadline_form
-          :if={@editing? or not is_struct(@deadline, Deadline)}
-          deadline={@deadline}
-          draft={@draft}
-          error={@deadline_error}
-        />
-        <.deadline_progress
-          :if={not @editing? and is_struct(@deadline, Deadline)}
-          deadline={@deadline}
-          today={@today}
-        />
-      </section>
-
-      <main>
-        <.apps apps={@apps} />
-        <.hosts hosts={@hosts} />
-        <.fugate status={@fugate_status} summary={@fugate_summary} />
-      </main>
-
-      <footer class="theme-toggle-footer">
-        <button type="button" id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
-          <svg class="theme-icon theme-icon-light" viewBox="0 0 24 24" fill="none" stroke-width="1.5">
-            <circle cx="12" cy="12" r="5" />
-            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
-          </svg>
-          <svg class="theme-icon theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke-width="1.5">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
-          </svg>
-        </button>
-      </footer>
+        <aside class="column-side">
+          <.apps apps={@apps} />
+          <.hosts hosts={@hosts} now={@now} />
+        </aside>
+      </div>
     </div>
     """
   end
 
-  attr :deadline, :any, required: true
-  attr :today, Date, required: true
-
-  defp countdown(%{deadline: %Deadline{}} = assigns) do
+  defp theme_toggle(assigns) do
     ~H"""
-    <%= if Deadline.expired?(@deadline, @today) do %>
-      <div class="countdown expired">00:00:00:00</div>
-      <div class="countdown-label">{@deadline.label}</div>
-      <div class="countdown-reset">
-        <button type="button" phx-click="reset_deadline">set a new deadline</button>
-      </div>
-    <% else %>
-      <div
-        id="countdown"
-        class="countdown"
-        phx-hook="Countdown"
-        phx-update="ignore"
-        data-end-date={Date.to_iso8601(@deadline.end_date)}
-      >
-      </div>
-    <% end %>
+    <button type="button" id="theme-toggle" class="icon-button" aria-label="Toggle theme">
+      <svg class="theme-icon theme-icon-light" viewBox="0 0 24 24" fill="none" stroke-width="1.5">
+        <circle cx="12" cy="12" r="5" />
+        <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+      </svg>
+      <svg class="theme-icon theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke-width="1.5">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
+      </svg>
+    </button>
     """
   end
-
-  defp countdown(assigns), do: ~H""
 
   attr :deadline, :any, required: true
   attr :draft, :map, required: true
   attr :error, :string, required: true
+  attr :editing?, :boolean, required: true
 
   defp deadline_form(assigns) do
     assigns =
@@ -167,8 +155,9 @@ defmodule WaveDashboardWeb.HomeLive do
       )
 
     ~H"""
-    <div class="deadline">
-      <p :if={@deadline == :corrupt} class="error" role="alert">
+    <section class="card">
+      <h2 class="card-title">Deadline</h2>
+      <p :if={@deadline == :corrupt} class="banner banner-error" role="alert">
         Saved deadline data is corrupt. Create a new deadline or reset it.
       </p>
       <p :if={@error} class="form-error" role="alert">{@error}</p>
@@ -183,41 +172,68 @@ defmodule WaveDashboardWeb.HomeLive do
         />
         <label class="visually-hidden" for="deadline-end-date">End date</label>
         <input id="deadline-end-date" type="date" name="end_date" value={@values.end_date} />
-        <button type="submit">Set Deadline</button>
+        <button type="submit" class="button">Set deadline</button>
+        <button :if={@editing?} type="button" class="button button-quiet" phx-click="cancel_deadline">
+          Cancel
+        </button>
+        <button
+          :if={@deadline == :corrupt or @editing?}
+          type="button"
+          class="button button-danger"
+          phx-click="reset_deadline"
+        >
+          Clear
+        </button>
       </form>
-      <button
-        :if={@deadline == :corrupt}
-        type="button"
-        class="button-reset"
-        phx-click="reset_deadline"
-      >
-        Reset deadline
-      </button>
-    </div>
+    </section>
     """
   end
 
   attr :deadline, Deadline, required: true
-  attr :today, Date, required: true
+  attr :now, NaiveDateTime, required: true
 
-  defp deadline_progress(assigns) do
-    {total, elapsed, remaining} = Deadline.days(assigns.deadline, assigns.today)
-    assigns = assign(assigns, total: total, elapsed: elapsed, remaining: remaining)
+  defp deadline(assigns) do
+    today = NaiveDateTime.to_date(assigns.now)
+    {total, elapsed, remaining} = Deadline.days(assigns.deadline, today)
+
+    assigns =
+      assign(assigns,
+        today: today,
+        total: total,
+        elapsed: elapsed,
+        remaining: remaining,
+        expired?: Deadline.expired?(assigns.deadline, today),
+        minutes_left: Deadline.minutes_left(assigns.deadline, assigns.now)
+      )
 
     ~H"""
-    <div class="deadline">
-      <div class="deadline-header">
-        <button
-          type="button"
-          class="deadline-label button-reset"
-          title="Click to edit"
-          phx-click="edit_deadline"
-        >
-          {@deadline.label}
-        </button>
-        <span class="deadline-stats">{@elapsed}/{@total} days ({@remaining} remaining)</span>
+    <section class={["card", "deadline", @expired? && "deadline-expired"]}>
+      <div class="card-header">
+        <h2 class="card-title">
+          <button type="button" class="link-button" title="Edit deadline" phx-click="edit_deadline">
+            {@deadline.label}
+          </button>
+        </h2>
+        <span class="card-detail">ends {Calendar.strftime(@deadline.end_date, "%a %d %b")}</span>
       </div>
-      <div class="deadline-grid">
+      <div class="countdown">
+        <span :if={!@expired?} class="countdown-value">
+          <span>{div(@minutes_left, 60)}<small>h</small></span>
+          <span>{@minutes_left |> rem(60) |> Integer.to_string() |> String.pad_leading(2, "0")}<small>m</small></span>
+        </span>
+        <span :if={@expired?} class="countdown-value">Passed</span>
+        <span class="countdown-caption">
+          <%= if @expired? do %>
+            <button type="button" class="link-button" phx-click="edit_deadline">Set a new deadline</button>
+          <% else %>
+            <span class="sep">
+              <span>{@remaining} {if @remaining == 1, do: "day", else: "days"} left</span>
+              <span>day {@elapsed} of {@total}</span>
+            </span>
+          <% end %>
+        </span>
+      </div>
+      <div class="deadline-grid" role="img" aria-label={"Day #{@elapsed} of #{@total}"}>
         <div :for={block <- Deadline.grid(@deadline, @today)} class="deadline-week">
           <div
             :for={{date, kind} <- block}
@@ -227,35 +243,82 @@ defmodule WaveDashboardWeb.HomeLive do
           </div>
         </div>
       </div>
-    </div>
+    </section>
+    """
+  end
+
+  attr :snapshot, :any, required: true
+  attr :now, DateTime, required: true
+
+  defp agents(assigns) do
+    runs = by_urgency(assigns.snapshot.active_runs)
+
+    assigns =
+      assign(assigns,
+        runs: Enum.take(runs, @shown_runs),
+        hidden: max(0, length(runs) - @shown_runs)
+      )
+
+    ~H"""
+    <section class="card">
+      <div class="card-header">
+        <h2 class="card-title">
+          <img src={~p"/images/fugate-favicon.png"} alt="" class="avatar" /> Agents
+        </h2>
+        <.link navigate={~p"/fugate"} class="card-link">Open Fugate →</.link>
+      </div>
+      <%= case @snapshot.status do %>
+        <% :not_configured -> %>
+          <p class="muted">Fugate is not configured.</p>
+        <% :loading -> %>
+          <p class="muted">Loading…</p>
+        <% status -> %>
+          <p :if={status != :ok} class="banner banner-error" role="alert">
+            Fugate unreachable. Showing the last known state.
+          </p>
+          <.stats snapshot={@snapshot} now={@now} />
+          <ul :if={@runs != []} class="rows">
+            <li :for={run <- @runs}>
+              <.link navigate={~p"/fugate/runs/#{run.id}"} class="row">
+                <.state_badge state={run.state} />
+                <span class="row-title">{job_name(@snapshot.jobs, run.job_id)}</span>
+                <span class="row-meta sep">
+                  <span>{run.host || "unassigned"}</span>
+                  <.time at={run.inserted_at} now={@now} />
+                </span>
+              </.link>
+            </li>
+          </ul>
+          <p :if={@runs == []} class="muted">Nothing running.</p>
+          <p :if={@hidden > 0} class="muted">and {@hidden} more in Fugate</p>
+      <% end %>
+    </section>
     """
   end
 
   attr :apps, :list, required: true
 
-  defp apps(%{apps: []} = assigns) do
-    ~H"""
-    <div class="empty">
-      <p>No apps registered.</p>
-      <p class="empty-note">Register one with <code>wave dashboard add</code>.</p>
-    </div>
-    """
-  end
-
   defp apps(assigns) do
     ~H"""
-    <div :for={{project, apps} <- Enum.group_by(@apps, & &1.project)} class="project">
-      <div class="project-header">{project}</div>
-      <ul class="branch-list">
-        <li :for={app <- apps} class="branch-item">
-          <a href={Apps.url(app)} target="_blank" rel="noopener noreferrer">
-            <span class={["status", Atom.to_string(app.status)]} title={status_title(app.status)}></span>
-            {app.branch}
-            <span class="host-badge">{app.host}</span>
-          </a>
-        </li>
-      </ul>
-    </div>
+    <section class="card">
+      <h2 class="card-title">Apps</h2>
+      <div :if={@apps == []} class="muted">
+        <p>No apps registered.</p>
+        <p>Register one with <code>wave dashboard add</code>.</p>
+      </div>
+      <div :for={{project, apps} <- Enum.group_by(@apps, & &1.project)} class="group">
+        <h3 class="group-title">{project}</h3>
+        <ul class="rows">
+          <li :for={app <- apps}>
+            <a href={Apps.url(app)} target="_blank" rel="noopener noreferrer" class="row">
+              <span class={["status", Atom.to_string(app.status)]} title={status_title(app.status)}></span>
+              <span class="row-title mono">{app.branch}</span>
+              <span class="row-meta">{app.host}</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+    </section>
     """
   end
 
@@ -264,58 +327,38 @@ defmodule WaveDashboardWeb.HomeLive do
   defp status_title(:unknown), do: "Not checked yet"
 
   attr :hosts, :list, required: true
+  attr :now, DateTime, required: true
 
   defp hosts(assigns) do
     ~H"""
-    <div class="project">
-      <div class="project-header">Hosts</div>
-      <ul class="branch-list">
-        <li :for={host <- @hosts} class="branch-item host-item">
-          <span class={["status", if(host.online?, do: "up", else: "down")]}></span>
-          <span class="host-name">{host.name}</span>
-          <span class="host-detail">
-            {if host.online?, do: host.os, else: last_seen(host.last_seen)}
+    <section class="card">
+      <div class="card-header">
+        <h2 class="card-title">Hosts</h2>
+        <span class="card-detail">{Enum.count(@hosts, & &1.online?)}/{length(@hosts)} online</span>
+      </div>
+      <ul class="rows">
+        <li
+          :for={host <- Enum.sort_by(@hosts, &(not &1.online?))}
+          class={["row", not host.online? && "row-dim"]}
+        >
+          <span
+            class={["status", if(host.online?, do: "up", else: "down")]}
+            title={if host.online?, do: "Online", else: "Offline"}
+          ></span>
+          <span class="row-title mono">{host.name}</span>
+          <span class="row-meta">
+            <%= cond do %>
+              <% host.online? -> %>
+                {host.os}
+              <% host.last_seen -> %>
+                seen <.time at={host.last_seen} now={@now} />
+              <% true -> %>
+                offline
+            <% end %>
           </span>
         </li>
       </ul>
-    </div>
+    </section>
     """
   end
-
-  attr :status, :string, required: true
-  attr :summary, :string, required: true
-
-  defp fugate(assigns) do
-    ~H"""
-    <div class="project">
-      <div class="project-header">Agents</div>
-      <ul class="branch-list">
-        <li class="branch-item">
-          <.link href={~p"/fugate"}>
-            <span class={["status", @status]}></span>
-            <img src={~p"/images/fugate-favicon.png"} alt="" class="avatar" /> Fugate
-            <span class="host-badge">{@summary}</span>
-          </.link>
-        </li>
-      </ul>
-    </div>
-    """
-  end
-
-  defp fugate_status(:ok), do: "up"
-  defp fugate_status({:error, _reason}), do: "down"
-  defp fugate_status(_status), do: "unknown"
-
-  defp fugate_summary(%{status: :not_configured}), do: "not configured"
-  defp fugate_summary(%{status: :loading}), do: "loading"
-  defp fugate_summary(%{status: {:error, _reason}}), do: "unreachable"
-
-  defp fugate_summary(snapshot) do
-    "#{length(snapshot.active_runs)} active · #{length(snapshot.jobs)} jobs"
-  end
-
-  defp last_seen(nil), do: "offline"
-
-  defp last_seen(%DateTime{} = at),
-    do: "offline since #{Calendar.strftime(at, "%Y-%m-%d %H:%M")} UTC"
 end

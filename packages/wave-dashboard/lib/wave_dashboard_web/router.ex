@@ -1,7 +1,7 @@
 defmodule WaveDashboardWeb.Router do
   use WaveDashboardWeb, :router
 
-  @themes ~w(kanagawa kanagawa-lotus)
+  @themes ~w(kanagawa-dragon kanagawa-lotus)
 
   @content_security_policy "default-src 'self'; script-src 'self'; style-src 'self'; " <>
                              "font-src 'self'; img-src 'self'; connect-src 'self'; " <>
@@ -62,7 +62,10 @@ defmodule WaveDashboardWeb.Router do
   # The theme lives in a cookie set by the browser, so the first render already uses it.
   defp put_theme(conn, _opts) do
     conn = fetch_cookies(conn)
-    theme = if conn.cookies["theme"] in @themes, do: conn.cookies["theme"], else: "kanagawa"
+
+    theme =
+      if conn.cookies["theme"] in @themes, do: conn.cookies["theme"], else: "kanagawa-dragon"
+
     assign(conn, :theme, theme)
   end
 end

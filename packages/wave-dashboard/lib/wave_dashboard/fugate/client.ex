@@ -47,8 +47,12 @@ defmodule WaveDashboard.Fugate.Client do
                 ]
 
     @active ~w(queued starting running waiting blocked unknown lost)
+    @needs_attention ~w(blocked unknown lost)
 
     def active?(%__MODULE__{state: state}), do: state in @active
+
+    @doc "Whether the run is stuck until someone looks at it."
+    def needs_attention?(%__MODULE__{state: state}), do: state in @needs_attention
   end
 
   defmodule Host do

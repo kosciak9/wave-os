@@ -2,20 +2,30 @@ defmodule WaveDashboardWeb.FugateComponents do
   @moduledoc false
   use WaveDashboardWeb, :html
 
+  import WaveDashboardWeb.Layouts, only: [wave_logo: 1]
+
+  alias WaveDashboard.Clock
   alias WaveDashboard.Fugate.{Client, Snapshot}
+  alias WaveDashboard.Fugate.Client.Run
 
   attr :title, :string, required: true
-  attr :back, :string, required: true
-  attr :back_label, :string, required: true
+  attr :crumbs, :list, required: true, doc: "`{label, path}` pairs leading to this page"
   slot :actions
 
   def page_header(assigns) do
     ~H"""
-    <header class="page-header">
-      <.link navigate={@back} class="page-back">← {@back_label}</.link>
-      <h1 class="page-title">{@title}</h1>
+    <header class="topbar">
+      <.link navigate={~p"/"} class="brand" aria-label="ahri.wave">
+        <.wave_logo />
+      </.link>
+      <nav class="crumbs" aria-label="Breadcrumb">
+        <%= for {label, path} <- @crumbs do %>
+          <.link navigate={path}>{label}</.link>
+          <span aria-hidden="true">/</span>
+        <% end %>
+        <h1 class="page-title">{@title}</h1>
+      </nav>
       <div :if={@actions != []} class="page-actions">{render_slot(@actions)}</div>
-      <img src={~p"/images/fugate.png"} alt="Fugate" class="page-logo" />
     </header>
     """
   end
@@ -24,10 +34,10 @@ defmodule WaveDashboardWeb.FugateComponents do
 
   def flash(assigns) do
     ~H"""
-    <p :if={message = Phoenix.Flash.get(@flash, :error)} class="error flash" role="alert">
+    <p :if={message = Phoenix.Flash.get(@flash, :error)} class="banner banner-error" role="alert">
       {message}
     </p>
-    <p :if={message = Phoenix.Flash.get(@flash, :info)} class="notice flash" role="status">
+    <p :if={message = Phoenix.Flash.get(@flash, :info)} class="banner" role="status">
       {message}
     </p>
     """
@@ -40,16 +50,15 @@ defmodule WaveDashboardWeb.FugateComponents do
 
   def connection(%{snapshot: %Snapshot{status: :not_configured}} = assigns) do
     ~H"""
-    <div class="empty">
-      <p>Fugate is not configured.</p>
-      <p class="empty-note">Set <code>FUGATE_URL</code> for the dashboard service.</p>
-    </div>
+    <p class="banner">
+      Fugate is not configured. Set <code>FUGATE_URL</code> for the dashboard service.
+    </p>
     """
   end
 
   def connection(%{snapshot: %Snapshot{status: :loading}} = assigns) do
     ~H"""
-    <p class="notice">Loading…</p>
+    <p class="banner">Loading…</p>
     """
   end
 
@@ -57,11 +66,68 @@ defmodule WaveDashboardWeb.FugateComponents do
     assigns = assign(assigns, :reason, Client.describe(reason))
 
     ~H"""
-    <p class="error" role="alert">
+    <p class="banner banner-error" role="alert">
       {@reason}.<span :if={@snapshot.jobs != []}> Showing the last known state.</span>
     </p>
     """
   end
+
+  @doc "The scheduler's headline numbers: what runs, what is stuck, what failed, what comes next."
+  attr :snapshot, Snapshot, required: true
+  attr :now, DateTime, required: true
+
+  def stats(assigns) do
+    since = DateTime.add(assigns.now, -1, :day)
+
+    assigns =
+      assign(assigns,
+        running: length(assigns.snapshot.active_runs),
+        stuck: Enum.count(assigns.snapshot.active_runs, &Run.needs_attention?/1),
+        failed:
+          Enum.count(
+            assigns.snapshot.finished_runs,
+            &(&1.state == "failed" and &1.finished_at != nil and
+                DateTime.after?(&1.finished_at, since))
+          ),
+        next: next_job(assigns.snapshot.jobs)
+      )
+
+    ~H"""
+    <dl class="stats">
+      <div class={["stat", @running > 0 && "stat-running"]}>
+        <dt>Running</dt>
+        <dd>
+          {@running}<span :if={@snapshot.max_concurrent} class="stat-of">/{@snapshot.max_concurrent}</span>
+        </dd>
+      </div>
+      <div class={["stat", @stuck > 0 && "stat-warning"]}>
+        <dt>Needs attention</dt>
+        <dd>{@stuck}</dd>
+      </div>
+      <div class={["stat", @failed > 0 && "stat-error"]}>
+        <dt>Failed in 24h</dt>
+        <dd>{@failed}</dd>
+      </div>
+      <div class="stat">
+        <dt>Next run</dt>
+        <dd :if={@next} class="stat-text">
+          <.time at={@next.next_run_at} now={@now} />
+          <span class="stat-detail">{@next.name}</span>
+        </dd>
+        <dd :if={!@next} class="stat-text muted">none scheduled</dd>
+      </div>
+    </dl>
+    """
+  end
+
+  defp next_job(jobs) do
+    jobs
+    |> Enum.filter(&(&1.enabled and &1.next_run_at != nil))
+    |> Enum.min_by(& &1.next_run_at, DateTime, fn -> nil end)
+  end
+
+  @doc "Active runs with the stuck ones first, then the newest."
+  def by_urgency(runs), do: Enum.sort_by(runs, &(not Run.needs_attention?(&1)))
 
   attr :state, :string, required: true
 
@@ -78,13 +144,22 @@ defmodule WaveDashboardWeb.FugateComponents do
 
   defp state_class(_state), do: "other"
 
+  @doc "A moment shown relative to `now`, with the local date and time on hover."
+  attr :at, DateTime, default: nil
+  attr :now, DateTime, required: true
+
+  def time(%{at: nil} = assigns), do: ~H'<span class="muted">—</span>'
+
+  def time(assigns) do
+    ~H"""
+    <time datetime={DateTime.to_iso8601(@at)} title={Clock.format(@at)}>{Clock.relative(@at, @now)}</time>
+    """
+  end
+
   def job_name(jobs, job_id) do
     case Enum.find(jobs, &(&1.id == job_id)) do
       nil -> "deleted job"
       job -> job.name
     end
   end
-
-  def format_time(nil), do: "—"
-  def format_time(%DateTime{} = at), do: Calendar.strftime(at, "%Y-%m-%d %H:%M UTC")
 end
