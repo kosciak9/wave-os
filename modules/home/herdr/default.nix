@@ -20,6 +20,7 @@ let
       ./patches/worktrunk-terminal.patch
       ./patches/agents-pane-title.patch
       ./patches/endpoint-diagnostics.patch
+      ./patches/federation-spawn.patch
     ];
   });
   herdrWorktrunk = pkgs.applyPatches {
@@ -107,6 +108,7 @@ in
 {
   imports = [
     ./federation.nix
+    ./fugate-hook.nix
     ./plugin-options.nix
   ];
 

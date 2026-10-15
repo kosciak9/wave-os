@@ -21,6 +21,8 @@ let
     };
   };
   zenModels = import ../../cliproxyapi/zen-models.nix;
+  fugateStatus = import ../herdr/fugate-status.nix { inherit lib pkgs; };
+  cliConfig = lib.importJSON ./config/cli.json;
   codexSubscriptionModels = {
     "gpt-6.1-sol".name = "[OpenAI] GPT 6.1 Sol";
     "gpt-6-astra".name = "[OpenAI] GPT 6 Astra";
@@ -85,7 +87,9 @@ in
     "opencode/herdr-tui-session.js".source =
       inputs.herdr + "/src/integration/assets/opencode/herdr-tui-session.js";
     "opencode/cli.json" = {
-      source = ./config/cli.json;
+      text = builtins.toJSON (
+        cliConfig // { plugins = cliConfig.plugins ++ [ "${fugateStatus.opencodePlugin}" ]; }
+      );
       force = true;
     };
   };
