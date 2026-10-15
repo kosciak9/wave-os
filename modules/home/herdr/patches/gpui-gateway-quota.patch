@@ -573,10 +573,10 @@
 +        &self,
 +        now: u64,
 +    ) -> (
-+        Vec<crate::control::protocol::hosts::UsageInfo>,
++        Vec<crate::control::UsageInfo>,
 +        Option<String>,
 +    ) {
-+        use crate::control::protocol::hosts::{UsageInfo, UsageWindow};
++        use crate::control::{UsageInfo, UsageWindow};
 +        let usage = self
 +            .snapshot
 +            .as_ref()
@@ -2795,3 +2795,13 @@
      }
  }
  
+--- a/crates/herdr-gpui/src/control.rs
++++ b/crates/herdr-gpui/src/control.rs
+@@ -23,6 +23,7 @@
+ #[cfg(unix)]
+ use protocol::Caller;
+ pub use protocol::ErrorCode;
++pub(crate) use protocol::hosts::{UsageInfo, UsageWindow};
+ #[cfg(any(unix, feature = "mockup"))]
+ pub(crate) use protocol::NotesTo;
+ pub use protocol::{
