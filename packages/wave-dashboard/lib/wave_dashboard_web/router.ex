@@ -20,6 +20,11 @@ defmodule WaveDashboardWeb.Router do
     plug :accepts, ["json"]
   end
 
+  # Must precede the dashboard's routes, which match every host.
+  scope "/", WaveDashboardWeb, host: "oauth." do
+    get "/*path", OAuthRelayController, :callback
+  end
+
   scope "/", WaveDashboardWeb do
     pipe_through :browser
     live "/", HomeLive

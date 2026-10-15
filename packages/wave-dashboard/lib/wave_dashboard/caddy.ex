@@ -67,7 +67,7 @@ defmodule WaveDashboard.Caddy do
 
   defp dashboard_route(domain) do
     port = Application.fetch_env!(:wave_dashboard, WaveDashboardWeb.Endpoint)[:http][:port]
-    route([domain], [proxy("127.0.0.1:#{port}")])
+    route([domain, "oauth.#{domain}"], [proxy("127.0.0.1:#{port}")])
   end
 
   defp app_routes(apps, domain) do
