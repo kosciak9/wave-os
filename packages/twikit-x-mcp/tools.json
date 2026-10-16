@@ -1,0 +1,11 @@
+{
+  "whoami": [],
+  "rate_limit_status": [],
+  "get_user": ["USER_BY_SCREEN_NAME"],
+  "get_user_by_id": ["USER_BY_REST_ID"],
+  "search_users": ["SEARCH_TIMELINE"],
+  "get_user_tweets": ["USER_TWEETS", "USER_TWEETS_AND_REPLIES", "USER_MEDIA"],
+  "get_tweet": ["TWEET_DETAIL"],
+  "search_tweets": ["SEARCH_TIMELINE"],
+  "get_home_timeline": ["HOME_TIMELINE", "HOME_LATEST_TIMELINE"]
+}

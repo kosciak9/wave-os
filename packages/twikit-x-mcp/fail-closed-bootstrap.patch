@@ -1,0 +1,20 @@
+diff --git a/twikit/client/client.py b/twikit/client/client.py
+--- a/twikit/client/client.py
++++ b/twikit/client/client.py
+@@ -182,16 +182,5 @@ class Client:
+             }
+             try:
+                 await self.client_transaction.init(self.http, ct_headers)
+-            except Exception as e:
+-                # X changed its web client and we can no longer derive the
+-                # x-client-transaction-id. Rather than making the whole library
+-                # unusable (issues #408/#409/#296), disable the header and warn
+-                # once; many endpoints still work without it.
+-                self._client_transaction_disabled = True
+-                warnings.warn(
+-                    'Failed to generate x-client-transaction-id '
+-                    f'({e}). Continuing without it; some requests may be '
+-                    'rejected by X. Update twikit if this persists.'
+-                )
+             finally:
+                 self.set_cookies(cookies_backup, clear_cookies=True)

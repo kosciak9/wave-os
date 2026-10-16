@@ -112,6 +112,7 @@
         "alfred/twenty-api-key"
         "alfred/substack-publication-url"
         "alfred/substack-session-token"
+        "alfred/x-session.json"
         "camofox/access-key"
         "cliproxyapi/api-key"
         "cliproxyapi/base-url"
