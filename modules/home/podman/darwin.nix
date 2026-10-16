@@ -101,6 +101,10 @@ in
     ${install} -d -m 0700 -- "${homeDirectory}/Library/Logs/OpenClaw"
   '';
 
+  home.activation.podmanDefaultConnection = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    run ${podman} system connection default ${sandboxMachineName}
+  '';
+
   launchd.agents.openclaw-sandbox-machine = {
     enable = true;
     domain = "gui";
