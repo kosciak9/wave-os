@@ -7,7 +7,7 @@
 }:
 
 let
-  wallpaper = "/home/kosciak/.config/secrets/wallpapers/kanagawa-black-centered.png";
+  wallpaper = "/home/kosciak/.config/secrets/wallpapers/samurai-kanagawa.png";
   sessionTarget = "wayland-session@hyprland.desktop.target";
   zenBrowser = inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default;
   quickshellWithMultimedia = pkgs.quickshell.overrideAttrs (old: {
