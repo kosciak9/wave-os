@@ -21,6 +21,11 @@
   `programs.zsh.generatedCompletions` next to where the package is installed.
 - Builds are separate and targeted, preceded by evaluation and preferably a
   dry-run; do not routinely build the full fleet.
+- CI has a five-minute wall-clock budget. Do not add or retain jobs that exceed
+  it; remove expensive builds rather than adding caching infrastructure merely
+  to keep them in CI. A warm cache is not a guarantee of meeting this budget.
+- Ahri's build and cache jobs are the explicit exception: retain them even when
+  they exceed five minutes, so the Raspberry Pi does not have to build locally.
 - Do not create or maintain project-derived documentation or unit tests: these
   artifacts quickly drift and usually add little value. Treat implementation
   code as the source of truth; agents should inspect the actual implementation
