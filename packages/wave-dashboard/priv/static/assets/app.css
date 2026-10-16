@@ -200,15 +200,10 @@ code, .mono { font-family: var(--font-mono); font-size: inherit; }
 .group + .group { margin-block-start: 0.5rem; }
 .group-title { font-size: var(--text-size-small); font-weight: 400; color: var(--text-faint); }
 
-.fugate-logo {
-  inline-size: 1.5rem;
-  block-size: 1.5rem;
-  flex-shrink: 0;
-  padding: 0.2rem;
-  border-radius: var(--radius);
-  background: var(--surface-raised);
-  color: var(--accent);
-  stroke-width: 11;
+.iconoir {
+  inline-size: 1.5em;
+  block-size: 1.5em;
+  flex: none;
 }
 
 /* Herdr's figure runs off the tile's right and bottom edges, as in its own square logo. */
@@ -218,12 +213,12 @@ code, .mono { font-family: var(--font-mono); font-size: inherit; }
   flex-shrink: 0;
   overflow: clip;
   border-radius: var(--radius);
-  background: var(--surface-raised);
-  color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
 }
 
-.started-by-fugate { display: inline-flex; flex-shrink: 0; }
-.started-by-fugate .fugate-logo { inline-size: 1.125rem; block-size: 1.125rem; padding: 0.125rem; }
+.agent-origin { display: inline-flex; flex: none; color: var(--text-muted); }
+.agent-origin-fugate { color: var(--accent); }
 
 .banner {
   padding: 0.625rem 0.875rem;
@@ -320,9 +315,12 @@ a.row-title, a.row .row-title { transition: color var(--fade); }
   }
   .row > .state-badge { grid-area: state; min-inline-size: 0; }
   .row:has(> .state-badge) > .row-title { grid-area: title; }
-  .row:has(> .state-badge) > .started-by-fugate { grid-area: title; justify-self: start; }
-  .row:has(> .started-by-fugate) > .row-title { padding-inline-start: 1.75rem; }
   .row:has(> .state-badge) > .row-meta { grid-area: meta; padding-inline-start: 0; }
+  .row:has(> .agent-origin) {
+    grid-template-columns: auto auto minmax(0, 1fr);
+    grid-template-areas: "origin title title" ". state meta";
+  }
+  .row > .agent-origin { grid-area: origin; }
 }
 
 .status {

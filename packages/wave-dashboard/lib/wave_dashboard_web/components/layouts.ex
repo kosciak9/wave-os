@@ -58,23 +58,4 @@ defmodule WaveDashboardWeb.Layouts do
     </svg>
     """
   end
-
-  @doc "Fugate's mark: a dial with a wave through it and one hand, a tide clock for the scheduler."
-  def fugate_logo(assigns) do
-    ~H"""
-    <svg
-      class="fugate-logo"
-      viewBox="0 0 108 108"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="9"
-      stroke-linecap="round"
-      aria-hidden="true"
-    >
-      <circle cx="54" cy="54" r="42" />
-      <path d="M26 56 C35 45 45 45 54 56 C63 67 73 67 82 56" />
-      <path d="M54 52 V27" />
-    </svg>
-    """
-  end
 end
