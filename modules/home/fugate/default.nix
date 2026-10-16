@@ -22,11 +22,13 @@ let
       inherit (cfg) bind port;
       max_concurrent = cfg.maxConcurrent;
       allowed_clients = cfg.allowedClients;
-      hosts = lib.genAttrs cfg.hosts (host: {
+      project_roots = cfg.projectRoots;
+      hosts = lib.mapAttrs (host: hostCfg: {
         herdr_alias = if host == localHost then null else savedMachines.${host}.profileId;
+        home_directory = hostCfg.homeDirectory;
         inherit harnesses;
         max_concurrent = cfg.maxConcurrentPerHost;
-      });
+      }) cfg.hosts;
     }
   );
 in
@@ -55,8 +57,19 @@ in
       description = "Tailscale host names allowed to use the API besides loopback.";
     };
     hosts = lib.mkOption {
+      type = lib.types.attrsOf (
+        lib.types.submodule {
+          options.homeDirectory = lib.mkOption {
+            type = lib.types.str;
+            description = "Home directory on the host; repositories sit at the same home-relative path everywhere.";
+          };
+        }
+      );
+      description = "Execution hosts by name: this host or Herdr saved machines.";
+    };
+    projectRoots = lib.mkOption {
       type = lib.types.listOf lib.types.str;
-      description = "Execution hosts: this host or Herdr saved machines.";
+      description = "Directories under this host's home whose git checkouts jobs may run in.";
     };
     maxConcurrentPerHost = lib.mkOption {
       type = lib.types.ints.positive;
@@ -72,11 +85,11 @@ in
         message = "Fugate launchd supervision requires Darwin.";
       }
       {
-        assertion = cfg.hosts != [ ];
+        assertion = cfg.hosts != { };
         message = "services.fugate.hosts must list at least one execution host.";
       }
       {
-        assertion = lib.all (host: host == localHost || savedMachines ? ${host}) cfg.hosts;
+        assertion = lib.all (host: host == localHost || savedMachines ? ${host}) (lib.attrNames cfg.hosts);
         message = "services.fugate.hosts must be ${localHost} or programs.herdr.federation.savedMachines entries.";
       }
     ];
@@ -94,8 +107,9 @@ in
         ];
         EnvironmentVariables = {
           HOME = config.home.homeDirectory;
-          # Includes tailscale, used to identify tailnet API clients.
-          PATH = "/run/current-system/sw/bin:/usr/bin:/bin:/usr/sbin:/sbin";
+          # Includes tailscale, used to identify tailnet API clients, and the
+          # user's wt, jq and ssh, used to probe hosts' readiness.
+          PATH = "${config.home.profileDirectory}/bin:/run/current-system/sw/bin:/usr/bin:/bin:/usr/sbin:/sbin";
           RELEASE_DISTRIBUTION = "none";
           # Distribution is off, so the cookie never authenticates anything.
           RELEASE_COOKIE = "fugate";

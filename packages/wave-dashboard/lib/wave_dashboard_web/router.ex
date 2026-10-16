@@ -28,10 +28,10 @@ defmodule WaveDashboardWeb.Router do
     scope "/", WaveDashboardWeb do
       pipe_through :browser
       live "/", HomeLive
-      live "/fugate", FugateLive, :index
-      live "/fugate/jobs/new", FugateLive, :new
-      live "/fugate/jobs/:id/edit", FugateLive, :edit
-      live "/fugate/runs/:id", FugateRunLive
+      live "/herdr", FugateLive, :index
+      live "/herdr/jobs/new", FugateLive, :new
+      live "/herdr/jobs/:id/edit", FugateLive, :edit
+      live "/herdr/runs/:id", FugateRunLive
     end
   end
 

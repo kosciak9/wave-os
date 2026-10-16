@@ -2,7 +2,7 @@ defmodule WaveDashboardWeb.FugateComponents do
   @moduledoc false
   use WaveDashboardWeb, :html
 
-  import WaveDashboardWeb.Layouts, only: [wave_logo: 1, fugate_logo: 1]
+  import WaveDashboardWeb.Layouts, only: [wave_logo: 1, herdr_logo: 1, fugate_logo: 1]
 
   alias WaveDashboard.Clock
   alias WaveDashboard.Fugate.{Client, Snapshot}
@@ -22,7 +22,7 @@ defmodule WaveDashboardWeb.FugateComponents do
       <nav class="crumbs" aria-label="Breadcrumb">
         <.link navigate={~p"/"} class="brand"><.wave_logo /> ahri.wave</.link>
         <span aria-hidden="true">/</span>
-        <.fugate_logo />
+        <.herdr_logo />
         <%= for {label, path} <- @crumbs do %>
           <.link navigate={path}>{label}</.link>
           <span aria-hidden="true">/</span>
@@ -148,6 +148,71 @@ defmodule WaveDashboardWeb.FugateComponents do
     |> Enum.filter(&(&1.enabled and &1.next_run_at != nil))
     |> Enum.min_by(& &1.next_run_at, DateTime, fn -> nil end)
   end
+
+  @doc """
+  Herdr's agents, those waiting for a person first. Agents a Fugate run drives carry
+  Fugate's mark and link to the run. `limit` caps the list and counts the rest.
+  """
+  attr :agents, :list, required: true, doc: "nil while Herdr's directory cannot be read"
+  attr :now, DateTime, required: true
+  attr :limit, :integer, default: nil
+
+  def agents(assigns) do
+    agents = by_status(assigns.agents || [])
+    shown = if assigns.limit, do: Enum.take(agents, assigns.limit), else: agents
+    assigns = assign(assigns, shown: shown, hidden: length(agents) - length(shown))
+
+    ~H"""
+    <p :if={@agents == nil} class="muted">Herdr's agents are unavailable.</p>
+    <p :if={@agents == []} class="muted">No agents in Herdr.</p>
+    <ul :if={@shown != []} class="rows">
+      <li :for={agent <- @shown}>
+        <.link
+          :if={agent.run_id}
+          navigate={~p"/herdr/runs/#{agent.run_id}"}
+          class={["row", agent.status == "idle" && "row-dim"]}
+        >
+          <.agent agent={agent} now={@now} />
+        </.link>
+        <div :if={!agent.run_id} class={["row", agent.status == "idle" && "row-dim"]}>
+          <.agent agent={agent} now={@now} />
+        </div>
+      </li>
+    </ul>
+    <p :if={@hidden > 0} class="muted">and {@hidden} more</p>
+    """
+  end
+
+  attr :agent, Agent, required: true
+  attr :now, DateTime, required: true
+
+  defp agent(assigns) do
+    ~H"""
+    <.state_badge state={@agent.status} />
+    <span :if={@agent.run_id} class="started-by-fugate" title="Started by Fugate">
+      <.fugate_logo /><span class="visually-hidden">Started by Fugate</span>
+    </span>
+    <span class="row-title" title={@agent.cwd}>{agent_title(@agent)}</span>
+    <span class="row-meta sep">
+      <span>{@agent.kind}</span>
+      <span>{@agent.machine}</span>
+      <.time at={@agent.status_since} now={@now} />
+    </span>
+    """
+  end
+
+  @status_order %{"blocked" => 0, "working" => 1, "done" => 2, "unknown" => 3, "idle" => 4}
+
+  # Those waiting for a person first, then busy, then quiet; the latest change first within each.
+  defp by_status(agents) do
+    agents
+    |> Enum.sort_by(&(&1.status_since || DateTime.from_unix!(0)), {:desc, DateTime})
+    |> Enum.sort_by(&Map.get(@status_order, &1.status, 3))
+  end
+
+  defp agent_title(%{title: title}) when is_binary(title) and title != "", do: title
+  defp agent_title(%{cwd: cwd}) when is_binary(cwd), do: Path.basename(cwd)
+  defp agent_title(agent), do: agent.kind
 
   @doc "Active runs with the stuck ones first, then the newest."
   def by_urgency(runs), do: Enum.sort_by(runs, &(not Run.needs_attention?(&1)))

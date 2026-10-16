@@ -19,7 +19,8 @@ defmodule WaveDashboardWeb.FugateRunLive do
         events: [],
         error: nil,
         abandoning?: false,
-        page_title: "Run · Fugate"
+        archiving?: false,
+        page_title: "Run · Herdr"
       )
 
     if connected?(socket) do
@@ -62,6 +63,22 @@ defmodule WaveDashboardWeb.FugateRunLive do
     end
   end
 
+  def handle_async(:archive, result, socket) do
+    socket = socket |> assign(archiving?: false) |> clear_flash()
+
+    case result do
+      {:ok, {:ok, run}} ->
+        Fugate.refresh()
+        {:noreply, socket |> assign(run: run) |> put_flash(:info, "Session archived") |> load()}
+
+      {:ok, {:error, reason}} ->
+        {:noreply, put_flash(socket, :error, Client.describe(reason))}
+
+      {:exit, reason} ->
+        {:noreply, put_flash(socket, :error, Client.describe(reason))}
+    end
+  end
+
   @impl true
   def handle_info(:tick, socket) do
     Clock.tick_next_minute(:tick)
@@ -89,11 +106,23 @@ defmodule WaveDashboardWeb.FugateRunLive do
      socket |> assign(abandoning?: true) |> start_async(:abandon, fn -> Client.abandon(id) end)}
   end
 
+  def handle_event("archive", _params, %{assigns: %{archiving?: true}} = socket),
+    do: {:noreply, socket}
+
+  def handle_event("archive", _params, socket) do
+    id = socket.assigns.id
+
+    {:noreply,
+     socket
+     |> assign(archiving?: true)
+     |> start_async(:archive, fn -> Client.archive_run(id) end)}
+  end
+
   @impl true
   def render(assigns) do
     ~H"""
     <div class="page">
-      <.page_header title="Run" crumbs={[{"Fugate", ~p"/fugate"}]}>
+      <.page_header title="Run" crumbs={[{"Herdr", ~p"/herdr"}]}>
         <:actions :if={@run && Run.active?(@run)}>
           <button
             type="button"
@@ -103,6 +132,17 @@ defmodule WaveDashboardWeb.FugateRunLive do
             data-confirm="Abandon this run? The agent itself is left running."
           >
             {if @abandoning?, do: "Abandoning…", else: "Abandon"}
+          </button>
+        </:actions>
+        <:actions :if={@run && Run.archivable?(@run)}>
+          <button
+            type="button"
+            class="button button-quiet"
+            phx-click="archive"
+            disabled={@archiving?}
+            data-confirm="Archive this run? Its Herdr agent and workspace are closed."
+          >
+            {if @archiving?, do: "Archiving…", else: "Archive"}
           </button>
         </:actions>
       </.page_header>
@@ -154,6 +194,9 @@ defmodule WaveDashboardWeb.FugateRunLive do
               </div>
               <div>
                 <dt>Finished</dt><dd><.time at={@run.finished_at} now={@now} /></dd>
+              </div>
+              <div :if={@run.archived_at}>
+                <dt>Archived</dt><dd><.time at={@run.archived_at} now={@now} /></dd>
               </div>
               <div>
                 <dt>Last turn</dt><dd>{@run.last_turn || "—"}</dd>

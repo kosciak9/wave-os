@@ -8,9 +8,11 @@ service =
         "port" => 4747,
         "max_concurrent" => 1,
         "allowed_clients" => [],
+        "project_roots" => ["~/Developer/personal"],
         "hosts" => %{
           "renekton" => %{
             "herdr_alias" => nil,
+            "home_directory" => System.user_home!(),
             "harnesses" => ["claude", "codex", "opencode"],
             "max_concurrent" => 1
           }

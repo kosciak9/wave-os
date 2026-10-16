@@ -47,6 +47,8 @@ defmodule Fugate.Scheduling.Run do
     define :schedule, args: [:job_id]
     define :transition, args: [:event]
     define :abandon
+    define :archive
+    define :with_session
     define :active_for_job, args: [:job_id], get?: true, not_found_error?: false
     define :placed_on_pane, args: [:pane_id], get?: true, not_found_error?: false
     define :active
@@ -114,6 +116,23 @@ defmodule Fugate.Scheduling.Run do
       change set_attribute(:state, :abandoned)
       change set_attribute(:finished_at, &DateTime.utc_now/0)
       change {Run.RecordEvent, kind: "abandoned"}
+    end
+
+    update :archive do
+      description "Closes a finished run's Herdr session: its agent, and its workspace with it."
+      require_atomic? false
+      validate attribute_in(:state, @terminal_states), message: "run is not finished"
+      validate present(:pane_id), message: "run has no Herdr session"
+      validate absent(:archived_at), message: "run is already archived"
+      change Run.ArchiveAgent
+      change set_attribute(:archived_at, &DateTime.utc_now/0)
+      change {Run.RecordEvent, kind: "archived"}
+    end
+
+    read :with_session do
+      description "Runs whose Herdr session has not been archived."
+      filter expr(not is_nil(pane_id) and is_nil(archived_at))
+      prepare build(sort: [inserted_at: :asc])
     end
 
     read :active_for_job do
@@ -198,6 +217,7 @@ defmodule Fugate.Scheduling.Run do
     attribute :wake_at, :utc_datetime_usec, public?: true
     attribute :checkpoint_at, :utc_datetime_usec, public?: true
     attribute :finished_at, :utc_datetime_usec, public?: true
+    attribute :archived_at, :utc_datetime_usec, public?: true
 
     timestamps(public?: true)
   end

@@ -32,5 +32,6 @@ defmodule Fugate.Scheduling.Agent do
 
     attribute :status_since, :utc_datetime_usec, public?: true
     attribute :cwd, :string, public?: true
+    attribute :run_id, :string, public?: true, description: "The Fugate run driving the agent."
   end
 end

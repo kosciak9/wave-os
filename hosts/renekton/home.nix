@@ -1,4 +1,4 @@
-{ lib, ... }:
+{ config, lib, ... }:
 {
   imports = [
     ../../modules/home/agents
@@ -47,9 +47,13 @@
     frida.enable = true;
     fugate = {
       enable = true;
-      hosts = [
-        "renekton"
-        "jayce"
+      hosts = {
+        renekton.homeDirectory = config.home.homeDirectory;
+        jayce.homeDirectory = "/home/kosciak";
+      };
+      projectRoots = [
+        "~/Developer/alergeek"
+        "~/Developer/personal"
       ];
     };
     slack-mirror = {

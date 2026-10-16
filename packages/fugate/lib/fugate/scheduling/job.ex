@@ -19,7 +19,8 @@ defmodule Fugate.Scheduling.Job do
     :timezone,
     :run_at,
     :allowed_hosts,
-    :enabled
+    :enabled,
+    :auto_archive
   ]
 
   sqlite do
@@ -81,7 +82,7 @@ defmodule Fugate.Scheduling.Job do
     validate absent(:cron), where: [negate(attribute_equals(:schedule, :cron))]
     validate present(:run_at), where: [attribute_equals(:schedule, :once)]
     validate absent(:run_at), where: [negate(attribute_equals(:schedule, :once))]
-    validate match(:repo_path, ~r{\A/}), message: "must be an absolute path"
+    validate Job.ValidateRepoPath
     validate {Job.ValidateSchedule, check: :cron}
     validate {Job.ValidateSchedule, check: :timezone}
     validate Job.ValidateAllowedHosts
@@ -114,6 +115,13 @@ defmodule Fugate.Scheduling.Job do
       constraints: [min_length: 1]
 
     attribute :enabled, :boolean, allow_nil?: false, public?: true, default: true
+
+    attribute :auto_archive, :boolean,
+      allow_nil?: false,
+      public?: true,
+      default: false,
+      description: "Archive the run's Herdr session once the run completes or fails."
+
     attribute :next_run_at, :utc_datetime_usec, public?: true, writable?: false
 
     timestamps(public?: true)

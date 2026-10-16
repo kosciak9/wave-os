@@ -24,7 +24,8 @@ defmodule WaveDashboard.Fugate.Client do
                   :run_at,
                   :next_run_at,
                   allowed_hosts: [],
-                  enabled: false
+                  enabled: false,
+                  auto_archive: false
                 ]
   end
 
@@ -42,14 +43,20 @@ defmodule WaveDashboard.Fugate.Client do
                   :wake_at,
                   :checkpoint_at,
                   :finished_at,
+                  :archived_at,
                   :inserted_at,
                   :updated_at
                 ]
 
     @active ~w(queued starting running waiting blocked unknown lost)
     @needs_attention ~w(blocked unknown lost)
+    @finished ~w(completed failed abandoned)
 
     def active?(%__MODULE__{state: state}), do: state in @active
+
+    @doc "Whether Fugate accepts closing the run's Herdr session: finished, with a pane, not yet closed."
+    def archivable?(%__MODULE__{} = run),
+      do: run.state in @finished and run.pane_id != nil and run.archived_at == nil
 
     @doc "Whether the run is stuck until someone looks at it."
     def needs_attention?(%__MODULE__{state: state}), do: state in @needs_attention
@@ -64,7 +71,8 @@ defmodule WaveDashboard.Fugate.Client do
   defmodule Agent do
     @moduledoc false
     @enforce_keys [:id, :status]
-    defstruct @enforce_keys ++ [:machine, :kind, :title, :status_since, :cwd]
+    # `run_id` is the Fugate run driving the agent, nil for agents Fugate did not start.
+    defstruct @enforce_keys ++ [:machine, :kind, :title, :status_since, :cwd, :run_id]
 
     @doc "Whether the agent is waiting for a person, by Herdr's status."
     def needs_attention?(%__MODULE__{status: status}), do: status == "blocked"
@@ -72,8 +80,20 @@ defmodule WaveDashboard.Fugate.Client do
 
   defmodule Repository do
     @moduledoc false
+    # `readiness` maps a host name to what keeps it from running jobs here, empty when ready.
     @enforce_keys [:name, :path]
-    defstruct @enforce_keys
+    defstruct @enforce_keys ++ [readiness: %{}]
+
+    @doc "Whether `host` can run a `harness` job here; Claude's folder trust matters only to Claude."
+    def ready_on?(%__MODULE__{readiness: readiness}, host, harness) do
+      case readiness[host] do
+        nil ->
+          false
+
+        problems ->
+          Enum.all?(problems, &(harness != "claude" and &1 == "folder not trusted in Claude"))
+      end
+    end
   end
 
   defmodule Event do
@@ -104,18 +124,23 @@ defmodule WaveDashboard.Fugate.Client do
            kind: attributes["kind"],
            title: attributes["title"],
            status_since: datetime(attributes["status_since"]),
-           cwd: attributes["cwd"]
+           cwd: attributes["cwd"],
+           run_id: attributes["run_id"]
          }
        end)}
     end
   end
 
-  @doc "Returns the git checkouts under `~/Developer` on Fugate's host, offered as job repositories."
+  @doc "Returns the git checkouts in Fugate's project roots, offered as job repositories."
   def repositories do
     with {:ok, document} <- request(:get, "/api/repositories") do
       {:ok,
        Enum.map(document["data"], fn %{"id" => id, "attributes" => attributes} ->
-         %Repository{name: id, path: attributes["path"]}
+         %Repository{
+           name: id,
+           path: attributes["path"],
+           readiness: attributes["readiness"] || %{}
+         }
        end)}
     end
   end
@@ -138,7 +163,8 @@ defmodule WaveDashboard.Fugate.Client do
       run_at: datetime(attributes["run_at"]),
       next_run_at: datetime(attributes["next_run_at"]),
       allowed_hosts: attributes["allowed_hosts"] || [],
-      enabled: attributes["enabled"] == true
+      enabled: attributes["enabled"] == true,
+      auto_archive: attributes["auto_archive"] == true
     }
   end
 
@@ -188,6 +214,14 @@ defmodule WaveDashboard.Fugate.Client do
          do: {:ok, run(document["data"])}
   end
 
+  @doc "Closes a finished run's Herdr session, its agent and workspace."
+  def archive_run(run_id) do
+    body = %{"data" => %{"type" => "run", "id" => run_id, "attributes" => %{}}}
+
+    with {:ok, document} <- request(:patch, "/api/runs/" <> segment(run_id) <> "/archive", body),
+         do: {:ok, run(document["data"])}
+  end
+
   @doc """
   Turns an error into text for the operator. API errors are a list of
   `{field, detail}` pairs where `field` is the attribute named by the error's
@@ -223,6 +257,7 @@ defmodule WaveDashboard.Fugate.Client do
       wake_at: datetime(attributes["wake_at"]),
       checkpoint_at: datetime(attributes["checkpoint_at"]),
       finished_at: datetime(attributes["finished_at"]),
+      archived_at: datetime(attributes["archived_at"]),
       inserted_at: datetime(attributes["inserted_at"]),
       updated_at: datetime(attributes["updated_at"])
     }

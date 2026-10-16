@@ -25,7 +25,8 @@ defmodule Fugate.Web.Router do
         :trigger_run,
         :list_runs,
         :get_run,
-        :abandon_run
+        :abandon_run,
+        :archive_run
       ]
     ]
   )

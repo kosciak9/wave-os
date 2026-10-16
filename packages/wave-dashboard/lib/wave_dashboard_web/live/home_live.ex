@@ -1,9 +1,9 @@
 defmodule WaveDashboardWeb.HomeLive do
   use WaveDashboardWeb, :live_view
 
-  import WaveDashboardWeb.FugateComponents, only: [stats: 1, state_badge: 1, time: 1]
+  import WaveDashboardWeb.FugateComponents, only: [stats: 1, agents: 1, time: 1]
 
-  import WaveDashboardWeb.Layouts, only: [wave_logo: 1, fugate_logo: 1]
+  import WaveDashboardWeb.Layouts, only: [wave_logo: 1, herdr_logo: 1]
 
   alias WaveDashboard.{Apps, Clock, Deadline, Fugate, Tailnet}
 
@@ -95,7 +95,7 @@ defmodule WaveDashboardWeb.HomeLive do
             deadline={@deadline}
             now={@local_now}
           />
-          <.agents snapshot={@fugate} now={@now} />
+          <.herdr snapshot={@fugate} now={@now} />
         </main>
 
         <aside class="column-side">
@@ -224,22 +224,16 @@ defmodule WaveDashboardWeb.HomeLive do
   attr :snapshot, :any, required: true
   attr :now, DateTime, required: true
 
-  defp agents(assigns) do
-    agents = by_status(assigns.snapshot.agents || [])
-
-    assigns =
-      assign(assigns,
-        agents: Enum.take(agents, @shown_agents),
-        hidden: max(0, length(agents) - @shown_agents)
-      )
+  defp herdr(assigns) do
+    assigns = assign(assigns, :shown_agents, @shown_agents)
 
     ~H"""
     <section class="card">
       <div class="card-header">
         <h2 class="card-title">
-          <.fugate_logo /> Agents
+          <.herdr_logo /> Herdr
         </h2>
-        <.link navigate={~p"/fugate"} class="card-link">Open Fugate →</.link>
+        <.link navigate={~p"/herdr"} class="card-link">Open Herdr →</.link>
       </div>
       <%= case @snapshot.status do %>
         <% :not_configured -> %>
@@ -251,37 +245,11 @@ defmodule WaveDashboardWeb.HomeLive do
             Fugate unreachable. Showing the last known state.
           </p>
           <.stats snapshot={@snapshot} now={@now} />
-          <p :if={@snapshot.agents == nil} class="muted">Herdr's agents are unavailable.</p>
-          <p :if={@snapshot.agents == []} class="muted">No agents in Herdr.</p>
-          <ul :if={@agents != []} class="rows">
-            <li :for={agent <- @agents} class={["row", agent.status == "idle" && "row-dim"]}>
-              <.state_badge state={agent.status} />
-              <span class="row-title" title={agent.cwd}>{agent_title(agent)}</span>
-              <span class="row-meta sep">
-                <span>{agent.kind}</span>
-                <span>{agent.machine}</span>
-                <.time at={agent.status_since} now={@now} />
-              </span>
-            </li>
-          </ul>
-          <p :if={@hidden > 0} class="muted">and {@hidden} more</p>
+          <.agents agents={@snapshot.agents} now={@now} limit={@shown_agents} />
       <% end %>
     </section>
     """
   end
-
-  @status_order %{"blocked" => 0, "working" => 1, "done" => 2, "unknown" => 3, "idle" => 4}
-
-  # Those waiting for a person first, then busy, then quiet; the latest change first within each.
-  defp by_status(agents) do
-    agents
-    |> Enum.sort_by(&(&1.status_since || DateTime.from_unix!(0)), {:desc, DateTime})
-    |> Enum.sort_by(&Map.get(@status_order, &1.status, 3))
-  end
-
-  defp agent_title(%{title: title}) when is_binary(title) and title != "", do: title
-  defp agent_title(%{cwd: cwd}) when is_binary(cwd), do: Path.basename(cwd)
-  defp agent_title(agent), do: agent.kind
 
   attr :apps, :list, required: true
 

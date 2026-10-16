@@ -7,9 +7,10 @@ defmodule Fugate.RunLifecycle do
 
   alias Fugate.{Herdr, StatusLine}
   alias Fugate.Herdr.Agent
-  alias Fugate.Scheduling.{Job, Run, RunEvent}
+  alias Fugate.Scheduling.{Job, Repository, Run, RunEvent}
+  require Logger
 
-  # agent.start waits up to 30 s (Herdr default) for the harness to become ready.
+  # Herdr gives up on a pending launch after the same time.
   @start_timeout 45_000
   @prompt_timeout 30_000
   @screen_lines 80
@@ -52,14 +53,25 @@ defmodule Fugate.RunLifecycle do
   end
 
   defp launch(run, job, host) do
-    workspace =
-      put_machine(%{cwd: job.repo_path, label: "fugate: #{job.name}", focus: false}, host)
-
-    with {:ok, created} <- step(run, "workspace.create", Herdr.create_workspace(workspace)),
-         {:ok, run} <- transition(run, "workspace_created", created),
-         start = %{name: run.agent_name, kind: Atom.to_string(job.harness), pane_id: run.pane_id},
-         :ok <- step(run, "agent.start", Herdr.start_agent(start, @start_timeout)),
-         {:ok, agent} <- step(run, "agent.get", Herdr.get_agent(run.pane_id)),
+    with {step_name, opened} = open_workspace(run, job, host),
+         {:ok, created} <- step(run, step_name, opened),
+         {:ok, run} <-
+           transition(
+             run,
+             "workspace_created",
+             Map.take(created, [:workspace_id, :pane_id]),
+             created |> Map.take([:path, :branch]) |> Map.new(fn {k, v} -> {to_string(k), v} end)
+           ),
+         start = %{
+           name: run.agent_name,
+           kind: Atom.to_string(job.harness),
+           pane_id: run.pane_id,
+           timeout_ms: @start_timeout
+         },
+         :ok <- step(run, "pane.process_info", Herdr.await_shell(run.pane_id, @start_timeout)),
+         :ok <- step(run, "agent.start", Herdr.start_agent(start)),
+         {:ok, agent} <-
+           step(run, "agent.get", Herdr.await_interactive(run.pane_id, @start_timeout)),
          {:ok, run} <-
            transition(
              run,
@@ -74,6 +86,35 @@ defmodule Fugate.RunLifecycle do
            step(run, "agent.prompt", Herdr.prompt_agent(run.pane_id, text, @prompt_timeout)) do
       transition(run, "prompt_sent", %{state: :running}, %{"delivery" => delivery})
     end
+  end
+
+  # A job in a project works on a branch of its own, in a new worktree.
+  defp open_workspace(run, job, host) do
+    params =
+      put_machine(
+        %{
+          cwd: Fugate.Config.Host.path(host, job.repo_path),
+          label: "fugate: #{job.name}",
+          focus: false
+        },
+        host
+      )
+
+    if job.repo_path == Repository.Read.without_project(),
+      do: {"workspace.create", Herdr.create_workspace(params)},
+      else: {"worktree.create", Herdr.create_worktree(Map.put(params, :branch, branch(run, job)))}
+  end
+
+  defp branch(run, job) do
+    slug =
+      job.name
+      |> String.downcase()
+      |> String.replace(~r/[^a-z0-9]+/, "-")
+      |> String.trim("-")
+      |> String.slice(0, 40)
+      |> String.trim("-")
+
+    "fugate/#{if slug == "", do: "run", else: slug}-#{binary_part(run.id, 0, 8)}"
   end
 
   defp put_machine(params, %{herdr_alias: nil}), do: params
@@ -160,8 +201,8 @@ defmodule Fugate.RunLifecycle do
         :waiting -> %{state: :waiting, wake_at: status.until}
       end
 
-    transition(
-      run,
+    run
+    |> transition(
       "turn_status",
       attrs
       |> Map.merge(turn_attrs(turn))
@@ -172,7 +213,19 @@ defmodule Fugate.RunLifecycle do
         "source" => source
       })
     )
+    |> auto_archive()
   end
+
+  defp auto_archive({:ok, %Run{state: state} = run}) when state in [:completed, :failed] do
+    with {:ok, %Run{job: %Job{auto_archive: true}}} <- Ash.load(run, :job),
+         {:error, error} <- Run.archive(run) do
+      Logger.warning("Could not archive run #{run.id}: #{Exception.message(error)}")
+    end
+
+    {:ok, run}
+  end
+
+  defp auto_archive(result), do: result
 
   defp ask_status(%{status_check_sent: true} = run, turn) do
     transition(

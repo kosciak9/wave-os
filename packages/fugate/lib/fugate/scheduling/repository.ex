@@ -1,5 +1,5 @@
 defmodule Fugate.Scheduling.Repository do
-  @moduledoc "A git checkout under `~/Developer` on Fugate's own host, offered as a job's repository."
+  @moduledoc "A git checkout in a project root on Fugate's own host, offered as a job's repository."
   use Ash.Resource,
     otp_app: :fugate,
     domain: Fugate.Scheduling,
@@ -17,8 +17,13 @@ defmodule Fugate.Scheduling.Repository do
   end
 
   attributes do
-    # The path relative to `~/Developer`, such as `personal/wave-os`.
+    # The path relative to its project root's parent, such as `personal/wave-os`.
     attribute :id, :string, primary_key?: true, allow_nil?: false, public?: true
     attribute :path, :string, allow_nil?: false, public?: true
+
+    attribute :readiness, :map,
+      public?: true,
+      description:
+        "What keeps each execution host from running jobs here, by host name; an empty list when ready."
   end
 end

@@ -10,7 +10,14 @@ defmodule Fugate.Scheduling.Agent.Read do
     case Fugate.Herdr.request("agent.list", %{}) do
       {:ok, %{"agents" => agents}} when is_list(agents) ->
         local = local_machine()
-        {:ok, for(%{"pane_id" => pane_id} = agent <- agents, do: agent(agent, pane_id, local))}
+        # The newest run wins when a pane id was reused.
+        runs = Map.new(Fugate.Scheduling.Run.with_session!(), &{&1.pane_id, &1.id})
+
+        {:ok,
+         for(
+           %{"pane_id" => pane_id} = agent <- agents,
+           do: agent(agent, pane_id, local, runs[pane_id])
+         )}
 
       {:ok, _unexpected} ->
         {:error, "Herdr sent an unexpected agent.list response"}
@@ -20,7 +27,7 @@ defmodule Fugate.Scheduling.Agent.Read do
     end
   end
 
-  defp agent(agent, pane_id, local) do
+  defp agent(agent, pane_id, local, run_id) do
     machine = agent["machine_label"] || local
 
     %Agent{
@@ -30,7 +37,8 @@ defmodule Fugate.Scheduling.Agent.Read do
       title: agent["terminal_title_stripped"],
       status: agent["agent_status"],
       status_since: since(agent["status_since_unix_ms"]),
-      cwd: agent["cwd"]
+      cwd: agent["cwd"],
+      run_id: run_id
     }
   end
 

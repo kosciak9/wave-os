@@ -1,6 +1,6 @@
 defmodule WaveDashboardWeb.FugateLive do
   @moduledoc """
-  Fugate's hosts, runs and jobs, and the job editor.
+  The Herdr page: Herdr's agents, Fugate's hosts, runs and jobs, and the job editor.
 
   The job form keeps its own draft while it is open; snapshots that arrive
   meanwhile only refresh the lists around it.
@@ -11,12 +11,12 @@ defmodule WaveDashboardWeb.FugateLive do
 
   alias WaveDashboard.{Clock, Fugate}
   alias WaveDashboard.Fugate.Client
-  alias WaveDashboard.Fugate.Client.Run
+  alias WaveDashboard.Fugate.Client.{Repository, Run}
 
   @harnesses ~w(claude codex opencode)
   @schedules [{"Manual", "manual"}, {"Cron", "cron"}, {"Once", "once"}]
   @default_timezone "Europe/Warsaw"
-  @fields ~w(name prompt repo_path harness schedule cron timezone run_at allowed_hosts enabled)
+  @fields ~w(name prompt repo_path harness schedule cron timezone run_at allowed_hosts enabled auto_archive)
 
   @impl true
   def mount(_params, _session, socket) do
@@ -47,7 +47,7 @@ defmodule WaveDashboardWeb.FugateLive do
   end
 
   defp apply_action(socket, :index, _params),
-    do: assign(socket, form: nil, job_id: nil, page_title: "Fugate")
+    do: assign(socket, form: nil, job_id: nil, page_title: "Herdr")
 
   defp apply_action(socket, :new, _params) do
     params = %{
@@ -55,14 +55,15 @@ defmodule WaveDashboardWeb.FugateLive do
       "schedule" => "manual",
       "timezone" => @default_timezone,
       "allowed_hosts" => Enum.map(socket.assigns.snapshot.hosts, & &1.name),
-      "enabled" => "true"
+      "enabled" => "true",
+      "auto_archive" => "false"
     }
 
     assign(socket,
       form: to_form(params, as: :job),
       job_id: nil,
       form_errors: [],
-      page_title: "New job · Fugate"
+      page_title: "New job · Herdr"
     )
   end
 
@@ -71,14 +72,14 @@ defmodule WaveDashboardWeb.FugateLive do
       nil ->
         socket
         |> put_flash(:error, "Job not found")
-        |> push_patch(to: ~p"/fugate")
+        |> push_patch(to: ~p"/herdr")
 
       job ->
         assign(socket,
           form: to_form(job_params(job), as: :job),
           job_id: id,
           form_errors: [],
-          page_title: "#{job.name} · Fugate"
+          page_title: "#{job.name} · Herdr"
         )
     end
   end
@@ -94,7 +95,8 @@ defmodule WaveDashboardWeb.FugateLive do
       "timezone" => job.timezone || @default_timezone,
       "run_at" => job.run_at && Calendar.strftime(job.run_at, "%Y-%m-%dT%H:%M"),
       "allowed_hosts" => job.allowed_hosts,
-      "enabled" => to_string(job.enabled)
+      "enabled" => to_string(job.enabled),
+      "auto_archive" => to_string(job.auto_archive)
     }
   end
 
@@ -139,6 +141,9 @@ defmodule WaveDashboardWeb.FugateLive do
   def handle_event("abandon", %{"id" => id}, socket),
     do: start_request(socket, {"abandon", id}, fn -> Client.abandon(id) end)
 
+  def handle_event("archive", %{"id" => id}, socket),
+    do: start_request(socket, {"archive", id}, fn -> Client.archive_run(id) end)
+
   defp start_request(socket, pending, request),
     do: {:noreply, socket |> assign(pending: pending) |> start_async(:request, request)}
 
@@ -176,7 +181,7 @@ defmodule WaveDashboardWeb.FugateLive do
 
     socket
     |> put_flash(:info, "Saved #{job.name}")
-    |> push_patch(to: ~p"/fugate")
+    |> push_patch(to: ~p"/herdr")
   end
 
   defp saved(socket, {:error, {:api, _status, errors}}) do
@@ -200,9 +205,10 @@ defmodule WaveDashboardWeb.FugateLive do
     socket = clear_flash(socket)
 
     case event do
-      "delete_job" -> socket |> put_flash(:info, "Job deleted") |> push_patch(to: ~p"/fugate")
+      "delete_job" -> socket |> put_flash(:info, "Job deleted") |> push_patch(to: ~p"/herdr")
       "run_now" -> put_flash(socket, :info, "Run queued")
       "abandon" -> put_flash(socket, :info, "Run abandoned")
+      "archive" -> put_flash(socket, :info, "Session archived")
     end
   end
 
@@ -224,7 +230,8 @@ defmodule WaveDashboardWeb.FugateLive do
       "timezone" => blank_to_nil(params["timezone"]) || @default_timezone,
       "run_at" => if(schedule == "once", do: run_at(params["run_at"])),
       "allowed_hosts" => Enum.reject(params["allowed_hosts"] || [], &(&1 == "")),
-      "enabled" => params["enabled"] == "true"
+      "enabled" => params["enabled"] == "true",
+      "auto_archive" => params["auto_archive"] == "true"
     }
   end
 
@@ -250,9 +257,9 @@ defmodule WaveDashboardWeb.FugateLive do
   def render(assigns) do
     ~H"""
     <div class="page">
-      <.page_header title="Fugate">
+      <.page_header title="Herdr">
         <:actions :if={@live_action == :index and @snapshot.status != :not_configured}>
-          <.link patch={~p"/fugate/jobs/new"} class="button">New job</.link>
+          <.link patch={~p"/herdr/jobs/new"} class="button">New job</.link>
         </:actions>
       </.page_header>
 
@@ -273,13 +280,25 @@ defmodule WaveDashboardWeb.FugateLive do
               repositories={@repositories}
               pending={@pending}
             />
+            <section class="card">
+              <div class="card-header">
+                <h2 class="card-title">Agents</h2>
+                <span :if={@snapshot.agents} class="card-detail">{length(@snapshot.agents)}</span>
+              </div>
+              <.agents agents={@snapshot.agents} now={@now} />
+            </section>
             <.active_runs
               runs={by_urgency(@snapshot.active_runs)}
               jobs={@snapshot.jobs}
               pending={@pending}
               now={@now}
             />
-            <.recent_runs runs={@snapshot.finished_runs} jobs={@snapshot.jobs} now={@now} />
+            <.recent_runs
+              runs={@snapshot.finished_runs}
+              jobs={@snapshot.jobs}
+              pending={@pending}
+              now={@now}
+            />
           </main>
 
           <aside class="column-side">
@@ -315,7 +334,7 @@ defmodule WaveDashboardWeb.FugateLive do
         <li :for={run <- @runs} class={["run-card", Run.needs_attention?(run) && "run-card-stuck"]}>
           <div class="run-card-head">
             <.state_badge state={run.state} />
-            <.link navigate={~p"/fugate/runs/#{run.id}"} class="row-title">
+            <.link navigate={~p"/herdr/runs/#{run.id}"} class="row-title">
               {job_name(@jobs, run.job_id)}
             </.link>
             <span class="row-meta">{run.host || "unassigned"}</span>
@@ -352,6 +371,7 @@ defmodule WaveDashboardWeb.FugateLive do
 
   attr :runs, :list, required: true
   attr :jobs, :list, required: true
+  attr :pending, :any, required: true
   attr :now, DateTime, required: true
 
   defp recent_runs(assigns) do
@@ -360,15 +380,27 @@ defmodule WaveDashboardWeb.FugateLive do
       <h2 class="card-title">Recent runs</h2>
       <p :if={@runs == []} class="muted">No finished runs.</p>
       <ul :if={@runs != []} class="rows">
-        <li :for={run <- @runs}>
-          <.link navigate={~p"/fugate/runs/#{run.id}"} class="row">
+        <li :for={run <- @runs} class="row-with-action">
+          <.link navigate={~p"/herdr/runs/#{run.id}"} class="row">
             <.state_badge state={run.state} />
             <span class="row-title">{job_name(@jobs, run.job_id)}</span>
             <span class="row-meta sep">
+              <span :if={run.archived_at}>archived</span>
               <span>{run.host || "—"}</span>
               <.time at={run.finished_at || run.updated_at} now={@now} />
             </span>
           </.link>
+          <button
+            :if={Run.archivable?(run)}
+            type="button"
+            class="button button-small button-quiet"
+            phx-click="archive"
+            phx-value-id={run.id}
+            disabled={@pending != nil}
+            data-confirm="Archive this run? Its Herdr agent and workspace are closed."
+          >
+            {if @pending == {"archive", run.id}, do: "Archiving…", else: "Archive"}
+          </button>
         </li>
       </ul>
     </section>
@@ -390,7 +422,7 @@ defmodule WaveDashboardWeb.FugateLive do
       <ul :if={@jobs != []} class="rows">
         <li :for={job <- @jobs} class={["row", not job.enabled && "row-dim"]}>
           <div class="row-stack">
-            <.link patch={~p"/fugate/jobs/#{job.id}/edit"} class="row-title">{job.name}</.link>
+            <.link patch={~p"/herdr/jobs/#{job.id}/edit"} class="row-title">{job.name}</.link>
             <span class="row-meta sep">
               <span>{job.harness}</span>
               <span>{schedule(job)}</span>
@@ -398,6 +430,7 @@ defmodule WaveDashboardWeb.FugateLive do
                 next <.time at={job.next_run_at} now={@now} />
               </span>
               <span :if={not job.enabled}>disabled</span>
+              <span :if={job.auto_archive}>auto-archive</span>
             </span>
           </div>
           <button
@@ -477,7 +510,8 @@ defmodule WaveDashboardWeb.FugateLive do
         harnesses: @harnesses,
         schedules: @schedules,
         schedule: assigns.form[:schedule].value,
-        allowed: List.wrap(assigns.form[:allowed_hosts].value)
+        allowed: List.wrap(assigns.form[:allowed_hosts].value),
+        repository: Enum.find(assigns.repositories, &(&1.path == assigns.form[:repo_path].value))
       )
 
     ~H"""
@@ -497,23 +531,20 @@ defmodule WaveDashboardWeb.FugateLive do
         <.field field={@form[:prompt]} label="Prompt">
           <textarea id={@form[:prompt].id} name={@form[:prompt].name} rows="8" required>{Phoenix.HTML.Form.normalize_value("textarea", @form[:prompt].value)}</textarea>
         </.field>
-        <.field field={@form[:repo_path]} label="Repository path">
-          <input
-            type="text"
-            id={@form[:repo_path].id}
-            name={@form[:repo_path].name}
-            value={@form[:repo_path].value}
-            list="repositories"
-            placeholder="Type to search ~/Developer"
-            autocomplete="off"
-            class="mono"
-            required
+        <.field field={@form[:repo_path]} label="Repository">
+          <select id={@form[:repo_path].id} name={@form[:repo_path].name} class="mono" required>
+            <option value="">Choose a repository</option>
+            {Phoenix.HTML.Form.options_for_select(
+              Enum.map(@repositories, &repository_option(&1, @hosts, @form[:harness].value)),
+              @form[:repo_path].value
+            )}
+          </select>
+          <.readiness
+            :if={@repository}
+            repository={@repository}
+            hosts={@hosts}
+            harness={@form[:harness].value}
           />
-          <datalist id="repositories">
-            <option :for={repository <- @repositories} value={repository.path}>
-              {repository.name}
-            </option>
-          </datalist>
         </.field>
         <div class="field-row">
           <.field field={@form[:harness]} label="Harness">
@@ -568,6 +599,12 @@ defmodule WaveDashboardWeb.FugateLive do
               checked={host in @allowed}
             />
             {host}
+            <span
+              :if={@repository && not Repository.ready_on?(@repository, host, @form[:harness].value)}
+              class="muted"
+            >
+              not ready
+            </span>
           </label>
           <p :for={{message, _} <- @form[:allowed_hosts].errors} class="form-error">{message}</p>
         </fieldset>
@@ -580,11 +617,20 @@ defmodule WaveDashboardWeb.FugateLive do
             checked={@form[:enabled].value == "true"}
           /> Enabled
         </label>
+        <label class="check">
+          <input type="hidden" name={@form[:auto_archive].name} value="false" />
+          <input
+            type="checkbox"
+            name={@form[:auto_archive].name}
+            value="true"
+            checked={@form[:auto_archive].value == "true"}
+          /> Archive the Herdr session when the run finishes
+        </label>
         <div class="row-actions">
           <button type="submit" class="button" disabled={@saving?}>
             {if @saving?, do: "Saving…", else: "Save"}
           </button>
-          <.link patch={~p"/fugate"} class="button button-quiet">Cancel</.link>
+          <.link patch={~p"/herdr"} class="button button-quiet">Cancel</.link>
           <button
             :if={@editing?}
             type="button"
@@ -601,6 +647,52 @@ defmodule WaveDashboardWeb.FugateLive do
     </section>
     """
   end
+
+  # A repository ready on no host cannot be chosen; one ready on only some says where it is not.
+  defp repository_option(repository, hosts, harness) do
+    case Enum.reject(hosts, &Repository.ready_on?(repository, &1, harness)) do
+      [] ->
+        {repository.name, repository.path}
+
+      ^hosts ->
+        [key: "#{repository.name} (not ready)", value: repository.path, disabled: true]
+
+      missing ->
+        {"#{repository.name} (not ready on #{Enum.join(missing, ", ")})", repository.path}
+    end
+  end
+
+  attr :repository, Repository, required: true
+  attr :hosts, :list, required: true
+  attr :harness, :string, required: true
+
+  defp readiness(assigns) do
+    ~H"""
+    <ul class="readiness">
+      <li :for={host <- @hosts}>
+        <span class="mono">{host}</span>
+        <span :if={Repository.ready_on?(@repository, host, @harness)} class="muted">ready</span>
+        <span :for={problem <- Map.get(@repository.readiness, host, ["not checked"])}>
+          {problem}<span :if={hint(problem, @repository)} class="muted">: {hint(problem, @repository)}</span>
+        </span>
+      </li>
+    </ul>
+    """
+  end
+
+  defp hint("worktrunk hooks not approved", repository),
+    do: "run `wt -C #{home_relative(repository.path)} config approvals add` there"
+
+  defp hint("folder not trusted in Claude", %{path: "/tmp"}),
+    do: "start `claude` in /tmp there once and trust the folder"
+
+  defp hint("folder not trusted in Claude", repository),
+    do:
+      "start `claude` in #{repository.path |> Path.dirname() |> home_relative()} there once and trust the folder"
+
+  defp hint(_problem, _repository), do: nil
+
+  defp home_relative(path), do: String.replace(path, ~r{\A/(?:Users|home)/[^/]+/}, "~/")
 
   attr :field, Phoenix.HTML.FormField, required: true
   attr :label, :string, required: true

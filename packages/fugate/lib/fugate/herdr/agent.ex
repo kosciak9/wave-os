@@ -7,7 +7,18 @@ defmodule Fugate.Herdr.Agent do
   restart), so turns are only comparable within one epoch.
   """
 
-  @enforce_keys [:pane_id, :terminal_id, :name, :session, :status, :completed_turn, :tokens]
+  @enforce_keys [
+    :pane_id,
+    :terminal_id,
+    :name,
+    :kind,
+    :session,
+    :status,
+    :launch_pending,
+    :interactive_ready,
+    :completed_turn,
+    :tokens
+  ]
   defstruct @enforce_keys
 
   @type turn :: {epoch :: non_neg_integer() | nil, turn :: non_neg_integer()}
@@ -16,8 +27,11 @@ defmodule Fugate.Herdr.Agent do
           pane_id: String.t(),
           terminal_id: String.t(),
           name: String.t() | nil,
+          kind: String.t() | nil,
           session: String.t() | nil,
           status: String.t() | nil,
+          launch_pending: boolean(),
+          interactive_ready: boolean(),
           completed_turn: turn(),
           tokens: %{String.t() => String.t()}
         }
@@ -30,8 +44,11 @@ defmodule Fugate.Herdr.Agent do
        pane_id: pane_id,
        terminal_id: terminal_id,
        name: string(agent["name"]),
+       kind: string(agent["agent"]),
        session: agent |> Map.get("agent_session") |> session(),
        status: string(agent["agent_status"]),
+       launch_pending: agent["launch_pending"] == true,
+       interactive_ready: agent["interactive_ready"] == true,
        completed_turn: completed_turn(agent),
        tokens: tokens(agent["tokens"])
      }}

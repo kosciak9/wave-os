@@ -21,6 +21,7 @@ defmodule Fugate.Scheduling do
         get :read
         post :trigger
         patch :abandon, route: "/:id/abandon"
+        patch :archive, route: "/:id/archive"
       end
 
       base_route "/hosts", Host do
@@ -46,6 +47,7 @@ defmodule Fugate.Scheduling do
     tool :list_runs, Run, :list
     tool :get_run, Run, :read, get_by: [:id], load: [:events]
     tool :abandon_run, Run, :abandon
+    tool :archive_run, Run, :archive
   end
 
   resources do

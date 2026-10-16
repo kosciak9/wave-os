@@ -205,6 +205,20 @@ code, .mono { font-family: var(--font-mono); font-size: inherit; }
   stroke-width: 11;
 }
 
+/* Herdr's figure runs off the tile's right and bottom edges, as in its own square logo. */
+.herdr-logo {
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  flex-shrink: 0;
+  overflow: clip;
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  color: var(--accent);
+}
+
+.started-by-fugate { display: inline-flex; flex-shrink: 0; }
+.started-by-fugate .fugate-logo { inline-size: 1.125rem; block-size: 1.125rem; padding: 0.125rem; }
+
 .banner {
   padding: 0.625rem 0.875rem;
   border-radius: var(--radius);
@@ -215,6 +229,16 @@ code, .mono { font-family: var(--font-mono); font-size: inherit; }
 
 .banner-error { box-shadow: inset 3px 0 0 var(--error); color: var(--text); }
 .form-error { color: var(--error); font-size: var(--text-size-small); }
+
+/* Each host on its own line: its name, then what keeps it from running the job here. */
+.readiness {
+  margin: 0.375rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-size-small);
+}
+.readiness li { display: flex; flex-wrap: wrap; column-gap: 0.5rem; }
+.readiness li > span:not(.mono, .muted) { color: var(--error); }
 
 /* Rows: one line per item, title left, detail right */
 .rows { display: grid; margin-inline: -0.5rem; }
@@ -268,6 +292,11 @@ a.row-title, a.row .row-title { transition: color var(--fade); }
 .row-stack .row-meta { margin-inline-start: 0; white-space: normal; }
 .row-stack + :is(.button, .slots) { flex-shrink: 0; }
 .row-dim .row-title { color: var(--text-faint); }
+
+/* A row link with a button beside it, since a button cannot sit inside the link. */
+.row-with-action { display: flex; align-items: center; gap: 0.5rem; }
+.row-with-action > .row { flex: 1; }
+.row-with-action:has(> .button) { padding-inline-end: 0.5rem; }
 
 .status {
   inline-size: 0.5rem;
