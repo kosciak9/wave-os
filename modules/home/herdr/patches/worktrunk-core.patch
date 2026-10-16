@@ -286,8 +286,9 @@ index 17f560a..0b30efa 100644
 +fn run_worktree_command_stdout(command: &WorktreeCommand) -> Result<String, String> {
      let output = crate::noninteractive_process::command(&command.program)
 -        // Removal errors are classified by Git's English diagnostics.
-+        // Removal errors are classified by Git's and Worktrunk's English diagnostics.
-         .env("LC_ALL", "C")
++        // Keep English diagnostics without breaking UTF-8 output in project hooks.
+-        .env("LC_ALL", "C")
++        .env("LC_ALL", "C.UTF-8")
 +        .envs(command.env.iter().cloned())
          .args(&command.args)
          .output()
