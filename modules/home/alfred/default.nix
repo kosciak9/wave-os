@@ -424,7 +424,7 @@ let
     });
 
     export default {
-        prompt: readFileSync("/run/secrets/prompt.md", "utf8") + "\n\n" + ${builtins.toJSON (builtins.readFile ../agents/AGENTS.md)} + "\n\n" + ${builtins.toJSON xGuidance},
+        prompt: readFileSync("/run/secrets/prompt.md", "utf8") + "\n\n" + ${builtins.toJSON xGuidance},
     	model: { provider: "openai-codex", modelId: "gpt-6.1-sol", thinkingLevel: "medium" },
     	fallbackModel: { provider: "xai", modelId: "grok-4.7", thinkingLevel: "medium" },
     	telegram: { chatId: Number(process.env.TELEGRAM_CHAT_ID) },
