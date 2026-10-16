@@ -8,6 +8,7 @@ defmodule WaveDashboardWeb.FugateLive do
   use WaveDashboardWeb, :live_view
 
   import WaveDashboardWeb.FugateComponents
+  import WaveDashboardWeb.Icons, only: [icon: 1]
 
   alias WaveDashboard.{Clock, Fugate}
   alias WaveDashboard.Fugate.Client
@@ -399,6 +400,7 @@ defmodule WaveDashboardWeb.FugateLive do
             disabled={@pending != nil}
             data-confirm="Archive this run? Its Herdr agent and workspace are closed."
           >
+            <.icon name="archive" />
             {if @pending == {"archive", run.id}, do: "Archiving…", else: "Archive"}
           </button>
         </li>
