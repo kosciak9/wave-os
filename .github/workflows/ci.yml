@@ -47,6 +47,9 @@ jobs:
   jayce-cache:
     name: jayce-cache
     if: github.event_name == 'push'
+    concurrency:
+      group: ${{ github.workflow }}-jayce-cache-${{ github.ref }}
+      cancel-in-progress: true
     runs-on: ubuntu-24.04
     environment: cachix
     steps:
@@ -81,6 +84,9 @@ jobs:
   ahri-cache:
     name: ahri-cache
     if: github.event_name == 'push'
+    concurrency:
+      group: ${{ github.workflow }}-ahri-cache-${{ github.ref }}
+      cancel-in-progress: true
     runs-on: ubuntu-24.04-arm
     # The cache token lives here; the environment admits only main.
     environment: cachix
