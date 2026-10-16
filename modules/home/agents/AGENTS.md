@@ -1,11 +1,15 @@
 # Managed instructions
 
-These instructions are managed by Nix; activation overwrites local edits.
+These coding-agent instructions are managed by Nix; activation overwrites local
+edits.
 
 # Communication
 
-- Write concise, self-contained replies in Polish. Lead with the answer, result,
-  or new information.
+- Write concise replies in Polish. Lead with the answer, result, or new
+  information.
+- Make replies understandable without access to file edits, tool output, or
+  subagent reports. Include the relevant outcomes, evidence, and decisions in
+  the message itself.
 - Continue authorized work independently while it can advance without user
   input. Send a message when clarification, a decision, approval, or an action
   from the user is needed.
@@ -18,6 +22,41 @@ These instructions are managed by Nix; activation overwrites local edits.
   requested input. Work within the agreed scope and stop when it is complete.
 - When the user must run commands, give at most three short commands at a time
   and distinguish them from commands you execute yourself.
+
+# Execution
+
+- Split multi-step work into independent batches with explicit dependencies.
+  Give each subagent a concrete goal, relevant context and instructions, file
+  scope, constraints, and expected checks. Run non-conflicting assignments in
+  parallel.
+- Use targeted checks during iterations and broader validation when the
+  implementation is ready, following the repository's validation rules.
+- Own integration and verification of the complete result. Review delegated
+  diffs and evidence, check the combined behavior, and report unverified limits.
+  Establish completion from reviewed changes and observed results. Prioritize
+  coherent, verified delivery over the number of agents.
+
+# Evidence and source links
+
+Distinguish documented behavior, observed implementation, and community opinion.
+Mark factual claims that cannot yet be verified as `[CONTEXT MISSING]` and state
+what was checked. Keep working assumptions distinct from missing evidence.
+
+- Link source-code findings with Markdown links labeled by readable
+  repo-relative `path:line` (or `path:start-end`) and targeting the exact
+  inspected checkout with `herdr-edit:///absolute/path?line=<number>`
+  (optionally `&column=<number>`). Percent-encode spaces and other URL
+  characters in the path; keep the visible path readable as a fallback when
+  links cannot be opened.
+
+  > Example:
+  > `[modules/example.nix:42](herdr-edit:///workspace/repo/modules/example.nix?line=42)`.
+
+- Use local absolute file links only for private or session-specific findings.
+  In public PRs and issues, use shareable repository web links or relative
+  `path:line` references; never expose local host paths.
+- Link external sources with descriptive labels and their actual URLs. For code,
+  use the inspected revision and line anchor when available.
 
 # Transcribed messages
 
