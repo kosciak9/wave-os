@@ -21,7 +21,8 @@ secret_key_base =
 
 config :wave_dashboard,
   state_dir: state_dir,
-  caddy_admin_url: System.get_env("CADDY_ADMIN_URL", "http://localhost:2019"),
+  # Set only where this instance owns Caddy; see WaveDashboard.Caddy.
+  caddy_admin_url: System.get_env("CADDY_ADMIN_URL"),
   fugate_url: System.get_env("FUGATE_URL")
 
 config :wave_dashboard, WaveDashboardWeb.Endpoint,

@@ -24,7 +24,8 @@ in
   };
 
   # The dashboard replaces this configuration with one that also routes registered apps;
-  # this one keeps the dashboard reachable until it does.
+  # this one keeps the dashboard reachable until it does. It only does so where
+  # CADDY_ADMIN_URL below names this Caddy as the instance it owns.
   services.caddy = {
     enable = true;
     package = caddy;

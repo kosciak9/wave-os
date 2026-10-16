@@ -152,12 +152,20 @@ let
 in
 {
   environment.systemPackages = [ pkgs.cliproxyapi ];
-  wave.health.checks.cliproxyapi = ''
-    test "$(${lib.getExe pkgs.curl} --silent --output /dev/null --write-out '%{http_code}' \
-      --max-time 5 http://127.0.0.1:8317/v1/models)" = 401
-    test "$(${lib.getExe pkgs.curl} --silent --output /dev/null --write-out '%{http_code}' \
-      --max-time 5 http://127.0.0.1:8317/v1/quota)" = 401
-  '';
+  wave.health.checks = {
+    cliproxyapi = ''
+      test "$(${lib.getExe pkgs.curl} --silent --output /dev/null --write-out '%{http_code}' \
+        --max-time 5 http://127.0.0.1:8317/v1/models)" = 401
+      test "$(${lib.getExe pkgs.curl} --silent --output /dev/null --write-out '%{http_code}' \
+        --max-time 5 http://127.0.0.1:8317/v1/quota)" = 401
+    '';
+    # The site name from the Caddyfile, so a lost TLS policy or a certificate
+    # that Caddy cannot renew fails the check instead of the gateway itself.
+    tokens = ''
+      test "$(${lib.getExe pkgs.curl} --silent --output /dev/null --write-out '%{http_code}' \
+        --max-time 5 https://tokens.wave.exposed/v1/models)" = 401
+    '';
+  };
   launchd.daemons.cliproxyapi.serviceConfig = {
     ProgramArguments = [ (lib.getExe start) ];
     UserName = user;
