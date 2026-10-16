@@ -201,8 +201,8 @@ code, .mono { font-family: var(--font-mono); font-size: inherit; }
 .group-title { font-size: var(--text-size-small); font-weight: 400; color: var(--text-faint); }
 
 .iconoir {
-  inline-size: 1.5em;
-  block-size: 1.5em;
+  inline-size: 1.25em;
+  block-size: 1.25em;
   flex: none;
 }
 
