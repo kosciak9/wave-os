@@ -32,7 +32,7 @@ defmodule WaveDashboard.Caddy do
   end
 
   defp load(config, url) do
-    with {:ok, _body} <- request(:post, "/load", JSON.encode!(config), url), do: :ok
+    with {:ok, _body} <- request(:post, "/load", url, JSON.encode!(config)), do: :ok
   end
 
   defp config(apps, url) do
