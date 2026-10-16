@@ -9,8 +9,8 @@ defmodule WaveDashboardWeb.Layouts do
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="csrf-token" content={get_csrf_token()} />
-        <.live_title default="ahri.wave">{assigns[:page_title]}</.live_title>
-        <link rel="icon" type="image/png" href={~p"/images/favicon.png"} />
+        <.live_title default="wave dashboard">{assigns[:page_title]}</.live_title>
+        <link rel="icon" type="image/svg+xml" href={~p"/images/wave.svg"} />
         <link rel="stylesheet" href={~p"/assets/app.css"} />
         <script defer src="/vendor/phoenix.min.js">
         </script>
