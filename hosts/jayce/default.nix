@@ -113,6 +113,7 @@
   wave.deployer.enable = true;
 
   services = {
+    gnome.at-spi2-core.enable = true;
     gvfs.enable = true;
     openssh = {
       enable = true;

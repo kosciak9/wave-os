@@ -56,6 +56,7 @@ let
 in
 {
   imports = [
+    ./desktop/cua-driver.nix
     ./desktop/watch.nix
     ./desktop/voxtype.nix
     ./pimalaya.nix
