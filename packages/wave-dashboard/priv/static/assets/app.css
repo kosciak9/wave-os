@@ -34,8 +34,9 @@
 
 /* Base */
 *, *::before, *::after { box-sizing: border-box; }
-/* Everything is sized in rem, so this scales the whole page like a 110% zoom. */
-html { font-size: 110%; }
+/* Everything is sized in rem, so this scales the whole page like a 110% zoom.
+   Phones keep the sizes as written instead of inflating text on their own. */
+html { font-size: 110%; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 html, body, h1, h2, h3, p, dl, dd, ul, ol, pre { margin: 0; }
 h1, h2, h3 { font-size: inherit; }
 ul, ol { padding: 0; list-style: none; }
@@ -68,6 +69,10 @@ code, .mono { font-family: var(--font-mono); font-size: inherit; }
 }
 
 .stack { display: grid; gap: 1rem; }
+
+/* Single-column grids take their width from the screen, not from their widest
+   line, so a long unbroken title is cut off instead of widening the page. */
+.page, .stack, .column-main, .column-side, .card, .rows { grid-template-columns: minmax(0, 1fr); }
 
 .columns {
   display: flex;
@@ -162,6 +167,7 @@ code, .mono { font-family: var(--font-mono); font-size: inherit; }
 
 /* Cards: set apart by a tone step, not an outline */
 .card {
+  container-type: inline-size;
   display: grid;
   gap: 0.875rem;
   align-content: start;
@@ -295,8 +301,29 @@ a.row-title, a.row .row-title { transition: color var(--fade); }
 
 /* A row link with a button beside it, since a button cannot sit inside the link. */
 .row-with-action { display: flex; align-items: center; gap: 0.5rem; }
-.row-with-action > .row { flex: 1; }
+.row-with-action > .row { flex: 1; min-inline-size: 0; }
 .row-with-action:has(> .button) { padding-inline-end: 0.5rem; }
+
+/* In a narrow card a row's detail moves below its title. A row with a state
+   gives its title the whole first line and puts the state before the detail. */
+@container (inline-size < 32rem) {
+  .row { flex-wrap: wrap; row-gap: 0; }
+  .row > .row-title { flex: 1 1 0; }
+  .row > .row-meta { flex-basis: 100%; margin-inline-start: 0; white-space: normal; }
+  .row:has(> .status) > .row-meta { padding-inline-start: calc(0.5rem + 0.625rem); }
+
+  .row:has(> .state-badge) {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: "title title" "state meta";
+    gap: 0.125rem 0.625rem;
+  }
+  .row > .state-badge { grid-area: state; min-inline-size: 0; }
+  .row:has(> .state-badge) > .row-title { grid-area: title; }
+  .row:has(> .state-badge) > .started-by-fugate { grid-area: title; justify-self: start; }
+  .row:has(> .started-by-fugate) > .row-title { padding-inline-start: 1.75rem; }
+  .row:has(> .state-badge) > .row-meta { grid-area: meta; padding-inline-start: 0; }
+}
 
 .status {
   inline-size: 0.5rem;
@@ -328,6 +355,12 @@ a.row-title, a.row .row-title { transition: color var(--fade); }
 }
 
 .button-small { min-block-size: 1.875rem; padding-inline: 0.625rem; font-size: var(--text-size-small); }
+
+/* Fingers need larger targets than a pointer. */
+@media (pointer: coarse) {
+  .button { min-block-size: 2.75rem; }
+  .button-small { min-block-size: 2.5rem; }
+}
 .button-quiet { background: var(--surface-raised); color: var(--text); }
 .button-danger { background: var(--surface-raised); color: var(--error); }
 .button-quiet-danger { color: var(--text-muted); }
@@ -412,7 +445,7 @@ a.row-title, a.row .row-title { transition: color var(--fade); }
 /* Fugate stats */
 .stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
   gap: 0.5rem;
 }
 
