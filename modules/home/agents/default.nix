@@ -43,7 +43,7 @@ in
       target = "${claudeDirectory}/skills/real-sound";
     };
     "claude-instructions" = {
-      text = builtins.readFile ./CLAUDE.md + "\n" + builtins.readFile ./AGENTS.md;
+      source = ./AGENTS.md;
       target = "${claudeDirectory}/CLAUDE.md";
       force = true;
     };
