@@ -25,6 +25,9 @@ python3Packages.buildPythonPackage (finalAttrs: {
   build-system = [ python3Packages.setuptools ];
   nativeBuildInputs = [ installShellFiles ];
 
+  # Keep the LLM sleep mock from intercepting subprocess's polling sleeps.
+  patches = [ ./earshot-isolate-test-sleep.patch ];
+
   # MCP's subprocess environment must retain Nix's Python dependency paths.
   postPatch = ''
     substituteInPlace tests/test_interfaces.py \

@@ -1,0 +1,9 @@
+diff --git a/tests/test_interfaces.py b/tests/test_interfaces.py
+--- a/tests/test_interfaces.py
++++ b/tests/test_interfaces.py
+@@ -6 +6,2 @@
+ import sys
++from types import SimpleNamespace
+@@ -90 +91 @@
+-        monkeypatch.setattr(llm.time, 'sleep', lambda s: f.calls.append(('SLEEP', s, {}, {})))
++        monkeypatch.setattr(llm, 'time', SimpleNamespace(time=llm.time.time, sleep=lambda s: f.calls.append(('SLEEP', s, {}, {}))))
