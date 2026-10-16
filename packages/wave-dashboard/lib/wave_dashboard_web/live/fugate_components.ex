@@ -2,7 +2,8 @@ defmodule WaveDashboardWeb.FugateComponents do
   @moduledoc false
   use WaveDashboardWeb, :html
 
-  import WaveDashboardWeb.Layouts, only: [wave_logo: 1, herdr_logo: 1, fugate_logo: 1]
+  import WaveDashboardWeb.Layouts, only: [wave_logo: 1, herdr_logo: 1]
+  import WaveDashboardWeb.Icons, only: [icon: 1]
 
   alias WaveDashboard.Clock
   alias WaveDashboard.Fugate.{Client, Snapshot}
@@ -188,10 +189,16 @@ defmodule WaveDashboardWeb.FugateComponents do
 
   defp agent(assigns) do
     ~H"""
-    <.state_badge state={@agent.status} />
-    <span :if={@agent.run_id} class="started-by-fugate" title="Started by Fugate">
-      <.fugate_logo /><span class="visually-hidden">Started by Fugate</span>
+    <span
+      class={["agent-origin", @agent.run_id && "agent-origin-fugate"]}
+      title={if @agent.run_id, do: "Started by Fugate", else: "Started manually"}
+    >
+      <.icon name={if @agent.run_id, do: "wristwatch", else: "spock-hand-gesture"} />
+      <span class="visually-hidden">
+        {if @agent.run_id, do: "Started by Fugate", else: "Started manually"}
+      </span>
     </span>
+    <.state_badge state={@agent.status} />
     <span class="row-title" title={@agent.cwd}>{agent_title(@agent)}</span>
     <span class="row-meta sep">
       <span>{@agent.kind}</span>
