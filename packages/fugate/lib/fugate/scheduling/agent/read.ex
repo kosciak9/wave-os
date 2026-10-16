@@ -10,13 +10,12 @@ defmodule Fugate.Scheduling.Agent.Read do
     case Fugate.Herdr.request("agent.list", %{}) do
       {:ok, %{"agents" => agents}} when is_list(agents) ->
         local = local_machine()
-        # The newest run wins when a pane id was reused.
-        runs = Map.new(Fugate.Scheduling.Run.with_session!(), &{&1.pane_id, &1.id})
+        runs = Enum.reverse(Fugate.Scheduling.Run.with_session!())
 
         {:ok,
          for(
            %{"pane_id" => pane_id} = agent <- agents,
-           do: agent(agent, pane_id, local, runs[pane_id])
+           do: agent(agent, pane_id, local, runs)
          )}
 
       {:ok, _unexpected} ->
@@ -27,7 +26,7 @@ defmodule Fugate.Scheduling.Agent.Read do
     end
   end
 
-  defp agent(agent, pane_id, local, run_id) do
+  defp agent(agent, pane_id, local, runs) do
     machine = agent["machine_label"] || local
 
     %Agent{
@@ -38,8 +37,22 @@ defmodule Fugate.Scheduling.Agent.Read do
       status: agent["agent_status"],
       status_since: since(agent["status_since_unix_ms"]),
       cwd: agent["cwd"],
-      run_id: run_id
+      run_id: run_id(agent, machine, runs)
     }
+  end
+
+  defp run_id(agent, machine, runs) do
+    with {:ok, identity} <- Fugate.Herdr.Agent.parse(agent),
+         name when is_binary(name) <- identity.name do
+      Enum.find_value(runs, fn run ->
+        if run.host == machine and run.pane_id == identity.pane_id and
+             run.agent_name == name and run.terminal_id == identity.terminal_id and
+             run.agent_session == identity.session,
+           do: run.id
+      end)
+    else
+      _ -> nil
+    end
   end
 
   # The configured host Fugate reaches without a Herdr machine alias is this one.
