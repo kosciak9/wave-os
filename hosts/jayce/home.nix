@@ -158,6 +158,10 @@ in
           profileId = "8ac324f745614d28882c5758333e4b42";
           machineId = "machine_9026bebb6184fc9965a24b867836dce9";
         };
+        zilean = {
+          profileId = "9714124c5a978511996fff2a220b9d73";
+          machineId = "machine_5c3a4638819ec73b666a193113337aa5";
+        };
       };
     };
     home-manager.enable = true;
