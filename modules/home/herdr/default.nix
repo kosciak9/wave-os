@@ -112,7 +112,10 @@ in
     ./plugin-options.nix
   ];
 
-  programs.zsh.generatedCompletions.herdr = "${lib.getExe herdr} completion zsh";
+  programs.zsh.generatedCompletions = {
+    herdr = "${lib.getExe herdr} completion zsh";
+    claude = "printf '%s\\n' '#compdef claude' '_gnu_generic'";
+  };
 
   programs.worktrunk = {
     enable = true;
