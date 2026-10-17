@@ -65,6 +65,7 @@
       device = "/dev/disk/by-label/ZILEAN_STORAGE";
       fsType = "btrfs";
       options = [
+        "subvol=storage"
         "noatime"
         "compress=zstd"
         "nofail"
@@ -75,6 +76,7 @@
       device = "/dev/disk/by-label/ZILEAN_SCRATCH";
       fsType = "btrfs";
       options = [
+        "subvol=scratch"
         "noatime"
         "compress=zstd"
         "nofail"
