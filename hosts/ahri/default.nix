@@ -84,7 +84,10 @@ in
     deployer.enable = true;
     autoDeploy = {
       enable = true;
-      nodes = [ "renekton" ];
+      nodes = [
+        "renekton"
+        "zilean"
+      ];
     };
   };
 
