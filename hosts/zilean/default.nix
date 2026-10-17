@@ -112,6 +112,9 @@
   environment.systemPackages = with pkgs; [
     curl
     vim
+    (runCommand "bcache-zsh-completions" { nativeBuildInputs = [ installShellFiles ]; } ''
+      installShellCompletion --cmd bcache --zsh ${../../packages/bcache-completions.zsh}
+    '')
   ];
 
   nix.settings = {
