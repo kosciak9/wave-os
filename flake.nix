@@ -117,6 +117,7 @@
           herdr-auto-title = final.callPackage ./packages/herdr-auto-title.nix {
             src = inputs.herdr-auto-title;
           };
+          happier = final.callPackage ./packages/happier.nix { };
           cliproxyapi = final.callPackage ./packages/cliproxyapi.nix { inherit prev; };
           wave-dashboard = final.callPackage ./packages/wave-dashboard.nix { };
           slack-mirror = final.callPackage ./packages/slack-mirror.nix { };

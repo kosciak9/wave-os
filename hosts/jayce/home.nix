@@ -70,6 +70,7 @@ in
     ../../modules/home/opencode
     ../../modules/home/pr-cockpit
     ../../modules/home/herdr
+    ../../modules/home/happier
     ../../modules/home/herdr/gpui.nix
     ../../modules/home/starship
     ../../modules/home/vicinae

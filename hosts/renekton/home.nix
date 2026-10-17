@@ -16,6 +16,7 @@
     ../../modules/home/neovim
     ../../modules/home/opencode
     ../../modules/home/herdr
+    ../../modules/home/happier
     ../../modules/home/starship
     ../../modules/home/vicinae
     ../../modules/home/whisper/darwin.nix
