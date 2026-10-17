@@ -90,7 +90,10 @@
     fstrim.enable = true;
     smartd.enable = true;
   };
-  systemd.tmpfiles.rules = [ "f /var/lib/wave-os/ssh/kosciak 0644 root root - -" ];
+  systemd.tmpfiles.rules = [
+    "f /var/lib/wave-os/ssh/kosciak 0644 root root - -"
+    "L /home/kosciak/Developer - kosciak users - /srv/scratch/Developer"
+  ];
 
   hardware = {
     enableRedistributableFirmware = true;
