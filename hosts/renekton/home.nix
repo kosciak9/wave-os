@@ -16,9 +16,7 @@
     ../../modules/home/neovim
     ../../modules/home/opencode
     ../../modules/home/herdr
-    ../../modules/home/happier
-    ../../modules/home/happier/daemon-darwin.nix
-    ../../modules/home/happier/relay.nix
+    ../../modules/home/t3code
     ../../modules/home/starship
     ../../modules/home/vicinae
     ../../modules/home/whisper/darwin.nix

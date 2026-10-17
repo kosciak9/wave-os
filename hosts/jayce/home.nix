@@ -70,8 +70,7 @@ in
     ../../modules/home/opencode
     ../../modules/home/pr-cockpit
     ../../modules/home/herdr
-    ../../modules/home/happier
-    ../../modules/home/happier/daemon.nix
+    ../../modules/home/t3code
     ../../modules/home/herdr/gpui.nix
     ../../modules/home/starship
     ../../modules/home/vicinae
@@ -104,7 +103,7 @@ in
       chromium
       fd
       gimp
-      happier-desktop
+      t3code-desktop
       hyprsunset
       hyprshot
       (iosevka-bin.override { variant = "SGr-IosevkaTerm"; })

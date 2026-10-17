@@ -117,7 +117,7 @@
           herdr-auto-title = final.callPackage ./packages/herdr-auto-title.nix {
             src = inputs.herdr-auto-title;
           };
-          happier = final.callPackage ./packages/happier.nix { };
+          t3code-cli = final.callPackage ./packages/t3code-cli.nix { };
           cliproxyapi = final.callPackage ./packages/cliproxyapi.nix { inherit prev; };
           wave-dashboard = final.callPackage ./packages/wave-dashboard.nix { };
           slack-mirror = final.callPackage ./packages/slack-mirror.nix { };
@@ -150,7 +150,7 @@
           codex = wrapAgentHarness (final.callPackage ./packages/codex.nix { inherit prev; }) "codex";
         }
         // prev.lib.optionalAttrs prev.stdenv.hostPlatform.isLinux {
-          happier-desktop = final.callPackage ./packages/happier-desktop.nix { };
+          t3code-desktop = final.callPackage ./packages/t3code-desktop.nix { };
           pr-cockpit = final.callPackage ./packages/pr-cockpit.nix { };
           spotifast = final.callPackage ./packages/spotifast.nix {
             spotifast = inputs.spotifast.packages.${final.stdenv.hostPlatform.system}.default;
@@ -165,7 +165,6 @@
           };
         }
         // prev.lib.optionalAttrs prev.stdenv.hostPlatform.isDarwin {
-          happier-server = final.callPackage ./packages/happier-server.nix { };
           browser-decision = final.callPackage ./packages/browser-decision.nix { };
         };
       pkgs = import nixpkgs {
@@ -296,7 +295,8 @@
             herdr-auto-title
             spotifast
             pr-cockpit
-            happier-desktop
+            t3code-cli
+            t3code-desktop
             ;
         };
         ${darwinSystem} = {
@@ -305,7 +305,7 @@
             wave
             herdr-auto-title
             openclaw-sandbox-machine-check
-            happier-server
+            t3code-cli
             slack-mirror
             slack-mirror-context
             slack-mirror-image

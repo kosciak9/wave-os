@@ -84,6 +84,11 @@
     };
   };
 
+  wave.health.checks.t3code = ''
+    ${lib.getExe pkgs.curl} -q -fsS --max-time 3 \
+      http://127.0.0.1:3773/.well-known/t3/environment >/dev/null
+  '';
+
   time.timeZone = "Europe/Warsaw";
   i18n = {
     defaultLocale = "en_US.UTF-8";

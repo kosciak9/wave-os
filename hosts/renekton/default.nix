@@ -55,9 +55,9 @@
     computerName = "renekton";
   };
 
-  wave.health.checks.happier-relay = ''
+  wave.health.checks.t3code = ''
     ${lib.getExe pkgs.curl} -q -fsS --max-time 3 \
-      ${lib.escapeShellArg "${config.home-manager.users.kosciak.home.sessionVariables.HAPPIER_SERVER_URL}/ready"} \
+      https://renekton.dusky-diatonic.ts.net:18443/.well-known/t3/environment \
       >/dev/null
   '';
 
