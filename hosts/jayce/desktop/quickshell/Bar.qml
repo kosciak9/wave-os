@@ -275,6 +275,7 @@ PanelWindow {
         visible: barVisible && battery.ready && battery.isPresent && battery.isLaptopBattery
         height: 32
         horizontalPadding: 4
+        spacing: 6
 
         onClicked: function(mouse) {
             if (mouse.button === Qt.LeftButton)

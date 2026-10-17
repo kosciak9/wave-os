@@ -249,7 +249,7 @@ Scope {
 
     function warnBattery(body: string): void {
         const key = newKey()
-        const notification = { id: 0, appName: "Battery", appIcon: "battery-caution",
+        const notification = { id: 0, appName: "Battery", appIcon: Quickshell.shellDir + "/assets/battery.svg",
             summary: "Low battery", body: body, urgency: NotificationUrgency.Critical }
         const row = scalar(notification, key, Date.now(), !centerOpen)
         row.live = false
