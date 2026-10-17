@@ -65,6 +65,10 @@ stdenvNoCC.mkDerivation (finalAttrs: {
 
   doInstallCheck = true;
   nativeInstallCheckInputs = [ versionCheckHook ];
+  versionCheckKeepEnvironment = [ "HAPPIER_HOME_DIR" ];
+  preVersionCheck = ''
+    export HAPPIER_HOME_DIR="$TMPDIR/happier-install-check"
+  '';
 
   meta = {
     description = "Encrypted remote companion for coding agents";
