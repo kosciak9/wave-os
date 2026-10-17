@@ -24,8 +24,11 @@
 - CI has a five-minute wall-clock budget. Do not add or retain jobs that exceed
   it; remove expensive builds rather than adding caching infrastructure merely
   to keep them in CI. A warm cache is not a guarantee of meeting this budget.
-- Ahri's build and cache jobs are the explicit exception: retain them even when
-  they exceed five minutes, so the Raspberry Pi does not have to build locally.
+- Ahri's and ekko's build and cache jobs are the explicit exceptions: retain
+  them even when they exceed five minutes, so the Raspberry Pis do not have to
+  build locally. Their deployments must wait only for shared validation and
+  their own cache job, not for another host's build. Reuse the wave-os binary
+  cache for unchanged derivations.
 - Do not create or maintain project-derived documentation or unit tests: these
   artifacts quickly drift and usually add little value. Treat implementation
   code as the source of truth; agents should inspect the actual implementation

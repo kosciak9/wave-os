@@ -137,10 +137,10 @@ pub struct Update {
     pub ci: Ci,
 }
 
-pub fn inspect(paths: &Paths, github: &GitHub) -> Result<Update> {
+pub fn inspect(paths: &Paths, github: &GitHub, host: &str) -> Result<Update> {
     let available = refresh(paths)?;
     let current = revision(&Path::new(CURRENT).canonicalize()?)?;
-    let ci = github.ci(&available)?;
+    let ci = github.ci(&available, host)?;
     Ok(Update {
         available,
         current,
@@ -151,7 +151,7 @@ pub fn inspect(paths: &Paths, github: &GitHub) -> Result<Update> {
 pub fn check(paths: &Paths, host: &str, json: bool) -> Result<i32> {
     presentation::heading(&format!("check · {host}"));
     let _lock = state::operation_lock(paths)?;
-    let update = inspect(paths, &GitHub::from_credentials())?;
+    let update = inspect(paths, &GitHub::from_credentials(), host)?;
     let (status, code) = match (update.current.as_deref(), update.ci) {
         (Some(value), _) if value == update.available => ("current", 0),
         (None, _) => ("active_revision_unknown", 2),
