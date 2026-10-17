@@ -4,6 +4,7 @@
   imports = [
     ./hardware.nix
     ../../modules/wave/nixos.nix
+    ../../modules/sops.nix
   ];
 
   boot.loader = {
@@ -54,6 +55,7 @@
     kosciak = {
       isNormalUser = true;
       uid = 1000;
+      linger = true;
       shell = pkgs.zsh;
       extraGroups = [ "wheel" ];
       hashedPassword = "!";
@@ -61,6 +63,13 @@
     root.hashedPassword = "!";
   };
   security.sudo.wheelNeedsPassword = false;
+
+  sops.secrets = {
+    "cliproxyapi/api-key".owner = "kosciak";
+    "cliproxyapi/base-url".owner = "kosciak";
+  };
+
+  virtualisation.podman.enable = true;
 
   wave.deployTarget.enable = true;
 
@@ -106,12 +115,20 @@
     tmux.enable = true;
     zsh = {
       enable = true;
-      enableCompletion = true;
+      enableGlobalCompInit = false;
+    };
+    gnupg.agent = {
+      enable = true;
+      pinentryPackage = pkgs.pinentry-curses;
     };
   };
   environment.systemPackages = with pkgs; [
+    bubblewrap
     curl
-    vim
+    e2fsprogs
+    gnupg
+    podman-compose
+    vncdotool
     (runCommand "bcache-zsh-completions" { nativeBuildInputs = [ installShellFiles ]; } ''
       installShellCompletion --cmd bcache --zsh ${../../packages/bcache-completions.zsh}
     '')

@@ -258,8 +258,18 @@
           inherit system;
           specialArgs.waveRevision = self.rev or "unknown";
           modules = [
+            inputs.sops-nix.nixosModules.sops
+            home-manager.nixosModules.home-manager
             ./hosts/zilean/default.nix
             (_: { nixpkgs.pkgs = pkgs; })
+            (_: {
+              home-manager = {
+                useGlobalPkgs = true;
+                useUserPackages = true;
+                extraSpecialArgs = { inherit inputs; };
+                users.kosciak = ./hosts/zilean/home.nix;
+              };
+            })
           ];
         };
 

@@ -39,7 +39,7 @@ let
       oauth = false;
     };
   }
-  // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
+  // lib.optionalAttrs (config.programs.agents.cua.enable or pkgs.stdenv.hostPlatform.isLinux) {
     cua-driver = {
       type = "local";
       command = [

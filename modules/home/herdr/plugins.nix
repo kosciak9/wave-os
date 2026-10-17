@@ -65,7 +65,7 @@ in
           "open"
         ]
         ++ (
-          if pkgs.stdenv.hostPlatform.isLinux then
+          if config.programs.herdr.guiEditor then
             [
               "gui"
               "${pkgs.systemd}/bin/systemd-run"
