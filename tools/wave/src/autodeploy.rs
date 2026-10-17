@@ -53,15 +53,17 @@ pub fn run(paths: &Paths, host: &str, nodes: &[String]) -> Result<i32> {
         available: commit,
         current,
         ci,
-    } = source::inspect(paths, &github)?;
+    } = source::inspect(paths, &github, host)?;
     presentation::revision("Latest main", &commit);
     match ci {
         Ci::Pending => {
-            presentation::detail("CI has not finished on latest main");
+            presentation::detail(&format!("CI for {host} has not finished on latest main"));
             return Ok(0);
         }
         Ci::Failed => {
-            presentation::warning("CI failed on latest main; nothing to deploy");
+            presentation::warning(&format!(
+                "CI for {host} failed on latest main; nothing to deploy"
+            ));
             return Ok(0);
         }
         Ci::Passed => {}
@@ -98,8 +100,18 @@ pub fn run(paths: &Paths, host: &str, nodes: &[String]) -> Result<i32> {
         presentation::success("Every node has seen latest main");
         return Ok(0);
     }
+    let mut ready = Vec::new();
+    for node in pending {
+        match github.ci(&commit, node)? {
+            Ci::Passed => ready.push(node),
+            Ci::Pending => presentation::detail(&format!("{node}: waiting for its CI checks")),
+            Ci::Failed => {
+                presentation::warning(&format!("{node}: its CI checks failed; not deploying"))
+            }
+        }
+    }
     let outcomes: Vec<_> = std::thread::scope(|scope| {
-        let running: Vec<_> = pending
+        let running: Vec<_> = ready
             .iter()
             .map(|node| {
                 (
