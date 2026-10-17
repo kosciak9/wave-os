@@ -196,55 +196,73 @@
         configuration = self.nixosConfigurations.ahri;
         hostname = "ahri";
       };
+      zileanNode = import ./tools/deploy-node.nix {
+        inherit pkgs;
+        deployLib = inputs.deploy-rs.lib.${system};
+        configuration = self.nixosConfigurations.zilean;
+        hostname = "zilean";
+      };
     in
     {
       # TODO: Generated manuals remain enabled despite Determinate Nix's contextless options.json warning.
       # Remove this note after NixOS/nixpkgs#485682, nix-community/home-manager#8942,
       # and a matching nix-darwin fix land.
-      nixosConfigurations.jayce = nixpkgs.lib.nixosSystem {
-        inherit system;
-        specialArgs.waveRevision = self.rev or "unknown";
-        modules = [
-          nixos-hardware.nixosModules.framework-16-7040-amd
-          inputs.vicinae.nixosModules.default
-          inputs.sops-nix.nixosModules.sops
-          ./hosts/jayce/default.nix
-          home-manager.nixosModules.home-manager
-          (_: { nixpkgs.overlays = [ packageOverlay ]; })
-          (_: {
-            home-manager = {
-              useGlobalPkgs = true;
-              useUserPackages = true;
-              extraSpecialArgs = {
-                inherit inputs kanagawa-kvantum;
-                ghosttyCursorShaders = inputs.ghostty-cursor-shaders;
+      nixosConfigurations = {
+        jayce = nixpkgs.lib.nixosSystem {
+          inherit system;
+          specialArgs.waveRevision = self.rev or "unknown";
+          modules = [
+            nixos-hardware.nixosModules.framework-16-7040-amd
+            inputs.vicinae.nixosModules.default
+            inputs.sops-nix.nixosModules.sops
+            ./hosts/jayce/default.nix
+            home-manager.nixosModules.home-manager
+            (_: { nixpkgs.overlays = [ packageOverlay ]; })
+            (_: {
+              home-manager = {
+                useGlobalPkgs = true;
+                useUserPackages = true;
+                extraSpecialArgs = {
+                  inherit inputs kanagawa-kvantum;
+                  ghosttyCursorShaders = inputs.ghostty-cursor-shaders;
+                };
+                sharedModules = [
+                  nix-flatpak.homeManagerModules.nix-flatpak
+                ];
+                users.kosciak = ./hosts/jayce/home.nix;
               };
-              sharedModules = [
-                nix-flatpak.homeManagerModules.nix-flatpak
-              ];
-              users.kosciak = ./hosts/jayce/home.nix;
-            };
-          })
-          (
-            { config, ... }:
-            {
-              programs.vicinae.input-server.package = config.home-manager.users.kosciak.programs.vicinae.package;
-            }
-          )
-        ];
-      };
-
-      nixosConfigurations.ahri = inputs.nixpkgs-ahri.lib.nixosSystem {
-        system = ahriSystem;
-        specialArgs = {
-          inherit inputs;
-          waveRevision = self.rev or "unknown";
+            })
+            (
+              { config, ... }:
+              {
+                programs.vicinae.input-server.package = config.home-manager.users.kosciak.programs.vicinae.package;
+              }
+            )
+          ];
         };
-        modules = [
-          inputs.sops-nix.nixosModules.sops
-          ./hosts/ahri/default.nix
-          (_: { nixpkgs.pkgs = ahriPkgs; })
-        ];
+
+        ahri = inputs.nixpkgs-ahri.lib.nixosSystem {
+          system = ahriSystem;
+          specialArgs = {
+            inherit inputs;
+            waveRevision = self.rev or "unknown";
+          };
+          modules = [
+            inputs.sops-nix.nixosModules.sops
+            ./hosts/ahri/default.nix
+            (_: { nixpkgs.pkgs = ahriPkgs; })
+          ];
+        };
+
+        zilean = nixpkgs.lib.nixosSystem {
+          inherit system;
+          specialArgs.waveRevision = self.rev or "unknown";
+          modules = [
+            ./hosts/zilean/default.nix
+            (_: { nixpkgs.pkgs = pkgs; })
+          ];
+        };
+
       };
 
       darwinConfigurations.renekton = nix-darwin.lib.darwinSystem {
@@ -329,6 +347,7 @@
       deploy.nodes = {
         renekton = renektonNode;
         ahri = ahriNode;
+        zilean = zileanNode;
       };
       checks = {
         ${system} =

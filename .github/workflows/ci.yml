@@ -33,6 +33,8 @@ jobs:
         run: devenv shell -- nix-eval renekton
       - name: Run nix-eval ahri
         run: devenv shell -- nix-eval ahri
+      - name: Run nix-eval zilean
+        run: devenv shell -- nix-eval zilean
 
   jayce-build:
     name: jayce-build
