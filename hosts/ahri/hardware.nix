@@ -1,4 +1,4 @@
-{ lib, ... }:
+{ lib, pkgs, ... }:
 
 {
   boot = {
@@ -51,6 +51,7 @@
   hardware = {
     enableAllHardware = true;
     enableRedistributableFirmware = lib.mkForce false;
+    firmware = [ pkgs.raspberrypiWirelessFirmware ];
     deviceTree = {
       enable = true;
       filter = "bcm2711-rpi-*.dtb";

@@ -1,4 +1,5 @@
 {
+  config,
   inputs,
   lib,
   modulesPath,
@@ -30,11 +31,17 @@ in
     hostName = "ahri";
     useDHCP = false;
     useNetworkd = true;
+    wireless = {
+      enable = true;
+      extraConfig = "ctrl_interface=/run/wpa_supplicant";
+      extraConfigFiles = [ config.sops.secrets."wifi/home".path ];
+    };
     firewall.interfaces = lib.mkMerge [
       (lib.genAttrs
         [
           "end0"
           "eth0"
+          "wlan0"
           "tailscale0"
         ]
         (_: {
@@ -66,6 +73,11 @@ in
   };
   users.users.root.hashedPassword = "!";
   security.sudo.wheelNeedsPassword = false;
+
+  sops.secrets."wifi/home" = {
+    owner = "wpa_supplicant";
+    restartUnits = [ "wpa_supplicant.service" ];
+  };
 
   wave = {
     deployTarget.enable = true;
@@ -132,10 +144,21 @@ in
   swapDevices = [ ];
 
   systemd = {
-    network.networks."10-ethernet" = {
-      matchConfig.Name = "end0 eth0";
-      networkConfig.DHCP = "ipv4";
-      linkConfig.RequiredForOnline = "routable";
+    network = {
+      wait-online.anyInterface = true;
+      networks = {
+        "10-ethernet" = {
+          matchConfig.Name = "end0 eth0";
+          networkConfig.DHCP = "ipv4";
+          linkConfig.RequiredForOnline = "routable";
+        };
+        "20-wireless" = {
+          matchConfig.Name = "wlan0";
+          networkConfig.DHCP = "ipv4";
+          dhcpV4Config.RouteMetric = 2048;
+          linkConfig.RequiredForOnline = "routable";
+        };
+      };
     };
     # sshd reads authorized keys as the login user; these are public keys.
     tmpfiles.rules = [
