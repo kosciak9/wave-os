@@ -51,6 +51,7 @@
       hosts = {
         renekton.homeDirectory = config.home.homeDirectory;
         jayce.homeDirectory = "/home/kosciak";
+        zilean.homeDirectory = "/home/kosciak";
       };
       projectRoots = [
         "~/Developer/alergeek"
@@ -76,6 +77,10 @@
         ahri = {
           profileId = "0afacf5716a819425394bbf65d6d0a86";
           machineId = "machine_9026bebb6184fc9965a24b867836dce9";
+        };
+        zilean = {
+          profileId = "70d24f530f9840f1237107ecfacbd43b";
+          machineId = "machine_5c3a4638819ec73b666a193113337aa5";
         };
       };
     };
