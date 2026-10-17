@@ -36,6 +36,17 @@
         "compress=zstd"
       ];
     };
+    "/home/kosciak/Developer" = {
+      device = "/dev/disk/by-label/ZILEAN_SCRATCH";
+      fsType = "btrfs";
+      options = [
+        "subvol=Developer"
+        "noatime"
+        "compress=zstd"
+        "nofail"
+        "x-systemd.device-timeout=30s"
+      ];
+    };
     "/nix" = {
       device = "/dev/disk/by-label/ZILEAN_ROOT";
       fsType = "btrfs";
