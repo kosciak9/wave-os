@@ -71,6 +71,7 @@ in
     ../../modules/home/pr-cockpit
     ../../modules/home/herdr
     ../../modules/home/happier
+    ../../modules/home/happier/daemon.nix
     ../../modules/home/herdr/gpui.nix
     ../../modules/home/starship
     ../../modules/home/vicinae
@@ -103,6 +104,7 @@ in
       chromium
       fd
       gimp
+      happier-desktop
       hyprsunset
       hyprshot
       (iosevka-bin.override { variant = "SGr-IosevkaTerm"; })

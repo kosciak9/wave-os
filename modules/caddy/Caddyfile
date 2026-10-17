@@ -18,6 +18,13 @@ https://renekton.dusky-diatonic.ts.net:6080 {
 	reverse_proxy 127.0.0.1:16080
 }
 
+https://renekton.dusky-diatonic.ts.net:18443 {
+	tls {
+		get_certificate tailscale
+	}
+	reverse_proxy 127.0.0.1:3005
+}
+
 https://tokens.wave.exposed {
 	tls {
 		dns cloudflare {env.CLOUDFLARE_API_TOKEN}

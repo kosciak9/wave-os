@@ -17,6 +17,7 @@
     ../../modules/home/opencode
     ../../modules/home/herdr
     ../../modules/home/happier
+    ../../modules/home/happier/relay.nix
     ../../modules/home/starship
     ../../modules/home/vicinae
     ../../modules/home/whisper/darwin.nix

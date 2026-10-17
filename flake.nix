@@ -150,6 +150,7 @@
           codex = wrapAgentHarness (final.callPackage ./packages/codex.nix { inherit prev; }) "codex";
         }
         // prev.lib.optionalAttrs prev.stdenv.hostPlatform.isLinux {
+          happier-desktop = final.callPackage ./packages/happier-desktop.nix { };
           pr-cockpit = final.callPackage ./packages/pr-cockpit.nix { };
           spotifast = final.callPackage ./packages/spotifast.nix {
             spotifast = inputs.spotifast.packages.${final.stdenv.hostPlatform.system}.default;
@@ -164,6 +165,7 @@
           };
         }
         // prev.lib.optionalAttrs prev.stdenv.hostPlatform.isDarwin {
+          happier-server = final.callPackage ./packages/happier-server.nix { };
           browser-decision = final.callPackage ./packages/browser-decision.nix { };
         };
       pkgs = import nixpkgs {
@@ -294,6 +296,7 @@
             herdr-auto-title
             spotifast
             pr-cockpit
+            happier-desktop
             ;
         };
         ${darwinSystem} = {
@@ -302,6 +305,7 @@
             wave
             herdr-auto-title
             openclaw-sandbox-machine-check
+            happier-server
             slack-mirror
             slack-mirror-context
             slack-mirror-image

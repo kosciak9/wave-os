@@ -55,6 +55,12 @@
     computerName = "renekton";
   };
 
+  wave.health.checks.happier-relay = ''
+    ${lib.getExe pkgs.curl} -q -fsS --max-time 3 \
+      ${lib.escapeShellArg "${config.home-manager.users.kosciak.home.sessionVariables.HAPPIER_SERVER_URL}/ready"} \
+      >/dev/null
+  '';
+
   # Replaces nix-darwin's networking step, which re-sets the names on every activation;
   # renekton's network dropped during that step, so names are written only on drift.
   # The application firewall commands are carried over unchanged from firewall.nix's options.
