@@ -102,7 +102,7 @@ impl GitHub {
     pub fn ci(&self, commit: &str, host: &str) -> Result<Ci> {
         let required: &[&str] = match host {
             "ahri" => &["nix-validate", "betterleaks", "ahri-cache"],
-            "ekko" => &["nix-validate", "betterleaks", "ekko-cache"],
+            "zac" => &["nix-validate", "betterleaks", "zac-cache"],
             "jayce" | "renekton" | "zilean" => &["nix-validate", "betterleaks"],
             _ => anyhow::bail!("no deployment CI policy for {host}"),
         };
