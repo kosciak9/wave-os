@@ -22,6 +22,8 @@ let
   };
 in
 {
+  imports = [ ./cua.nix ];
+
   home.packages = [
     earshot
     pkgs.ffmpeg

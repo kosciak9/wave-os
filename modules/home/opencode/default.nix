@@ -3,6 +3,7 @@
   pkgs,
   lib,
   osConfig,
+  config,
   ...
 }:
 
@@ -23,6 +24,32 @@ let
   zenModels = import ../../cliproxyapi/zen-models.nix;
   fugateStatus = import ../herdr/fugate-status.nix { inherit lib pkgs; };
   cliConfig = lib.importJSON ./config/cli.json;
+  mcpServers = {
+    context7 = {
+      type = "local";
+      command = [
+        "sh"
+        "-c"
+        "if CONTEXT7_API_KEY=$(pass show context7.com/api-key 2>/dev/null); then export CONTEXT7_API_KEY; else unset CONTEXT7_API_KEY; fi; exec npx -y @upstash/context7-mcp@4.4.1"
+      ];
+    };
+    parallel-search = {
+      type = "remote";
+      url = "https://search.parallel.ai/mcp";
+      oauth = false;
+    };
+  }
+  // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
+    cua-driver = {
+      type = "local";
+      command = [
+        (lib.getExe (pkgs.callPackage ../../../packages/cua-driver.nix { }))
+        "mcp"
+        "--socket"
+        "${config.xdg.cacheHome}/cua-driver/cua-driver.sock"
+      ];
+    };
+  };
   codexSubscriptionModels = {
     "gpt-6.1-sol".name = "[OpenAI] GPT 6.1 Sol";
     "gpt-6-astra".name = "[OpenAI] GPT 6 Astra";
@@ -77,7 +104,8 @@ in
     };
     "opencode/opencode.jsonc" = {
       text = lib.removeSuffix "}\n" (builtins.readFile ./config/opencode.jsonc) + ''
-        "providers": ${builtins.toJSON providers}
+        "providers": ${builtins.toJSON providers},
+        "mcp": ${builtins.toJSON { servers = mcpServers; }}
         }
       '';
       force = true;

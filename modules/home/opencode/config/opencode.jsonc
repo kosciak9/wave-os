@@ -9,27 +9,6 @@
   "plugins": ["cc-safety-net@2.6.11"],
   // Use the anonymous Parallel MCP instead of a separate search provider.
   "websearch": false,
-  "mcp": {
-    "servers": {
-      "context7": {
-        "type": "local",
-        "command": [
-          "sh",
-          "-c",
-          "if CONTEXT7_API_KEY=$(pass show context7.com/api-key 2>/dev/null); then export CONTEXT7_API_KEY; else unset CONTEXT7_API_KEY; fi; exec npx -y @upstash/context7-mcp@4.4.1",
-        ],
-        "codemode": false,
-      },
-      // Anonymous free tier. OAuth is on by default for remote servers and this
-      // endpoint does not use it.
-      "parallel-search": {
-        "type": "remote",
-        "url": "https://search.parallel.ai/mcp",
-        "oauth": false,
-        "codemode": false,
-      },
-    },
-  },
   "agents": {
     "title": {
       "model": "cliproxy/gpt-6-luna#low",
