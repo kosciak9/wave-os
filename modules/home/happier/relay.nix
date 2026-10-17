@@ -27,6 +27,8 @@ in
         HAPPIER_SERVER_HOST = "127.0.0.1";
         HAPPIER_SERVER_FLAVOR = "light";
         HAPPIER_DB_PROVIDER = "sqlite";
+        # Prisma's native SQLite driver needs literal spaces in the file path.
+        DATABASE_URL = "file:${stateDirectory}/happier-server-light.sqlite";
         HAPPIER_FILES_BACKEND = "local";
         # Light mode persists its generated master secret alongside the database.
         HAPPIER_SERVER_LIGHT_DATA_DIR = stateDirectory;
