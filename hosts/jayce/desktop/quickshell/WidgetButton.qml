@@ -10,6 +10,7 @@ Rectangle {
     property alias spacing: contentRow.spacing
     property bool active: false
     property color activeColor: Theme.sumiInk3
+    property color hoverColor: Theme.sumiInk2
     property real inactiveOpacity: 1
     readonly property bool hovered: pointer.containsMouse
 
@@ -19,7 +20,7 @@ Rectangle {
     implicitWidth: contentRow.implicitWidth + horizontalPadding * 2
     implicitHeight: Math.max(32, contentRow.implicitHeight + verticalPadding * 2)
     radius: 3
-    color: active ? activeColor : pointer.containsMouse ? Theme.sumiInk2 : "transparent"
+    color: active ? activeColor : pointer.containsMouse ? hoverColor : "transparent"
     opacity: inactiveOpacity * (pointer.pressed ? 0.82 : 1)
 
     Behavior on color {

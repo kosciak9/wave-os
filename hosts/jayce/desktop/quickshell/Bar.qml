@@ -36,7 +36,19 @@ PanelWindow {
     readonly property bool centerHere: notificationService.centerOpen
         && (notificationService.centerScreen === null ? primary : notificationService.centerScreen === modelData)
 
-    component NetworkWidget: WidgetButton {
+    readonly property color surfaceColor: batteryService.low
+        ? Qt.tint(Theme.sumiInk0, Theme.waveRedTint) : Theme.sumiInk0
+    readonly property color hoverColor: batteryService.low
+        ? Qt.tint(Theme.sumiInk2, Theme.waveRedTint) : Theme.sumiInk2
+    readonly property color activeColor: batteryService.low
+        ? Qt.tint(Theme.sumiInk3, Theme.waveRedTint) : Theme.sumiInk3
+
+    component BarButton: WidgetButton {
+        activeColor: root.activeColor
+        hoverColor: root.hoverColor
+    }
+
+    component NetworkWidget: BarButton {
         id: networkWidget
 
         property bool barVisible: true
@@ -126,8 +138,8 @@ PanelWindow {
                 height: 28
                 radius: 3
                 color: modelData.focused
-                    ? Theme.sumiInk3
-                    : workspacePointer.containsMouse ? Theme.sumiInk2 : "transparent"
+                    ? root.activeColor
+                    : workspacePointer.containsMouse ? root.hoverColor : "transparent"
                 opacity: entered
                     ? (modelData.toplevels.values.length > 0 || modelData.focused ? 1 : 0.3)
                     : 0
@@ -199,7 +211,7 @@ PanelWindow {
                 width: 24
                 height: 32
                 radius: 3
-                color: trayPointer.containsMouse ? Theme.sumiInk2 : "transparent"
+                color: trayPointer.containsMouse ? root.hoverColor : "transparent"
                 property bool entered: false
                 opacity: entered ? 1 : 0
                 transform: Translate {
@@ -266,7 +278,7 @@ PanelWindow {
         }
     }
 
-    component BatteryWidget: WidgetButton {
+    component BatteryWidget: BarButton {
         id: batteryWidget
 
         property bool barVisible: true
@@ -312,7 +324,7 @@ PanelWindow {
         opacity: 0.8
     }
 
-    component DndWidget: WidgetButton {
+    component DndWidget: BarButton {
         id: dndWidget
 
         readonly property var service: root.notificationService
@@ -335,12 +347,11 @@ PanelWindow {
         }
     }
 
-    component ClockWidget: WidgetButton {
+    component ClockWidget: BarButton {
         id: clockWidget
 
         height: 32
         active: root.centerHere
-        activeColor: Theme.sumiInk3
 
         onClicked: function(mouse) {
             if (mouse.button === Qt.LeftButton)
@@ -368,12 +379,12 @@ PanelWindow {
                 radius: 4
                 color: Theme.surimiOrange
                 border.width: 1.5
-                border.color: Theme.sumiInk0
+                border.color: root.surfaceColor
             }
         }
     }
 
-    component MailWidget: WidgetButton {
+    component MailWidget: BarButton {
         id: mailWidget
 
         height: 32
@@ -408,7 +419,7 @@ PanelWindow {
                 radius: 4
                 color: Theme.surimiOrange
                 border.width: 1.5
-                border.color: Theme.sumiInk0
+                border.color: root.surfaceColor
             }
         }
     }
@@ -423,9 +434,7 @@ PanelWindow {
         }
         height: 32
         radius: 6
-        color: root.batteryService.low ? Qt.tint(Theme.sumiInk0, Qt.rgba(1, 0, 0, 0.16)) : Theme.sumiInk0
-        border.width: root.batteryService.low ? 1 : 0
-        border.color: Theme.waveRed
+        color: root.surfaceColor
         Behavior on color { ColorAnimation { duration: Theme.normalDuration } }
         property bool revealed: false
         opacity: revealed ? 1 : 0
