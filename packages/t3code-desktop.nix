@@ -4,6 +4,7 @@
   stdenvNoCC,
   fetchurl,
   dpkg,
+  asar,
   electron_44,
   autoPatchelfHook,
   makeWrapper,
@@ -29,6 +30,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
 
   nativeBuildInputs = [
     dpkg
+    asar
     autoPatchelfHook
     makeWrapper
     wrapGAppsHook3
@@ -52,9 +54,16 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   dontAutoPatchelf = true;
 
   postUnpack = ''
+    app="$sourceRoot/opt/T3 Code (Beta)/resources"
+    asar extract "$app/app.asar" "$app/app"
+    substituteInPlace "$app/app/apps/desktop/dist-electron/boot.cjs" \
+      --replace-fail 'require("./main.cjs");' \
+        'require(process.resourcesPath + "/nix-config.cjs"); require("./main.cjs");'
+    rm "$app/app.asar"
+    rm -r "$app/app.asar.unpacked"
     # NixOS uses glibc, not the additional Alpine prebuilds in the release.
-    rm -r "$sourceRoot/opt/T3 Code (Beta)/resources/app.asar.unpacked/node_modules/@ff-labs/fff-bin-linux-x64-musl"
-    rm -r "$sourceRoot/opt/T3 Code (Beta)/resources/app.asar.unpacked/node_modules/@yuuang/ffi-rs-linux-x64-musl"
+    rm -r "$app/app/node_modules/@ff-labs/fff-bin-linux-x64-musl"
+    rm -r "$app/app/node_modules/@yuuang/ffi-rs-linux-x64-musl"
   '';
 
   installPhase = ''
@@ -67,6 +76,8 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     chmod u+w "$out/libexec/t3code/resources"
     rm -r "$out/libexec/t3code/resources"
     cp -R "opt/T3 Code (Beta)/resources" "$out/libexec/t3code/"
+    install -m 0444 ${./t3code-desktop/nix-config.cjs} "$out/libexec/t3code/resources/nix-config.cjs"
+    install -m 0444 ${./t3code-desktop/nix-preload.cjs} "$out/libexec/t3code/resources/nix-preload.cjs"
     cp -R usr/share "$out/"
     substituteInPlace "$out/share/applications/t3code.desktop" \
       --replace-fail '/opt/T3 Code (Beta)/t3code' "$out/bin/t3code-desktop"

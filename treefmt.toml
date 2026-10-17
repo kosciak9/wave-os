@@ -5,7 +5,7 @@ includes = ["*.nix"]
 [formatter.prettier]
 command = "prettier"
 options = ["--write", "--prose-wrap", "always"]
-includes = ["*.md"]
+includes = ["*.md", "*.cjs"]
 
 [formatter.rust]
 command = "rustfmt"

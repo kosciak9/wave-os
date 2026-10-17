@@ -71,6 +71,7 @@ in
     ../../modules/home/pr-cockpit
     ../../modules/home/herdr
     ../../modules/home/t3code
+    ../../modules/home/t3code/desktop.nix
     ../../modules/home/herdr/gpui.nix
     ../../modules/home/starship
     ../../modules/home/vicinae
@@ -103,7 +104,6 @@ in
       chromium
       fd
       gimp
-      t3code-desktop
       hyprsunset
       hyprshot
       (iosevka-bin.override { variant = "SGr-IosevkaTerm"; })

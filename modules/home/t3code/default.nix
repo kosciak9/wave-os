@@ -6,6 +6,7 @@
 }:
 let
   logDirectory = "${config.home.homeDirectory}/Library/Logs/T3Code";
+  theme = pkgs.writeText "kanagawa-dragon.json" (builtins.toJSON (import ./kanagawa-dragon.nix));
   arguments = [
     (lib.getExe pkgs.t3code-cli)
     "serve"
@@ -26,7 +27,20 @@ let
   };
 in
 {
-  home.packages = [ pkgs.t3code-cli ];
+  home = {
+    packages = [ pkgs.t3code-cli ];
+    activation = {
+      t3codeTheme = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+        run ${lib.getExe pkgs.t3code-cli} theme set --base-dir ${lib.escapeShellArg environment.T3CODE_HOME} \
+          --id kanagawa-dragon ${theme}
+      '';
+      t3codeLogDirectory = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin (
+        lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+          ${lib.getExe' pkgs.coreutils "install"} -d -m 0700 -- ${lib.escapeShellArg logDirectory}
+        ''
+      );
+    };
+  };
 
   systemd.user.services.t3code = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
     Unit = {
@@ -48,12 +62,6 @@ in
     };
     Install.WantedBy = [ "default.target" ];
   };
-
-  home.activation.t3codeLogDirectory = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin (
-    lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-      ${lib.getExe' pkgs.coreutils "install"} -d -m 0700 -- ${lib.escapeShellArg logDirectory}
-    ''
-  );
 
   launchd.agents.t3code = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
     enable = true;
