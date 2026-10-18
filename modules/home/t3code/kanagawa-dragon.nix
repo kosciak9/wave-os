@@ -10,6 +10,7 @@ let
   gray = "#a6a69c";
   muted = "#7a8382";
   blue = "#8ba4b0";
+  blueDim = "#658594";
   red = "#c4746e";
   yellow = "#c4b28a";
   green = "#87a987";
@@ -35,7 +36,8 @@ in
     text = white;
     textMuted = muted;
     border = black4;
-    input = black2;
+    # Track of unchecked switches and input borders; must stand out from surfaces.
+    input = black5;
     focus = blue;
     accent = blue;
     accentForeground = black1;
@@ -59,9 +61,10 @@ in
     accentSurfaceForeground = white;
     messageSurface = black2;
     messageForeground = white;
-    messageAction = black4;
-    messageActionForeground = white;
-    messageActionHover = black5;
+    # Primary buttons and checked switches.
+    messageAction = blue;
+    messageActionForeground = black1;
+    messageActionHover = blueDim;
     codeBackground = black1;
     codeForeground = white;
     searchMatchBackground = yellow;
