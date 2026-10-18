@@ -153,6 +153,7 @@ let
           lightpanda: true,
         },
       },
+      compaction: { cron: "0 5 * * *", timeZone: "Europe/Warsaw" },
       stateDir: "/data/state",
     };
   '';

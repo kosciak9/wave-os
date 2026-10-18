@@ -473,6 +473,8 @@ let
                 mcp: ${builtins.toJSON (policy "x-browser")},
             },
     	},
+    	// After the night retro (04:00), once its run has ended.
+    	compaction: { cron: "0 5 * * *", timeZone: "Europe/Warsaw" },
     	stateDir: "/data/state",
     };
   '';
@@ -605,8 +607,8 @@ in
     enable = lib.mkEnableOption "Alfred, the house-agents assistant on Telegram";
     image = lib.mkOption {
       type = lib.types.strMatching "[^@]+@sha256:[0-9a-f]{64}";
-      # house-agents b595947 (linux/amd64, linux/arm64)
-      default = "ghcr.io/kosciak9/house-agents@sha256:356b086e6d09ca2b8fae97995069c311789444ad2a2a72cc3e2b998706d300a3";
+      # house-agents 4f25697 (linux/amd64, linux/arm64)
+      default = "ghcr.io/kosciak9/house-agents@sha256:791c301f1ee833f299c367a02f69fa53f63098741b2ec0bd4b1e7ec487540bff";
       description = "The house-agents image, pinned by digest.";
     };
     gotenbergImage = lib.mkOption {
