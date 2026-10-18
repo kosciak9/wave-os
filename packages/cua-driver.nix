@@ -7,6 +7,7 @@
   installShellFiles,
   writeText,
   gcc-unwrapped,
+  glib,
   libx11,
   libxi,
   libxkbcommon,
@@ -46,7 +47,8 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     install -Dm755 cua-cursor-theme "$out/libexec/cua-cursor-theme"
     makeWrapper "$out/libexec/cua-driver" "$out/bin/cua-driver" \
       --set CUA_DRIVER_RS_TELEMETRY_ENABLED false \
-      --set CUA_DRIVER_RS_UPDATE_CHECK false
+      --set CUA_DRIVER_RS_UPDATE_CHECK false \
+      --prefix PATH : ${lib.makeBinPath [ glib ]}
     runHook postInstall
   '';
 
