@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 
 {
   imports = [
@@ -7,13 +7,28 @@
     ../../modules/sops.nix
   ];
 
-  boot.loader = {
-    systemd-boot = {
-      enable = true;
-      configurationLimit = 10;
+  boot = {
+    loader = {
+      systemd-boot = {
+        enable = true;
+        configurationLimit = 10;
+        # Headless: a generation that does not boot to remote access falls back to the previous one.
+        bootCounting = {
+          enable = true;
+          tries = 2;
+        };
+      };
+      efi.canTouchEfiVariables = true;
+      timeout = 3;
     };
-    efi.canTouchEfiVariables = true;
-    timeout = 3;
+    # Without a console, emergency mode would hang the boot; reboot so boot counting can fall back.
+    initrd.systemd.services.emergency = {
+      overrideStrategy = "asDropin";
+      serviceConfig.ExecStart = [
+        ""
+        "${config.boot.initrd.systemd.package}/bin/systemctl --no-block reboot"
+      ];
+    };
   };
 
   networking = {
@@ -41,10 +56,31 @@
       };
     };
   };
-  systemd.network.networks."10-ethernet" = {
-    matchConfig.Name = "enp4s0";
-    networkConfig.DHCP = "yes";
-    linkConfig.RequiredForOnline = "routable";
+  systemd = {
+    network.networks."10-ethernet" = {
+      matchConfig.Name = "enp4s0";
+      networkConfig.DHCP = "yes";
+      linkConfig.RequiredForOnline = "routable";
+    };
+    # A boot counts as good only once the host is reachable again.
+    targets.boot-complete = {
+      requires = [
+        "sshd.service"
+        "tailscaled.service"
+      ];
+      after = [
+        "sshd.service"
+        "tailscaled.service"
+      ];
+    };
+    services.emergency = {
+      overrideStrategy = "asDropin";
+      serviceConfig.ExecStart = [
+        ""
+        "${config.systemd.package}/bin/systemctl --no-block reboot"
+      ];
+    };
+    tmpfiles.rules = [ "f /var/lib/wave-os/ssh/kosciak 0644 root root - -" ];
   };
 
   time.timeZone = "Europe/Warsaw";
@@ -99,8 +135,6 @@
     fstrim.enable = true;
     smartd.enable = true;
   };
-  systemd.tmpfiles.rules = [ "f /var/lib/wave-os/ssh/kosciak 0644 root root - -" ];
-
   hardware = {
     enableRedistributableFirmware = true;
     graphics.enable = true;
