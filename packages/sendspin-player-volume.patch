@@ -1,0 +1,71 @@
+--- a/main.go
++++ b/main.go
+@@ -11,6 +11,7 @@
+ 	"os"
+ 	"os/signal"
+ 	"runtime"
++	"sync"
+ 	"syscall"
+ 	"time"
+ 
+@@ -193,6 +194,30 @@
+ 		persistStaticDelay(*staticDelayMs, cfg, loadedConfigPath)
+ 	}
+ 
++	volumePath := loadedConfigPath
++	if volumePath == "" {
++		if p, perr := sendspin.DefaultPlayerConfigPath(); perr == nil {
++			volumePath = p
++		}
++	}
++	var volumeMu sync.Mutex
++	persistedVolume := -1
++	if cfg != nil && cfg.Volume != nil {
++		persistedVolume = *cfg.Volume
++	}
++	persistVolume := func(volume int) {
++		volumeMu.Lock()
++		defer volumeMu.Unlock()
++		if volume == persistedVolume || volumePath == "" {
++			return
++		}
++		if err := sendspin.WriteIntKey(volumePath, "volume", volume); err != nil {
++			log.Printf("volume: failed to persist: %v", err)
++			return
++		}
++		persistedVolume = volume
++	}
++
+ 	config := sendspin.PlayerConfig{
+ 		ServerAddr:     serverAddress,
+ 		PlayerName:     playerName,
+@@ -211,6 +236,7 @@
+ 			SoftwareVersion: version.Version,
+ 		},
+ 		OnStateChange: func(state sendspin.PlayerState) {
++			persistVolume(state.Volume)
+ 			updateTUI(ui.StatusMsg{
+ 				Codec:         state.Codec,
+ 				SampleRate:    state.SampleRate,
+@@ -264,6 +290,11 @@
+ 		log.Fatalf("Failed to create player: %v", err)
+ 	}
+ 
++	// Restore the last volume the server set, so a restart does not jump back to 100.
++	if cfg != nil && cfg.Volume != nil {
++		player.SetVolume(*cfg.Volume)
++	}
++
+ 	if err := player.Connect(); err != nil {
+ 		log.Fatalf("Connection failed: %v", err)
+ 	}
+--- a/pkg/sendspin/config_player.go
++++ b/pkg/sendspin/config_player.go
+@@ -34,6 +34,7 @@
+ 	AudioDevice    string `yaml:"audio_device,omitempty"`
+ 	MaxSampleRate  *int   `yaml:"max_sample_rate,omitempty"`
+ 	MaxBitDepth    *int   `yaml:"max_bit_depth,omitempty"`
++	Volume         *int   `yaml:"volume,omitempty"`
+ }
+ 
+ // LoadPlayerConfig searches for a player.yaml and returns its parsed contents
