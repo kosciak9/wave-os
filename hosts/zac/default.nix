@@ -36,6 +36,7 @@ let
       cat >"$dir/config.txt.tmp" <<EOF
     avoid_warnings=1
     enable_uart=1
+    dtparam=audio=on
     kernel=$kernel
     initramfs $initrd followkernel
     device_tree=$dtb
@@ -190,6 +191,18 @@ in
   };
   swapDevices = [ ];
 
+  # The hint lists the device in miniaudio's enumeration, so sendspin can select it by name.
+  environment.etc."asound.conf".text = ''
+    pcm.headphones {
+      type plug
+      slave.pcm "hw:CARD=Headphones,DEV=0"
+      hint {
+        show on
+        description "Headphones (plug)"
+      }
+    }
+  '';
+
   systemd = {
     tmpfiles.rules = [
       "f /var/lib/wave-os/ssh/kosciak 0644 root root - -"
@@ -220,9 +233,10 @@ in
           "16"
           "--preferred-codec"
           "pcm"
-          # miniaudio marks no default device, so without this it plays into its null device.
+          # miniaudio opens a card picked by name through dmix, which stalls on the bcm2835
+          # headphone jack; the hinted plug device in asound.conf is opened as-is.
           "--audio-device"
-          "Bose Revolve SoundLink"
+          "Headphones (plug)"
         ];
         DynamicUser = true;
         SupplementaryGroups = [ "audio" ];
