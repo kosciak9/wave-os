@@ -35,6 +35,8 @@
         "noatime"
         "compress=zstd"
       ];
+      # Activation runs in initrd and reads the sops file from /home.
+      neededForBoot = true;
     };
     "/home/kosciak/Developer" = {
       device = "/dev/disk/by-label/ZILEAN_SCRATCH";
