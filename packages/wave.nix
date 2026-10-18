@@ -3,6 +3,8 @@
   rustPlatform,
   makeWrapper,
   installShellFiles,
+  buildPackages,
+  stdenv,
   curl,
   git,
   openssh,
@@ -10,6 +12,13 @@
   deploy-rs,
   deployNodes ? [ ],
 }:
+let
+  completionProgram =
+    if stdenv.buildPlatform.canExecute stdenv.hostPlatform then
+      "$out/bin/wave"
+    else
+      lib.getExe buildPackages.wave;
+in
 rustPlatform.buildRustPackage {
   pname = "wave";
   version = "0.1.0";
@@ -25,9 +34,9 @@ rustPlatform.buildRustPackage {
   ];
   postInstall = ''
     installShellCompletion --cmd wave \
-      --bash <(COMPLETE=bash $out/bin/wave) \
-      --fish <(COMPLETE=fish $out/bin/wave) \
-      --zsh <(COMPLETE=zsh $out/bin/wave)
+      --bash <(COMPLETE=bash ${completionProgram}) \
+      --fish <(COMPLETE=fish ${completionProgram}) \
+      --zsh <(COMPLETE=zsh ${completionProgram})
   '';
   postFixup = ''
     wrapProgram "$out/bin/wave" \
@@ -50,6 +59,7 @@ rustPlatform.buildRustPackage {
       "x86_64-linux"
       "aarch64-darwin"
       "aarch64-linux"
+      "armv7l-linux"
     ];
   };
 }

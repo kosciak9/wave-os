@@ -35,6 +35,8 @@ jobs:
         run: devenv shell -- nix-eval ahri
       - name: Run nix-eval zilean
         run: devenv shell -- nix-eval zilean
+      - name: Run nix-eval zac
+        run: devenv shell -- nix-eval zac
 
   jayce-build:
     name: jayce-build
@@ -76,6 +78,52 @@ jobs:
         run: |
           cachix push wave-os ./ahri
           cachix pin wave-os ahri-current "$(readlink -f ./ahri)" --keep-revisions 1
+
+  zac-build:
+    name: zac-build
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Cross-build zac
+        uses: ./.github/actions/build-zac
+      - name: Upload SD image
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: zac-sd-image
+          path: zac-cache/image/sd-image/*.img.zst
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+
+  zac-cache:
+    name: zac-cache
+    if: github.event_name == 'push'
+    concurrency:
+      group: ${{ github.workflow }}-zac-cache-${{ github.ref }}
+      cancel-in-progress: true
+    runs-on: ubuntu-24.04
+    environment: cachix
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Cross-build zac
+        uses: ./.github/actions/build-zac
+        with:
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+      - name: Publish system, image and native player checks
+        run: |
+          cachix push wave-os ./zac-cache
+          cachix pin wave-os zac-current "$(readlink -f ./zac-cache)" --keep-revisions 1
+      - name: Upload SD image
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: zac-sd-image
+          path: zac-cache/image/sd-image/*.img.zst
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
 
   betterleaks:
     name: betterleaks
