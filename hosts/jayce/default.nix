@@ -195,6 +195,9 @@
         support32Bit = true;
       };
       pulse.enable = true;
+      # 40% on WirePlumber's cubic scale; higher levels add analog Mic Boost and clip.
+      wireplumber.extraConfig.default-source-volume."wireplumber.settings"."device.routes.default-source-volume" =
+        0.064;
     };
   };
 
