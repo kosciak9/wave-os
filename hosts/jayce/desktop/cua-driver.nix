@@ -12,9 +12,10 @@ in
       Description = "Cua Driver local desktop daemon";
       After = [ "wayland-session-waitenv.service" ];
       PartOf = [ sessionTarget ];
-      ConditionEnvironment = "DISPLAY";
+      ConditionEnvironment = "WAYLAND_DISPLAY";
     };
     Service = {
+      Environment = [ "CUA_DRIVER_RS_ENABLE_WAYLAND=1" ];
       ExecStart = "${lib.getExe cuaDriver} serve --permission-mode standard";
       Restart = "on-failure";
       RestartSec = 2;
