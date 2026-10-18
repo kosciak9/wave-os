@@ -1,9 +1,5 @@
 name: Build jayce's patched desktop packages
 description: Check patched applications without building the whole desktop system.
-inputs:
-  cachix-auth-token:
-    description: Token for pushing selected results; pull-only when empty.
-    default: ""
 runs:
   using: composite
   steps:
@@ -13,17 +9,11 @@ runs:
       uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
       with:
         name: wave-os
-        authToken: ${{ inputs.cachix-auth-token }}
         skipPush: true
         installCommand: nix profile add github:NixOS/nixpkgs/34ab99075ac4f7e40cf037eef32cb1c360bb85e9#cachix
     - name: Build patched desktop packages
       shell: bash
       run: |
         nix build --no-link --no-write-lock-file --print-build-logs --max-jobs 1 --cores 2 \
-          .#checks.x86_64-linux.herdr \
-          .#checks.x86_64-linux.herdr-gpui \
           .#checks.x86_64-linux.hyprland \
           .#checks.x86_64-linux.quickshell
-    - name: Collect selected cache results
-      shell: bash
-      run: nix build --out-link jayce-cache --no-write-lock-file .#jayce-cache

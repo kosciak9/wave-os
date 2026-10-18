@@ -91,20 +91,24 @@ let
 in
 {
   inherit imageBuild commonRunArgs;
-  activation = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    ${install} -d -m 0700 -- \
-      "${homeDirectory}/.camofox" \
-      "${homeDirectory}/.camofox/profiles" \
-      "${homeDirectory}/.camofox/traces" \
-      "${homeDirectory}/.camofox/uploads" \
-      "${homeDirectory}/.camofox/cookies" \
-      "${homeDirectory}/.camofox/logs"
-    ${pkgs.coreutils}/bin/chmod 0700 -- \
-      "${homeDirectory}/.camofox" \
-      "${homeDirectory}/.camofox/profiles" \
-      "${homeDirectory}/.camofox/traces" \
-      "${homeDirectory}/.camofox/uploads" \
-      "${homeDirectory}/.camofox/cookies" \
-      "${homeDirectory}/.camofox/logs"
-  '';
+  activation =
+    lib.hm.dag.entryBetween
+      [ (if pkgs.stdenv.hostPlatform.isDarwin then "setupLaunchAgents" else "reloadSystemd") ]
+      [ "writeBoundary" ]
+      ''
+        ${install} -d -m 0700 -- \
+          "${homeDirectory}/.camofox" \
+          "${homeDirectory}/.camofox/profiles" \
+          "${homeDirectory}/.camofox/traces" \
+          "${homeDirectory}/.camofox/uploads" \
+          "${homeDirectory}/.camofox/cookies" \
+          "${homeDirectory}/.camofox/logs"
+        ${pkgs.coreutils}/bin/chmod 0700 -- \
+          "${homeDirectory}/.camofox" \
+          "${homeDirectory}/.camofox/profiles" \
+          "${homeDirectory}/.camofox/traces" \
+          "${homeDirectory}/.camofox/uploads" \
+          "${homeDirectory}/.camofox/cookies" \
+          "${homeDirectory}/.camofox/logs"
+      '';
 }

@@ -1,10 +1,9 @@
-{ config, lib, ... }:
+{ lib, ... }:
 {
   imports = [
     ../../modules/home/agents
     ../../modules/home/alfred
     ../../modules/home/frida
-    ../../modules/home/fugate
     ../../modules/home/podman/darwin.nix
     ../../modules/home/slack-mirror
     ../../modules/home/camofox
@@ -15,7 +14,6 @@
     ../../modules/home/git.nix
     ../../modules/home/neovim
     ../../modules/home/opencode
-    ../../modules/home/herdr
     ../../modules/home/t3code
     ../../modules/home/starship
     ../../modules/home/vicinae
@@ -46,18 +44,6 @@
       machineName = "openclaw-sandbox";
     };
     frida.enable = true;
-    fugate = {
-      enable = true;
-      hosts = {
-        renekton.homeDirectory = config.home.homeDirectory;
-        jayce.homeDirectory = "/home/kosciak";
-        zilean.homeDirectory = "/home/kosciak";
-      };
-      projectRoots = [
-        "~/Developer/alergeek"
-        "~/Developer/personal"
-      ];
-    };
     slack-mirror = {
       enable = true;
       sync.enable = true;
@@ -67,23 +53,6 @@
   };
   programs = {
     home-manager.enable = true;
-    herdr.federation = {
-      coordinator = true;
-      savedMachines = {
-        jayce = {
-          profileId = "9717018a05f556969843d066b82d2988";
-          machineId = "machine_77c29d300c7ac622a2dfc783ac227170";
-        };
-        ahri = {
-          profileId = "0afacf5716a819425394bbf65d6d0a86";
-          machineId = "machine_9026bebb6184fc9965a24b867836dce9";
-        };
-        zilean = {
-          profileId = "70d24f530f9840f1237107ecfacbd43b";
-          machineId = "machine_5c3a4638819ec73b666a193113337aa5";
-        };
-      };
-    };
     zen-browser = {
       enable = true;
       package = null;

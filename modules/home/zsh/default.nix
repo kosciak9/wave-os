@@ -140,7 +140,6 @@
             export MIX_OS_DEPS_COMPILE_PARTITION_COUNT=$(( $(cpu_count) / 2 ))
 
           '')
-          (lib.mkIf config.programs.worktrunk.enable (lib.mkOrder 1100 (builtins.readFile ./worktrunk.zsh)))
         ];
       };
     };

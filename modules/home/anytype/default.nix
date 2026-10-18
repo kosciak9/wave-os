@@ -13,9 +13,11 @@ in
 {
   home.packages = [ pkgs.anytype-cli ];
 
-  home.activation.anytypeLogDirectory = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    ${install} -d -m 0700 -- ${lib.escapeShellArg logDirectory}
-  '';
+  home.activation.anytypeLogDirectory =
+    lib.hm.dag.entryBetween [ "setupLaunchAgents" ] [ "writeBoundary" ]
+      ''
+        ${install} -d -m 0700 -- ${lib.escapeShellArg logDirectory}
+      '';
 
   launchd.agents."io.anytype.cli" = {
     enable = true;

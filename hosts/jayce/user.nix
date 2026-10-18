@@ -95,6 +95,7 @@ in
 
     users.users.kosciak = {
       isNormalUser = true;
+      linger = true;
       description = "Franek Madej";
       shell = pkgs.zsh;
       extraGroups = [

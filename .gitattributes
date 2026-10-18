@@ -4,4 +4,3 @@ packages/patches/camofox-client-errors.patch whitespace=-blank-at-eol,-space-bef
 packages/patches/camofox-click-outcome.patch whitespace=-blank-at-eol,-space-before-tab
 packages/patches/himalaya-archive.patch whitespace=-blank-at-eol,-space-before-tab
 packages/patches/cliproxyapi-quota.patch whitespace=-blank-at-eol,-space-before-tab
-modules/home/herdr/patches/gpui-*.patch whitespace=-blank-at-eol,-space-before-tab,-blank-at-eof

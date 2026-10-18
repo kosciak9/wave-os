@@ -69,10 +69,8 @@ in
     ../../modules/home/neovim
     ../../modules/home/opencode
     ../../modules/home/pr-cockpit
-    ../../modules/home/herdr
     ../../modules/home/t3code
     ../../modules/home/t3code/desktop.nix
-    ../../modules/home/herdr/gpui.nix
     ../../modules/home/starship
     ../../modules/home/vicinae
     ../../modules/home/zoxide
@@ -147,23 +145,6 @@ in
   };
 
   programs = {
-    herdr.federation = {
-      coordinator = true;
-      savedMachines = {
-        renekton = {
-          profileId = "9bb12fa0ed8a8e7cf7c014b24abcb2fb";
-          machineId = "machine_77b726453c93d640ca177e4d8ac56139";
-        };
-        ahri = {
-          profileId = "8ac324f745614d28882c5758333e4b42";
-          machineId = "machine_9026bebb6184fc9965a24b867836dce9";
-        };
-        zilean = {
-          profileId = "9714124c5a978511996fff2a220b9d73";
-          machineId = "machine_5c3a4638819ec73b666a193113337aa5";
-        };
-      };
-    };
     home-manager.enable = true;
     zathura.enable = true;
     zen-browser = {

@@ -1,13 +1,9 @@
 defmodule WaveDashboardWeb.HomeLive do
   use WaveDashboardWeb, :live_view
 
-  import WaveDashboardWeb.FugateComponents, only: [stats: 1, agents: 1, time: 1]
+  import WaveDashboardWeb.Layouts, only: [wave_logo: 1]
 
-  import WaveDashboardWeb.Layouts, only: [wave_logo: 1, herdr_logo: 1]
-
-  alias WaveDashboard.{Apps, Clock, Deadline, Fugate, Tailnet}
-
-  @shown_agents 8
+  alias WaveDashboard.{Apps, Clock, Deadline, Tailnet}
 
   @impl true
   def mount(_params, _session, socket) do
@@ -15,13 +11,12 @@ defmodule WaveDashboardWeb.HomeLive do
       Apps.subscribe()
       Tailnet.subscribe()
       Deadline.subscribe()
-      Fugate.subscribe()
       Clock.tick_next_minute(:tick)
     end
 
     {:ok,
      socket
-     |> assign(apps: Apps.list(), hosts: Tailnet.hosts(), fugate: Fugate.snapshot())
+     |> assign(apps: Apps.list(), hosts: Tailnet.hosts())
      |> assign(editing?: false, deadline_error: nil, draft: nil)
      |> assign_now()
      |> assign_deadline()}
@@ -30,7 +25,6 @@ defmodule WaveDashboardWeb.HomeLive do
   @impl true
   def handle_info({:apps, apps}, socket), do: {:noreply, assign(socket, apps: apps)}
   def handle_info({:hosts, hosts}, socket), do: {:noreply, assign(socket, hosts: hosts)}
-  def handle_info({:fugate, snapshot}, socket), do: {:noreply, assign(socket, fugate: snapshot)}
   def handle_info(:deadline_changed, socket), do: {:noreply, assign_deadline(socket)}
 
   def handle_info(:tick, socket) do
@@ -95,7 +89,6 @@ defmodule WaveDashboardWeb.HomeLive do
             deadline={@deadline}
             now={@local_now}
           />
-          <.herdr snapshot={@fugate} now={@now} />
         </main>
 
         <aside class="column-side">
@@ -221,36 +214,6 @@ defmodule WaveDashboardWeb.HomeLive do
     """
   end
 
-  attr :snapshot, :any, required: true
-  attr :now, DateTime, required: true
-
-  defp herdr(assigns) do
-    assigns = assign(assigns, :shown_agents, @shown_agents)
-
-    ~H"""
-    <section class="card">
-      <div class="card-header">
-        <h2 class="card-title">
-          <.herdr_logo /> Herdr
-        </h2>
-        <.link navigate={~p"/herdr"} class="card-link">Open Herdr →</.link>
-      </div>
-      <%= case @snapshot.status do %>
-        <% :not_configured -> %>
-          <p class="muted">Fugate is not configured.</p>
-        <% :loading -> %>
-          <p class="muted">Loading…</p>
-        <% status -> %>
-          <p :if={status != :ok} class="banner banner-error" role="alert">
-            Fugate unreachable. Showing the last known state.
-          </p>
-          <.stats snapshot={@snapshot} now={@now} />
-          <.agents agents={@snapshot.agents} now={@now} limit={@shown_agents} />
-      <% end %>
-    </section>
-    """
-  end
-
   attr :apps, :list, required: true
 
   defp apps(assigns) do
@@ -314,6 +277,17 @@ defmodule WaveDashboardWeb.HomeLive do
         </li>
       </ul>
     </section>
+    """
+  end
+
+  attr :at, DateTime, default: nil
+  attr :now, DateTime, required: true
+
+  defp time(%{at: nil} = assigns), do: ~H'<span class="muted">—</span>'
+
+  defp time(assigns) do
+    ~H"""
+    <time datetime={DateTime.to_iso8601(@at)} title={Clock.format(@at)}>{Clock.relative(@at, @now)}</time>
     """
   end
 end

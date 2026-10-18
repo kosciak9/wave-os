@@ -53,8 +53,8 @@ in
         };
       };
 
-      # These files stay writable for the clients and Herdr; own only the CUA entry.
-      activation.cuaMcp = lib.hm.dag.entryAfter [ "herdrIntegrations" ] ''
+      # These files stay writable for the clients; own only the CUA entry.
+      activation.cuaMcp = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
         run ${python}/bin/python3 - ${
           lib.escapeShellArgs [
             claudeState

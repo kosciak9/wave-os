@@ -4,22 +4,6 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     nixpkgs-ahri.url = "github:NixOS/nixpkgs/7fd4004d0511991fff3a0524856a9be09e28c5f0";
-    herdr = {
-      url = "github:jerryfane/herdr/3648fd14119433805be71d80edb150a098519eb3";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    herdr-gpui = {
-      url = "github:penso/herdr-gpui/v20261013.1";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    herdr-worktrunk = {
-      url = "github:devashish2203/herdr-worktrunk/f9df9ba700b8a4f4d97ddfe3ea3eb345e80b880b";
-      flake = false;
-    };
-    herdr-auto-title = {
-      url = "github:kryptamine/herdr-auto-title/8b2504514bb2aaa79ecbba6cb0e6c426652f4419";
-      flake = false;
-    };
     deploy-rs.url = "github:serokell/deploy-rs/45ba3f8c5cb28396fff71671806e2550b464ac86";
     devenv-nixpkgs.url = "github:NixOS/nixpkgs/7fd4004d0511991fff3a0524856a9be09e28c5f0";
     # Keep the release-tested pin for Darwin's qtkeychain; Linux uses system packages in the home module.
@@ -114,14 +98,10 @@
             deploy-rs = inputs.deploy-rs.packages.${final.stdenv.hostPlatform.system}.deploy-rs;
             deployNodes = builtins.attrNames self.deploy.nodes;
           };
-          herdr-auto-title = final.callPackage ./packages/herdr-auto-title.nix {
-            src = inputs.herdr-auto-title;
-          };
           t3code-cli = final.callPackage ./packages/t3code-cli.nix { };
           cliproxyapi = final.callPackage ./packages/cliproxyapi.nix { inherit prev; };
           wave-dashboard = final.callPackage ./packages/wave-dashboard.nix { };
           slack-mirror = final.callPackage ./packages/slack-mirror.nix { };
-          fugate = final.callPackage ./packages/fugate.nix { };
           slack-mirror-context = final.callPackage ./packages/slack-mirror-context.nix { };
           slack-mirror-image = final.callPackage ./packages/slack-mirror-image.nix {
             context = final.slack-mirror-context;
@@ -281,7 +261,10 @@
         modules = [
           determinate.darwinModules.default
           home-manager.darwinModules.home-manager
-          inputs.sops-nix.darwinModules.sops
+          (import ./modules/sops-darwin.nix {
+            inherit (nixpkgs) lib;
+            inherit (inputs) sops-nix;
+          })
           ./hosts/renekton/default.nix
           (_: {
             nixpkgs.overlays = [ packageOverlay ];
@@ -303,16 +286,6 @@
       packages = {
         ${system} = {
           deploy-rs = inputs.deploy-rs.packages.${system}.deploy-rs;
-          jayce-cache = pkgs.linkFarm "jayce-cache" [
-            {
-              name = "herdr";
-              path = self.checks.${system}.herdr;
-            }
-            {
-              name = "herdr-gpui";
-              path = self.checks.${system}.herdr-gpui;
-            }
-          ];
           inherit kanagawa-kvantum;
           inherit (pkgs)
             wave
@@ -320,7 +293,6 @@
             slack-mirror
             slack-mirror-context
             slack-mirror-image
-            herdr-auto-title
             spotifast
             pr-cockpit
             t3code-cli
@@ -331,7 +303,6 @@
           deploy-rs = inputs.deploy-rs.packages.${darwinSystem}.deploy-rs;
           inherit (darwinPkgs)
             wave
-            herdr-auto-title
             openclaw-sandbox-machine-check
             t3code-cli
             slack-mirror
@@ -364,16 +335,8 @@
           let
             configuration = self.nixosConfigurations.jayce.config;
             home = configuration.home-manager.users.kosciak;
-            homePackage =
-              name:
-              pkgs.lib.findSingle (package: (package.pname or "") == name)
-                (throw "Missing jayce package: ${name}")
-                (throw "Multiple jayce packages named ${name}")
-                home.home.packages;
           in
           {
-            herdr = homePackage "herdr";
-            herdr-gpui = homePackage "herdr-gpui";
             quickshell = home.programs.quickshell.package;
             hyprland = configuration.programs.hyprland.package;
           };

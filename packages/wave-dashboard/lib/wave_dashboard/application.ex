@@ -14,8 +14,6 @@ defmodule WaveDashboard.Application do
       {Phoenix.PubSub, name: WaveDashboard.PubSub},
       WaveDashboard.Tailnet,
       WaveDashboard.Apps,
-      {Task.Supervisor, name: WaveDashboard.TaskSupervisor},
-      WaveDashboard.Fugate,
       WaveDashboardWeb.Endpoint
     ]
 

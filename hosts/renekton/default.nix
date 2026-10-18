@@ -61,9 +61,39 @@
       >/dev/null
   '';
 
+  system.activationScripts.userDefaults.text = lib.mkMerge [
+    (lib.mkBefore ''
+      wave_dock_preferences() {
+        /bin/launchctl asuser "$(/usr/bin/id -u ${lib.escapeShellArg config.system.primaryUser})" \
+          /usr/bin/sudo --user ${lib.escapeShellArg config.system.primaryUser} -- \
+          /usr/bin/defaults export com.apple.dock - 2>/dev/null
+      }
+      wave_dock_preferences_before=$(wave_dock_preferences) || wave_dock_preferences_before=""
+
+      # nix-darwin restarts Dock after writing defaults, including unchanged values.
+      # Keep its typed options and activation, but restart only if the domain changed.
+      killall() {
+        if [ "$#" = 3 ] && [ "$1" = -qu ] \
+          && [ "$2" = ${lib.escapeShellArg config.system.primaryUser} ] && [ "$3" = Dock ] \
+          && [ -n "$wave_dock_preferences_before" ]; then
+          local wave_dock_preferences_after
+          if wave_dock_preferences_after=$(wave_dock_preferences) \
+            && [ "$wave_dock_preferences_before" = "$wave_dock_preferences_after" ]; then
+            return 0
+          fi
+        fi
+        command killall "$@"
+      }
+    '')
+    (lib.mkAfter ''
+      unset -f killall wave_dock_preferences
+      unset wave_dock_preferences_before
+    '')
+  ];
+
   # Replaces nix-darwin's networking step, which re-sets the names on every activation;
   # renekton's network dropped during that step, so names are written only on drift.
-  # The application firewall commands are carried over unchanged from firewall.nix's options.
+  # Preserve application firewall options while avoiding an unchanged global-state write.
   system.activationScripts.networking.text = lib.mkForce (
     let
       inherit (config.networking) applicationFirewall;
@@ -86,7 +116,10 @@
       echo "configuring application firewall..." >&2
 
       ${lib.optionalString (applicationFirewall.enable != null) ''
-        /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate ${onOff applicationFirewall.enable}
+        if ! /usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate \
+          | /usr/bin/grep -F '(State = ${if applicationFirewall.enable then "1" else "0"})' >/dev/null; then
+          /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate ${onOff applicationFirewall.enable}
+        fi
       ''}
       ${lib.optionalString (applicationFirewall.blockAllIncoming != null) ''
         /usr/libexec/ApplicationFirewall/socketfilterfw --setblockall ${onOff applicationFirewall.blockAllIncoming}

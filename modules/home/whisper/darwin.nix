@@ -16,10 +16,12 @@ let
   );
 in
 {
-  home.activation.whisperDirectories = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    ${lib.getExe' pkgs.coreutils "install"} -d -m 0700 -- "${logDirectory}" "${temporaryDirectory}"
-    ${lib.getExe' pkgs.coreutils "install"} -d -m 0700 -- "${recordingDirectory}"
-  '';
+  home.activation.whisperDirectories =
+    lib.hm.dag.entryBetween [ "setupLaunchAgents" ] [ "writeBoundary" ]
+      ''
+        ${lib.getExe' pkgs.coreutils "install"} -d -m 0700 -- "${logDirectory}" "${temporaryDirectory}"
+        ${lib.getExe' pkgs.coreutils "install"} -d -m 0700 -- "${recordingDirectory}"
+      '';
 
   launchd.agents = {
     whisper-server = {

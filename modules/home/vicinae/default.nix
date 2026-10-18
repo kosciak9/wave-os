@@ -152,9 +152,8 @@ in
     systemd = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
       enable = true;
       autoStart = true;
-      environment.PATH = "${
+      environment.PATH = "${config.home.profileDirectory}/bin:${
         lib.makeBinPath [
-          config.home.path
           pkgs.gnupg
           pkgs.oath-toolkit
         ]
@@ -163,9 +162,8 @@ in
     launchd = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
       enable = true;
       autoStart = true;
-      environment.PATH = "${
+      environment.PATH = "${config.home.profileDirectory}/bin:${
         lib.makeBinPath [
-          config.home.path
           pkgs.gnupg
           pkgs.oath-toolkit
         ]

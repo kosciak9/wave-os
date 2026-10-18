@@ -68,11 +68,9 @@ code, .mono { font-family: var(--font-mono); font-size: inherit; }
   margin-inline: auto;
 }
 
-.stack { display: grid; gap: 1rem; }
-
 /* Single-column grids take their width from the screen, not from their widest
    line, so a long unbroken title is cut off instead of widening the page. */
-.page, .stack, .column-main, .column-side, .card, .rows { grid-template-columns: minmax(0, 1fr); }
+.page, .column-main, .column-side, .card, .rows { grid-template-columns: minmax(0, 1fr); }
 
 .columns {
   display: flex;
@@ -120,7 +118,7 @@ code, .mono { font-family: var(--font-mono); font-size: inherit; }
   view-transition-name: brand;
 }
 
-/* The Herdr wave set as a filled tile, so it holds up at this size next to text. */
+/* The Wave mark as a filled tile. */
 .wave-logo {
   inline-size: 2rem;
   block-size: 2rem;
@@ -132,8 +130,7 @@ code, .mono { font-family: var(--font-mono); font-size: inherit; }
   stroke-width: 11;
 }
 
-.deadline-form input,
-.job-form :is(input[type="text"], input[type="datetime-local"], select, textarea) {
+.deadline-form input {
   inline-size: 100%;
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--border);
@@ -143,27 +140,13 @@ code, .mono { font-family: var(--font-mono); font-size: inherit; }
   transition: border-color var(--fade);
 }
 
-.deadline-form input::placeholder,
-.job-form input::placeholder { color: var(--text-faint); }
+.deadline-form input::placeholder { color: var(--text-faint); }
 
-:is(.deadline-form input, .job-form :is(input, select, textarea)):focus-visible {
+.deadline-form input:focus-visible {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent);
 }
-
-.crumbs {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.625rem;
-  color: var(--text-faint);
-}
-
-.crumbs a { color: var(--text-muted); transition: color var(--fade); }
-.crumbs .brand { color: var(--text); align-self: center; }
-.page-title { color: var(--text); font-weight: 600; }
-.page-actions { margin-inline-start: auto; display: flex; gap: 0.5rem; }
 
 /* Cards: set apart by a tone step, not an outline */
 .card {
@@ -175,8 +158,6 @@ code, .mono { font-family: var(--font-mono); font-size: inherit; }
   border-radius: var(--radius);
   background: var(--surface);
 }
-
-.card-focus { box-shadow: inset 3px 0 0 var(--accent); }
 
 .card-header {
   display: flex;
@@ -194,31 +175,10 @@ code, .mono { font-family: var(--font-mono); font-size: inherit; }
 
 .card-header > :last-child:not(:first-child) { margin-inline-start: auto; }
 .card-detail { font-size: var(--text-size-small); color: var(--text-faint); }
-.card-link { font-size: var(--text-size-small); color: var(--accent); transition: color var(--fade); }
 
 .group { display: grid; gap: 0.125rem; }
 .group + .group { margin-block-start: 0.5rem; }
 .group-title { font-size: var(--text-size-small); font-weight: 400; color: var(--text-faint); }
-
-.iconoir {
-  inline-size: 1.25em;
-  block-size: 1.25em;
-  flex: none;
-}
-
-/* Herdr's figure runs off the tile's right and bottom edges, as in its own square logo. */
-.herdr-logo {
-  inline-size: 1.5rem;
-  block-size: 1.5rem;
-  flex-shrink: 0;
-  overflow: clip;
-  border-radius: var(--radius);
-  background: var(--accent);
-  color: var(--accent-ink);
-}
-
-.agent-origin { display: inline-flex; flex: none; color: var(--text-muted); }
-.agent-origin-fugate { color: var(--accent); }
 
 .banner {
   padding: 0.625rem 0.875rem;
@@ -230,16 +190,6 @@ code, .mono { font-family: var(--font-mono); font-size: inherit; }
 
 .banner-error { box-shadow: inset 3px 0 0 var(--error); color: var(--text); }
 .form-error { color: var(--error); font-size: var(--text-size-small); }
-
-/* Each host on its own line: its name, then what keeps it from running the job here. */
-.readiness {
-  margin: 0.375rem 0 0;
-  padding: 0;
-  list-style: none;
-  font-size: var(--text-size-small);
-}
-.readiness li { display: flex; flex-wrap: wrap; column-gap: 0.5rem; }
-.readiness li > span:not(.mono, .muted) { color: var(--error); }
 
 /* Rows: one line per item, title left, detail right */
 .rows { display: grid; margin-inline: -0.5rem; }
@@ -262,7 +212,7 @@ code, .mono { font-family: var(--font-mono); font-size: inherit; }
   color: var(--text);
 }
 
-a.row-title, a.row .row-title { transition: color var(--fade); }
+a.row .row-title { transition: color var(--fade); }
 
 .row-meta {
   margin-inline-start: auto;
@@ -284,43 +234,12 @@ a.row-title, a.row .row-title { transition: color var(--fade); }
   opacity: 0.6;
 }
 
-.row-stack {
-  display: grid;
-  min-inline-size: 0;
-  flex: 1;
-}
-
-.row-stack .row-meta { margin-inline-start: 0; white-space: normal; }
-.row-stack + :is(.button, .slots) { flex-shrink: 0; }
-.row-dim .row-title { color: var(--text-faint); }
-
-/* A row link with a button beside it, since a button cannot sit inside the link. */
-.row-with-action { display: flex; align-items: center; gap: 0.5rem; }
-.row-with-action > .row { flex: 1; min-inline-size: 0; }
-.row-with-action:has(> .button) { padding-inline-end: 0.5rem; }
-
-/* In a narrow card a row's detail moves below its title. A row with a state
-   gives its title the whole first line and puts the state before the detail. */
+/* In a narrow card a row's detail moves below its title. */
 @container (inline-size < 32rem) {
   .row { flex-wrap: wrap; row-gap: 0; }
   .row > .row-title { flex: 1 1 0; }
   .row > .row-meta { flex-basis: 100%; margin-inline-start: 0; white-space: normal; }
   .row:has(> .status) > .row-meta { padding-inline-start: calc(0.5rem + 0.625rem); }
-
-  .row:has(> .state-badge) {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    grid-template-areas: "title title" "state meta";
-    gap: 0.125rem 0.625rem;
-  }
-  .row > .state-badge { grid-area: state; min-inline-size: 0; }
-  .row:has(> .state-badge) > .row-title { grid-area: title; }
-  .row:has(> .state-badge) > .row-meta { grid-area: meta; padding-inline-start: 0; }
-  .row:has(> .agent-origin) {
-    grid-template-columns: auto auto minmax(0, 1fr);
-    grid-template-areas: "origin title title" ". state meta";
-  }
-  .row > .agent-origin { grid-area: origin; }
 }
 
 .status {
@@ -352,16 +271,12 @@ a.row-title, a.row .row-title { transition: color var(--fade); }
   transition: background-color var(--fade), color var(--fade);
 }
 
-.button-small { min-block-size: 1.875rem; padding-inline: 0.625rem; font-size: var(--text-size-small); }
-
 /* Fingers need larger targets than a pointer. */
 @media (pointer: coarse) {
   .button { min-block-size: 2.75rem; }
-  .button-small { min-block-size: 2.5rem; }
 }
 .button-quiet { background: var(--surface-raised); color: var(--text); }
 .button-danger { background: var(--surface-raised); color: var(--error); }
-.button-quiet-danger { color: var(--text-muted); }
 .button:active { background: color-mix(in oklch, var(--accent) 85%, var(--bg)); }
 .button-quiet:active, .button-danger:active { background: color-mix(in oklch, var(--surface-raised) 80%, var(--text)); }
 .button.phx-click-loading, .button[disabled] { opacity: 0.55; cursor: progress; }
@@ -382,12 +297,10 @@ a.row-title, a.row .row-title { transition: color var(--fade); }
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .crumbs a:hover { color: var(--text); }
-  .card-link:hover, .link-button:hover, a.row-title:hover, a.row:hover .row-title { color: var(--accent); }
+  .link-button:hover, a.row:hover .row-title { color: var(--accent); }
   a.row:hover { background: var(--surface-raised); }
   .button:hover { background: color-mix(in oklch, var(--accent) 88%, var(--text)); }
   .button-quiet:hover, .button-danger:hover { background: color-mix(in oklch, var(--surface-raised) 88%, var(--text)); }
-  .button-quiet-danger:hover { color: var(--error); }
 }
 
 /* Deadline: the countdown on the left, its days on the right */
@@ -439,170 +352,3 @@ a.row-title, a.row .row-title { transition: color var(--fade); }
 .deadline-day { border-radius: var(--radius); background: var(--surface-raised); }
 .deadline-day.elapsed { background: color-mix(in oklch, var(--accent) 70%, var(--surface)); }
 .deadline-day.today { background: var(--text); }
-
-/* Fugate stats */
-.stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
-  gap: 0.5rem;
-}
-
-.stat {
-  --mark: var(--surface-raised);
-  display: flex;
-  flex-direction: column-reverse;
-  justify-content: start;
-  gap: 0.125rem;
-  padding: 0.625rem 0.75rem;
-  border-radius: var(--radius);
-  background: var(--surface-raised);
-  box-shadow: inset 3px 0 0 var(--mark);
-  transition: box-shadow var(--change);
-}
-
-.stat-running { --mark: var(--accent); }
-.stat-warning { --mark: var(--warning); }
-.stat-error { --mark: var(--error); }
-
-.stat dt { font-size: var(--text-size-small); color: var(--text-muted); }
-.stat dd { font-weight: 700; }
-.stat-of { font-weight: 400; color: var(--text-faint); }
-.stat dd.stat-text { display: flex; flex-wrap: wrap; gap: 0 0.5rem; }
-.stat-detail { font-weight: 400; color: var(--text-muted); overflow: clip; text-overflow: ellipsis; white-space: nowrap; }
-
-/* Run states: the color marks the state, the label names it */
-.state-badge {
-  --state: var(--text-faint);
-  flex-shrink: 0;
-  min-inline-size: 5.75rem;
-  padding: 0 0.375rem;
-  border-radius: var(--radius);
-  background: color-mix(in oklch, var(--state) 16%, transparent);
-  box-shadow: inset 2px 0 0 var(--state);
-  color: var(--text);
-  font-size: var(--text-size-small);
-  line-height: 1.7;
-  transition: background-color var(--change), box-shadow var(--change);
-}
-
-.state-running, .state-starting, .state-queued, .state-working { --state: var(--accent); }
-.state-waiting { --state: var(--info); }
-.state-blocked, .state-unknown, .state-lost { --state: var(--warning); }
-.state-completed, .state-done { --state: var(--ok); }
-.state-failed { --state: var(--error); }
-
-/* Active runs */
-.run-cards { display: grid; gap: 0.5rem; }
-
-.run-card {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 0.375rem 1rem;
-  align-items: center;
-  padding: 0.625rem 0.75rem;
-  border-radius: var(--radius);
-  background: var(--surface-raised);
-  transition: box-shadow var(--change);
-}
-
-.run-card-stuck { box-shadow: inset 3px 0 0 var(--warning); }
-
-.run-card-head {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  min-inline-size: 0;
-  grid-column: 1 / -1;
-}
-
-.run-card-head .row-title { font-weight: 600; }
-.run-card-action { justify-self: end; }
-.run-card .button-quiet { background: var(--surface); }
-
-.facts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.125rem 1.25rem;
-  font-size: var(--text-size-small);
-}
-
-.facts div { display: flex; gap: 0.375rem; min-inline-size: 0; }
-.facts dt { color: var(--text-faint); }
-.facts dd { overflow-wrap: anywhere; }
-
-.facts-list { display: grid; gap: 0.375rem; font-size: var(--text-size); }
-.facts-list div { justify-content: space-between; gap: 1rem; }
-.facts-list dd { text-align: end; }
-
-/* Host capacity: one cell per concurrent run slot */
-.slots { display: flex; gap: 3px; }
-
-.slot {
-  inline-size: 0.75rem;
-  block-size: 1rem;
-  border-radius: var(--radius);
-  background: var(--surface-raised);
-  transition: background-color var(--change);
-}
-
-.slot.busy { background: var(--accent); }
-
-/* Run events */
-.timeline { display: grid; box-shadow: inset 2px 0 0 var(--surface-raised); }
-
-.timeline li {
-  display: grid;
-  gap: 0.25rem;
-  padding: 0.375rem 0 0.375rem 0.875rem;
-}
-
-.timeline-head { display: flex; align-items: baseline; gap: 0.75rem; }
-.event-kind { font-weight: 600; }
-
-.event-data {
-  padding: 0.5rem 0.625rem;
-  border-radius: var(--radius);
-  background: var(--bg);
-  font-family: var(--font-mono);
-  font-size: var(--text-size-small);
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  color: var(--text-muted);
-}
-
-/* Job editor */
-.job-form { display: grid; gap: 1rem; }
-
-.field {
-  display: grid;
-  gap: 0.25rem;
-  min-inline-size: 0;
-  border: 0;
-  padding: 0;
-  margin: 0;
-}
-
-.field > label, .field > legend { padding: 0; font-size: var(--text-size-small); color: var(--text-muted); }
-.field-row { display: flex; flex-wrap: wrap; gap: 1rem; }
-.field-row > .field { flex: 1 1 14rem; }
-
-.job-form textarea {
-  resize: vertical;
-  field-sizing: content;
-  min-block-size: 8lh;
-  font-family: var(--font-mono);
-}
-
-.job-form .field:has(.form-error) :is(input, select, textarea) { border-color: var(--error); }
-
-.check {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-inline-end: 1rem;
-  cursor: pointer;
-}
-
-.check input { accent-color: var(--accent); }
-.row-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-.row-actions-end { margin-inline-start: auto; }

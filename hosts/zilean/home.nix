@@ -7,7 +7,6 @@
     ../../modules/home/cli
     ../../modules/home/devenv
     ../../modules/home/git.nix
-    ../../modules/home/herdr
     ../../modules/home/neovim
     ../../modules/home/opencode
     ../../modules/home/starship
@@ -39,7 +38,6 @@
     home-manager.enable = true;
     password-store.enable = true;
     agents.cua.enable = false;
-    herdr.guiEditor = false;
   };
 
   xdg.enable = true;

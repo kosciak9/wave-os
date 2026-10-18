@@ -1,5 +1,4 @@
 {
-  inputs,
   pkgs,
   lib,
   osConfig,
@@ -22,7 +21,6 @@ let
     };
   };
   zenModels = import ../../cliproxyapi/zen-models.nix;
-  fugateStatus = import ../herdr/fugate-status.nix { inherit lib pkgs; };
   cliConfig = lib.importJSON ./config/cli.json;
   mcpServers = {
     context7 = {
@@ -110,14 +108,8 @@ in
       '';
       force = true;
     };
-    "opencode/plugins/herdr-agent-state.js".source =
-      inputs.herdr + "/src/integration/assets/opencode/herdr-agent-state.js";
-    "opencode/herdr-tui-session.js".source =
-      inputs.herdr + "/src/integration/assets/opencode/herdr-tui-session.js";
     "opencode/cli.json" = {
-      text = builtins.toJSON (
-        cliConfig // { plugins = cliConfig.plugins ++ [ "${fugateStatus.opencodePlugin}" ]; }
-      );
+      text = builtins.toJSON cliConfig;
       force = true;
     };
   };

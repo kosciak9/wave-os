@@ -9,7 +9,6 @@
 let
   cfg = config.services.alfred;
   slackMirror = config.services.slack-mirror;
-  fugate = config.services.fugate;
   home = config.home.homeDirectory;
   component = "alfred";
   containerName = "wave-alfred";
@@ -156,18 +155,6 @@ let
       "search"
       "users"
       "describe_schema"
-    ];
-    # The Fugate agent scheduler (modules/home/fugate) on the host; it admits loopback callers.
-    fugate.tools = [
-      "list_jobs"
-      "create_job"
-      "update_job"
-      "delete_job"
-      "trigger_run"
-      "list_runs"
-      "get_run"
-      "abandon_run"
-      "archive_run"
     ];
   };
   policy =
@@ -456,7 +443,6 @@ let
     			url: "http://host.containers.internal:${toString slackMirror.port}/mcp",
     			headers: { Authorization: `Bearer ''${process.env.SLACK_MIRROR_MCP_TOKEN}` },
     		},
-    		fugate: { url: "http://host.containers.internal:${toString fugate.port}/mcp" },
     	},
     	mcp: ${builtins.toJSON (policy "alfred" // lib.mapAttrs (_: remote: remote.tools) remotes)},
     	subagents: {
@@ -526,7 +512,7 @@ let
       # The agent leaves out an MCP server it cannot reach at start.
       for port in ${
         lib.concatMapAttrsStringSep " " (_: bridge: toString bridge.port) bridges
-      } ${toString slackMirror.port} ${toString fugate.port}; do
+      } ${toString slackMirror.port}; do
         until [[ "$(curl -s -o /dev/null -w '%{http_code}' --max-time 3 "http://127.0.0.1:$port/mcp")" != 000 ]]; do
           if (( SECONDS >= deadline )); then
             printf '%s\n' "the MCP bridge on port $port was not ready" >&2
@@ -637,10 +623,6 @@ in
       {
         assertion = slackMirror.enable;
         message = "Alfred reads Slack through services.slack-mirror.";
-      }
-      {
-        assertion = fugate.enable;
-        message = "Alfred schedules agent runs through services.fugate.";
       }
     ];
     home.activation.alfred = lib.hm.dag.entryBetween [ "setupLaunchAgents" ] [ "writeBoundary" ] ''

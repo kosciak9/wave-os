@@ -97,13 +97,21 @@ let
 in
 {
   # Keep the shared VM's launchd identity and log paths stable for existing services.
-  home.activation.podmanMachineLogDirectory = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    ${install} -d -m 0700 -- "${homeDirectory}/Library/Logs/OpenClaw"
-  '';
+  home.activation.podmanMachineLogDirectory =
+    lib.hm.dag.entryBetween [ "setupLaunchAgents" ] [ "writeBoundary" ]
+      ''
+        ${install} -d -m 0700 -- "${homeDirectory}/Library/Logs/OpenClaw"
+      '';
 
-  home.activation.podmanDefaultConnection = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    run ${podman} system connection default ${sandboxMachineName}
-  '';
+  home.activation.podmanDefaultConnection =
+    lib.hm.dag.entryBetween [ "setupLaunchAgents" ] [ "writeBoundary" ]
+      ''
+        if ! ${podman} system connection list --format json |
+          ${lib.getExe pkgs.jq} -e --arg name ${sandboxMachineName} \
+            'any(.[]; .Name == $name and .Default == true)' >/dev/null; then
+          run ${podman} system connection default ${sandboxMachineName}
+        fi
+      '';
 
   launchd.agents.openclaw-sandbox-machine = {
     enable = true;

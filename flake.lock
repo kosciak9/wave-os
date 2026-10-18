@@ -238,84 +238,6 @@
         "url": "https://flakehub.com/f/cachix/git-hooks.nix/0.1.941"
       }
     },
-    "herdr": {
-      "inputs": {
-        "nixpkgs": [
-          "nixpkgs"
-        ],
-        "rust-overlay": "rust-overlay"
-      },
-      "locked": {
-        "lastModified": 1791972975,
-        "narHash": "sha256-MppNuNEVSq33f9FvMIlhZMyd30qWAUZkVmDVAQCWbmk=",
-        "owner": "jerryfane",
-        "repo": "herdr",
-        "rev": "3648fd14119433805be71d80edb150a098519eb3",
-        "type": "github"
-      },
-      "original": {
-        "owner": "jerryfane",
-        "repo": "herdr",
-        "rev": "3648fd14119433805be71d80edb150a098519eb3",
-        "type": "github"
-      }
-    },
-    "herdr-auto-title": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1791794095,
-        "narHash": "sha256-CNSw6J+Xbo0PaO5EwmW9zZ14KxxnTRAs8/87pW4q9Ok=",
-        "owner": "kryptamine",
-        "repo": "herdr-auto-title",
-        "rev": "8b2504514bb2aaa79ecbba6cb0e6c426652f4419",
-        "type": "github"
-      },
-      "original": {
-        "owner": "kryptamine",
-        "repo": "herdr-auto-title",
-        "rev": "8b2504514bb2aaa79ecbba6cb0e6c426652f4419",
-        "type": "github"
-      }
-    },
-    "herdr-gpui": {
-      "inputs": {
-        "nixpkgs": [
-          "nixpkgs"
-        ],
-        "rust-overlay": "rust-overlay_2"
-      },
-      "locked": {
-        "lastModified": 1791861920,
-        "narHash": "sha256-fMHsVK1yO9KTmtqDaGoZu1QByZqt/kTjs7TB9iBNYv8=",
-        "owner": "penso",
-        "repo": "herdr-gpui",
-        "rev": "25e49c7aa582fe8b629fe7d8a921f2a203190873",
-        "type": "github"
-      },
-      "original": {
-        "owner": "penso",
-        "ref": "v20261013.1",
-        "repo": "herdr-gpui",
-        "type": "github"
-      }
-    },
-    "herdr-worktrunk": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1791287192,
-        "narHash": "sha256-puZWyvtBt2svov0NIVJTzdfHzm/k1EglbXsTGsm8N7I=",
-        "owner": "devashish2203",
-        "repo": "herdr-worktrunk",
-        "rev": "f9df9ba700b8a4f4d97ddfe3ea3eb345e80b880b",
-        "type": "github"
-      },
-      "original": {
-        "owner": "devashish2203",
-        "repo": "herdr-worktrunk",
-        "rev": "f9df9ba700b8a4f4d97ddfe3ea3eb345e80b880b",
-        "type": "github"
-      }
-    },
     "home-manager": {
       "inputs": {
         "nixpkgs": [
@@ -601,10 +523,6 @@
         "determinate": "determinate",
         "devenv-nixpkgs": "devenv-nixpkgs",
         "ghostty-cursor-shaders": "ghostty-cursor-shaders",
-        "herdr": "herdr",
-        "herdr-auto-title": "herdr-auto-title",
-        "herdr-gpui": "herdr-gpui",
-        "herdr-worktrunk": "herdr-worktrunk",
         "home-manager": "home-manager",
         "hyprland-scroll-overview": "hyprland-scroll-overview",
         "kanagawa-kvantum": "kanagawa-kvantum",
@@ -622,48 +540,6 @@
       }
     },
     "rust-overlay": {
-      "inputs": {
-        "nixpkgs": [
-          "herdr",
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1783577481,
-        "narHash": "sha256-EWMxOWrJ031f8f/lrcEmhTRs4npw1/5N3Hcjin846c8=",
-        "owner": "oxalica",
-        "repo": "rust-overlay",
-        "rev": "4cdea398dc491b082dccdce0fad1ed0b75fa3394",
-        "type": "github"
-      },
-      "original": {
-        "owner": "oxalica",
-        "repo": "rust-overlay",
-        "type": "github"
-      }
-    },
-    "rust-overlay_2": {
-      "inputs": {
-        "nixpkgs": [
-          "herdr-gpui",
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1790062494,
-        "narHash": "sha256-Mds1vuoczq1fRm1rf+Iar8IKDBHNjOMo2JqqPWJUlng=",
-        "owner": "oxalica",
-        "repo": "rust-overlay",
-        "rev": "b88764907c1b2de6c0e206d8d9d9634d91c81334",
-        "type": "github"
-      },
-      "original": {
-        "owner": "oxalica",
-        "repo": "rust-overlay",
-        "type": "github"
-      }
-    },
-    "rust-overlay_3": {
       "inputs": {
         "nixpkgs": [
           "spotifast",
@@ -731,7 +607,7 @@
         "nixpkgs": [
           "nixpkgs"
         ],
-        "rust-overlay": "rust-overlay_3"
+        "rust-overlay": "rust-overlay"
       },
       "locked": {
         "lastModified": 1791953833,

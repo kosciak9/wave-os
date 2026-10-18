@@ -1,22 +1,11 @@
 {
   config,
-  inputs,
   lib,
   modulesPath,
   pkgs,
   ...
 }:
 
-let
-  # GNU ld rejects the debug and unwind sections of Zig's bundled compiler_rt on aarch64.
-  herdr = inputs.herdr.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs (old: {
-    patches = (old.patches or [ ]) ++ [ ../../modules/home/herdr/patches/endpoint-diagnostics.patch ];
-    nativeBuildInputs = old.nativeBuildInputs ++ [ pkgs.lld ];
-    env = old.env // {
-      RUSTFLAGS = "-C link-arg=-fuse-ld=lld";
-    };
-  });
-in
 {
   imports = [
     ./hardware.nix
@@ -68,7 +57,6 @@ in
     isNormalUser = true;
     extraGroups = [ "wheel" ];
     hashedPassword = "!";
-    # Keeps the Herdr server reachable by the jayce and renekton coordinators without a login.
     linger = true;
   };
   users.users.root.hashedPassword = "!";
@@ -169,28 +157,7 @@ in
       "d /var/lib/wave/ssh 0755 root root -"
       "f /var/lib/wave/ssh/kosciak 0644 root root -"
       "d /home/kosciak/.config 0755 kosciak users -"
-      "d /home/kosciak/.config/herdr 0700 kosciak users -"
-      # jayce and renekton pin this install identity in their saved-machine federation policies.
-      ''f+ /home/kosciak/.config/herdr/machine.json 0600 kosciak users - {"machine_id": "machine_9026bebb6184fc9965a24b867836dce9"}''
     ];
-    user.services.herdr = {
-      description = "Herdr default session";
-      wantedBy = [ "default.target" ];
-      restartTriggers = [ herdr ];
-      unitConfig.ConditionUser = "kosciak";
-      environment.SHELL = "${pkgs.bashInteractive}/bin/bash";
-      path = [ "/run/current-system/sw" ];
-      serviceConfig = {
-        ExecStartPre = "-${lib.getExe herdr} --session default server stop";
-        ExecStart = "${lib.getExe herdr} --session default server";
-        ExecStop = "${lib.getExe herdr} --session default server stop";
-        Restart = "on-failure";
-        RestartSec = 3;
-        KillSignal = "SIGINT";
-        KillMode = "mixed";
-        TimeoutStopSec = 30;
-      };
-    };
     coredump.settings.Coredump = {
       Storage = "none";
       ProcessSizeMax = 0;
@@ -212,15 +179,12 @@ in
     };
   };
 
-  environment.systemPackages = [
-    herdr
-  ]
-  ++ (with pkgs; [
+  environment.systemPackages = with pkgs; [
     beamMinimalPackages.elixir
     beamMinimalPackages.erlang
     curl
     opencode
-  ]);
+  ];
   documentation = {
     enable = false;
     nixos.enable = false;

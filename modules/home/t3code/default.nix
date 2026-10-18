@@ -21,7 +21,7 @@ let
   environment = {
     HOME = config.home.homeDirectory;
     T3CODE_HOME = "${config.home.homeDirectory}/.t3";
-    PATH = "${config.home.path}/bin:${
+    PATH = "${config.home.profileDirectory}/bin:${
       lib.makeBinPath [ pkgs.tailscale ]
     }:/run/current-system/sw/bin:/usr/bin:/bin:/usr/sbin:/sbin";
   };
@@ -30,12 +30,23 @@ in
   home = {
     packages = [ pkgs.t3code-cli ];
     activation = {
+      # Home Manager reconciles all managed services in a single activation step.
+      t3codeServicesReady =
+        lib.hm.dag.entryBetween
+          [ (if pkgs.stdenv.hostPlatform.isDarwin then "setupLaunchAgents" else "reloadSystemd") ]
+          [ "installPackages" "onFilesChange" "t3codeTheme" ]
+          "";
       t3codeTheme = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
-        run ${lib.getExe pkgs.t3code-cli} theme set --base-dir ${lib.escapeShellArg environment.T3CODE_HOME} \
-          --id kanagawa-dragon ${theme}
+        if ! ${lib.getExe pkgs.jq} -e '.defaultTheme == "kanagawa-dragon"' \
+          ${lib.escapeShellArg "${environment.T3CODE_HOME}/userdata/settings.json"} >/dev/null 2>&1 \
+          || ! ${lib.getExe' pkgs.diffutils "cmp"} -s ${theme} \
+            ${lib.escapeShellArg "${environment.T3CODE_HOME}/userdata/themes/kanagawa-dragon.json"}; then
+          run ${lib.getExe pkgs.t3code-cli} theme set --base-dir ${lib.escapeShellArg environment.T3CODE_HOME} \
+            --id kanagawa-dragon ${theme}
+        fi
       '';
       t3codeLogDirectory = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin (
-        lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+        lib.hm.dag.entryBetween [ "setupLaunchAgents" ] [ "writeBoundary" ] ''
           ${lib.getExe' pkgs.coreutils "install"} -d -m 0700 -- ${lib.escapeShellArg logDirectory}
         ''
       );

@@ -22,7 +22,11 @@ let
   };
 in
 {
-  imports = [ ./cua.nix ];
+  imports = [
+    ./cua.nix
+    ./harnesses.nix
+    ../worktrunk.nix
+  ];
 
   home.packages = [
     earshot

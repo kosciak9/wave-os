@@ -31,19 +31,26 @@ in
         /bin/launchctl asuser "$primary_user_uid" /usr/bin/sudo --user ${primaryUserArg} -- "$@"
       }
 
-      run_as_primary_user /usr/bin/defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys \
-        -dict-add 64 '<dict><key>enabled</key><false/></dict>'
-      run_as_primary_user /usr/bin/defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys \
-        -dict-add 65 '<dict><key>enabled</key><false/></dict>'
+      spotlight_hotkeys_changed=false
+      for shortcut in 64 65; do
+        if [ "$(run_as_primary_user /usr/bin/defaults export com.apple.symbolichotkeys - \
+          | /usr/bin/plutil -extract "AppleSymbolicHotKeys.$shortcut.enabled" raw -o - - 2>/dev/null)" != false ]; then
+          run_as_primary_user /usr/bin/defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys \
+            -dict-add "$shortcut" '<dict><key>enabled</key><false/></dict>'
+          spotlight_hotkeys_changed=true
+        fi
+      done
 
       # Private API required to refresh Tahoe's active symbolic-hotkey settings.
       activate_settings=/System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings
-      if [ -x "$activate_settings" ]; then
-        if ! run_as_primary_user "$activate_settings" -u; then
-          printf '%s\n' 'warning: Spotlight hotkeys were persisted, but logout/login is required to refresh them' >&2
+      if [ "$spotlight_hotkeys_changed" = true ]; then
+        if [ -x "$activate_settings" ]; then
+          if ! run_as_primary_user "$activate_settings" -u; then
+            printf '%s\n' 'warning: Spotlight hotkeys were persisted, but logout/login is required to refresh them' >&2
+          fi
+        else
+          printf '%s\n' 'warning: activateSettings is unavailable; Spotlight hotkeys were persisted, but logout/login is required to refresh them' >&2
         fi
-      else
-        printf '%s\n' 'warning: activateSettings is unavailable; Spotlight hotkeys were persisted, but logout/login is required to refresh them' >&2
       fi
     else
       printf '%s\n' 'warning: Spotlight shortcut updates deferred until a Darwin activation occurs with the primary user GUI session available' >&2
