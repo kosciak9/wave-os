@@ -63,7 +63,7 @@ struct Weather {
     maximum: f64,
     symbol: String,
     place: Option<String>,
-    updated: i64,
+    updated: libc::time_t,
 }
 
 /// The paired watch's D-Bus object, found by its advertised name.
