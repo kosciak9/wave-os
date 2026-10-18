@@ -156,6 +156,24 @@ let
       "users"
       "describe_schema"
     ];
+    # Scheduled tasks on zilean's T3 Code and the threads their runs leave; Alfred signs in
+    # with `/mcp_login t3`.
+    t3.tools = [
+      "list_scheduled_tasks"
+      "schedule_task"
+      "update_scheduled_task"
+      "delete_scheduled_task"
+      "run_scheduled_task_now"
+      "t3_project_list"
+      "t3_thread_list"
+      "t3_thread_read"
+      "t3_thread_search"
+      "t3_thread_interrupt"
+      "t3_pending_request_list"
+      "t3_pending_request_read"
+      "t3_pending_request_respond"
+      "orchestrator_capabilities"
+    ];
   };
   policy =
     agent:
@@ -443,6 +461,7 @@ let
     			url: "http://host.containers.internal:${toString slackMirror.port}/mcp",
     			headers: { Authorization: `Bearer ''${process.env.SLACK_MIRROR_MCP_TOKEN}` },
     		},
+    		t3: { url: "https://zilean.dusky-diatonic.ts.net:18443/mcp", oauth: true },
     	},
     	mcp: ${builtins.toJSON (policy "alfred" // lib.mapAttrs (_: remote: remote.tools) remotes)},
     	subagents: {
