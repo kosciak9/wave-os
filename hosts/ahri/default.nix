@@ -183,7 +183,7 @@
     beamMinimalPackages.elixir
     beamMinimalPackages.erlang
     curl
-    opencode
+    opencode-rescue
   ];
   documentation = {
     enable = false;

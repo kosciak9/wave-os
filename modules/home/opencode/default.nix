@@ -89,6 +89,7 @@ in
 {
   home.packages = [
     (gatewayPackage pkgs.opencode "opencode")
+    pkgs.opencode-rescue
     pkgs.camofox-browser-cli
   ];
 
