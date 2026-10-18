@@ -14,9 +14,6 @@ let
         exec ${lib.getExe package} "$@"
         ;;
     esac
-    if [[ "''${WAVE_AGENT_DIRECT:-0}" == 1 ]]; then
-      exec ${lib.getExe package} "$@"
-    fi
     CLIPROXYAPI_API_KEY=$(< ${lib.escapeShellArg apiKeyFile})
     CLIPROXYAPI_BASE_URL=$(< ${lib.escapeShellArg baseUrlFile})
     export CLIPROXYAPI_API_KEY CLIPROXYAPI_BASE_URL
