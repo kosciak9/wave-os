@@ -10,7 +10,8 @@ let
   gray = "#a6a69c";
   muted = "#7a8382";
   blue = "#8ba4b0";
-  blueDim = "#658594";
+  orange = "#b6927b";
+  orangeDim = "#9c7a66";
   red = "#c4746e";
   yellow = "#c4b28a";
   green = "#87a987";
@@ -62,14 +63,14 @@ in
     messageSurface = black2;
     messageForeground = white;
     # Primary buttons and checked switches.
-    messageAction = blue;
+    messageAction = orange;
     messageActionForeground = black1;
-    messageActionHover = blueDim;
+    messageActionHover = orangeDim;
     codeBackground = black1;
     codeForeground = white;
     searchMatchBackground = yellow;
     searchMatchForeground = black0;
-    searchMatchActiveBackground = "#b6927b";
+    searchMatchActiveBackground = orange;
     searchMatchActiveForeground = black0;
     sidebar = black1;
     sidebarForeground = white;
