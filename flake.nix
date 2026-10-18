@@ -86,6 +86,7 @@
       system = "x86_64-linux";
       darwinSystem = "aarch64-darwin";
       ahriSystem = "aarch64-linux";
+      zacSystem = "armv7l-linux";
       packageOverlay =
         final: prev:
         let
@@ -95,7 +96,9 @@
         in
         {
           wave = final.callPackage ./packages/wave.nix {
-            deploy-rs = inputs.deploy-rs.packages.${final.stdenv.hostPlatform.system}.deploy-rs;
+            deploy-rs =
+              inputs.deploy-rs.packages.${final.stdenv.hostPlatform.system}.deploy-rs
+                or final.deploy-rs.deploy-rs;
             deployNodes = builtins.attrNames self.deploy.nodes;
           };
           t3code-cli = final.callPackage ./packages/t3code-cli.nix { };
@@ -132,6 +135,7 @@
         }
         // prev.lib.optionalAttrs prev.stdenv.hostPlatform.isLinux {
           t3code-desktop = final.callPackage ./packages/t3code-desktop.nix { };
+          sendspin-player = final.callPackage ./packages/sendspin-player.nix { };
           pr-cockpit = final.callPackage ./packages/pr-cockpit.nix { };
           spotifast = final.callPackage ./packages/spotifast.nix {
             spotifast = inputs.spotifast.packages.${final.stdenv.hostPlatform.system}.default;
@@ -162,6 +166,23 @@
         system = ahriSystem;
         overlays = [ packageOverlay ];
       };
+      zacPkgs = import nixpkgs {
+        localSystem = system;
+        crossSystem = nixpkgs.lib.systems.examples.armv7l-hf-multiplatform;
+        config.allowUnfree = true;
+        overlays = [
+          inputs.deploy-rs.overlays.default
+          packageOverlay
+          (_: prev: {
+            # rdma-core does not cross-compile (CMake rejects the build Python), and no RDMA hardware exists here.
+            libpcap = prev.libpcap.override { withRdma = false; };
+            # GCC rejects opus's NEON intrinsics for this target's baseline FPU, which lacks NEON.
+            opus = prev.opus.overrideAttrs (old: {
+              cmakeFlags = old.cmakeFlags or [ ] ++ [ "-DOPUS_DISABLE_INTRINSICS=ON" ];
+            });
+          })
+        ];
+      };
       kanagawa-kvantum = pkgs.callPackage ./packages/kanagawa-kvantum.nix {
         src = inputs.kanagawa-kvantum;
       };
@@ -182,6 +203,12 @@
         deployLib = inputs.deploy-rs.lib.${system};
         configuration = self.nixosConfigurations.zilean;
         hostname = "zilean";
+      };
+      zacNode = import ./tools/deploy-node.nix {
+        pkgs = zacPkgs;
+        deployLib = zacPkgs.deploy-rs.lib;
+        configuration = self.nixosConfigurations.zac;
+        hostname = "zac";
       };
     in
     {
@@ -254,6 +281,15 @@
           ];
         };
 
+        zac = nixpkgs.lib.nixosSystem {
+          system = zacSystem;
+          specialArgs.waveRevision = self.rev or "unknown";
+          modules = [
+            ./hosts/zac/default.nix
+            (_: { nixpkgs.pkgs = zacPkgs; })
+          ];
+        };
+
       };
 
       darwinConfigurations.renekton = nix-darwin.lib.darwinSystem {
@@ -287,6 +323,20 @@
       packages = {
         ${system} = {
           deploy-rs = inputs.deploy-rs.packages.${system}.deploy-rs;
+          zac-cache = pkgs.linkFarm "zac-cache" [
+            {
+              name = "system";
+              path = zacNode.profiles.system.path;
+            }
+            {
+              name = "image";
+              path = self.nixosConfigurations.zac.config.system.build.sdImage;
+            }
+            {
+              name = "player-check";
+              path = pkgs.sendspin-player;
+            }
+          ];
           inherit kanagawa-kvantum;
           inherit (pkgs)
             wave
@@ -330,6 +380,7 @@
         renekton = renektonNode;
         ahri = ahriNode;
         zilean = zileanNode;
+        zac = zacNode;
       };
       checks = {
         ${system} =

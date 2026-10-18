@@ -75,6 +75,7 @@
       nodes = [
         "renekton"
         "zilean"
+        "zac"
       ];
     };
   };
