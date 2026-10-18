@@ -173,6 +173,7 @@ in
             ]
           }
           ${installFirmware}
+          mkdir -p /boot/firmware
           mountpoint -q /boot/firmware || mount /boot/firmware
           install_firmware /boot/firmware "$1"
         '';
