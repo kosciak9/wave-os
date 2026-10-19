@@ -29,13 +29,13 @@
 
 let
   pname = "pr-cockpit";
-  version = "unstable-2026-10-14";
-  revision = "843d5391d2a933d0bc07f359ae397760438b3c0e";
+  version = "unstable-2026-10-15";
+  revision = "66d8a8196c6624fbd6f9be14a9212b07b07bba3a";
   src = fetchFromGitHub {
     owner = "theolundqvist";
     repo = "pr-cockpit";
     rev = revision;
-    hash = "sha256-WMoEfoMCmSGTzqQMTjsOksoa3uO6Ru3V30MzkdTgxK0=";
+    hash = "sha256-PdoJaRGd5hMagNU1Fw1uLAHw/7B1a+iIASkBRJH/6vU=";
   };
   nodeModules = stdenvNoCC.mkDerivation {
     pname = "${pname}-node-modules";
@@ -168,7 +168,8 @@ stdenvNoCC.mkDerivation {
         'comment:Post a PR comment' 'reply:Reply to a thread' 'resolve:Resolve a thread'
         'unresolve:Reopen a thread' 'dismiss-alert:Dismiss a CodeQL finding'
         'review:Submit a review' 'merge:Merge a PR' 'update-branch:Update the PR branch'
-        'ready-for-review:Mark a draft ready' 'close:Close a PR' 'edit-body:Replace the PR body'
+        'ready-for-review:Mark a draft ready' 'convert-to-draft:Convert to a draft'
+        'close:Close a PR' 'edit-body:Replace the PR body'
         'edit-title:Replace the PR title' 'auto-merge:Configure GitHub auto-merge'
         'cockpit-auto-merge:Configure Cockpit auto-merge' 'inline-comment:Post an inline comment'
         'assign:Add assignees' 'unassign:Remove assignees' 'add-labels:Add labels'
