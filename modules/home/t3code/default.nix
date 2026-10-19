@@ -6,6 +6,8 @@
 }:
 let
   logDirectory = "${config.home.homeDirectory}/Library/Logs/T3Code";
+  settingsFile = "${environment.T3CODE_HOME}/userdata/settings.json";
+  settings = pkgs.writeText "t3code-settings.json" (builtins.toJSON (import ./server-settings.nix));
   theme = pkgs.writeText "kanagawa-dragon.json" (builtins.toJSON (import ./kanagawa-dragon.nix));
   arguments = [
     (lib.getExe pkgs.t3code-cli)
@@ -34,15 +36,24 @@ in
       t3codeServicesReady =
         lib.hm.dag.entryBetween
           [ (if pkgs.stdenv.hostPlatform.isDarwin then "setupLaunchAgents" else "reloadSystemd") ]
-          [ "installPackages" "onFilesChange" "t3codeTheme" ]
+          [ "installPackages" "onFilesChange" "t3codeTheme" "t3codeSettings" ]
           "";
       t3codeTheme = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
         if ! ${lib.getExe pkgs.jq} -e '.defaultTheme == "kanagawa-dragon"' \
-          ${lib.escapeShellArg "${environment.T3CODE_HOME}/userdata/settings.json"} >/dev/null 2>&1 \
+          ${lib.escapeShellArg settingsFile} >/dev/null 2>&1 \
           || ! ${lib.getExe' pkgs.diffutils "cmp"} -s ${theme} \
             ${lib.escapeShellArg "${environment.T3CODE_HOME}/userdata/themes/kanagawa-dragon.json"}; then
           run ${lib.getExe pkgs.t3code-cli} theme set --base-dir ${lib.escapeShellArg environment.T3CODE_HOME} \
             --id kanagawa-dragon ${theme}
+        fi
+      '';
+      # The server watches settings.json, so a running instance picks up the merge.
+      t3codeSettings = lib.hm.dag.entryAfter [ "t3codeTheme" ] ''
+        file=${lib.escapeShellArg settingsFile}
+        merged=$(${lib.getExe pkgs.jq} --slurpfile nix ${settings} '. * $nix[0]' "$file")
+        if [[ "$merged" != "$(${lib.getExe pkgs.jq} . "$file")" ]]; then
+          run ${lib.getExe' pkgs.coreutils "install"} -m 0600 /dev/stdin "$file.nix-tmp" <<<"$merged"
+          run ${lib.getExe' pkgs.coreutils "mv"} -f -- "$file.nix-tmp" "$file"
         fi
       '';
       t3codeLogDirectory = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin (
