@@ -28,6 +28,7 @@ let
       terminalProgressBarEnabled = false;
       promptSuggestionEnabled = false;
       awaySummaryEnabled = false;
+      autoCompactEnabled = true;
       emojiCompletionEnabled = false;
       tui = "fullscreen";
       viewMode = "focus";
