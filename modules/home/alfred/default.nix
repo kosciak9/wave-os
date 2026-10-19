@@ -27,6 +27,14 @@ let
   python = pkgs.workspace-mcp.pythonEnvironment.override (old: {
     extraLibs = old.extraLibs ++ [ pkgs.workspace-mcp.python.pkgs.pymupdf ];
   });
+  # The bridge and the attachment reading it shares with the Gmail server.
+  scripts = lib.fileset.toSource {
+    root = ./.;
+    fileset = lib.fileset.unions [
+      ./mcp-bridge.py
+      ./alfred_attachments.py
+    ];
+  };
   bridges = {
     obsidian = {
       port = 18091;
@@ -123,6 +131,8 @@ let
       agent = "alfred";
       domain = "user";
       command = lib.getExe protonMcp;
+      # Its attachments arrive as binary resources.
+      inlineAttachments = true;
       tools = [
         "list_available_accounts"
         "list_mailboxes"
@@ -288,7 +298,7 @@ let
       cd "$state_directory"
       exec env -i \
         HOME="$state_directory" PATH="$PATH" \
-        PYTHONPATH=${lib.escapeShellArg pkgs.workspace-mcp.pythonPath} \
+        PYTHONPATH=${lib.escapeShellArg "${pkgs.workspace-mcp.pythonPath}:${scripts}"} \
         PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1 \
         GOOGLE_CLIENT_SECRET_PATH="$client_file" USER_GOOGLE_EMAIL="$email" \
         WORKSPACE_MCP_CREDENTIALS_DIR="$state_directory/credentials" \
@@ -402,7 +412,13 @@ let
     config = {
       ProgramArguments = [
         "${python}/bin/python"
-        "${./mcp-bridge.py}"
+        "${scripts}/mcp-bridge.py"
+      ]
+      ++ lib.optionals (bridge.inlineAttachments or false) [
+        "--inline-attachments"
+        "http://127.0.0.1:${toString gotenbergPort}"
+      ]
+      ++ [
         name
         (toString bridge.port)
         mcpTokenFile
