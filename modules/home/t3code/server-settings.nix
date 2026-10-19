@@ -30,6 +30,10 @@
     };
   };
   defaultThreadEnvMode = "worktree";
+  # Shared with Worktrunk's worktree-path, so T3 and `wt` manage one tree.
+  worktreesDirectory = "~/Developer/worktrees";
+  # T3 appends the old location on change; `<T3 home>/worktrees` stays managed regardless.
+  previousWorktreesDirectories = [ ];
   defaultAutoPull = true;
   worktreeCleanup.mode = "off";
   storageCleanup.worktreeSettledAfterDays = 7;

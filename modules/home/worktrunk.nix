@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 let
   worktrunk = pkgs.worktrunk.overrideAttrs {
     # TODO: Re-enable checks when Worktrunk process-table tests support Darwin sandboxes.
@@ -13,7 +13,8 @@ in
     enableZshIntegration = true;
     package = worktrunk;
     settings = {
-      worktree-path = "{{ repo_path }}/../.worktrees/{{ repo }}/{{ branch | sanitize }}";
+      # Same layout as T3's worktreesDirectory: <dir>/<repo>/<branch>.
+      worktree-path = "${config.home.homeDirectory}/Developer/worktrees/{{ repo }}/{{ branch | sanitize }}";
       skip-commit-generation-prompt = true;
       # Keep every commit of a branch: `wt merge` rebases and fast-forwards
       # without squashing.
