@@ -7,16 +7,16 @@
 
 buildNpmPackage {
   pname = "substack-mcp-cli";
-  version = "3.0.1";
+  version = "3.1.0";
 
   src = fetchFromGitHub {
     owner = "thenavidm";
     repo = "substack-mcp-cli";
-    rev = "dedc04046d3411d6a3cd1e71e49861d031b9f4ca";
-    hash = "sha256-hkSi2DxXITZ8azqxN8St2imgyVfNQnD/gvhFGqtyCrk=";
+    rev = "39eab6619c963d2358f2aae8b12da8e303b6bd73";
+    hash = "sha256-1YH9GLKF/4o3oS6OKd6WJ/5RoNAo2I0rTEMABqmzDE0=";
   };
 
-  npmDepsHash = "sha256-AVaAyb8ih3jGAtj7b7z7B3M/kKt1AjHDfIvigTe9uYI=";
+  npmDepsHash = "sha256-DtA+lc4ZVbidjBSmexqKtPjTjHOHVvi2ro9FIxGgCQU=";
   nodejs = nodejs_22;
   doCheck = true;
   checkPhase = ''
@@ -25,7 +25,7 @@ buildNpmPackage {
     runHook postCheck
   '';
 
-  passthru.gitHead = "dedc04046d3411d6a3cd1e71e49861d031b9f4ca";
+  passthru.gitHead = "39eab6619c963d2358f2aae8b12da8e303b6bd73";
 
   meta = {
     description = "Substack MCP server and CLI for AI agents";

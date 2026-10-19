@@ -12,25 +12,25 @@ let
   # Use the upstream wheels matched to renekton's macOS 26 arm64.
   mlxMetal = py.buildPythonPackage {
     pname = "mlx-metal";
-    version = "0.32.3";
+    version = "0.32.4";
     format = "wheel";
     src = fetchurl {
-      url = "https://files.pythonhosted.org/packages/ee/38/cb985ca86979ca6f954a2a45eb6e3f9b787c5d55227564a04f87953b3d56/mlx_metal-0.32.3-py3-none-macosx_26_0_arm64.whl";
-      sha256 = "34ae9b83ad2f0ccdd3e5d48ec35176e7119f57069eef187122916dc941a4ae1f";
+      url = "https://files.pythonhosted.org/packages/2a/d6/4340ed6e184f71693d7f531c9ae55d677451351245760d71f8dd714dcbe5/mlx_metal-0.32.4-py3-none-macosx_26_0_arm64.whl";
+      sha256 = "514df92d41a286895d2564b4b18f4da45096bd7a4a0c47e1042f345ad5a7f936";
     };
     meta = {
-      description = "MLX 0.32.3 Metal kernels";
+      description = "MLX 0.32.4 Metal kernels";
       license = lib.licenses.mit;
       platforms = [ "aarch64-darwin" ];
     };
   };
   mlx = py.buildPythonPackage {
     pname = "mlx";
-    version = "0.32.3";
+    version = "0.32.4";
     format = "wheel";
     src = fetchurl {
-      url = "https://files.pythonhosted.org/packages/53/a9/70bf746c2cd13a198a429e33244d2f072ecd0c89508299a636529d3317cb/mlx-0.32.3-cp313-cp313-macosx_26_0_arm64.whl";
-      sha256 = "75333afef55819afd2a31e87ffbed0bf59f379bca21771e6b13a95a675e4c85b";
+      url = "https://files.pythonhosted.org/packages/e8/b1/33ca08f84550fd512f28b84055ff00631ef2ce83011ac2bbc171ffec7bbb/mlx-0.32.4-cp313-cp313-macosx_26_0_arm64.whl";
+      sha256 = "ef130e3da895c85374b11a6c389acb122893f2ffcbed826b8b62fd45a20b7ad6";
     };
     propagatedBuildInputs = [ mlxMetal ];
     nativeBuildInputs = [ cctools ];
@@ -41,7 +41,7 @@ let
     '';
     pythonImportsCheck = [ "mlx.core" ];
     meta = {
-      description = "MLX 0.32.3 arrays and ML inference on Apple Silicon";
+      description = "MLX 0.32.4 arrays and ML inference on Apple Silicon";
       license = lib.licenses.mit;
       platforms = [ "aarch64-darwin" ];
     };

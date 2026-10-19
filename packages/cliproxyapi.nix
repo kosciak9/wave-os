@@ -4,13 +4,13 @@
   installShellFiles,
 }:
 prev.cliproxyapi.overrideAttrs (old: {
-  version = "8.0.28";
+  version = "8.0.33";
 
   src = fetchFromGitHub {
     owner = "router-for-me";
     repo = "CLIProxyAPI";
-    tag = "v8.0.28";
-    hash = "sha256-6dD1uZuGNrZJhs7iay2c9v+vEtTU7KsqeSaGzY+EVpk=";
+    tag = "v8.0.33";
+    hash = "sha256-HpsmjjMzVTnP+KcK6hy3cq3AHRsaCAVvgJdb9PKL7QU=";
   };
 
   vendorHash = "sha256-r3yWkdMcM40G9jV7MxW/qNv3E9WrHavFilW24quEf+8=";
