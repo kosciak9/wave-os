@@ -153,6 +153,8 @@
         "alfred/substack-session-token"
         "alfred/x-session.json"
         "camofox/access-key"
+        "protonmail/address"
+        "protonmail/bridge-password"
         "cliproxyapi/api-key"
         "cliproxyapi/base-url"
         "cliproxyapi/quota-key"

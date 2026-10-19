@@ -15,6 +15,7 @@ let
   logDirectory = "${home}/.local/state/alfred";
   googleState = "${logDirectory}/google-workspace";
   xState = "${logDirectory}/x";
+  protonState = "${logDirectory}/proton";
   secret = name: osConfig.sops.secrets."alfred/${name}".path;
   mcpTokenFile = secret "mcp-token";
 
@@ -59,7 +60,6 @@ let
         "get_events"
         "modify_gmail_message_labels"
         "draft_gmail_message"
-        "send_gmail_message"
         "manage_event"
       ];
     };
@@ -114,6 +114,26 @@ let
         "research_creator_posts"
         "compare_publications"
         "update_draft"
+      ];
+    };
+    # Proton Mail through the local Bridge. Alfred drafts but never sends: the server has no
+    # SMTP. Deleting, raw protocol commands and attachment downloads to the host stay off.
+    proton = {
+      port = 18097;
+      agent = "alfred";
+      domain = "user";
+      command = lib.getExe protonMcp;
+      tools = [
+        "list_available_accounts"
+        "list_mailboxes"
+        "list_emails_metadata"
+        "get_emails_content"
+        "get_attachment_content"
+        "save_draft"
+        "set_email_flags"
+        "mark_emails_as_read"
+        "move_emails"
+        "archive_emails"
       ];
     };
     languagetool = {
@@ -275,6 +295,41 @@ let
         WORKSPACE_ATTACHMENT_DIR="$state_directory/attachments" \
         WORKSPACE_MCP_LOG_DIR="$state_directory/logs" WORKSPACE_MCP_LOG_LEVEL=WARNING \
         ${python}/bin/python ${../../../packages/workspace-mcp/launcher.py} ${googlePolicy}
+    '';
+  };
+
+  # Proton Mail Bridge runs in the GUI session, where it keeps its vault key in the login
+  # keychain. Its IMAP and SMTP listen on loopback with a certificate of its own, which
+  # `export-tls-cert` in `protonmail-bridge --cli` writes to bridgeCertificate.
+  bridgeCertificate = "${config.xdg.configHome}/protonmail/bridge-tls/cert.pem";
+  protonMcp = pkgs.writeShellApplication {
+    name = "alfred-proton-mcp";
+    runtimeInputs = [ pkgs.coreutils ];
+    text = ''
+      umask 077
+      address_file=${lib.escapeShellArg osConfig.sops.secrets."protonmail/address".path}
+      address=$(< "$address_file")
+      if [[ ! "$address" =~ ^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$ ]]; then
+        printf '%s\n' "$address_file does not hold an email address" >&2
+        exit 1
+      fi
+      password=$(< ${lib.escapeShellArg osConfig.sops.secrets."protonmail/bridge-password".path})
+      state_directory=${lib.escapeShellArg protonState}
+      install -d -m 0700 -- "$state_directory"
+      cd "$state_directory"
+      # The Bridge certificate is the only trust anchor: the server talks to nothing else.
+      exec env -i HOME="$state_directory" PATH="$PATH" \
+        SSL_CERT_FILE=${lib.escapeShellArg bridgeCertificate} \
+        MCP_EMAIL_SERVER_CONFIG_PATH="$state_directory/config.toml" \
+        MCP_EMAIL_SERVER_CREDENTIAL_STORAGE=plaintext MCP_EMAIL_SERVER_LOG_LEVEL=WARNING \
+        MCP_EMAIL_SERVER_ACCOUNT_NAME=proton MCP_EMAIL_SERVER_EMAIL_ADDRESS="$address" \
+        MCP_EMAIL_SERVER_PASSWORD="$password" \
+        MCP_EMAIL_SERVER_IMAP_HOST=127.0.0.1 MCP_EMAIL_SERVER_IMAP_PORT=1143 \
+        MCP_EMAIL_SERVER_IMAP_SSL=false MCP_EMAIL_SERVER_IMAP_START_SSL=true \
+        MCP_EMAIL_SERVER_ALLOWED_MUTATIONS=draft,organize \
+        MCP_EMAIL_SERVER_ALLOWED_RECIPIENTS='*' \
+        MCP_EMAIL_SERVER_ENABLE_ATTACHMENT_CONTENT=true \
+        ${lib.getExe pkgs.mcp-email-server} stdio
     '';
   };
 
@@ -644,6 +699,9 @@ in
         message = "Alfred reads Slack through services.slack-mirror.";
       }
     ];
+    home.packages = [ pkgs.protonmail-bridge ];
+    # Bridge prints only --help, which zsh's generic completion parses.
+    programs.zsh.generatedCompletions.protonmail-bridge = "printf '#compdef protonmail-bridge\\n_gnu_generic\\n'";
     home.activation.alfred = lib.hm.dag.entryBetween [ "setupLaunchAgents" ] [ "writeBoundary" ] ''
       run install -d -m 0700 ${lib.escapeShellArg logDirectory}
     '';
@@ -661,6 +719,23 @@ in
           Umask = 63;
           StandardOutPath = "${logDirectory}/launchd.log";
           StandardErrorPath = "${logDirectory}/launchd.error.log";
+        };
+      };
+      protonmail-bridge = {
+        enable = true;
+        domain = "gui";
+        config = {
+          ProgramArguments = [
+            (lib.getExe pkgs.protonmail-bridge)
+            "--noninteractive"
+          ];
+          RunAtLoad = true;
+          KeepAlive = true;
+          ProcessType = "Background";
+          ThrottleInterval = 30;
+          Umask = 63;
+          StandardOutPath = "/dev/null";
+          StandardErrorPath = "${logDirectory}/protonmail-bridge.error.log";
         };
       };
       alfred-gotenberg = {

@@ -123,6 +123,7 @@
           };
           openclaw-whisper-model = final.callPackage ./packages/openclaw-whisper-model.nix { };
           anytype-mcp = final.callPackage ./packages/anytype-mcp.nix { };
+          mcp-email-server = final.callPackage ./packages/mcp-email-server.nix { };
           substack-mcp = final.callPackage ./packages/substack-mcp.nix { };
           twikit-x-mcp = final.callPackage ./packages/twikit-x-mcp.nix { };
           workspace-mcp = final.callPackage ./packages/workspace-mcp.nix { };
