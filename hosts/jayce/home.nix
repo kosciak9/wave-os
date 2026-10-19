@@ -56,6 +56,7 @@ let
 in
 {
   imports = [
+    ./cliproxy-quota.nix
     ./desktop/cua-driver.nix
     ./desktop/watch.nix
     ./desktop/voxtype.nix
