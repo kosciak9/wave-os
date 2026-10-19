@@ -263,6 +263,9 @@ in
     extra-substituters = [ "https://wave-os.cachix.org" ];
     extra-trusted-public-keys = [ "wave-os.cachix.org-1:cwQ73uY7ZSe7Rqb8jWzu2/fYWXfe0An7DjsSPXNVgRw=" ];
     max-jobs = 0;
+    # Deploys build the system derivation here, and NixOS marks it and many of its inputs
+    # allowSubstitutes = false; without this zac tries to build them instead of fetching.
+    always-allow-substitutes = true;
     keep-outputs = false;
     keep-derivations = false;
   };
