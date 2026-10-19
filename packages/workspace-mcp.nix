@@ -79,6 +79,8 @@ let
           tag = "v${version}";
           hash = "sha256-nnpNXnQiFSGx5KQBDXHCOH0wE3cznlmI6s7vtchcj3A=";
         };
+        # nixpkgs lengthens a stdio test's sleep on Darwin; 2.x's tests no longer sleep there.
+        postPatch = "";
         pythonRelaxDeps = [ ];
         dependencies =
           with final;

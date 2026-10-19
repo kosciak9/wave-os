@@ -55,6 +55,11 @@ py.buildPythonApplication rec {
     "test_raw_stdio_broken_stdout_does_not_wait_for_open_stdin"
     "test_raw_stdio_accepts_regular_file_redirection_and_devnull_eof"
     "test_plugin_stdio_startup_failure_is_bounded_without_traceback"
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    # Store secrets in the build user's real keychain, which persists across builds.
+    "test_managed_roundtrip_nullable_override_reset"
+    "test_create_account_persists_mutation_grants_and_drafts_mailbox"
   ];
   # The server refuses state under a directory owned by anyone but root or the user, and the
   # Linux build sandbox's root directory belongs to nobody.
