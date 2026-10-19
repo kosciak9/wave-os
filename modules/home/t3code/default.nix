@@ -52,7 +52,8 @@ in
         file=${lib.escapeShellArg settingsFile}
         merged=$(${lib.getExe pkgs.jq} --slurpfile nix ${settings} '. * $nix[0]' "$file")
         if [[ "$merged" != "$(${lib.getExe pkgs.jq} . "$file")" ]]; then
-          run ${lib.getExe' pkgs.coreutils "install"} -m 0600 /dev/stdin "$file.nix-tmp" <<<"$merged"
+          run ${lib.getExe' pkgs.coreutils "install"} -m 0600 /dev/null "$file.nix-tmp"
+          [[ -v DRY_RUN ]] || printf '%s\n' "$merged" >"$file.nix-tmp"
           run ${lib.getExe' pkgs.coreutils "mv"} -f -- "$file.nix-tmp" "$file"
         fi
       '';
