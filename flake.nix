@@ -111,6 +111,7 @@
           };
           opencode = final.callPackage ./packages/opencode-darwin.nix { };
           opencode-rescue = final.callPackage ./packages/opencode-rescue.nix { };
+          opencode-models = final.callPackage ./packages/opencode-models.nix { };
           kanagawa-gtk-theme = final.callPackage ./packages/kanagawa-gtk-theme.nix { };
           openclaw-sandbox-machine-check =
             final.callPackage ./packages/openclaw-sandbox-machine-check.nix

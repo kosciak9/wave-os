@@ -8,8 +8,8 @@ let
   user = config.system.primaryUser;
   home = config.users.users.${user}.home;
   stateDirectory = "${home}/.local/state/cliproxyapi";
-  goModels = import ./go-models.nix;
-  zenModels = import ./zen-models.nix;
+  # Refreshed at runtime from opencode-models; see the config script.
+  modelCatalog = "${stateDirectory}/models.json";
   opencodeHeaders = {
     User-Agent = "$User-Agent";
     x-opencode-client = "$x-opencode-client";
@@ -19,12 +19,14 @@ let
     x-opencode-parent-session-id = "$x-opencode-parent-session-id";
     x-opencode-request-id = "$x-opencode-request-id";
   };
-  zenUpstream = name: models: {
+  # Upstreams are named opencode-<catalog>-<protocol>; the config script fills
+  # their models from that catalog entry and drops upstreams left empty.
+  zenUpstream = name: {
     inherit name;
     prefix = "zen";
     base-url = "https://opencode.ai/inference/v1";
     headers = opencodeHeaders;
-    models = map (model: { name = model; }) (builtins.attrNames models);
+    models = [ ];
   };
   managementPanel = pkgs.fetchurl {
     name = "management.html";
@@ -37,7 +39,7 @@ let
       path = managementPanel;
     }
   ];
-  goUpstream = name: models: {
+  goUpstream = name: {
     inherit name;
     prefix = "go";
     base-url = "https://opencode.ai/inference/go/v1";
@@ -45,7 +47,7 @@ let
       User-Agent = "$User-Agent";
       x-opencode-session = "$CPA-SESSION-ID";
     };
-    models = map (model: { name = model; }) models;
+    models = [ ];
   };
   settings = pkgs.writeText "cliproxyapi-settings.json" (
     builtins.toJSON {
@@ -82,40 +84,51 @@ let
       observability.usage.usage-statistics-enabled = true;
       api-keys = {
         codex = [
-          (goUpstream "opencode-go-responses" goModels.responses)
-          (zenUpstream "opencode-zen-responses" zenModels.responses)
+          (goUpstream "opencode-go-responses")
+          (zenUpstream "opencode-zen-responses")
         ];
         # The Claude executor appends /v1/messages itself.
         claude = [
-          (
-            (goUpstream "opencode-go-messages" goModels.messages)
-            // {
-              base-url = "https://opencode.ai/inference/go";
-            }
-          )
+          ((goUpstream "opencode-go-messages") // { base-url = "https://opencode.ai/inference/go"; })
+          ((zenUpstream "opencode-zen-messages") // { base-url = "https://opencode.ai/inference"; })
         ];
         openai-compatibility = [
-          (goUpstream "opencode-go-chat" goModels.chat)
-          (zenUpstream "opencode-zen-chat" zenModels.chat)
+          (goUpstream "opencode-go-chat")
+          (zenUpstream "opencode-zen-chat")
         ];
       };
     }
   );
-  start = pkgs.writeShellApplication {
-    name = "cliproxyapi-start";
+  # Writes config.json, which the running server reloads on change. A failed
+  # model refresh keeps the last catalog, so an outage never empties the lists.
+  writeConfig = pkgs.writeShellApplication {
+    name = "cliproxyapi-config";
     runtimeInputs = [
       pkgs.coreutils
+      pkgs.diffutils
       pkgs.jq
     ];
     text = ''
       umask 077
       state=${lib.escapeShellArg stateDirectory}
+      catalog=${lib.escapeShellArg modelCatalog}
       mkdir -p "$state/auth" "$state/logs"
       chmod 700 "$state" "$state/auth" "$state/logs"
       cd "$state"
       config_file=$(mktemp "$state/config.XXXXXX")
-      trap 'rm -f "$config_file"' EXIT
-      jq --slurpfile clients ${lib.escapeShellArg config.sops.secrets."cliproxyapi/client-keys".path} \
+      catalog_file=$(mktemp "$state/models.XXXXXX")
+      trap 'rm -f "$config_file" "$catalog_file"' EXIT
+      if ${lib.getExe pkgs.opencode-models} > "$catalog_file"; then
+        mv -f "$catalog_file" "$catalog"
+      elif [ -s "$catalog" ]; then
+        echo "Model refresh failed; keeping $catalog." >&2
+      else
+        echo "Model refresh failed and no catalog exists; OpenCode upstreams stay empty." >&2
+        echo '{}' > "$catalog"
+      fi
+      jq --slurpfile models "$catalog" --slurpfile clients ${
+        lib.escapeShellArg config.sops.secrets."cliproxyapi/client-keys".path
+      } \
         --slurpfile go ${lib.escapeShellArg config.sops.secrets."cliproxyapi/opencode-go-keys".path} \
         --slurpfile zen ${lib.escapeShellArg config.sops.secrets."cliproxyapi/opencode-zen-keys".path} \
         --rawfile quota ${lib.escapeShellArg config.sops.secrets."cliproxyapi/quota-key".path} \
@@ -136,17 +149,28 @@ let
             ($quota_key != $management_key) then
             .access["api-keys"] = $clients[0] |
             .management["secret-key"] = $management_key |
-            .["api-keys"] |= with_entries(.value |= map(
+            .["api-keys"] |= with_entries(.value |= (map(
+              (.name | ltrimstr("opencode-") | split("-")) as [$catalog, $protocol] |
+              .models = ($models[0][$catalog][$protocol] // {} | keys | map({name: .})) |
               if .name == "opencode-zen-responses" then
                 with_keys($zen) | .keys |= map(. + {"disable-codex-cloaking": true})
               elif (.name | startswith("opencode-zen-")) then with_keys($zen)
-              else with_keys($go) end))
+              else with_keys($go) end) |
+              # An empty list would expose the executor's built-in models.
+              map(select(.models != []))))
           else error("CLIProxyAPI requires valid key arrays and distinct management and quota keys") end
         ' ${settings} > "$config_file"
       chmod 600 "$config_file"
-      mv -f "$config_file" "$state/config.json"
-      trap - EXIT
-      exec ${lib.getExe pkgs.cliproxyapi} --config "$state/config.json"
+      if ! cmp -s "$config_file" "$state/config.json"; then
+        mv -f "$config_file" "$state/config.json"
+      fi
+    '';
+  };
+  start = pkgs.writeShellApplication {
+    name = "cliproxyapi-start";
+    text = ''
+      ${lib.getExe writeConfig}
+      exec ${lib.getExe pkgs.cliproxyapi} --config ${lib.escapeShellArg "${stateDirectory}/config.json"}
     '';
   };
 in
@@ -182,6 +206,15 @@ in
     StandardOutPath = "${stateDirectory}/logs/server.log";
     StandardErrorPath = "${stateDirectory}/logs/error.log";
   };
+  launchd.daemons.cliproxyapi-models.serviceConfig = {
+    ProgramArguments = [ (lib.getExe writeConfig) ];
+    UserName = user;
+    EnvironmentVariables.HOME = home;
+    StartInterval = 6 * 60 * 60;
+    Umask = 63;
+    StandardOutPath = "${stateDirectory}/logs/models.log";
+    StandardErrorPath = "${stateDirectory}/logs/models.log";
+  };
   system.activationScripts.preActivation.text = ''
     /usr/bin/install -d -m 0700 -o ${lib.escapeShellArg user} -g staff \
       ${lib.escapeShellArgs [
@@ -193,18 +226,21 @@ in
       lib.escapeShellArgs [
         "${stateDirectory}/logs/server.log"
         "${stateDirectory}/logs/error.log"
+        "${stateDirectory}/logs/models.log"
       ]
     }
     /usr/sbin/chown ${lib.escapeShellArg "${user}:staff"} ${
       lib.escapeShellArgs [
         "${stateDirectory}/logs/server.log"
         "${stateDirectory}/logs/error.log"
+        "${stateDirectory}/logs/models.log"
       ]
     }
     /bin/chmod 0600 ${
       lib.escapeShellArgs [
         "${stateDirectory}/logs/server.log"
         "${stateDirectory}/logs/error.log"
+        "${stateDirectory}/logs/models.log"
       ]
     }
   '';
