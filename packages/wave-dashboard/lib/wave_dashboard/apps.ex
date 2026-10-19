@@ -13,12 +13,14 @@ defmodule WaveDashboard.Apps do
 
   @check_interval :timer.seconds(15)
   @connect_timeout :timer.seconds(2)
+  # Worktrees that vanish without `dev.down` leave apps behind; drop them once offline this long.
+  @offline_ttl :timer.minutes(5)
   @topic "apps"
 
   defmodule App do
     @moduledoc false
     @enforce_keys [:host, :project, :branch, :address, :port]
-    defstruct @enforce_keys ++ [status: :unknown]
+    defstruct @enforce_keys ++ [status: :unknown, down_since: nil]
 
     def key(%__MODULE__{} = app), do: {app.host, app.project, app.branch}
 
@@ -122,14 +124,35 @@ defmodule WaveDashboard.Apps do
   def handle_info({ref, statuses}, %{check: ref} = state) do
     Process.demonitor(ref, [:flush])
 
-    apps =
-      Map.new(state.apps, fn {key, app} ->
-        {key, %{app | status: Map.get(statuses, key, app.status)}}
-      end)
+    now = System.monotonic_time(:millisecond)
 
-    if apps != state.apps, do: publish(apps)
-    {:noreply, %{state | apps: apps, check: nil}}
+    {offline, apps} =
+      state.apps
+      |> Map.new(fn {key, app} ->
+        {key, observe(app, Map.get(statuses, key, app.status), now)}
+      end)
+      |> Map.split_with(fn {_key, app} -> expired?(app, now) end)
+
+    state = %{state | check: nil}
+
+    cond do
+      offline != %{} ->
+        {:noreply, changed(state, apps)}
+
+      apps != state.apps ->
+        publish(apps)
+        {:noreply, %{state | apps: apps}}
+
+      true ->
+        {:noreply, state}
+    end
   end
+
+  defp observe(app, :down, now), do: %{app | status: :down, down_since: app.down_since || now}
+  defp observe(app, status, _now), do: %{app | status: status, down_since: nil}
+
+  defp expired?(%App{down_since: nil}, _now), do: false
+  defp expired?(%App{down_since: since}, now), do: now - since >= @offline_ttl
 
   defp check({key, address, port}) do
     {:ok, ip} = address |> String.to_charlist() |> :inet.parse_address()
