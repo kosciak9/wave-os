@@ -18,7 +18,12 @@ sendspin-go.overrideAttrs (
     };
     # The player starts at volume 100 on every launch; keep the last server-set volume in
     # player.yaml so a restart does not blast an alarm at full volume.
-    patches = (old.patches or [ ]) ++ [ ./sendspin-player-volume.patch ];
+    # The player advertises artwork but never reads it; once ten images queue up, the
+    # connection reader blocks for good and playback goes silent.
+    patches = (old.patches or [ ]) ++ [
+      ./sendspin-player-volume.patch
+      ./sendspin-player-artwork.patch
+    ];
     subPackages = [ "." ];
     # The inherited preCheck skips TestGetLocalIPs, which 1.8.2 no longer has.
     preCheck = "";
