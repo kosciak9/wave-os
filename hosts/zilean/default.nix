@@ -133,7 +133,12 @@
       extraSetFlags = [ "--operator=kosciak" ];
     };
     fstrim.enable = true;
-    smartd.enable = true;
+    # Daily short and monthly long self-tests; the 4 TB disk needs about 8 hours for the long one.
+    smartd = {
+      enable = true;
+      defaults.monitored = "-a -o on -S on -W 0,50,55 -s (S/../.././02|L/../01/./03)";
+    };
+    btrfs.autoScrub.enable = true;
   };
   hardware = {
     enableRedistributableFirmware = true;
