@@ -156,7 +156,7 @@ let
                 with_keys($zen) | .keys |= map(. + {"disable-codex-cloaking": true})
               elif (.name | startswith("opencode-zen-")) then with_keys($zen)
               else with_keys($go) end) |
-              # An empty list would expose the executor's built-in models.
+              # An empty list would expose the built-in models of the executor.
               map(select(.models != []))))
           else error("CLIProxyAPI requires valid key arrays and distinct management and quota keys") end
         ' ${settings} > "$config_file"
