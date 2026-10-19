@@ -256,7 +256,7 @@ PanelWindow {
                             return
                         }
 
-                        if (trayItem.modelData.hasMenu || trayItem.modelData.onlyMenu || mouse.button === Qt.RightButton) {
+                        if (trayItem.modelData.onlyMenu || mouse.button === Qt.RightButton) {
                             const position = trayWidget.panelWindow.itemPosition(trayItem)
                             trayItem.modelData.display(
                                 trayWidget.panelWindow,
