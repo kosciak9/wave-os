@@ -166,6 +166,12 @@
       HandleLidSwitchDocked = "suspend-then-hibernate";
       HandleLidSwitchExternalPower = "suspend-then-hibernate";
     };
+    # smartd catches up on self-tests that fell due while the laptop slept.
+    smartd = {
+      enable = true;
+      defaults.monitored = "-a -o on -S on -W 0,60,70 -s (S/../.././02|L/../01/./03)";
+    };
+    btrfs.autoScrub.enable = true;
     power-profiles-daemon.enable = true;
     printing.enable = true;
     upower = {
@@ -337,6 +343,23 @@
   security = {
     polkit.enable = true;
     rtkit.enable = true;
+    # Read-only disk health for the scheduled review agent, with exact arguments.
+    sudo.extraRules = [
+      {
+        users = [ "kosciak" ];
+        commands =
+          map
+            (command: {
+              inherit command;
+              options = [ "NOPASSWD" ];
+            })
+            [
+              "${pkgs.smartmontools}/bin/smartctl -x /dev/nvme0n1"
+              "${pkgs.btrfs-progs}/bin/btrfs device stats /"
+              "${pkgs.btrfs-progs}/bin/btrfs scrub status /"
+            ];
+      }
+    ];
   };
 
   xdg.portal = {
