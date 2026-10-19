@@ -6,7 +6,7 @@
   "disabled_providers": ["opencode"],
   // Nix owns the binary. Do not let the CLI replace it.
   "update": "disable",
-  "plugins": ["cc-safety-net@2.6.11", "opencode-idle-compaction@0.1.0"],
+  "plugins": ["cc-safety-net@2.6.15", "opencode-idle-compaction@0.1.0"],
   // Use the anonymous Parallel MCP instead of a separate search provider.
   "websearch": false,
   "agents": {
