@@ -12,14 +12,14 @@ let
 in
 python3Packages.buildPythonPackage (finalAttrs: {
   pname = "earshot";
-  version = "0.1.0";
+  version = "0.2.0";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "Leonxlnx";
     repo = "earshot";
-    rev = "108763c62648c78dbac14f5bebcd3c61ac7931cd";
-    hash = "sha256-RjT4kZvO11xbNiYw8TEFfrfSGqAkRYKepVV7s1HbdoM=";
+    rev = "972132643583fc0b9a60c6c50983ed7dc1aa55bf";
+    hash = "sha256-QTyYmuqPKjzFWQFBixivlLwH6G+N1tRIDcNFUHgKcgQ=";
   };
 
   build-system = [ python3Packages.setuptools ];
@@ -28,8 +28,12 @@ python3Packages.buildPythonPackage (finalAttrs: {
   # Keep the LLM sleep mock from intercepting subprocess's polling sleeps.
   patches = [ ./earshot-isolate-test-sleep.patch ];
 
+  # Upstream's package-data omits the forge seed bank that forge v2 starts its search from.
   # MCP's subprocess environment must retain Nix's Python dependency paths.
   postPatch = ''
+    substituteInPlace pyproject.toml \
+      --replace-fail 'earshot = ["data/*.json", "data/*.npz"]' \
+        'earshot = ["data/*.json", "data/*.npz", "forge/seeds/*.json"]'
     substituteInPlace tests/test_interfaces.py \
       --replace-fail "env={'EARSHOT_THREADS':" \
         "env={'PYTHONPATH': os.environ.get('PYTHONPATH', str()), 'EARSHOT_THREADS':"
