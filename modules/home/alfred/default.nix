@@ -119,7 +119,7 @@ let
     # Proton Mail through the local Bridge. Alfred drafts but never sends: the server has no
     # SMTP. Deleting, raw protocol commands and attachment downloads to the host stay off.
     proton = {
-      port = 18097;
+      port = 18100;
       agent = "alfred";
       domain = "user";
       command = lib.getExe protonMcp;
