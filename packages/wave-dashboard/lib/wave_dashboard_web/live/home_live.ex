@@ -3,12 +3,13 @@ defmodule WaveDashboardWeb.HomeLive do
 
   import WaveDashboardWeb.Layouts, only: [wave_logo: 1]
 
-  alias WaveDashboard.{Apps, Clock, Deadline, Tailnet}
+  alias WaveDashboard.{Agents, Apps, Clock, Deadline, Tailnet}
 
   @impl true
   def mount(_params, _session, socket) do
     if connected?(socket) do
       Apps.subscribe()
+      Agents.subscribe()
       Tailnet.subscribe()
       Deadline.subscribe()
       Clock.tick_next_minute(:tick)
@@ -16,7 +17,7 @@ defmodule WaveDashboardWeb.HomeLive do
 
     {:ok,
      socket
-     |> assign(apps: Apps.list(), hosts: Tailnet.hosts())
+     |> assign(apps: Apps.list(), hosts: Tailnet.hosts(), agents: Agents.servers())
      |> assign(editing?: false, deadline_error: nil, draft: nil)
      |> assign_now()
      |> assign_deadline()}
@@ -25,6 +26,7 @@ defmodule WaveDashboardWeb.HomeLive do
   @impl true
   def handle_info({:apps, apps}, socket), do: {:noreply, assign(socket, apps: apps)}
   def handle_info({:hosts, hosts}, socket), do: {:noreply, assign(socket, hosts: hosts)}
+  def handle_info({:agents, servers}, socket), do: {:noreply, assign(socket, agents: servers)}
   def handle_info(:deadline_changed, socket), do: {:noreply, assign_deadline(socket)}
 
   def handle_info(:tick, socket) do
@@ -89,6 +91,7 @@ defmodule WaveDashboardWeb.HomeLive do
             deadline={@deadline}
             now={@local_now}
           />
+          <.agents :if={@agents != []} servers={@agents} now={@now} />
         </main>
 
         <aside class="column-side">
@@ -213,6 +216,67 @@ defmodule WaveDashboardWeb.HomeLive do
     </section>
     """
   end
+
+  attr :servers, :list, required: true
+  attr :now, DateTime, required: true
+
+  defp agents(assigns) do
+    threads =
+      assigns.servers
+      |> Enum.flat_map(& &1.threads)
+      |> Enum.sort_by(& &1.updated_at, {:desc, DateTime})
+
+    assigns =
+      assign(assigns,
+        groups:
+          for {state, title} <- [attention: "Needs you", working: "Working", open: "Open"],
+              group = Enum.filter(threads, &(&1.state == state)),
+              group != [] do
+            {title, group}
+          end,
+        problems: Enum.reject(assigns.servers, &(&1.status in [:ok, :loading]))
+      )
+
+    ~H"""
+    <section class="card">
+      <div class="card-header">
+        <h2 class="card-title">Agents</h2>
+        <span class="card-detail">{Enum.map_join(@servers, " · ", & &1.name)}</span>
+      </div>
+      <p :for={server <- @problems} class="banner">
+        <%= if server.status == :not_configured do %>
+          {server.name}: no T3 token configured.
+        <% else %>
+          {server.name}: T3 is not responding{if server.threads != [],
+            do: ", showing the last known threads"}.
+        <% end %>
+      </p>
+      <p :if={@groups == [] and @problems == []} class="muted">No open threads.</p>
+      <div :for={{title, threads} <- @groups} class="group">
+        <h3 class="group-title">{title}</h3>
+        <ul class="rows">
+          <li :for={thread <- threads}>
+            <a href={thread.url} class="row">
+              <span class={["status", "agent-" <> Atom.to_string(thread.state)]}></span>
+              <span class="row-title">{thread.title}</span>
+              <span class="row-meta sep">
+                <span :if={thread.reason} class="agent-reason">{reason(thread.reason)}</span>
+                <span :if={thread.project}>{thread.project}</span>
+                <span>{thread.host}</span>
+                <.time at={thread.updated_at} now={@now} />
+              </span>
+            </a>
+          </li>
+        </ul>
+      </div>
+    </section>
+    """
+  end
+
+  defp reason(:question), do: "question"
+  defp reason(:approval), do: "approval"
+  defp reason(:plan), do: "plan to review"
+  defp reason(:failed), do: "failed"
 
   attr :apps, :list, required: true
 

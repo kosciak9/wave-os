@@ -22,7 +22,16 @@ secret_key_base =
 config :wave_dashboard,
   state_dir: state_dir,
   # Set only where this instance owns Caddy; see WaveDashboard.Caddy.
-  caddy_admin_url: System.get_env("CADDY_ADMIN_URL")
+  caddy_admin_url: System.get_env("CADDY_ADMIN_URL"),
+  # `name=url` pairs separated by commas; each token is the systemd credential `t3-<name>`.
+  t3_servers:
+    System.get_env("T3_SERVERS", "")
+    |> String.split(",", trim: true)
+    |> Enum.map(fn server ->
+      [name, url] = String.split(server, "=", parts: 2)
+      {name, String.trim_trailing(url, "/")}
+    end),
+  credentials_directory: System.get_env("CREDENTIALS_DIRECTORY")
 
 config :wave_dashboard, WaveDashboardWeb.Endpoint,
   server: true,

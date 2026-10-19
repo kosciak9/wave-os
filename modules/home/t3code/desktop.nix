@@ -19,4 +19,6 @@ let
 in
 {
   home.packages = [ desktop ];
+  # The app registers its own handler under the unwrapped binary, without the Nix settings.
+  xdg.mimeApps.defaultApplications."x-scheme-handler/t3code" = [ "t3code.desktop" ];
 }

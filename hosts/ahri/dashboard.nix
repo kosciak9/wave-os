@@ -9,6 +9,12 @@ let
   domain = "wave.exposed";
   dashboardPort = 4000;
   caddyAdmin = "localhost:2019";
+  # T3 Code servers whose open threads the dashboard lists, each read with its own read-only token.
+  t3Servers = [
+    "jayce"
+    "renekton"
+  ];
+  t3Secret = server: "t3/${server}-token";
   caddy = pkgs.caddy.withPlugins {
     plugins = [ "github.com/caddy-dns/cloudflare@v0.2.4" ];
     hash = "sha256-xRJ5evsAJ2akg47j3Bt6YDXJOgX88B/rKNP50KSVyNY=";
@@ -16,7 +22,12 @@ let
 in
 {
   sops = {
-    secrets."cloudflare/dns-api-token" = { };
+    secrets = {
+      "cloudflare/dns-api-token" = { };
+    }
+    // lib.genAttrs (map t3Secret t3Servers) (_: {
+      restartUnits = [ "wave-dashboard.service" ];
+    });
     templates."caddy-cloudflare.env" = {
       content = "CLOUDFLARE_API_TOKEN=${config.sops.placeholder."cloudflare/dns-api-token"}";
       restartUnits = [ "caddy.service" ];
@@ -55,6 +66,9 @@ in
     environment = {
       PORT = toString dashboardPort;
       CADDY_ADMIN_URL = "http://${caddyAdmin}";
+      T3_SERVERS = lib.concatMapStringsSep "," (
+        server: "${server}=https://${server}.dusky-diatonic.ts.net:18443"
+      ) t3Servers;
       RELEASE_DISTRIBUTION = "none";
       # Distribution is off, so the cookie never authenticates anything.
       RELEASE_COOKIE = "wave-dashboard";
@@ -62,6 +76,10 @@ in
     };
     serviceConfig = {
       ExecStart = "${lib.getExe pkgs.wave-dashboard} start";
+      # Decrypted secrets are root's; credentials hand them to the dynamic user.
+      LoadCredential = map (
+        server: "t3-${server}:${config.sops.secrets.${t3Secret server}.path}"
+      ) t3Servers;
       DynamicUser = true;
       StateDirectory = "wave-dashboard";
       StateDirectoryMode = "0700";
