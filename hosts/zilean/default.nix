@@ -81,6 +81,35 @@
       ];
     };
     tmpfiles.rules = [ "f /var/lib/wave-os/ssh/kosciak 0644 root root - -" ];
+    # Builds, agents and containers may exhaust memory; they get throttled or killed, not the host.
+    services = {
+      nix-daemon.serviceConfig = {
+        MemoryHigh = "9G";
+        MemoryMax = "11G";
+      };
+      sshd.serviceConfig = {
+        MemoryMin = "64M";
+        ManagedOOMPreference = "omit";
+      };
+      tailscaled.serviceConfig = {
+        MemoryMin = "64M";
+        ManagedOOMPreference = "omit";
+      };
+    };
+    slices = {
+      "-".sliceConfig = {
+        ManagedOOMSwap = "kill";
+        ManagedOOMMemoryPressureLimit = "60%";
+      };
+      system.sliceConfig.ManagedOOMMemoryPressureLimit = "60%";
+      user.sliceConfig.ManagedOOMMemoryPressureLimit = "60%";
+    };
+  };
+  systemd.oomd = {
+    enableRootSlice = true;
+    enableSystemSlice = true;
+    enableUserSlices = true;
+    settings.OOM.DefaultMemoryPressureDurationSec = "30s";
   };
 
   time.timeZone = "Europe/Warsaw";
@@ -148,6 +177,13 @@
     enable = true;
     memoryPercent = 25;
   };
+  # Second tier behind zram for long builds; btrfs gets a NOCOW swapfile.
+  swapDevices = [
+    {
+      device = "/var/lib/swapfile";
+      size = 8 * 1024;
+    }
+  ];
 
   programs = {
     git.enable = true;
@@ -178,6 +214,7 @@
       "nix-command"
       "flakes"
     ];
+    max-jobs = 2;
     extra-substituters = [ "https://wave-os.cachix.org" ];
     extra-trusted-public-keys = [ "wave-os.cachix.org-1:cwQ73uY7ZSe7Rqb8jWzu2/fYWXfe0An7DjsSPXNVgRw=" ];
   };
