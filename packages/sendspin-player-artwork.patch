@@ -1,0 +1,11 @@
+--- a/pkg/protocol/client.go
++++ b/pkg/protocol/client.go
+@@ -465,6 +465,8 @@
+ 			Data:      payload,
+ 		}:
+ 		case <-c.ctx.Done():
++		default:
++			// Nothing consumes artwork yet; blocking here would stall the reader and the audio.
+ 		}
+ 	default:
+ 		log.Printf("Unknown binary message type: %d", msgType)
