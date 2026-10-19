@@ -202,6 +202,11 @@ in
       }
     }
   '';
+  # The jack boots at -12 dB, quiet enough for the speaker to treat it as silence and sleep;
+  # Music Assistant scales the volume in software below this.
+  services.udev.extraRules = ''
+    ACTION=="add", SUBSYSTEM=="sound", KERNEL=="controlC*", ATTRS{id}=="Headphones", RUN+="${lib.getExe' pkgs.tinyalsa "tinymix"} -D %n set 'PCM Playback Volume' 0"
+  '';
 
   systemd = {
     tmpfiles.rules = [
