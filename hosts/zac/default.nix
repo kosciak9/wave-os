@@ -231,8 +231,9 @@ in
           "48000"
           "--max-bit-depth"
           "16"
+          # PCM needs ~1.5 Mbit/s, more than zac's weak Wi-Fi link sustains.
           "--preferred-codec"
-          "pcm"
+          "opus"
           # miniaudio opens a card picked by name through dmix, which stalls on the bcm2835
           # headphone jack; the hinted plug device in asound.conf is opened as-is.
           "--audio-device"
