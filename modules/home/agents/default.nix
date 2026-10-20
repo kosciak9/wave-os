@@ -1,5 +1,12 @@
 { config, pkgs, ... }:
 let
+  securityAuditSource = pkgs.fetchFromGitHub {
+    owner = "cloudflare";
+    repo = "security-audit-skill";
+    rev = "c1c8a8c1471069fb0e188eeaff69b8e8db6564a8";
+    hash = "sha256-oVVACjotkHvllQGxEP8yWaEt4c3GxT0d909TUM5P3NM=";
+  };
+  securityAuditSkill = "${securityAuditSource}/skills/security-audit";
   earshot = pkgs.callPackage ../../../packages/earshot.nix { };
   earshotSkills = pkgs.runCommand "earshot-skills-${earshot.version}" { } ''
     mkdir -p "$out"
@@ -37,6 +44,7 @@ in
     ".agents/skills" = skills;
     ".agents/skills/earshot".source = "${earshotSkills}/earshot";
     ".agents/skills/real-sound".source = "${earshotSkills}/real-sound";
+    ".agents/skills/security-audit".source = securityAuditSkill;
     "claude-skills" = skills // {
       target = "${claudeDirectory}/skills";
     };
@@ -47,6 +55,10 @@ in
     "claude-real-sound-skill" = {
       source = "${earshotSkills}/real-sound";
       target = "${claudeDirectory}/skills/real-sound";
+    };
+    "claude-security-audit-skill" = {
+      source = securityAuditSkill;
+      target = "${claudeDirectory}/skills/security-audit";
     };
     "claude-instructions" = {
       source = ./AGENTS.md;
