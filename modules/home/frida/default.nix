@@ -17,6 +17,8 @@ let
   bridges = {
     home-assistant = {
       port = 18097;
+      script = ./mcp-bridge.py;
+      name = "home-assistant";
       tools = [
         "ha_get_app"
         "ha_list_floors_areas"
@@ -54,33 +56,17 @@ let
     };
     anytype = {
       port = 18098;
-      # Every tool is space-scoped; the bridge injects the configured space ID.
-      tools = [
-        "API-get-space"
-        "API-get-list-views"
-        "API-get-list-objects"
-        "API-list-members"
-        "API-get-member"
-        "API-list-objects"
-        "API-get-object"
-        "API-list-properties"
-        "API-get-property"
-        "API-list-tags"
-        "API-get-tag"
-        "API-search-space"
-        "API-list-types"
-        "API-get-type"
-        "API-list-templates"
-        "API-get-template"
-        "API-create-object"
-        "API-update-object"
-      ];
+      script = ../anytype/mcp-bridge.py;
+      name = "frida";
+      tools = builtins.fromJSON (builtins.readFile ../anytype/tools.json);
       args = [
         (secret "anytype-api-key")
         "--space-file"
         (secret "anytype-space-id")
         "--command"
         (lib.getExe pkgs.anytype-mcp)
+        "--api-url"
+        "http://127.0.0.1:31012"
       ];
     };
   };
@@ -90,8 +76,8 @@ let
     config = {
       ProgramArguments = [
         "${python}/bin/python"
-        "${./mcp-bridge.py}"
-        name
+        "${bridge.script}"
+        bridge.name
         (toString bridge.port)
         (secret "mcp-token")
         (toString (pkgs.writeText "frida-${name}-tools.json" (builtins.toJSON bridge.tools)))
@@ -108,20 +94,23 @@ let
   };
   agentConfig = pkgs.writeText "frida-house-agents.config.ts" ''
     export default {
-      prompt: ${builtins.toJSON ''
-        Jesteś Fridą, asystentką domową wspólnej grupy na Telegramie.
-        Pomagasz domownikom organizować codzienne sprawy, listy zakupów i obowiązki.
-        Odpowiadasz po polsku, krótko i praktycznie. Rozróżniasz osoby piszące na grupie;
-        gdy nie wiesz, do kogo należy informacja, pytasz zamiast zgadywać.
-        Nie masz dostępu do prywatnej pamięci Alfreda, jego Slacka ani kont zawodowych.
-        Home Assistant służy do odczytu i sterowania urządzeniami, nie do administracji.
-        Anytype jest ograniczone do przestrzeni domowej: możesz odczytywać, tworzyć
-        i edytować obiekty, ale nie możesz ich usuwać ani zarządzać przestrzeniami.
-        Nie twierdzisz, że wykonałaś działanie w zewnętrznym systemie, jeśli nie masz
-        odpowiedniego narzędzia i potwierdzenia wykonania.
-        Do wyszukiwania ofert i czytania stron używasz pomocnika browser. Przekazujesz mu
-        tylko wymagania potrzebne do researchu; wyniki zapisujesz sama w Anytype.
-      ''},
+      prompt: ${
+        builtins.toJSON (
+          ''
+            Jesteś Fridą, asystentką domową wspólnej grupy na Telegramie.
+            Pomagasz domownikom organizować codzienne sprawy, listy zakupów i obowiązki.
+            Odpowiadasz po polsku, krótko i praktycznie. Rozróżniasz osoby piszące na grupie;
+            gdy nie wiesz, do kogo należy informacja, pytasz zamiast zgadywać.
+            Nie masz dostępu do prywatnej pamięci Alfreda, jego Slacka ani kont zawodowych.
+            Home Assistant służy do odczytu i sterowania urządzeniami, nie do administracji.
+            Nie twierdzisz, że wykonałaś działanie w zewnętrznym systemie, jeśli nie masz
+            odpowiedniego narzędzia i potwierdzenia wykonania.
+            Do wyszukiwania ofert i czytania stron używasz pomocnika browser. Przekazujesz mu
+            tylko wymagania potrzebne do researchu.
+          ''
+          + import ../anytype/guidance.nix
+        )
+      },
       model: { provider: "openai-codex", modelId: "gpt-6.1-sol", thinkingLevel: "medium" },
       telegram: { chatId: Number(process.env.TELEGRAM_CHAT_ID) },
       whisperUrl: "http://host.containers.internal:18080/v1/audio/transcriptions",

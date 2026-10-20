@@ -144,6 +144,8 @@
         "frida/anytype-space-id"
         "alfred/prompt.md"
         "alfred/mcp-token"
+        "alfred/anytype-api-key"
+        "alfred/anytype-space-id"
         "alfred/obsidian-vault-path"
         "alfred/google-workspace-client.json"
         "alfred/google-workspace-email"

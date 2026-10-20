@@ -6,13 +6,11 @@ import json
 from pathlib import Path
 
 from fastmcp import Client
-from fastmcp.client.transports import StdioTransport, StreamableHttpTransport
+from fastmcp.client.transports import StreamableHttpTransport
 from fastmcp.exceptions import ToolError
 from fastmcp.server import create_proxy
 from fastmcp.server.auth.providers.jwt import StaticTokenVerifier
 from fastmcp.server.middleware import Middleware, MiddlewareContext
-from fastmcp.server.transforms import ToolTransform
-from fastmcp.tools.tool_transform import ArgTransformConfig, ToolTransformConfig
 
 
 HOUSEHOLD_SERVICES = {
@@ -63,7 +61,7 @@ class HouseholdControl(Middleware):
         return await call_next(context)
 
 
-def household_proxy(name, transport, token, tools, space_id=None):
+def household_proxy(name, transport, token, tools):
     proxy = create_proxy(
         transport,
         name=f"frida-{name}",
@@ -71,15 +69,7 @@ def household_proxy(name, transport, token, tools, space_id=None):
         mask_error_details=True,
         strict_input_validation=True,
     )
-    if name == "anytype":
-        proxy.add_transform(ToolTransform({
-            tool: ToolTransformConfig(arguments={
-                "space_id": ArgTransformConfig(hide=True, default=space_id),
-            })
-            for tool in tools
-        }))
-    else:
-        proxy.add_middleware(HouseholdControl())
+    proxy.add_middleware(HouseholdControl())
     # Also blocks direct calls to hidden tools and hides upstream resources/prompts.
     proxy.enable(names=set(tools), components={"tool"}, only=True)
     return proxy
@@ -90,33 +80,15 @@ async def serve(args):
     if len(token) < 32:
         raise ValueError("Frida MCP token must have at least 32 characters")
     tools = json.loads(args.policy_file.read_text())
-    space_id = None
     source = args.source_file.read_text().strip()
-    if args.name == "anytype":
-        if not args.command or args.space_file is None:
-            raise ValueError("Anytype requires a command and a space file")
-        space_id = args.space_file.read_text().strip()
-        if not source or not space_id:
-            raise ValueError("Anytype credentials and space must be configured")
-        transport = StdioTransport(args.command, [], keep_alive=True, env={
-            "ANYTYPE_API_BASE_URL": "http://127.0.0.1:31012",
-            "OPENAPI_MCP_HEADERS": json.dumps({
-                "Authorization": f"Bearer {source}", "Anytype-Version": "2025-11-08",
-            }),
-        })
-    else:
-        transport = StreamableHttpTransport(source)
+    transport = StreamableHttpTransport(source)
 
     async with Client(transport) as client:
         available = {tool.name: tool for tool in await client.list_tools()}
         for name in tools:
             if name not in available:
                 raise ValueError("An allowed tool is missing from the upstream server")
-            if args.name == "anytype":
-                schema = available[name].inputSchema
-                if "space_id" not in schema.get("required", []):
-                    raise ValueError("Anytype tools must require a space ID")
-    proxy = household_proxy(args.name, transport, token, tools, space_id)
+    proxy = household_proxy(args.name, transport, token, tools)
     await proxy.run_async(
         transport="http", host="127.0.0.1", port=args.port,
         stateless_http=True, show_banner=False,
@@ -125,13 +97,11 @@ async def serve(args):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("name", choices=["anytype", "home-assistant"])
+    parser.add_argument("name", choices=["home-assistant"])
     parser.add_argument("port", type=int)
     parser.add_argument("token_file", type=Path)
     parser.add_argument("policy_file", type=Path)
     parser.add_argument("source_file", type=Path)
-    parser.add_argument("--space-file", type=Path)
-    parser.add_argument("--command")
     args = parser.parse_args()
     try:
         asyncio.run(serve(args))

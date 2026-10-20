@@ -36,6 +36,12 @@ let
     ];
   };
   bridges = {
+    anytype = {
+      port = 18101;
+      agent = "alfred";
+      domain = "user";
+      tools = builtins.fromJSON (builtins.readFile ../anytype/tools.json);
+    };
     obsidian = {
       port = 18091;
       agent = "alfred";
@@ -410,20 +416,38 @@ let
     enable = true;
     inherit (bridge) domain;
     config = {
-      ProgramArguments = [
-        "${python}/bin/python"
-        "${scripts}/mcp-bridge.py"
-      ]
-      ++ lib.optionals (bridge.inlineAttachments or false) [
-        "--inline-attachments"
-        "http://127.0.0.1:${toString gotenbergPort}"
-      ]
-      ++ [
-        name
-        (toString bridge.port)
-        mcpTokenFile
-        bridge.command
-      ];
+      ProgramArguments =
+        if name == "anytype" then
+          [
+            "${python}/bin/python"
+            "${../anytype/mcp-bridge.py}"
+            "alfred"
+            (toString bridge.port)
+            mcpTokenFile
+            "${../anytype/tools.json}"
+            (secret "anytype-api-key")
+            "--space-file"
+            (secret "anytype-space-id")
+            "--command"
+            (lib.getExe pkgs.anytype-mcp)
+            "--api-url"
+            "http://127.0.0.1:31012"
+          ]
+        else
+          [
+            "${python}/bin/python"
+            "${scripts}/mcp-bridge.py"
+          ]
+          ++ lib.optionals (bridge.inlineAttachments or false) [
+            "--inline-attachments"
+            "http://127.0.0.1:${toString gotenbergPort}"
+          ]
+          ++ [
+            name
+            (toString bridge.port)
+            mcpTokenFile
+            bridge.command
+          ];
       RunAtLoad = true;
       KeepAlive = true;
       ProcessType = "Background";
@@ -513,7 +537,9 @@ let
     });
 
     export default {
-        prompt: readFileSync("/run/secrets/prompt.md", "utf8") + "\n\n" + ${builtins.toJSON xGuidance},
+        prompt: readFileSync("/run/secrets/prompt.md", "utf8") + "\n\n" + ${
+          builtins.toJSON (xGuidance + import ../anytype/guidance.nix)
+        },
     	model: { provider: "openai-codex", modelId: "gpt-6.1-sol", thinkingLevel: "medium" },
     	fallbackModel: { provider: "xai", modelId: "grok-4.7", thinkingLevel: "medium" },
     	telegram: { chatId: Number(process.env.TELEGRAM_CHAT_ID) },
