@@ -1,5 +1,5 @@
 diff --git a/internal/api/server.go b/internal/api/server.go
-index 72cd21e..4afa7a3 100644
+index fc1646c..03468b3 100644
 --- a/internal/api/server.go
 +++ b/internal/api/server.go
 @@ -43,6 +43,7 @@ type Server struct {
@@ -10,7 +10,7 @@ index 72cd21e..4afa7a3 100644
  
  	// muxBaseListener is the shared TCP listener used to serve both HTTP and Redis protocol traffic.
  	listenerMu      sync.Mutex
-@@ -235,6 +236,8 @@ func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdk
+@@ -238,6 +239,8 @@ func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdk
  	engine.Use(s.exampleAPIKeySafeModeMiddleware())
  
  	// Setup routes
@@ -19,7 +19,7 @@ index 72cd21e..4afa7a3 100644
  	s.setupRoutes()
  
  	// Apply additional router configurators from options
-@@ -260,7 +263,7 @@ func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdk
+@@ -263,7 +266,7 @@ func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdk
  	// Create HTTP server
  	s.server = &http.Server{
  		Addr:    fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
@@ -63,10 +63,10 @@ index 34d428d..487de34 100644
  		return nil, err
 diff --git a/internal/api/quota_endpoint.go b/internal/api/quota_endpoint.go
 new file mode 100644
-index 0000000..46e6ff7
+index 0000000..74ba935
 --- /dev/null
 +++ b/internal/api/quota_endpoint.go
-@@ -0,0 +1,771 @@
+@@ -0,0 +1,785 @@
 +package api
 +
 +import (
@@ -91,6 +91,7 @@ index 0000000..46e6ff7
 +	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 +	"github.com/router-for-me/CLIProxyAPI/v8/internal/pluginhost"
 +	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
++	coreusage "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/usage"
 +	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
 +)
 +
@@ -119,6 +120,7 @@ index 0000000..46e6ff7
 +	UpdatedAt int64        `json:"updated_at,omitempty"`
 +	Stale     bool         `json:"stale"`
 +	Limits    []quotaLimit `json:"limits"`
++	Usage     *quotaUsage  `json:"usage,omitempty"`
 +}
 +
 +type quotaObservation struct {
@@ -138,10 +140,13 @@ index 0000000..46e6ff7
 +	mu         sync.Mutex
 +	cache      map[string]quotaObservation
 +	refreshing bool
++	started    time.Time
++	usageMu    sync.Mutex
++	usage      map[string][]quotaUsageBucket
 +}
 +
 +func newQuotaEndpoint(manager *auth.Manager, plugins *pluginhost.Host, next http.Handler) *quotaEndpoint {
-+	q := &quotaEndpoint{manager: manager, plugins: plugins, next: next, cache: make(map[string]quotaObservation)}
++	q := &quotaEndpoint{manager: manager, plugins: plugins, next: next, cache: make(map[string]quotaObservation), started: time.Now(), usage: make(map[string][]quotaUsageBucket)}
 +	// Read exactly once. Rotation requires restarting the server; failures never enable anonymous access.
 +	if path := os.Getenv("CLIPROXYAPI_QUOTA_KEY_FILE"); path != "" {
 +		info, err := os.Stat(path)
@@ -164,6 +169,7 @@ index 0000000..46e6ff7
 +			if valid {
 +				q.key = []byte(key)
 +				q.keyHash = sha256.Sum256(q.key)
++				coreusage.RegisterNamedPlugin("quota-usage", q)
 +			}
 +		}
 +	}
@@ -298,6 +304,7 @@ index 0000000..46e6ff7
 +				item.Limits[i].Pace = nil
 +			}
 +		}
++		item.Usage = q.usageSnapshot(id, now)
 +		result = append(result, item)
 +	}
 +	for id := range q.cache {
@@ -305,6 +312,13 @@ index 0000000..46e6ff7
 +			delete(q.cache, id)
 +		}
 +	}
++	q.usageMu.Lock()
++	for id := range q.usage {
++		if !seen[id] {
++			delete(q.usage, id)
++		}
++	}
++	q.usageMu.Unlock()
 +	if refresh && !q.refreshing {
 +		q.refreshing = true
 +		go q.refresh(accounts)
@@ -1193,4 +1207,97 @@ index 0000000..8b8731d
 +		}
 +	}
 +	return 0
++}
+diff --git a/internal/api/quota_usage.go b/internal/api/quota_usage.go
+new file mode 100644
+index 0000000..38e5566
+--- /dev/null
++++ b/internal/api/quota_usage.go
+@@ -0,0 +1,87 @@
++package api
++
++import (
++	"context"
++	"time"
++
++	coreusage "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/usage"
++)
++
++// Token usage is kept in memory per quota account in hourly buckets, so the
++// rolling window restarts empty with the server.
++const quotaUsageBuckets = 7 * 24
++
++type quotaUsage struct {
++	Since            int64    `json:"since"`
++	WindowSeconds    int64    `json:"window_seconds"`
++	Requests         int64    `json:"requests"`
++	InputTokens      int64    `json:"input_tokens"`
++	CacheReadTokens  int64    `json:"cache_read_tokens"`
++	CacheWriteTokens int64    `json:"cache_write_tokens"`
++	OutputTokens     int64    `json:"output_tokens"`
++	CacheReadPercent *float64 `json:"cache_read_percent,omitempty"`
++}
++
++type quotaUsageBucket struct {
++	hour                                           int64
++	requests, input, cacheRead, cacheWrite, output int64
++}
++
++func (q *quotaEndpoint) HandleUsage(_ context.Context, record coreusage.Record) {
++	if q.manager == nil || len(q.key) == 0 {
++		return
++	}
++	account, ok := q.manager.GetByID(record.AuthID)
++	if !ok || account == nil {
++		return
++	}
++	at := record.RequestedAt
++	if at.IsZero() {
++		at = time.Now()
++	}
++	tokens := coreusage.EnsureTokenBreakdownForProvider(record.Detail, record.Provider, record.ExecutorType).TokenBreakdown
++	id := q.accountID(account)
++	hour := at.Unix() / 3600
++	q.usageMu.Lock()
++	defer q.usageMu.Unlock()
++	buckets := q.usage[id]
++	if buckets == nil {
++		buckets = make([]quotaUsageBucket, quotaUsageBuckets)
++		q.usage[id] = buckets
++	}
++	bucket := &buckets[hour%quotaUsageBuckets]
++	if bucket.hour != hour {
++		*bucket = quotaUsageBucket{hour: hour}
++	}
++	bucket.requests++
++	bucket.input += tokens.Input.UncachedTokens
++	bucket.cacheRead += tokens.Input.CacheReadTokens
++	bucket.cacheWrite += tokens.Input.CacheWriteTokens
++	bucket.output += tokens.Output.TotalTokens
++}
++
++func (q *quotaEndpoint) usageSnapshot(id string, now time.Time) *quotaUsage {
++	since := now.Add(-quotaUsageBuckets * time.Hour)
++	if q.started.After(since) {
++		since = q.started
++	}
++	result := &quotaUsage{Since: since.Unix(), WindowSeconds: int64(now.Sub(since).Seconds())}
++	oldest := now.Unix()/3600 - quotaUsageBuckets + 1
++	q.usageMu.Lock()
++	for _, bucket := range q.usage[id] {
++		if bucket.hour < oldest {
++			continue
++		}
++		result.Requests += bucket.requests
++		result.InputTokens += bucket.input
++		result.CacheReadTokens += bucket.cacheRead
++		result.CacheWriteTokens += bucket.cacheWrite
++		result.OutputTokens += bucket.output
++	}
++	q.usageMu.Unlock()
++	if total := result.InputTokens + result.CacheReadTokens + result.CacheWriteTokens; total > 0 {
++		percent := float64(result.CacheReadTokens) * 100 / float64(total)
++		result.CacheReadPercent = &percent
++	}
++	return result
 +}
