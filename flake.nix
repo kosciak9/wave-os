@@ -151,9 +151,6 @@
             hyprland = final.wave-hyprland;
             version = inputs.hyprland-scroll-overview.shortRev or "unstable";
           };
-        }
-        // prev.lib.optionalAttrs prev.stdenv.hostPlatform.isDarwin {
-          browser-decision = final.callPackage ./packages/browser-decision.nix { };
         };
       pkgs = import nixpkgs {
         inherit system;
@@ -370,7 +367,6 @@
             twikit-x-mcp
             workspace-mcp
             camofox-browser-source
-            browser-decision
             camofox-browser-cli
             ;
         };
