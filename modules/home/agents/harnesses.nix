@@ -61,6 +61,7 @@ in
       pkgs.bash
       (gatewayPackage pkgs.claude-code "claude")
       (gatewayPackage pkgs.codex "codex")
+      (gatewayPackage pkgs.omp "omp")
       pkgs.fzf
       pkgs.jq
       pkgs.python3

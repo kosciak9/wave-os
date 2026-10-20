@@ -134,6 +134,7 @@
             inherit prev;
           }) "claude-code";
           codex = wrapAgentHarness (final.callPackage ./packages/codex.nix { inherit prev; }) "codex";
+          omp = wrapAgentHarness (final.callPackage ./packages/omp.nix { }) "omp";
         }
         // prev.lib.optionalAttrs prev.stdenv.hostPlatform.isLinux {
           t3code-desktop = final.callPackage ./packages/t3code-desktop.nix { };

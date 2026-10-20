@@ -295,7 +295,8 @@
     };
     nix-ld = {
       enable = true;
-      # Prebuilt Electron from npm (desktop apps run from source)
+      # Prebuilt Electron from npm (desktop apps run from source) and prebuilt
+      # GPU terminals that dlopen Wayland, Vulkan, PulseAudio and PAM.
       libraries = with pkgs; [
         alsa-lib
         at-spi2-atk
@@ -310,6 +311,7 @@
         libdrm
         libgbm
         libglvnd
+        libpulseaudio
         libsecret
         libx11
         libxcb
@@ -319,9 +321,12 @@
         libxfixes
         libxkbcommon
         libxrandr
+        linux-pam
         nspr
         nss
         pango
+        vulkan-loader
+        wayland
       ];
     };
     fuse.enable = true;

@@ -84,6 +84,28 @@ let
         export OPENCODE_CONFIG="$models"
       fi
     ''}
+    ${lib.optionalString (client == "omp") ''
+      # OMP reads custom providers only from models.yml in its agent directory.
+      # The key stays an environment variable name; the gateway lists the models.
+      agent="''${PI_CODING_AGENT_DIR:-$HOME/.omp/agent}"
+      yq=${lib.getExe pkgs.yq-go}
+      (umask 077 && mkdir -p "$agent" && : >> "$agent/models.yml" && : >> "$agent/config.yml")
+      provider=$(CLIPROXYAPI_MODELS_URL="$CLIPROXYAPI_BASE_URL/v1" "$yq" -n -o json '{
+        "baseUrl": strenv(CLIPROXYAPI_MODELS_URL),
+        "apiKey": "CLIPROXYAPI_API_KEY",
+        "authHeader": true,
+        "api": "openai-responses",
+        "discovery": {"type": "proxy"}
+      }')
+      if [[ "$("$yq" -o json '.providers.cliproxy' "$agent/models.yml")" != "$provider" ]]; then
+        OMP_PROVIDER="$provider" "$yq" -i '.providers.cliproxy = (env(OMP_PROVIDER) | ... style="")' "$agent/models.yml"
+      fi
+      # Without a default OMP picks the first listed model, a free tier that
+      # rejects other clients; /model replaces this choice.
+      if [[ "$("$yq" '.modelRoles.default' "$agent/config.yml")" == null ]]; then
+        "$yq" -i '.modelRoles.default = "cliproxy/claude-opus-5-5"' "$agent/config.yml"
+      fi
+    ''}
     ${lib.optionalString (client == "codex") ''
       base_url=$(${lib.getExe pkgs.jq} -n --arg url "$CLIPROXYAPI_BASE_URL/v1" '$url')
       catalog_url=$(${lib.getExe pkgs.jq} -n --arg url "$CLIPROXYAPI_BASE_URL/v1/models?client_version=${package.version}" '$url')
