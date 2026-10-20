@@ -29,13 +29,13 @@
 
 let
   pname = "pr-cockpit";
-  version = "unstable-2026-10-15";
-  revision = "66d8a8196c6624fbd6f9be14a9212b07b07bba3a";
+  version = "unstable-2026-10-20";
+  revision = "505827aa9d3f333d17755c2d042842e2ce585a0c";
   src = fetchFromGitHub {
     owner = "theolundqvist";
     repo = "pr-cockpit";
     rev = revision;
-    hash = "sha256-PdoJaRGd5hMagNU1Fw1uLAHw/7B1a+iIASkBRJH/6vU=";
+    hash = "sha256-A5S9Cm0mvpe5cg2cJ+ALxol065DIgRD3WYYtXEqo470=";
   };
   nodeModules = stdenvNoCC.mkDerivation {
     pname = "${pname}-node-modules";

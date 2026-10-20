@@ -1,15 +1,15 @@
 { prev, ... }:
 let
   manifest = {
-    version = "2.1.303";
+    version = "2.1.304";
     platforms = {
       darwin-arm64 = {
         binary = "claude.zst";
-        checksum = "482aa490dc1e0328bee10a163bef7f59c7c72e14de7535696b5bd3aec0089f7d";
+        checksum = "d4d21e296a055068be83a9cd0753817eb5033233d6c471cc60491745766441c5";
       };
       linux-x64 = {
         binary = "claude.zst";
-        checksum = "b00b9295b825169975983c9e1cd3eb2dbbc9c95827fa8b377a0bef0bb8b471a8";
+        checksum = "0f3468fa285f112650feb3bec2913425b7ba5c83cd4eb411b5c75b4086416bb6";
       };
     };
   };

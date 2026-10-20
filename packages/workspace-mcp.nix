@@ -290,14 +290,14 @@ assert lib.versionAtLeast py.mcp.version "2.2.0";
 assert lib.versionAtLeast py.pyasn1.version "0.6.4";
 py.buildPythonApplication (finalAttrs: {
   pname = "workspace-mcp";
-  version = "2.1.0";
+  version = "2.1.1";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "taylorwilsdon";
     repo = "google_workspace_mcp";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-Ap2vzCtb1QvdK8RxZ93Fvk2PtDTgbMwDc2rvDWF23ls=";
+    hash = "sha256-gX4N1xKwE0FxcXZycuNExihx0yha9jt+BnlQ7GGEtCE=";
   };
 
   build-system = with py; [

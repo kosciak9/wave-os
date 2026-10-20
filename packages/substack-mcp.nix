@@ -12,7 +12,7 @@ buildNpmPackage {
   src = fetchFromGitHub {
     owner = "thenavidm";
     repo = "substack-mcp-cli";
-    rev = "39eab6619c963d2358f2aae8b12da8e303b6bd73";
+    rev = "8eadfa5c1ee42af611a31bccae85548d8ea703fc";
     hash = "sha256-1YH9GLKF/4o3oS6OKd6WJ/5RoNAo2I0rTEMABqmzDE0=";
   };
 
@@ -25,7 +25,7 @@ buildNpmPackage {
     runHook postCheck
   '';
 
-  passthru.gitHead = "39eab6619c963d2358f2aae8b12da8e303b6bd73";
+  passthru.gitHead = "8eadfa5c1ee42af611a31bccae85548d8ea703fc";
 
   meta = {
     description = "Substack MCP server and CLI for AI agents";

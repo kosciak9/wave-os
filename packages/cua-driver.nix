@@ -17,11 +17,11 @@
 
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "cua-driver";
-  version = "0.36.0";
+  version = "0.37.0";
 
   src = fetchurl {
     url = "https://github.com/trycua/cua/releases/download/cua-driver-rs-v${finalAttrs.version}/cua-driver-rs-${finalAttrs.version}-linux-x86_64-binary.tar.gz";
-    hash = "sha256-BdriFgyGvfSFXCedMImCE9ehUO2xmSt0cK/dafDfQGQ=";
+    hash = "sha256-x6w3axDafCB+UQstkLiKlYi+yYUqI3liwnP+gbnNViM=";
   };
   sourceRoot = ".";
 
