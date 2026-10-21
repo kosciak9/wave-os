@@ -1,6 +1,12 @@
 { lib, sops-nix }:
 let
-  moduleDirectory = "${sops-nix}/modules/nix-darwin";
+  # With lazy trees the input is a virtual store path, which builtins.toFile
+  # rejects as a reference; builtins.path copies it into the store first.
+  source = builtins.path {
+    path = sops-nix;
+    name = "source";
+  };
+  moduleDirectory = "${source}/modules/nix-darwin";
   original = builtins.readFile "${moduleDirectory}/default.nix";
   oldHook = "postActivation.text = lib.mkAfter installScript;";
   newHook = "launchd.text = lib.mkBefore installScript;";
@@ -21,7 +27,7 @@ let
         "${moduleDirectory}/with-environment.nix"
         "${moduleDirectory}/templates"
         "${moduleDirectory}/secrets-for-users"
-        (toString sops-nix)
+        (toString source)
       ]
       original;
 in
