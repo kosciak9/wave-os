@@ -35,6 +35,16 @@
   # T3 appends the old location on change; `<T3 home>/worktrees` stays managed regardless.
   previousWorktreesDirectories = [ ];
   defaultAutoPull = true;
+  defaultProjectScripts = [
+    {
+      id = "worktree-setup";
+      name = "Set up worktree";
+      command = builtins.readFile ./worktree-setup.sh;
+      icon = "configure";
+      runOnWorktreeCreate = true;
+      async = false;
+    }
+  ];
   worktreeCleanup.mode = "off";
   storageCleanup.worktreeSettledAfterDays = 7;
   enableAgentBrowserAccess = false;
