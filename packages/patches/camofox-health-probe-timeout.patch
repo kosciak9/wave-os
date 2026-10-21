@@ -1,0 +1,44 @@
+diff -ru a/server.js b/server.js
+--- a/server.js
++++ b/server.js
+@@ -7121,8 +7121,9 @@
+ }, 5 * 60_000);
+ 
+ // Active health probe -- detect hung browser even when isConnected() lies
++let healthProbeInFlight = false;
+ setInterval(async () => {
+-  if (!browser || healthState.isRecovering) return;
++  if (!browser || healthState.isRecovering || healthProbeInFlight) return;
+   const timeSinceSuccess = Date.now() - healthState.lastSuccessfulNav;
+   // Skip probe if operations are in flight AND last success was recent.
+   // If it's been >120s since any successful operation, probe anyway --
+@@ -7137,19 +7138,24 @@
+     log('warn', 'health probe forced despite active ops', { activeOps: healthState.activeOps, timeSinceSuccessMs: timeSinceSuccess });
+   }
+   
++  // A wedged Firefox can leave newContext/newPage pending forever; every step
++  // needs a deadline or the probe never reaches restartBrowser.
++  healthProbeInFlight = true;
+   let testContext;
+   try {
+-    testContext = await browser.newContext({ viewport: null });
+-    const page = await testContext.newPage();
++    testContext = await withTimeout(browser.newContext({ viewport: null }), 10000, 'health probe context');
++    const page = await withTimeout(testContext.newPage(), NEW_PAGE_TIMEOUT_MS, 'health probe page');
+     await page.goto('about:blank', { timeout: 5000 });
+-    await page.close();
+-    await testContext.close();
++    await withTimeout(page.close(), PAGE_CLOSE_TIMEOUT_MS, 'health probe page close');
++    await withTimeout(testContext.close(), 10000, 'health probe context close');
+     healthState.lastSuccessfulNav = Date.now();
+   } catch (err) {
+     failuresTotal.labels('health_probe', 'internal').inc();
+     log('warn', 'health probe failed', { error: err.message, timeSinceSuccessMs: timeSinceSuccess });
+-    if (testContext) await testContext.close().catch(() => {});
++    if (testContext) await withTimeout(testContext.close(), 5000, 'health probe context close').catch(() => {});
+     restartBrowser('health probe failed').catch(() => {});
++  } finally {
++    healthProbeInFlight = false;
+   }
+ }, 60_000);
+ 

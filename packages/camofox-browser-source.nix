@@ -36,6 +36,7 @@ stdenvNoCC.mkDerivation {
   patches = [
     ./patches/camofox-click-outcome.patch
     ./patches/camofox-client-errors.patch
+    ./patches/camofox-health-probe-timeout.patch
   ];
   patchFlags = [
     "-p1"
