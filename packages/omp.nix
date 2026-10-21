@@ -10,18 +10,18 @@ let
   releases = {
     x86_64-linux = {
       asset = "omp-linux-x64";
-      hash = "sha256-BltQedZf9rd9lhyTW6gI6PD1acpqLLe1+2oejactfew=";
+      hash = "sha256-/byBNghMmhBDlWkVeyr2IxLisNgByrVMc+iUdtp5jn4=";
     };
     aarch64-darwin = {
       asset = "omp-darwin-arm64";
-      hash = "sha256-8qZXszIPyvojBVBTlApFsmqNMlThQSoViDgBPWcNbsU=";
+      hash = "sha256-XlDfmHnekWXVxt9eSLtdA4c3JwATzYSeGJ2nd0+3Nos=";
     };
   };
   release = releases.${stdenv.hostPlatform.system};
 in
 stdenv.mkDerivation (finalAttrs: {
   pname = "omp";
-  version = "18.12.3";
+  version = "18.12.5";
 
   src = fetchurl {
     url = "https://github.com/can1357/oh-my-pi/releases/download/v${finalAttrs.version}/${release.asset}";
