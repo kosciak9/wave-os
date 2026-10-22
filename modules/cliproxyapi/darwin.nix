@@ -19,8 +19,8 @@ let
     x-opencode-parent-session-id = "$x-opencode-parent-session-id";
     x-opencode-request-id = "$x-opencode-request-id";
   };
-  # Upstreams are named opencode-<catalog>-<protocol>; the config script fills
-  # their models from that catalog entry and drops upstreams left empty.
+  # Upstreams are named opencode-zen-<protocol>; the config script fills their
+  # models from that catalog entry and drops upstreams left empty.
   zenUpstream = name: {
     inherit name;
     prefix = "zen";
@@ -39,16 +39,9 @@ let
       path = managementPanel;
     }
   ];
-  goUpstream = name: {
-    inherit name;
-    prefix = "go";
-    base-url = "https://opencode.ai/inference/go/v1";
-    headers = {
-      User-Agent = "$User-Agent";
-      x-opencode-session = "$CPA-SESSION-ID";
-    };
-    models = [ ];
-  };
+  goPlugin = "opencode-go-cliproxyapi";
+  # The host loads only regular files, so the config script copies the library.
+  pluginFile = "${stateDirectory}/plugins/${goPlugin}.dylib";
   settings = pkgs.writeText "cliproxyapi-settings.json" (
     builtins.toJSON {
       config-version = 8;
@@ -82,20 +75,25 @@ let
         logs-max-total-size-mb = 64;
       };
       observability.usage.usage-statistics-enabled = true;
+      plugins = {
+        enabled = true;
+        dir = "${stateDirectory}/plugins";
+        # The config script adds the Go plan keys.
+        configs.${goPlugin} = {
+          enabled = true;
+          model-prefix = {
+            enabled = true;
+            value = "go";
+          };
+        };
+      };
       api-keys = {
-        codex = [
-          (goUpstream "opencode-go-responses")
-          (zenUpstream "opencode-zen-responses")
-        ];
+        codex = [ (zenUpstream "opencode-zen-responses") ];
         # The Claude executor appends /v1/messages itself.
         claude = [
-          ((goUpstream "opencode-go-messages") // { base-url = "https://opencode.ai/inference/go"; })
           ((zenUpstream "opencode-zen-messages") // { base-url = "https://opencode.ai/inference"; })
         ];
-        openai-compatibility = [
-          (goUpstream "opencode-go-chat")
-          (zenUpstream "opencode-zen-chat")
-        ];
+        openai-compatibility = [ (zenUpstream "opencode-zen-chat") ];
       };
     }
   );
@@ -112,8 +110,13 @@ let
       umask 077
       state=${lib.escapeShellArg stateDirectory}
       catalog=${lib.escapeShellArg modelCatalog}
-      mkdir -p "$state/auth" "$state/logs"
-      chmod 700 "$state" "$state/auth" "$state/logs"
+      mkdir -p "$state/auth" "$state/logs" "$state/plugins"
+      chmod 700 "$state" "$state/auth" "$state/logs" "$state/plugins"
+      plugin=${lib.escapeShellArg pluginFile}
+      if ! cmp -s ${pkgs.cliproxyapi-opencode-go}/lib/${goPlugin}.dylib "$plugin"; then
+        install -m 0500 ${pkgs.cliproxyapi-opencode-go}/lib/${goPlugin}.dylib "$plugin.new"
+        mv -f "$plugin.new" "$plugin"
+      fi
       cd "$state"
       config_file=$(mktemp "$state/config.XXXXXX")
       catalog_file=$(mktemp "$state/models.XXXXXX")
@@ -132,7 +135,8 @@ let
         --slurpfile go ${lib.escapeShellArg config.sops.secrets."cliproxyapi/opencode-go-keys".path} \
         --slurpfile zen ${lib.escapeShellArg config.sops.secrets."cliproxyapi/opencode-zen-keys".path} \
         --rawfile quota ${lib.escapeShellArg config.sops.secrets."cliproxyapi/quota-key".path} \
-        --rawfile management ${lib.escapeShellArg config.sops.secrets."cliproxyapi/management-key".path} '
+        --rawfile management ${lib.escapeShellArg config.sops.secrets."cliproxyapi/management-key".path} \
+        --arg plugin ${goPlugin} '
           def valid_keys: type == "array" and
             all(.[]; type == "string" and length > 0 and test("^[^\\r\\n]+$"));
           def with_keys($list):
@@ -149,13 +153,14 @@ let
             ($quota_key != $management_key) then
             .access["api-keys"] = $clients[0] |
             .management["secret-key"] = $management_key |
+            .plugins.configs[$plugin]["api-keys"] = ($go[0] | map({value: .})) |
             .["api-keys"] |= with_entries(.value |= (map(
-              (.name | ltrimstr("opencode-") | split("-")) as [$catalog, $protocol] |
-              .models = ($models[0][$catalog][$protocol] // {} | keys | map({name: .})) |
+              (.name | ltrimstr("opencode-zen-")) as $protocol |
+              .models = ($models[0].zen[$protocol] // {} | keys | map({name: .})) |
+              with_keys($zen) |
               if .name == "opencode-zen-responses" then
-                with_keys($zen) | .keys |= map(. + {"disable-codex-cloaking": true})
-              elif (.name | startswith("opencode-zen-")) then with_keys($zen)
-              else with_keys($go) end) |
+                .keys |= map(. + {"disable-codex-cloaking": true})
+              else . end) |
               # An empty list would expose the built-in models of the executor.
               map(select(.models != []))))
           else error("CLIProxyAPI requires valid key arrays and distinct management and quota keys") end

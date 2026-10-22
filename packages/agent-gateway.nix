@@ -7,8 +7,9 @@
 package: client:
 let
   program = package.meta.mainProgram;
-  # Writes an OpenCode config fragment with every model the gateway serves,
-  # named from models.dev. OPENCODE_CONFIG merges it into the cliproxy provider.
+  # Writes an OpenCode config fragment with the gateway models except Claude,
+  # which has its own client, named from models.dev. OPENCODE_CONFIG merges it
+  # into the cliproxy provider.
   opencodeModels = pkgs.writeShellApplication {
     name = "opencode-gateway-models";
     runtimeInputs = [
@@ -29,13 +30,18 @@ let
         $catalog[0] as $catalog |
         def name($providers; $id): first($providers[] | $catalog[.].models[$id].name // empty) // $id;
         {openai: "OpenAI", xai: "xAI", meta: "Meta", anthropic: "Anthropic", google: "Google"} as $owners |
-        [$gateway[0].data[] | select(.id | type == "string")] as $models |
+        # Free Zen models drop the suffix their [Free] label already states.
+        def free_name($id):
+          (first(["opencode", "opencode-go"][] | $catalog[.].models[$id].name // empty) //
+            ($id | rtrimstr("-free") | split("-") | map((.[:1] | ascii_upcase) + .[1:]) | join(" "))) |
+          sub("(?i)[ -]free$"; "");
+        [$gateway[0].data[] | select(.id | type == "string" and (startswith("claude-") | not))] as $models |
         if ($models | length) == 0 then error("gateway lists no models") else
           {providers: {cliproxy: {models: ($models | map(
             (.id | split("/")) as $parts |
             {key: .id, value: ({capabilities: {tools: true}} + (
               if $parts[0] == "zen" and ($parts | length) == 2 then
-                {name: "[Zen] \(name(["opencode", "opencode-go"]; $parts[1]))"}
+                {name: "[Free] \(free_name($parts[1]))"}
               elif $parts[0] == "go" and ($parts | length) == 2 then
                 {name: "[Go] \(name(["opencode-go", "opencode"]; $parts[1]))"}
               else
@@ -108,12 +114,10 @@ let
     ''}
     ${lib.optionalString (client == "codex") ''
       base_url=$(${lib.getExe pkgs.jq} -n --arg url "$CLIPROXYAPI_BASE_URL/v1" '$url')
-      catalog_url=$(${lib.getExe pkgs.jq} -n --arg url "$CLIPROXYAPI_BASE_URL/v1/models?client_version=${package.version}" '$url')
       exec ${lib.getExe package} \
         -c 'model_provider="cliproxy"' \
         -c 'model_providers.cliproxy.name="CLIProxyAPI"' \
         -c "model_providers.cliproxy.base_url=$base_url" \
-        -c "model_providers.cliproxy.model_catalog_url=$catalog_url" \
         -c 'model_providers.cliproxy.env_key="CLIPROXYAPI_API_KEY"' \
         -c 'model_providers.cliproxy.wire_api="responses"' \
         -c 'model_providers.cliproxy.requires_openai_auth=false' \
