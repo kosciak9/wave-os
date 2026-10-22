@@ -1,0 +1,63 @@
+{
+  "title": "Sieć",
+  "rows": [
+    {
+      "title": "Router (krtek)",
+      "panels": [
+        {
+          "title": "WAN",
+          "unit": "B/s",
+          "width": 6,
+          "expr": [
+            "rate(node_network_receive_bytes_total{host=\"krtek\",device=\"wan\"}[5m])",
+            "rate(node_network_transmit_bytes_total{host=\"krtek\",device=\"wan\"}[5m])"
+          ],
+          "alias": ["pobieranie", "wysyłanie"]
+        },
+        {
+          "title": "Porty LAN (odbiór)",
+          "unit": "B/s",
+          "width": 6,
+          "expr": [
+            "rate(node_network_receive_bytes_total{host=\"krtek\",device=~\"lan[0-9]+\"}[5m])"
+          ],
+          "alias": ["{{device}}"]
+        },
+        {
+          "title": "Zapytania DNS",
+          "width": 6,
+          "expr": [
+            "rate(dnsmasq_dns_queries_forwarded_total[5m])",
+            "rate(dnsmasq_dns_local_answered_total[5m])"
+          ],
+          "alias": ["przekazane", "lokalne"]
+        },
+        {
+          "title": "Temperatura",
+          "unit": "°C",
+          "width": 6,
+          "expr": ["node_hwmon_temp_celsius{job=\"openwrt\"}"],
+          "alias": ["{{host}} {{chip}} {{sensor}}"]
+        }
+      ]
+    },
+    {
+      "title": "Wi-Fi",
+      "panels": [
+        {
+          "title": "Podłączeni klienci",
+          "width": 6,
+          "expr": ["count by (host, ssid) (hostapd_station_signal_dbm)"],
+          "alias": ["{{host}} {{ssid}}"]
+        },
+        {
+          "title": "Średni sygnał klientów",
+          "unit": "dBm",
+          "width": 6,
+          "expr": ["avg by (host, ssid) (hostapd_station_signal_dbm)"],
+          "alias": ["{{host}} {{ssid}}"]
+        }
+      ]
+    }
+  ]
+}
