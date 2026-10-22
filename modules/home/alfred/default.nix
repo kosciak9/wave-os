@@ -710,7 +710,7 @@ in
     image = lib.mkOption {
       type = lib.types.strMatching "[^@]+@sha256:[0-9a-f]{64}";
       # house-agents bc87334 (linux/amd64, linux/arm64)
-      default = "ghcr.io/kosciak9/house-agents@sha256:ce780c1f5e3411648b1599efd282335e70afc70bab8e08170c95c3b0f0085cbc";
+      default = "ghcr.io/kosciak9/house-agents@sha256:b681d04ae9b86b1668a59a24bcef468e4fdd6a823e234030c6a2d792c6f72b88";
       description = "The house-agents image, pinned by digest.";
     };
     gotenbergImage = lib.mkOption {
