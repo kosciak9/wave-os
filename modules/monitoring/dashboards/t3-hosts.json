@@ -44,12 +44,12 @@
           ]
         },
         {
-          "title": "Procesy: pamięć (PSS)",
-          "description": "Suma PSS procesów o tej nazwie: pamięć współdzielona dzielona proporcjonalnie. Dziesięć nazw o najwyższej średniej w wybranym zakresie.",
+          "title": "Procesy: pamięć (RSS)",
+          "description": "Suma RSS procesów o tej nazwie; pamięć współdzielona liczy się wielokrotnie. Dziesięć nazw o najwyższej średniej w wybranym zakresie.",
           "unit": "GiB",
           "width": 6,
           "expr": [
-            "topk_avg(10, namedprocess_namegroup_memory_bytes{host=\"jayce\",memtype=\"proportionalResident\"} / 2^30)"
+            "topk_avg(10, namedprocess_namegroup_memory_bytes{host=\"jayce\",memtype=\"resident\"} / 2^30)"
           ],
           "alias": [
             "{{groupname}}"
@@ -156,12 +156,12 @@
           ]
         },
         {
-          "title": "Procesy: pamięć (PSS)",
-          "description": "Suma PSS procesów o tej nazwie: pamięć współdzielona dzielona proporcjonalnie. Dziesięć nazw o najwyższej średniej w wybranym zakresie.",
+          "title": "Procesy: pamięć (RSS)",
+          "description": "Suma RSS procesów o tej nazwie; pamięć współdzielona liczy się wielokrotnie. Dziesięć nazw o najwyższej średniej w wybranym zakresie.",
           "unit": "GiB",
           "width": 6,
           "expr": [
-            "topk_avg(10, namedprocess_namegroup_memory_bytes{host=\"zilean\",memtype=\"proportionalResident\"} / 2^30)"
+            "topk_avg(10, namedprocess_namegroup_memory_bytes{host=\"zilean\",memtype=\"resident\"} / 2^30)"
           ],
           "alias": [
             "{{groupname}}"
