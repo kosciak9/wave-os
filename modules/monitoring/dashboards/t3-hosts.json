@@ -2,37 +2,63 @@
   "title": "Hosty T3",
   "rows": [
     {
-      "title": "jayce",
+      "title": "Gdzie jest miejsce",
       "panels": [
         {
-          "title": "CPU",
-          "unit": "%",
+          "title": "Wolne rdzenie",
+          "description": "Ile rdzeni stoi bezczynnie (jayce 16, renekton 10, zilean 4).",
+          "unit": "rdzeni",
           "width": 6,
           "expr": [
-            "100 * (1 - avg(rate(node_cpu_seconds_total{host=\"jayce\",mode=\"idle\"}[5m])))",
-            "100 * avg by (mode) (rate(node_cpu_seconds_total{host=\"jayce\",mode=~\"user|system|iowait\"}[5m]))"
+            "sum by (host) (rate(node_cpu_seconds_total{host=~\"jayce|renekton|zilean\",mode=\"idle\"}[5m]))"
           ],
           "alias": [
-            "razem",
-            "{{mode}}"
+            "{{host}}"
           ]
         },
         {
-          "title": "Pamięć",
-          "description": "MemTotal − MemAvailable.",
+          "title": "Wolna pamięć",
+          "description": "Linux: MemAvailable; macOS: free + inactive.",
           "unit": "GiB",
           "width": 6,
           "expr": [
-            "(node_memory_MemTotal_bytes{host=\"jayce\"} - node_memory_MemAvailable_bytes{host=\"jayce\"}) / 2^30",
-            "node_memory_MemTotal_bytes{host=\"jayce\"} / 2^30"
+            "node_memory_MemAvailable_bytes{host=~\"jayce|renekton|zilean\"} / 2^30",
+            "(node_memory_free_bytes{host=~\"jayce|renekton|zilean\"} + node_memory_inactive_bytes{host=~\"jayce|renekton|zilean\"}) / 2^30"
           ],
           "alias": [
-            "zajęta",
-            "całość"
+            "{{host}}",
+            "{{host}}"
           ]
         },
         {
-          "title": "Procesy: CPU",
+          "title": "Zajęte CPU",
+          "unit": "%",
+          "width": 6,
+          "expr": [
+            "100 * (1 - avg by (host) (rate(node_cpu_seconds_total{host=~\"jayce|renekton|zilean\",mode=\"idle\"}[5m])))"
+          ],
+          "alias": [
+            "{{host}}"
+          ]
+        },
+        {
+          "title": "Kolejka na rdzeń",
+          "description": "Load average (5 min) na rdzeń; powyżej 1 zadania czekają na CPU.",
+          "width": 6,
+          "expr": [
+            "node_load5{host=~\"jayce|renekton|zilean\"} / on (host) count by (host) (node_cpu_seconds_total{host=~\"jayce|renekton|zilean\",mode=\"idle\"})"
+          ],
+          "alias": [
+            "{{host}}"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Procesy: jayce",
+      "panels": [
+        {
+          "title": "CPU",
           "description": "100% = jeden rdzeń. Dziesięć nazw o najwyższej średniej w wybranym zakresie.",
           "unit": "%",
           "width": 6,
@@ -44,7 +70,7 @@
           ]
         },
         {
-          "title": "Procesy: pamięć (RSS)",
+          "title": "Pamięć (RSS)",
           "description": "Suma RSS procesów o tej nazwie; pamięć współdzielona liczy się wielokrotnie. Dziesięć nazw o najwyższej średniej w wybranym zakresie.",
           "unit": "GiB",
           "width": 6,
@@ -58,38 +84,11 @@
       ]
     },
     {
-      "title": "renekton",
+      "title": "Procesy: renekton",
       "panels": [
         {
           "title": "CPU",
-          "unit": "%",
-          "width": 6,
-          "expr": [
-            "100 * (1 - avg(rate(node_cpu_seconds_total{host=\"renekton\",mode=\"idle\"}[5m])))",
-            "100 * avg by (mode) (rate(node_cpu_seconds_total{host=\"renekton\",mode=~\"user|system|iowait\"}[5m]))"
-          ],
-          "alias": [
-            "razem",
-            "{{mode}}"
-          ]
-        },
-        {
-          "title": "Pamięć",
-          "description": "Pamięć bez free i inactive.",
-          "unit": "GiB",
-          "width": 6,
-          "expr": [
-            "(node_memory_total_bytes{host=\"renekton\"} - node_memory_free_bytes{host=\"renekton\"} - node_memory_inactive_bytes{host=\"renekton\"}) / 2^30",
-            "node_memory_total_bytes{host=\"renekton\"} / 2^30"
-          ],
-          "alias": [
-            "zajęta",
-            "całość"
-          ]
-        },
-        {
-          "title": "Procesy: CPU",
-          "description": "Średnie %CPU z ps (100% = jeden rdzeń). Dziesięć nazw o najwyższej średniej w wybranym zakresie.",
+          "description": "100% = jeden rdzeń. Dziesięć nazw o najwyższej średniej w wybranym zakresie.",
           "unit": "%",
           "width": 6,
           "expr": [
@@ -100,7 +99,7 @@
           ]
         },
         {
-          "title": "Procesy: pamięć (RSS)",
+          "title": "Pamięć (RSS)",
           "description": "Suma RSS procesów o tej nazwie; pamięć współdzielona liczy się wielokrotnie. Dziesięć nazw o najwyższej średniej w wybranym zakresie.",
           "unit": "GiB",
           "width": 6,
@@ -114,37 +113,10 @@
       ]
     },
     {
-      "title": "zilean",
+      "title": "Procesy: zilean",
       "panels": [
         {
           "title": "CPU",
-          "unit": "%",
-          "width": 6,
-          "expr": [
-            "100 * (1 - avg(rate(node_cpu_seconds_total{host=\"zilean\",mode=\"idle\"}[5m])))",
-            "100 * avg by (mode) (rate(node_cpu_seconds_total{host=\"zilean\",mode=~\"user|system|iowait\"}[5m]))"
-          ],
-          "alias": [
-            "razem",
-            "{{mode}}"
-          ]
-        },
-        {
-          "title": "Pamięć",
-          "description": "MemTotal − MemAvailable.",
-          "unit": "GiB",
-          "width": 6,
-          "expr": [
-            "(node_memory_MemTotal_bytes{host=\"zilean\"} - node_memory_MemAvailable_bytes{host=\"zilean\"}) / 2^30",
-            "node_memory_MemTotal_bytes{host=\"zilean\"} / 2^30"
-          ],
-          "alias": [
-            "zajęta",
-            "całość"
-          ]
-        },
-        {
-          "title": "Procesy: CPU",
           "description": "100% = jeden rdzeń. Dziesięć nazw o najwyższej średniej w wybranym zakresie.",
           "unit": "%",
           "width": 6,
@@ -156,7 +128,7 @@
           ]
         },
         {
-          "title": "Procesy: pamięć (RSS)",
+          "title": "Pamięć (RSS)",
           "description": "Suma RSS procesów o tej nazwie; pamięć współdzielona liczy się wielokrotnie. Dziesięć nazw o najwyższej średniej w wybranym zakresie.",
           "unit": "GiB",
           "width": 6,
