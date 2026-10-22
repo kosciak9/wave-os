@@ -7,7 +7,9 @@
 let
   logDirectory = "${config.home.homeDirectory}/Library/Logs/T3Code";
   settingsFile = "${environment.T3CODE_HOME}/userdata/settings.json";
-  settings = pkgs.writeText "t3code-settings.json" (builtins.toJSON (import ./server-settings.nix));
+  settings = pkgs.writeText "t3code-settings.json" (
+    builtins.toJSON (import ./server-settings.nix { inherit (config.home) profileDirectory; })
+  );
   theme = pkgs.writeText "kanagawa-dragon.json" (builtins.toJSON (import ./kanagawa-dragon.nix));
   arguments = [
     (lib.getExe pkgs.t3code-cli)

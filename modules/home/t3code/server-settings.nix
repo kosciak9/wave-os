@@ -1,4 +1,5 @@
 # Merged into each server's settings.json; T3 keeps every other key.
+{ profileDirectory }:
 {
   favorites = [
     {
@@ -22,6 +23,7 @@
     claudeAgent = {
       driver = "claudeAgent";
       enabled = true;
+      config.binaryPath = "${profileDirectory}/bin/claude";
     };
     opencode = {
       driver = "opencode";
