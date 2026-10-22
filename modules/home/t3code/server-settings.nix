@@ -44,6 +44,14 @@
       runOnWorktreeCreate = true;
       async = false;
     }
+    {
+      id = "worktree-teardown";
+      name = "Tear down worktree";
+      command = builtins.readFile ./worktree-teardown.sh;
+      icon = "configure";
+      runOnWorktreeCreate = false;
+      runOnSettle = true;
+    }
   ];
   worktreeCleanup.mode = "off";
   storageCleanup.worktreeSettledAfterDays = 7;
