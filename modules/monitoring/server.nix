@@ -8,6 +8,18 @@ let
     "renekton"
     "zilean"
   ];
+  # OpenWrt devices from modre-kalhotky, resolved by the router's dnsmasq on the home LAN.
+  openwrtHosts = [
+    "krtek"
+    "myska"
+    "zajic"
+  ];
+  staticTargets =
+    domain: port:
+    map (host: {
+      targets = [ "${host}${domain}:${port}" ];
+      labels = { inherit host; };
+    });
 in
 {
   services = {
@@ -20,10 +32,23 @@ in
         scrape_configs = [
           {
             job_name = "node";
-            static_configs = map (host: {
-              targets = [ "${host}:9100" ];
-              labels = { inherit host; };
-            }) nodeHosts;
+            static_configs = staticTargets "" "9100" nodeHosts;
+          }
+          {
+            job_name = "openwrt";
+            static_configs = staticTargets ".lan" "9100" openwrtHosts;
+          }
+          {
+            # The ucode exporter repeats the Lua exporter's node_* metrics; keep only its own.
+            job_name = "openwrt-dnsmasq";
+            static_configs = staticTargets ".lan" "9101" [ "krtek" ];
+            metric_relabel_configs = [
+              {
+                source_labels = [ "__name__" ];
+                regex = "dnsmasq_.+|dhcp_host_info";
+                action = "keep";
+              }
+            ];
           }
         ];
       };
