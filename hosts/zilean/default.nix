@@ -5,6 +5,8 @@
     ./hardware.nix
     ../../modules/wave/nixos.nix
     ../../modules/sops.nix
+    ../../modules/monitoring/nixos.nix
+    ../../modules/monitoring/server.nix
   ];
 
   boot = {

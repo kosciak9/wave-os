@@ -13,6 +13,7 @@
     ./dashboard.nix
     ../../modules/wave/nixos.nix
     ../../modules/sops.nix
+    ../../modules/monitoring/nixos.nix
     "${modulesPath}/profiles/all-hardware.nix"
   ];
 
