@@ -329,6 +329,11 @@
       ];
     };
     fuse.enable = true;
+    # Lets scheme handlers registered by AppImages (e.g. scape://) exec them directly.
+    appimage = {
+      enable = true;
+      binfmt = true;
+    };
     gnupg.agent = {
       enable = true;
     };
