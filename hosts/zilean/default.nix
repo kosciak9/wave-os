@@ -6,6 +6,7 @@
     ../../modules/wave/nixos.nix
     ../../modules/sops.nix
     ../../modules/monitoring/nixos.nix
+    ../../modules/monitoring/processes.nix
     ../../modules/monitoring/server.nix
   ];
 

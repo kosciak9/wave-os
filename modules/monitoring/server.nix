@@ -8,6 +8,11 @@ let
     "renekton"
     "zilean"
   ];
+  # Linux T3 Code hosts with process-exporter; renekton reports processes through node_exporter.
+  processHosts = [
+    "jayce"
+    "zilean"
+  ];
   # OpenWrt devices from modre-kalhotky, resolved by the router's dnsmasq on the home LAN.
   openwrtHosts = [
     "krtek"
@@ -33,6 +38,10 @@ in
           {
             job_name = "node";
             static_configs = staticTargets "" "9100" nodeHosts;
+          }
+          {
+            job_name = "process";
+            static_configs = staticTargets "" "9256" processHosts;
           }
           {
             job_name = "openwrt";
