@@ -61,6 +61,8 @@ in
         "-retentionPeriod=90d"
         # OpenWrt's logd forwards syslog over UDP; 514 would need a privileged port.
         "-syslog.listenAddr.udp=:5140"
+        # RFC 3164 timestamps carry no zone or year, and the devices log in UTC.
+        "-syslog.useLocalTimestamp.udp"
       ];
     };
   };
