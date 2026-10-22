@@ -11,6 +11,7 @@
     ../../modules/sops.nix
     ../../modules/caddy/darwin.nix
     ../../modules/cliproxyapi/darwin.nix
+    ../../modules/monitoring/darwin.nix
     ./firewall.nix
     ./network-guard.nix
     ./power.nix

@@ -1,0 +1,80 @@
+{
+  "title": "Maszyny",
+  "rows": [
+    {
+      "title": "Dostępność i obciążenie",
+      "panels": [
+        {
+          "title": "Odpytywane cele",
+          "description": "1 gdy ostatnie odpytanie się powiodło.",
+          "width": 4,
+          "expr": ["up"],
+          "alias": ["{{job}} {{host}}"]
+        },
+        {
+          "title": "CPU",
+          "unit": "%",
+          "width": 4,
+          "expr": [
+            "100 * (1 - avg by (host) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])))"
+          ],
+          "alias": ["{{host}}"]
+        },
+        {
+          "title": "Load average (1 min)",
+          "width": 4,
+          "expr": ["node_load1"],
+          "alias": ["{{host}}"]
+        }
+      ]
+    },
+    {
+      "title": "Pamięć i dyski",
+      "panels": [
+        {
+          "title": "Zajęta pamięć",
+          "description": "Linux: MemAvailable; macOS: pamięć bez free i inactive.",
+          "unit": "%",
+          "width": 6,
+          "expr": [
+            "100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)",
+            "100 * (1 - (node_memory_free_bytes + node_memory_inactive_bytes) / node_memory_total_bytes)"
+          ],
+          "alias": ["{{host}}", "{{host}}"]
+        },
+        {
+          "title": "Wolne miejsce na dyskach",
+          "unit": "%",
+          "width": 6,
+          "expr": [
+            "100 * node_filesystem_avail_bytes{fstype=~\"ext4|btrfs|xfs|vfat|apfs\"} / node_filesystem_size_bytes{fstype=~\"ext4|btrfs|xfs|vfat|apfs\"}"
+          ],
+          "alias": ["{{host}} {{mountpoint}}"]
+        }
+      ]
+    },
+    {
+      "title": "Sieć",
+      "panels": [
+        {
+          "title": "Odbiór",
+          "unit": "B/s",
+          "width": 6,
+          "expr": [
+            "sum by (host) (rate(node_network_receive_bytes_total{device!~\"lo|lo0\"}[5m]))"
+          ],
+          "alias": ["{{host}}"]
+        },
+        {
+          "title": "Wysyłka",
+          "unit": "B/s",
+          "width": 6,
+          "expr": [
+            "sum by (host) (rate(node_network_transmit_bytes_total{device!~\"lo|lo0\"}[5m]))"
+          ],
+          "alias": ["{{host}}"]
+        }
+      ]
+    }
+  ]
+}

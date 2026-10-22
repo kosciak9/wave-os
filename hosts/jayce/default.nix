@@ -9,6 +9,7 @@
   imports = [
     ../../modules/wave/nixos.nix
     ../../modules/sops.nix
+    ../../modules/monitoring/nixos.nix
     ./hardware.nix
     ./user.nix
   ];
