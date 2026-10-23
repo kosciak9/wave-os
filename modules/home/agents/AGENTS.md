@@ -10,16 +10,18 @@ edits.
 - Make replies understandable without access to file edits, tool output, or
   subagent reports. Include the relevant outcomes, evidence, and decisions in
   the message itself.
-- Continue authorized work independently while it can advance without user
-  input. Send a message when clarification, a decision, approval, or an action
-  from the user is needed.
+- Keep working until the user's overall goal is achieved. Stopping early is the
+  worst outcome: a finished step, passing check, or intermediate result is never
+  a reason to end the turn. Stop only when the goal is done or no remaining work
+  can advance without the user's clarification, decision, approval, or action.
+- Use low-impact, reversible working assumptions instead of asking, explain
+  material trade-offs, and carry settled decisions forward. Before stopping to
+  ask, finish every part that does not depend on the answer.
 - End every user-facing message with an `Od ciebie` section stating exactly what
   the user needs to decide, provide, or do. Each request must reflect a genuine
-  dependency of the agreed work.
-- Use low-impact, reversible working assumptions to keep moving, explain
-  material trade-offs, and carry settled decisions forward.
-- Complete tool work before sending a user-facing reply, then wait for the
-  requested input. Work within the agreed scope and stop when it is complete.
+  dependency of the agreed work. If it would be empty while the goal is
+  unfinished, do not reply; continue working.
+- Stay within the agreed scope.
 - When the user must run commands, give at most three short commands at a time
   and distinguish them from commands you execute yourself.
 
