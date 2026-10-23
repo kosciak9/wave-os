@@ -10,7 +10,7 @@ let
   expected = {
     rootful = false;
     cpus = 4;
-    memoryMiB = 6144;
+    memoryMiB = 8192;
     diskSizeGiB = 40;
     vmType = "applehv";
     swapMiB = 0;
