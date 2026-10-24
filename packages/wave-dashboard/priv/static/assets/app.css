@@ -70,26 +70,18 @@ code, .mono { font-family: var(--font-mono); font-size: inherit; }
 
 /* Single-column grids take their width from the screen, not from their widest
    line, so a long unbroken title is cut off instead of widening the page. */
-.page, .column-main, .column-side, .card, .rows { grid-template-columns: minmax(0, 1fr); }
+.page, .card, .rows { grid-template-columns: minmax(0, 1fr); }
 
-.columns {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: start;
-  gap: 1rem;
-}
+.dashboard-grid, .dashboard-column { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 1rem; }
+.dashboard-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 1rem; }
 
-.column-main {
-  display: grid;
-  gap: 1rem;
-  flex: 999 1 0;
-  min-inline-size: 60%;
-}
-
-.column-side {
-  display: grid;
-  gap: 1rem;
-  flex: 1 1 20rem;
+@media (width < 48rem) {
+  .dashboard-columns { grid-template-columns: minmax(0, 1fr); }
+  .dashboard-column { display: contents; }
+  #agents-card { order: 1; }
+  #apps-card { order: 2; }
+  #hosts-card { order: 3; }
+  #quota-card { order: 4; }
 }
 
 /* Page changes: the brand stays put while the page under it fades over. */
@@ -157,6 +149,7 @@ code, .mono { font-family: var(--font-mono); font-size: inherit; }
   padding: 1rem 1.125rem;
   border-radius: var(--radius);
   background: var(--surface);
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--border) 65%, transparent);
 }
 
 .card-header {
@@ -222,16 +215,15 @@ a.row .row-title { transition: color var(--fade); }
   white-space: nowrap;
 }
 
-/* Separates the parts of a detail line; Overpass's own middle dot sits off-center. */
+/* Separate metadata without punctuation glyphs. */
 .sep > * + *::before {
   content: "";
   display: inline-block;
-  inline-size: 3px;
-  block-size: 3px;
+  inline-size: 1px;
+  block-size: 0.75em;
   margin-inline: 0.5em;
-  vertical-align: 0.25em;
-  background: currentColor;
-  opacity: 0.6;
+  vertical-align: -0.05em;
+  background: var(--border);
 }
 
 /* In a narrow card a row's detail moves below its title. */
@@ -239,25 +231,18 @@ a.row .row-title { transition: color var(--fade); }
   .row { flex-wrap: wrap; row-gap: 0; }
   .row > .row-title { flex: 1 1 0; }
   .row > .row-meta { flex-basis: 100%; margin-inline-start: 0; white-space: normal; }
-  .row:has(> .status) > .row-meta { padding-inline-start: calc(0.5rem + 0.625rem); }
 }
 
-.status {
-  inline-size: 0.5rem;
-  block-size: 0.5rem;
-  border-radius: 1px;
-  flex-shrink: 0;
-  background: var(--text-faint);
-  transition: background-color var(--change);
-}
-
-.status.up { background: var(--ok); }
-.status.down { background: var(--error); }
-
-/* Agents: waiting for a person stands out, work in progress is the accent, the rest stays quiet. */
-.status.agent-attention { background: var(--warning); }
-.status.agent-working { background: var(--accent); }
+/* Healthy inventory rows stay quiet; problems are described in text. */
+.status-error { color: var(--error); }
+.row-dim .row-title { color: var(--text-faint); }
 .agent-reason { color: var(--warning); }
+.inventory-card .rows { grid-template-columns: repeat(auto-fill, minmax(min(8.5rem, 100%), 1fr)); gap: 0.375rem 0.75rem; }
+@container (inline-size < 24rem) { .inventory-card .rows { grid-template-columns: repeat(auto-fill, minmax(min(7rem, 100%), 1fr)); } }
+.agents-card .rows { grid-template-columns: repeat(auto-fill, minmax(min(13rem, 100%), 1fr)); gap: 0.375rem 0.75rem; }
+.inventory-card .row, .agents-card .row { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 0.125rem; }
+.inventory-card .row > .row-meta, .agents-card .row > .row-meta { min-inline-size: 0; margin-inline-start: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agents-card .row > .row-meta { white-space: normal; overflow-wrap: anywhere; }
 
 /* Buttons */
 .button {
@@ -337,23 +322,62 @@ a.row .row-title { transition: color var(--fade); }
 .deadline-expired .countdown-value { color: var(--warning); }
 
 .deadline-grid {
-  --day: 1rem;
+  --day: 1.75rem;
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  flex: 0 1 auto;
+  min-inline-size: 0;
   max-inline-size: 100%;
-  /* Sits at the end of the countdown's row, and stays there when it wraps below it. */
-  margin-inline-start: auto;
+  gap: 0.75rem;
 }
 
 .deadline-week {
   display: grid;
-  grid-template-columns: repeat(4, var(--day));
-  grid-auto-rows: var(--day);
-  gap: 3px;
+  grid-template-columns: repeat(4, minmax(0, var(--day)));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  gap: 4px;
 }
+
+.deadline-day { aspect-ratio: 1; inline-size: 100%; }
 
 /* Days left are empty cells, days gone are filled with the accent, today stands out in the text color. */
 .deadline-day { border-radius: var(--radius); background: var(--surface-raised); }
 .deadline-day.elapsed { background: color-mix(in oklch, var(--accent) 70%, var(--surface)); }
 .deadline-day.today { background: var(--text); }
+
+/* Quota stays quiet until a fresh limit needs attention. */
+.quota-list, .quota-detail, .quota-window { display: grid; gap: 0.5rem; min-inline-size: 0; }
+.quota-list, .quota-extra { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.875rem 1.25rem; align-items: start; }
+.quota-account { min-inline-size: 0; }
+.quota-account[open], .quota-more { grid-column: 1 / -1; }
+.quota-account > .quota-summary { display: grid; grid-template-columns: minmax(0, 1fr) auto 0.75rem; align-items: center; gap: 0.375rem 0.5rem; }
+.quota-account > summary .quota-heading { display: contents; }
+.quota-account > summary .row-title { grid-column: 1; grid-row: 1; }
+.quota-account > summary .quota-value { grid-column: 2; grid-row: 1; margin-inline-start: 0; }
+.quota-account > summary::after { grid-column: 3; grid-row: 1; }
+.quota-account > summary .quota-bar { grid-column: 1 / -1; grid-row: 2; inline-size: 100%; }
+.quota-account > summary .quota-heading .card-detail { grid-column: 1 / -1; grid-row: 3; }
+.quota-account > summary > .card-detail { grid-column: 1 / -1; }
+@container (inline-size < 24rem) { .quota-list, .quota-extra { grid-template-columns: minmax(0, 1fr); } }
+.quota-summary { display: flex; align-items: baseline; gap: 0.5rem; padding-block: 0.25rem; }
+.quota-account > summary, .quota-more > summary { cursor: pointer; list-style: none; }
+.quota-account > summary::-webkit-details-marker, .quota-more > summary::-webkit-details-marker { display: none; }
+.quota-account > summary::after, .quota-more > summary::before { content: ""; display: inline-block; inline-size: 0.4rem; block-size: 0.4rem; border-block-end: 1px solid var(--text-muted); border-inline-end: 1px solid var(--text-muted); transform: rotate(-45deg); flex-shrink: 0; }
+.quota-more > summary::before { margin-inline-end: 0.625rem; }
+.quota-account[open] > summary::after, .quota-more[open] > summary::before { transform: rotate(45deg); }
+.quota-value { margin-inline-start: auto; flex-shrink: 0; font-family: var(--font-mono); font-size: var(--text-size-small); }
+.quota-low { color: var(--warning); }
+.quota-critical { color: var(--error); }
+.quota-detail { padding-block: 0.5rem; }
+.quota-heading { display: grid; min-inline-size: 0; flex: 1; }
+.quota-heading .card-detail { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.quota-bar { inline-size: 3.5rem; block-size: 6px; flex-shrink: 0; fill: currentColor; color: var(--text-faint); }
+.quota-track { fill: var(--surface-raised); }
+.quota-marker { stroke: var(--text); stroke-width: 2; }
+.quota-detail .quota-bar { inline-size: 100%; }
+.quota-bar.quota-on-pace { color: var(--ok); }
+.quota-bar.quota-low { color: var(--warning); }
+.quota-bar.quota-critical { color: var(--error); }
+.quota-more > summary { color: var(--text-muted); cursor: pointer; font-size: var(--text-size-small); padding-block: 0.375rem; }
+.quota-extra { display: grid; margin-block-start: 0.5rem; }

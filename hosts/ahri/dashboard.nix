@@ -24,6 +24,8 @@ in
   sops = {
     secrets = {
       "cloudflare/dns-api-token" = { };
+      "cliproxyapi/quota-key".restartUnits = [ "wave-dashboard.service" ];
+      "cliproxyapi/base-url".restartUnits = [ "wave-dashboard.service" ];
     }
     // lib.genAttrs (map t3Secret t3Servers) (_: {
       restartUnits = [ "wave-dashboard.service" ];
@@ -77,9 +79,11 @@ in
     serviceConfig = {
       ExecStart = "${lib.getExe pkgs.wave-dashboard} start";
       # Decrypted secrets are root's; credentials hand them to the dynamic user.
-      LoadCredential = map (
-        server: "t3-${server}:${config.sops.secrets.${t3Secret server}.path}"
-      ) t3Servers;
+      LoadCredential = [
+        "quota-key:${config.sops.secrets."cliproxyapi/quota-key".path}"
+        "quota-url:${config.sops.secrets."cliproxyapi/base-url".path}"
+      ]
+      ++ map (server: "t3-${server}:${config.sops.secrets.${t3Secret server}.path}") t3Servers;
       DynamicUser = true;
       StateDirectory = "wave-dashboard";
       StateDirectoryMode = "0700";

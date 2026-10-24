@@ -3,13 +3,15 @@ defmodule WaveDashboardWeb.HomeLive do
 
   import WaveDashboardWeb.Layouts, only: [wave_logo: 1]
 
-  alias WaveDashboard.{Agents, Apps, Clock, Deadline, Tailnet}
+  alias WaveDashboard.{Agents, Apps, Clock, Deadline, Quota, Tailnet}
+  alias Phoenix.LiveView.JS
 
   @impl true
   def mount(_params, _session, socket) do
     if connected?(socket) do
       Apps.subscribe()
       Agents.subscribe()
+      Quota.subscribe()
       Tailnet.subscribe()
       Deadline.subscribe()
       Clock.tick_next_minute(:tick)
@@ -17,8 +19,18 @@ defmodule WaveDashboardWeb.HomeLive do
 
     {:ok,
      socket
-     |> assign(apps: Apps.list(), hosts: Tailnet.hosts(), agents: Agents.servers())
-     |> assign(editing?: false, deadline_error: nil, draft: nil)
+     |> assign(
+       apps: Apps.list(),
+       hosts: Tailnet.hosts(),
+       agents: Agents.servers(),
+       quota: Quota.snapshot()
+     )
+     |> assign(
+       editing?: false,
+       deadline_error: nil,
+       draft: nil,
+       preview?: Application.get_env(:wave_dashboard, :preview_mode, false)
+     )
      |> assign_now()
      |> assign_deadline()}
   end
@@ -27,6 +39,7 @@ defmodule WaveDashboardWeb.HomeLive do
   def handle_info({:apps, apps}, socket), do: {:noreply, assign(socket, apps: apps)}
   def handle_info({:hosts, hosts}, socket), do: {:noreply, assign(socket, hosts: hosts)}
   def handle_info({:agents, servers}, socket), do: {:noreply, assign(socket, agents: servers)}
+  def handle_info({:quota, quota}, socket), do: {:noreply, assign(socket, quota: quota)}
   def handle_info(:deadline_changed, socket), do: {:noreply, assign_deadline(socket)}
 
   def handle_info(:tick, socket) do
@@ -77,28 +90,31 @@ defmodule WaveDashboardWeb.HomeLive do
         <span class="brand"><.wave_logo /> ahri.wave</span>
       </header>
 
-      <div class="columns">
-        <main class="column-main">
-          <.deadline_form
-            :if={@editing? or not is_struct(@deadline, Deadline)}
-            deadline={@deadline}
-            draft={@draft}
-            error={@deadline_error}
-            editing?={@editing?}
-          />
-          <.deadline
-            :if={not @editing? and is_struct(@deadline, Deadline)}
-            deadline={@deadline}
-            now={@local_now}
-          />
-          <.agents :if={@agents != []} servers={@agents} now={@now} />
-        </main>
-
-        <aside class="column-side">
-          <.apps apps={@apps} />
-          <.hosts hosts={@hosts} now={@now} />
-        </aside>
-      </div>
+      <p :if={@preview?} class="banner" role="status">Preview / sample data, not live ahri.</p>
+      <main class="dashboard-grid">
+        <.deadline_form
+          :if={@editing? or not is_struct(@deadline, Deadline)}
+          deadline={@deadline}
+          draft={@draft}
+          error={@deadline_error}
+          editing?={@editing?}
+        />
+        <.deadline
+          :if={not @editing? and is_struct(@deadline, Deadline)}
+          deadline={@deadline}
+          now={@local_now}
+        />
+        <div class="dashboard-columns">
+          <div class="dashboard-column">
+            <.agents servers={@agents} now={@now} />
+            <.hosts hosts={@hosts} now={@now} />
+          </div>
+          <div class="dashboard-column">
+            <.apps apps={@apps} />
+            <.quota snapshot={@quota} now={@now} />
+          </div>
+        </div>
+      </main>
     </div>
     """
   end
@@ -123,7 +139,7 @@ defmodule WaveDashboardWeb.HomeLive do
       )
 
     ~H"""
-    <section class="card">
+    <section class="card deadline-editor">
       <h2 class="card-title">Deadline</h2>
       <p :if={@deadline == :corrupt} class="banner banner-error" role="alert">
         Saved deadline data is corrupt. Create a new deadline or reset it.
@@ -238,10 +254,10 @@ defmodule WaveDashboardWeb.HomeLive do
       )
 
     ~H"""
-    <section class="card">
+    <section class="card agents-card" id="agents-card">
       <div class="card-header">
         <h2 class="card-title">Agents</h2>
-        <span class="card-detail">{Enum.map_join(@servers, " · ", & &1.name)}</span>
+        <span class="card-detail">{Enum.map_join(@servers, " / ", & &1.name)}</span>
       </div>
       <p :for={server <- @problems} class="banner">
         <%= if server.status == :not_configured do %>
@@ -257,7 +273,6 @@ defmodule WaveDashboardWeb.HomeLive do
         <ul class="rows">
           <li :for={thread <- threads}>
             <a href={thread.url} class="row">
-              <span class={["status", "agent-" <> Atom.to_string(thread.state)]}></span>
               <span class="row-title">{thread.title}</span>
               <span class="row-meta sep">
                 <span :if={thread.reason} class="agent-reason">{reason(thread.reason)}</span>
@@ -273,6 +288,206 @@ defmodule WaveDashboardWeb.HomeLive do
     """
   end
 
+  attr :snapshot, :map, required: true
+  attr :now, DateTime, required: true
+
+  defp quota(assigns) do
+    ~H"""
+    <section class="card quota-card" id="quota-card">
+      <div class="card-header">
+        <h2 class="card-title">CLIproxy</h2>
+        <span class="card-detail">remaining</span>
+      </div>
+      <p :if={@snapshot.status == :loading} class="muted" role="status">Loading limits…</p>
+      <p :if={@snapshot.status == :not_configured} class="muted">Quota access is not configured.</p>
+      <p :if={@snapshot.status == :unavailable} class="banner" role="status">
+        Quota is not responding{if @snapshot.accounts != [], do: "; last known values below"}.
+      </p>
+      <p :if={@snapshot.status == :ok and @snapshot.accounts == []} class="muted">
+        No accounts reported.
+      </p>
+      <div :if={@snapshot.accounts != []} class="quota-list">
+        <.quota_account
+          :for={account <- Enum.take(@snapshot.accounts, 4)}
+          account={account}
+          snapshot={@snapshot}
+          now={@now}
+        />
+        <details
+          :if={length(@snapshot.accounts) > 4}
+          class="quota-more"
+          id="quota-more"
+          phx-mounted={JS.ignore_attributes(["open"])}
+        >
+          <summary>
+            {length(@snapshot.accounts) - 4} more {if length(@snapshot.accounts) == 5,
+              do: "account",
+              else: "accounts"}
+          </summary>
+          <div class="quota-extra">
+            <.quota_account
+              :for={account <- Enum.drop(@snapshot.accounts, 4)}
+              account={account}
+              snapshot={@snapshot}
+              now={@now}
+            />
+          </div>
+        </details>
+      </div>
+      <span :if={@snapshot.checked_at} class="card-detail">Checked
+      <.time at={@snapshot.checked_at} now={@now} /></span>
+    </section>
+    """
+  end
+
+  attr :account, :map, required: true
+  attr :snapshot, :map, required: true
+  attr :now, DateTime, required: true
+
+  defp quota_account(assigns) do
+    limit = Quota.lowest(assigns.account)
+
+    current? =
+      limit != nil and Quota.current?(assigns.account, limit, assigns.snapshot, assigns.now)
+
+    assigns = assign(assigns, limit: limit, current?: current?)
+
+    ~H"""
+    <details
+      class="quota-account"
+      id={"quota-" <> @account["id"]}
+      phx-mounted={JS.ignore_attributes(["open"])}
+    >
+      <summary class="quota-summary">
+        <span class="quota-heading">
+          <span class="row-title">{@account["label"]}</span>
+          <span :if={@limit} class={["card-detail", "sep", status_tone(@account["status"])]}>
+            <span>{@limit["label"]}</span><span>{quota_caption(@account, @limit, @current?)}</span>
+          </span>
+        </span>
+        <.quota_bar :if={@limit} limit={@limit} current?={@current?} />
+        <span :if={@limit} class={["quota-value", @current? && quota_tone(@limit)]}>
+          {percent(@limit["remaining_percent"])}
+        </span>
+        <span :if={!@limit} class={["card-detail", status_tone(@account["status"])]}>{quota_status(
+          @account["status"]
+        )}</span>
+      </summary>
+      <div class="quota-detail">
+        <p class="card-detail sep">
+          <span>{@account["provider"]}</span><span>{quota_status(@account["status"])}</span><span :if={
+            @account["stale"]
+          }>stale</span>
+        </p>
+        <p :if={@account["limits"] == []} class="muted">No quota data reported.</p>
+        <div :for={limit <- @account["limits"]} class="quota-window">
+          <div class="quota-summary">
+            <span class="row-title">{limit["label"]}</span>
+            <span class={[
+              "quota-value",
+              Quota.current?(@account, limit, @snapshot, @now) && quota_tone(limit)
+            ]}>{percent(limit["remaining_percent"])}</span>
+          </div>
+          <.quota_bar
+            :if={is_number(limit["remaining_percent"])}
+            limit={limit}
+            current?={Quota.current?(@account, limit, @snapshot, @now)}
+          />
+          <span class="card-detail">{if Quota.current?(@account, limit, @snapshot, @now),
+            do: pace_label(limit),
+            else: "Last known / tempo unknown"}</span>
+          <span :if={is_integer(limit["reset_at"]) and limit["reset_at"] > 0} class="card-detail">
+            <%= if limit["reset_at"] > DateTime.to_unix(@now) do %>
+              Resets <.time at={DateTime.from_unix!(limit["reset_at"])} now={@now} />
+            <% else %>
+              Awaiting quota refresh
+            <% end %>
+          </span>
+        </div>
+      </div>
+    </details>
+    """
+  end
+
+  attr :limit, :map, required: true
+  attr :current?, :boolean, required: true
+
+  defp quota_bar(assigns) do
+    assigns =
+      assign(assigns,
+        expected: if(assigns.current?, do: assigns.limit["pace"]["expected_remaining_percent"])
+      )
+
+    ~H"""
+    <svg
+      class={["quota-bar", @current? && quota_tone(@limit)]}
+      viewBox="0 0 100 8"
+      preserveAspectRatio="none"
+      role="img"
+      aria-label={bar_label(@limit, @current?, @expected)}
+    >
+      <rect class="quota-track" width="100" height="8" />
+      <rect width={@limit["remaining_percent"] || 0} height="8" />
+      <line
+        :if={is_number(@expected)}
+        class="quota-marker"
+        vector-effect="non-scaling-stroke"
+        x1={@expected}
+        x2={@expected}
+        y1="0"
+        y2="8"
+      />
+    </svg>
+    """
+  end
+
+  defp bar_label(limit, current?, expected) do
+    tempo = if current?, do: pace_label(limit), else: "last known, tempo unknown"
+    marker = if is_number(expected), do: ", expected #{percent(expected)}", else: ""
+    "#{limit["label"]}: #{percent(limit["remaining_percent"])} remaining, #{tempo}#{marker}"
+  end
+
+  defp quota_caption(account, limit, current?) do
+    cond do
+      account["status"] != "ok" -> quota_status(account["status"])
+      not current? -> "last known"
+      true -> pace_label(limit)
+    end
+  end
+
+  defp status_tone("cooldown"), do: "quota-critical"
+  defp status_tone("error"), do: "quota-low"
+  defp status_tone(_), do: nil
+
+  defp pace_label(%{"pace" => %{"state" => "reserve"}}), do: "reserve"
+  defp pace_label(%{"pace" => %{"state" => "on_pace"}}), do: "on pace"
+  defp pace_label(%{"pace" => %{"state" => "deficit"}}), do: "over pace"
+  defp pace_label(%{"pace" => %{"state" => "exhausted"}}), do: "exhausted"
+  defp pace_label(_), do: "tempo unknown"
+
+  defp percent(value) when is_number(value), do: "#{round(value)}%"
+  defp percent(_), do: "Unknown"
+
+  defp quota_tone(%{"pace" => %{"state" => "deficit"}}), do: "quota-low"
+  defp quota_tone(%{"pace" => %{"state" => "exhausted"}}), do: "quota-critical"
+
+  defp quota_tone(%{"pace" => %{"state" => state}}) when state in ["reserve", "on_pace"],
+    do: "quota-on-pace"
+
+  defp quota_tone(%{"remaining_percent" => percent}) when is_number(percent) and percent <= 10,
+    do: "quota-critical"
+
+  defp quota_tone(%{"remaining_percent" => percent}) when is_number(percent) and percent <= 25,
+    do: "quota-low"
+
+  defp quota_tone(_), do: nil
+  defp quota_status("ok"), do: "Available"
+  defp quota_status("cooldown"), do: "Cooling down"
+  defp quota_status("disabled"), do: "Disabled"
+  defp quota_status("error"), do: "Quota error"
+  defp quota_status("unavailable"), do: "No quota data"
+  defp quota_status(_), do: "Unknown quota"
+
   defp reason(:question), do: "question"
   defp reason(:approval), do: "approval"
   defp reason(:plan), do: "plan to review"
@@ -281,9 +496,18 @@ defmodule WaveDashboardWeb.HomeLive do
   attr :apps, :list, required: true
 
   defp apps(assigns) do
+    assigns = assign(assigns, checking: Enum.count(assigns.apps, &(&1.status == :unknown)))
+
     ~H"""
-    <section class="card">
-      <h2 class="card-title">Apps</h2>
+    <section class="card inventory-card" id="apps-card">
+      <div class="card-header">
+        <h2 class="card-title">Apps</h2>
+        <span :if={@apps != []} class="card-detail">{Enum.count(@apps, &(&1.status == :up))}/{length(
+          @apps
+        )} responding<%= if @checking > 0 do %>
+          / {@checking} checking
+        <% end %></span>
+      </div>
       <div :if={@apps == []} class="muted">
         <p>No apps registered.</p>
         <p>Register one with <code>wave dashboard add</code>.</p>
@@ -293,9 +517,13 @@ defmodule WaveDashboardWeb.HomeLive do
         <ul class="rows">
           <li :for={app <- apps}>
             <a href={Apps.url(app)} target="_blank" rel="noopener noreferrer" class="row">
-              <span class={["status", Atom.to_string(app.status)]} title={status_title(app.status)}></span>
-              <span class="row-title">{app.branch}</span>
-              <span class="row-meta">{app.host}</span>
+              <span class="row-title" title={app.branch}>{app.branch}</span>
+              <span class="row-meta sep" title={app.host}>
+                <span :if={app.status != :up} class={app.status == :down && "status-error"}>{status_title(
+                  app.status
+                )}</span>
+                <span>{app.host}</span>
+              </span>
             </a>
           </li>
         </ul>
@@ -304,16 +532,15 @@ defmodule WaveDashboardWeb.HomeLive do
     """
   end
 
-  defp status_title(:up), do: "Responding"
-  defp status_title(:down), do: "Not responding"
-  defp status_title(:unknown), do: "Not checked yet"
+  defp status_title(:down), do: "down"
+  defp status_title(:unknown), do: "checking"
 
   attr :hosts, :list, required: true
   attr :now, DateTime, required: true
 
   defp hosts(assigns) do
     ~H"""
-    <section class="card">
+    <section class="card inventory-card" id="hosts-card">
       <div class="card-header">
         <h2 class="card-title">Hosts</h2>
         <span class="card-detail">{Enum.count(@hosts, & &1.online?)}/{length(@hosts)} online</span>
@@ -323,17 +550,13 @@ defmodule WaveDashboardWeb.HomeLive do
           :for={host <- Enum.sort_by(@hosts, &(not &1.online?))}
           class={["row", not host.online? && "row-dim"]}
         >
-          <span
-            class={["status", if(host.online?, do: "up", else: "down")]}
-            title={if host.online?, do: "Online", else: "Offline"}
-          ></span>
-          <span class="row-title">{host.name}</span>
+          <span class="row-title" title={host.name}>{host.name}</span>
           <span class="row-meta">
             <%= cond do %>
               <% host.online? -> %>
                 {host.os}
               <% host.last_seen -> %>
-                seen <.time at={host.last_seen} now={@now} />
+                <span class="sep"><span>offline</span><.time at={host.last_seen} now={@now} /></span>
               <% true -> %>
                 offline
             <% end %>

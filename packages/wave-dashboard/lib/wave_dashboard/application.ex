@@ -16,6 +16,7 @@ defmodule WaveDashboard.Application do
       WaveDashboard.Apps,
       {Task.Supervisor, name: WaveDashboard.TaskSupervisor},
       WaveDashboard.Agents,
+      WaveDashboard.Quota,
       WaveDashboardWeb.Endpoint
     ]
 

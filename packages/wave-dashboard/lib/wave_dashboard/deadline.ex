@@ -8,7 +8,7 @@ defmodule WaveDashboard.Deadline do
   defstruct @enforce_keys
 
   @topic "deadline"
-  @days_per_week_block 8
+  @days_per_week_block 7
 
   def subscribe, do: Phoenix.PubSub.subscribe(WaveDashboard.PubSub, @topic)
 
@@ -73,7 +73,7 @@ defmodule WaveDashboard.Deadline do
     {total, elapsed, remaining}
   end
 
-  @doc "The deadline's days in blocks of eight, each day tagged as elapsed, today or future."
+  @doc "The deadline's days in blocks of seven, each day tagged as elapsed, today or future."
   def grid(%__MODULE__{} = deadline, today) do
     deadline.start_date
     |> Date.range(deadline.end_date)
