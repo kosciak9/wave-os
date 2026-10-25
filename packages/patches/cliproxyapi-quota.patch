@@ -29,7 +29,7 @@ index fc1646c..03468b3 100644
  
  	return s
 diff --git a/internal/api/server_management_v8.go b/internal/api/server_management_v8.go
-index 7f68dad..39a1b18 100644
+index 0a1d10a..3c5a244 100644
 --- a/internal/api/server_management_v8.go
 +++ b/internal/api/server_management_v8.go
 @@ -33,6 +33,7 @@ func (s *Server) registerManagementV8Routes() {
@@ -63,10 +63,10 @@ index 34d428d..487de34 100644
  		return nil, err
 diff --git a/internal/api/quota_endpoint.go b/internal/api/quota_endpoint.go
 new file mode 100644
-index 0000000..74ba935
+index 0000000..830c25d
 --- /dev/null
 +++ b/internal/api/quota_endpoint.go
-@@ -0,0 +1,785 @@
+@@ -0,0 +1,861 @@
 +package api
 +
 +import (
@@ -93,6 +93,7 @@ index 0000000..74ba935
 +	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 +	coreusage "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/usage"
 +	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
++	log "github.com/sirupsen/logrus"
 +)
 +
 +const quotaTTL = 5 * time.Minute
@@ -170,6 +171,9 @@ index 0000000..74ba935
 +				q.key = []byte(key)
 +				q.keyHash = sha256.Sum256(q.key)
 +				coreusage.RegisterNamedPlugin("quota-usage", q)
++				if manager != nil {
++					go q.recoverCooldowns()
++				}
 +			}
 +		}
 +	}
@@ -269,6 +273,9 @@ index 0000000..74ba935
 +			item.Stale = false
 +			if status == "disabled" || status == "unavailable" {
 +				delete(q.cache, id)
++			}
++			if quotaRecoverableCooldown(account, now) && (!exists || now.Sub(cached.checked) >= quotaTTL) {
++				refresh = true
 +			}
 +		} else if !exists || now.Sub(cached.checked) >= quotaTTL {
 +			refresh = true
@@ -399,6 +406,65 @@ index 0000000..74ba935
 +	return ""
 +}
 +
++// quotaRecoverableCooldown reports whether every active cooldown on the account
++// comes from a quota limit, so an upstream snapshot can prove it lifted early.
++func quotaRecoverableCooldown(account *auth.Auth, now time.Time) bool {
++	quotaReason := func(quota auth.QuotaState) bool {
++		return quota.Exceeded && (quota.Reason == "quota" || quota.Reason == "credential_quota")
++	}
++	active := false
++	if account.Quota.NextRecoverAt.After(now) || account.NextRetryAfter.After(now) {
++		if !quotaReason(account.Quota) {
++			return false
++		}
++		active = true
++	}
++	for _, state := range account.ModelStates {
++		if state == nil || !(state.NextRetryAfter.After(now) || state.Quota.NextRecoverAt.After(now)) {
++			continue
++		}
++		if !quotaReason(state.Quota) {
++			return false
++		}
++		active = true
++	}
++	return active
++}
++
++func quotaLimitsAvailable(limits []quotaLimit) bool {
++	for _, limit := range limits {
++		if limit.RemainingPercent == nil || *limit.RemainingPercent <= 0 {
++			return false
++		}
++	}
++	return len(limits) > 0
++}
++
++// recoverCooldowns re-checks quota-cooled accounts without waiting for a
++// snapshot request; the cache TTL bounds how often each one hits upstream.
++func (q *quotaEndpoint) recoverCooldowns() {
++	ticker := time.NewTicker(time.Minute)
++	defer ticker.Stop()
++	for range ticker.C {
++		now := time.Now()
++		accounts := []*auth.Auth{}
++		for _, account := range q.manager.List() {
++			if account != nil && quotaInventoryAccount(account) && quotaLifecycleStatus(account, now) == "cooldown" && quotaRecoverableCooldown(account, now) {
++				accounts = append(accounts, account)
++			}
++		}
++		q.mu.Lock()
++		start := len(accounts) > 0 && !q.refreshing
++		if start {
++			q.refreshing = true
++		}
++		q.mu.Unlock()
++		if start {
++			q.refresh(accounts)
++		}
++	}
++}
++
 +func (q *quotaEndpoint) refresh(accounts []*auth.Auth) {
 +	defer func() { q.mu.Lock(); q.refreshing = false; q.mu.Unlock() }()
 +	jobs := make(chan *auth.Auth)
@@ -415,13 +481,23 @@ index 0000000..74ba935
 +				if exists && cached.version == account.CredentialVersion && cached.epoch == account.RegistrationEpoch && time.Since(cached.checked) < quotaTTL {
 +					continue
 +				}
-+				if quotaLifecycleStatus(account, time.Now()) != "" {
++				lifecycle := quotaLifecycleStatus(account, time.Now())
++				recoverable := lifecycle == "cooldown" && quotaRecoverableCooldown(account, time.Now())
++				if lifecycle != "" && !recoverable {
 +					continue
 +				}
 +				ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 +				limits, status := q.fetch(ctx, account)
 +				cancel()
 +				now := time.Now()
++				// Upstream windows can reset before the recorded Retry-After deadline.
++				if recoverable && status == "ok" && quotaLimitsAvailable(limits) {
++					if _, _, err := q.manager.ResetQuota(context.Background(), account.ID); err != nil {
++						log.WithError(err).Warn("quota: failed to clear recovered cooldown")
++					} else {
++						log.WithField("provider", account.Provider).Info("quota: upstream quota recovered, cooldown cleared")
++					}
++				}
 +				observation := quotaObservation{account: quotaAccount{Status: status, UpdatedAt: now.Unix(), Stale: status == "error", Limits: limits}, checked: now, version: account.CredentialVersion, epoch: account.RegistrationEpoch}
 +				if status == "error" && exists && cached.version == account.CredentialVersion && cached.epoch == account.RegistrationEpoch && len(cached.account.Limits) > 0 && (cached.account.Status == "ok" || cached.account.Status == "error") {
 +					observation.account.Limits = cached.account.Limits
