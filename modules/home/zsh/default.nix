@@ -122,12 +122,60 @@
             zstyle ':fzf-tab:complete:cd:*' disabled-on any
 
             ssh() {
-              # Only plain terminal logins use Mosh; SSH options and commands stay untouched.
+              emulate -L zsh -o extended_glob
+              # Plain terminal logins use Mosh; mosh-server sets its own TERM, so no terminfo is needed.
               if [[ -o interactive && -t 0 && -t 1 && $# -eq 1 && $1 != -* && $1 != ssh://* ]]; then
                 command mosh -- "$1"
-              else
-                command ssh "$@"
+                return
               fi
+              local term=$TERM
+              local -a opts
+              # Replaces Ghostty's ssh-env and ssh-terminfo integration: install xterm-ghostty on the
+              # remote once (remembered by `ghostty +ssh-cache`), else fall back to xterm-256color.
+              if [[ $TERM == xterm-ghostty ]]; then
+                opts=(-o "SetEnv COLORTERM=truecolor" -o "SendEnv TERM_PROGRAM TERM_PROGRAM_VERSION")
+                term=xterm-256color
+                local ghostty=''${GHOSTTY_BIN_DIR:+$GHOSTTY_BIN_DIR/}ghostty key value user host cpath
+                # Options and destination without the remote command, which must not run twice.
+                local -i i=1
+                local rest
+                while (( i <= $# )); do
+                  case ''${@[i]} in
+                    --) (( i++ )); break ;;
+                    -?*)
+                      # After ssh's valueless flags, a lone option letter takes the next word.
+                      rest=''${''${@[i]}##-[46AaCfGgKkMNnqsTtVvXxYy]#}
+                      (( i += ''${#rest} == 1 ? 2 : 1 ))
+                      ;;
+                    *) break ;;
+                  esac
+                done
+                local -a target=("''${@[1,i]}")
+                while read -r key value; do
+                  case $key in
+                    user) user=$value ;;
+                    hostname) host=$value ;;
+                  esac
+                  [[ -n $user && -n $host ]] && break
+                done < <(command ssh -G "$@" 2>/dev/null)
+                if [[ -n $host ]]; then
+                  if "$ghostty" +ssh-cache --host="$user@$host" >/dev/null 2>&1; then
+                    term=xterm-ghostty
+                  else
+                    cpath="$(mktemp -d "''${TMPDIR:-/tmp}/ghostty-ssh.XXXXXX")/socket"
+                    if infocmp -0 -x xterm-ghostty 2>/dev/null | command ssh "''${opts[@]}" \
+                      -o ControlMaster=yes -o ControlPath="$cpath" -o ControlPersist=60s "''${target[@]}" '
+                        infocmp xterm-ghostty >/dev/null 2>&1 && exit 0
+                        command -v tic >/dev/null 2>&1 && mkdir -p ~/.terminfo && tic -x - 2>/dev/null
+                      ' 2>/dev/null; then
+                      term=xterm-ghostty
+                      opts+=(-o "ControlPath=$cpath")
+                      "$ghostty" +ssh-cache --add="$user@$host" >/dev/null 2>&1
+                    fi
+                  fi
+                fi
+              fi
+              TERM=$term command ssh "''${opts[@]}" "$@"
             }
 
             cpu_count() {

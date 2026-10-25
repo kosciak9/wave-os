@@ -27,7 +27,8 @@
       theme = "kanagawa";
       cursor-style = "underline";
       custom-shader = [ "${config.xdg.configHome}/ghostty/shaders/cursor_warp.glsl" ];
-      shell-integration-features = "no-cursor,ssh-env,ssh-terminfo,sudo,title";
+      # SSH integration lives in the zsh ssh() wrapper, which Ghostty's own ssh() would replace.
+      shell-integration-features = "no-cursor,no-ssh-env,no-ssh-terminfo,sudo,title";
       keybind = [ "ctrl+enter=unbind" ];
     };
     themes.kanagawa = {
