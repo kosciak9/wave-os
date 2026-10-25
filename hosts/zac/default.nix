@@ -212,48 +212,68 @@ in
     tmpfiles.rules = [
       "f /var/lib/wave-os/ssh/kosciak 0644 root root - -"
     ];
-    services.sendspin = {
-      description = "Music Assistant receiver";
-      wantedBy = [ "multi-user.target" ];
-      wants = [ "network-online.target" ];
-      after = [
-        "network-online.target"
-        "sound.target"
-      ];
-      environment = {
-        HOME = "/var/lib/sendspin";
-        LD_LIBRARY_PATH = lib.makeLibraryPath [ pkgs.alsa-lib ];
-      };
-      serviceConfig = {
-        ExecStart = lib.escapeShellArgs [
-          (lib.getExe pkgs.sendspin-player)
-          "--daemon"
-          "--name"
-          "zac"
-          "--client-id"
-          "zac"
-          "--max-sample-rate"
-          "48000"
-          "--max-bit-depth"
-          "16"
-          # PCM needs ~1.5 Mbit/s, more than zac's weak Wi-Fi link sustains.
-          "--preferred-codec"
-          "opus"
-          # miniaudio opens a card picked by name through dmix, which stalls on the bcm2835
-          # headphone jack; the hinted plug device in asound.conf is opened as-is.
-          "--audio-device"
-          "Headphones (plug)"
+    services = {
+      # oomd must not take down the links it would otherwise save.
+      sshd.serviceConfig.ManagedOOMPreference = "omit";
+      tailscaled.serviceConfig.ManagedOOMPreference = "omit";
+      wpa_supplicant.serviceConfig.ManagedOOMPreference = "omit";
+      sendspin = {
+        description = "Music Assistant receiver";
+        wantedBy = [ "multi-user.target" ];
+        wants = [ "network-online.target" ];
+        after = [
+          "network-online.target"
+          "sound.target"
         ];
-        DynamicUser = true;
-        SupplementaryGroups = [ "audio" ];
-        StateDirectory = "sendspin";
-        Restart = "on-failure";
-        RestartSec = "10s";
-        NoNewPrivileges = true;
-        ProtectSystem = "strict";
-        ProtectHome = true;
-        PrivateTmp = true;
+        environment = {
+          HOME = "/var/lib/sendspin";
+          LD_LIBRARY_PATH = lib.makeLibraryPath [ pkgs.alsa-lib ];
+        };
+        serviceConfig = {
+          ExecStart = lib.escapeShellArgs [
+            (lib.getExe pkgs.sendspin-player)
+            "--daemon"
+            "--name"
+            "zac"
+            "--client-id"
+            "zac"
+            "--max-sample-rate"
+            "48000"
+            "--max-bit-depth"
+            "16"
+            # PCM needs ~1.5 Mbit/s, more than zac's weak Wi-Fi link sustains.
+            "--preferred-codec"
+            "opus"
+            # miniaudio opens a card picked by name through dmix, which stalls on the bcm2835
+            # headphone jack; the hinted plug device in asound.conf is opened as-is.
+            "--audio-device"
+            "Headphones (plug)"
+          ];
+          DynamicUser = true;
+          SupplementaryGroups = [ "audio" ];
+          StateDirectory = "sendspin";
+          Restart = "on-failure";
+          RestartSec = "10s";
+          NoNewPrivileges = true;
+          ProtectSystem = "strict";
+          ProtectHome = true;
+          PrivateTmp = true;
+        };
       };
+    };
+    # A leaking service fills swap and starves wpa_supplicant until Wi-Fi drops for good;
+    # oomd kills it first, long before the kernel OOM killer would.
+    slices = {
+      "-".sliceConfig = {
+        ManagedOOMSwap = "kill";
+        ManagedOOMMemoryPressureLimit = "60%";
+      };
+      system.sliceConfig.ManagedOOMMemoryPressureLimit = "60%";
+    };
+    oomd = {
+      enableRootSlice = true;
+      enableSystemSlice = true;
+      settings.OOM.DefaultMemoryPressureDurationSec = "30s";
     };
     coredump.settings.Coredump = {
       Storage = "none";
