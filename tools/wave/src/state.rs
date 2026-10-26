@@ -59,6 +59,10 @@ impl Drop for Lock {
 
 /// One wave-os operation at a time per host.
 pub fn operation_lock(paths: &Paths) -> Result<Lock> {
+    try_operation_lock(paths)?.context("another wave-os operation is running")
+}
+
+pub fn try_operation_lock(paths: &Paths) -> Result<Option<Lock>> {
     let file = OpenOptions::new()
         .read(true)
         .write(true)
@@ -67,11 +71,15 @@ pub fn operation_lock(paths: &Paths) -> Result<Lock> {
         .mode(0o600)
         .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC)
         .open(paths.cli.join("operation.lock"))?;
-    ensure!(
-        unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } == 0,
-        "another wave-os operation is running"
-    );
-    Ok(Lock(file))
+    if unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } == 0 {
+        return Ok(Some(Lock(file)));
+    }
+    let error = std::io::Error::last_os_error();
+    if error.kind() == std::io::ErrorKind::WouldBlock {
+        Ok(None)
+    } else {
+        Err(error.into())
+    }
 }
 
 pub fn valid_store_path(path: &Path) -> bool {

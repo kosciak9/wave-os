@@ -150,7 +150,19 @@ pub fn inspect(paths: &Paths, github: &GitHub, host: &str) -> Result<Update> {
 
 pub fn check(paths: &Paths, host: &str, json: bool) -> Result<i32> {
     presentation::heading(&format!("check · {host}"));
-    let _lock = state::operation_lock(paths)?;
+    let Some(_lock) = state::try_operation_lock(paths)? else {
+        if json {
+            println!(
+                "{}",
+                serde_json::json!({ "status": "operation_in_progress" })
+            );
+        } else {
+            presentation::detail(
+                "Another wave-os operation is running; check again when it finishes",
+            );
+        }
+        return Ok(5);
+    };
     let update = inspect(paths, &GitHub::from_credentials(), host)?;
     let (status, code) = match (update.current.as_deref(), update.ci) {
         (Some(value), _) if value == update.available => ("current", 0),

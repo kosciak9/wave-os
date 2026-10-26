@@ -44,7 +44,7 @@ struct Cli {
 #[derive(Subcommand)]
 enum Action {
     /// Fetch main and detect updates that passed CI; exit 0=current, 1=available,
-    /// 2=unknown revision, 3=CI running on main, 4=CI failed on main
+    /// 2=unknown revision, 3=CI running on main, 4=CI failed on main, 5=another operation running
     Check {
         #[arg(long)]
         json: bool,
