@@ -57,7 +57,8 @@
   ];
   worktreeCleanup.mode = "off";
   storageCleanup.worktreeSettledAfterDays = 7;
-  enableAgentBrowserAccess = false;
+  # Agents need T3 preview tools to verify UI changes (see agent `UI changes` rules).
+  enableAgentBrowserAccess = true;
   snoozeLimitedThreads = true;
   autoResumeLimitedThreads = true;
   sidebarAutoSettleAfterDays = null;

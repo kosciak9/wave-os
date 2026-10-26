@@ -1,4 +1,9 @@
-{ config, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   securityAuditSource = pkgs.fetchFromGitHub {
     owner = "cloudflare";
@@ -27,6 +32,28 @@ let
     force = true;
     recursive = true;
   };
+  # Clauses every harness must receive, so the UI rules survive edits and rewraps.
+  uiRules = [
+    "# UI changes"
+    "pass on the `UI changes` rules"
+    "finish it by showing the change in the running app"
+    "embed screenshots of the running app"
+    "Add a short video when the change is about interaction"
+    "Only screenshots and videos of the current code count"
+    "If you cannot run or capture the UI, say so and fix that first."
+    "Franek's acceptance is the gate before production, not before further work"
+    "do not treat your own checks as his acceptance"
+  ];
+  normalize =
+    text:
+    lib.concatStringsSep " " (
+      lib.filter (s: lib.isString s && s != "") (builtins.split "[[:space:]]+" text)
+    );
+  instructions = {
+    Claude = config.home.file."claude-instructions".source;
+    Codex = config.home.file."codex-instructions".source;
+    OpenCode = config.xdg.configFile."opencode/AGENTS.md".source;
+  };
 in
 {
   imports = [
@@ -34,6 +61,18 @@ in
     ./harnesses.nix
     ../worktrunk.nix
   ];
+
+  assertions = lib.mapAttrsToList (
+    harness: source:
+    let
+      text = normalize (builtins.readFile source);
+      missing = lib.filter (rule: !lib.hasInfix rule text) uiRules;
+    in
+    {
+      assertion = missing == [ ];
+      message = "${harness} agent instructions lack UI rules: ${lib.concatStringsSep "; " missing}";
+    }
+  ) instructions;
 
   home.packages = [
     earshot

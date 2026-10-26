@@ -1,7 +1,8 @@
 # Agent guidance
 
-- Show every UI change to the user with a screenshot or a recording of the
-  interaction; a text description alone is not sufficient.
+- UI changes follow the `UI changes` rules in `modules/home/agents/AGENTS.md`.
+  Pushing to `main` deploys, so a UI change reaches `main` only after Franek has
+  seen and accepted it.
 - Use T3 widgets whenever they can help, even slightly.
 - Home Manager installs `devenv` and `direnv` for the human's trusted-repo
   interactive auto-activation. Keep Zsh aliases and plugins in

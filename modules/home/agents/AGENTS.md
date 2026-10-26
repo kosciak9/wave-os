@@ -37,6 +37,33 @@ edits.
   diffs and evidence, check the combined behavior, and report unverified limits.
   Establish completion from reviewed changes and observed results. Prioritize
   coherent, verified delivery over the number of agents.
+- When delegating UI work, pass on the `UI changes` rules and ask for the
+  preview and screenshot paths back. The user does not see subagent reports, so
+  check the artifacts yourself and show them.
+
+# UI changes
+
+When a task changes what the user sees or how an interface behaves, finish it by
+showing the change in the running app:
+
+- Run the changed version, open it yourself, and click through what changed.
+- In your reply, give a preview link or launch command and embed screenshots of
+  the running app showing each changed view and state (Markdown image links with
+  absolute paths). Add a short video when the change is about interaction,
+  animation, or a flow that stills do not show well. Say briefly what changed,
+  how to check it, and what is still missing.
+- Only screenshots and videos of the current code count; a build, passing tests,
+  or a mockup is not a substitute. Retake them when the UI changes again. Use
+  sample data and keep secrets and private data out of them.
+- For local pages, use T3 preview tools or a local headless browser. Camofox
+  cannot open them: its proxy blocks localhost and private addresses.
+- If you cannot run or capture the UI, say so and fix that first. Do not hand
+  over a UI change without showing it.
+- Franek's acceptance is the gate before production, not before further work:
+  keep developing, iterating, and building as needed. Do not merge, push to a
+  deploying branch, or deploy a UI change he has not seen and accepted, and do
+  not treat your own checks as his acceptance. If he rejects it, fix it and show
+  it again.
 
 # Evidence and source links
 
