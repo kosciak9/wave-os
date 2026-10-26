@@ -13,12 +13,8 @@
     "title": {
       "model": "cliproxy/gpt-6-luna#low",
     },
-    "summary": {
-      "model": "cliproxy/gpt-6.1-sol#medium",
-    },
-    "compaction": {
-      "model": "cliproxy/gpt-6.1-sol#medium",
-    },
+    // Summary, compaction and general run on the session's model, so a
+    // provider outside its quota cannot fail sessions on other providers.
     // No custom system prompt keeps OpenCode's built-in per-model prompts.
     "⩀": {
       "description": "Programming assistant for planning, exploration, and implementation",
@@ -32,7 +28,6 @@
       "disabled": true,
     },
     "general": {
-      "model": "cliproxy/gpt-6.1-sol#medium",
       // The built-in general agent denies launching subagents.
       "permissions": [{ "action": "subagent", "resource": "*", "effect": "allow" }],
     },
