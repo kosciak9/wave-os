@@ -14,10 +14,35 @@
       provider = "opencode";
       model = "cliproxy/gpt-6.1-sol";
     }
+    {
+      provider = "opencode";
+      model = "cliproxy/go/minimax-m3.1-flash";
+    }
+    {
+      provider = "opencode";
+      model = "cliproxy/go/deepseek-v4.1-flash";
+    }
   ];
+  # The merge replaces arrays, so options always replace a previous model's.
   defaultModelSelection = {
-    instanceId = "claudeAgent";
-    model = "claude-opus-5-5";
+    instanceId = "opencode";
+    model = "cliproxy/gpt-6.1-sol";
+    options = [
+      {
+        id = "variant";
+        value = "high";
+      }
+    ];
+  };
+  textGenerationModelSelection = {
+    instanceId = "opencode";
+    model = "cliproxy/go/deepseek-v4.1-flash";
+    options = [
+      {
+        id = "variant";
+        value = "medium";
+      }
+    ];
   };
   providerInstances = {
     claudeAgent = {
