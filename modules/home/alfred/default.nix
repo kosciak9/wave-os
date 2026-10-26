@@ -159,6 +159,18 @@ let
       command = lib.getExe languagetoolMcp;
       tools = [ "lt_check_text" ];
     };
+    sandbox = {
+      port = 18102;
+      agent = "alfred";
+      domain = "user";
+      command = lib.getExe sandboxMcp;
+      tools = [
+        "create"
+        "run"
+        "list_sandboxes"
+        "close"
+      ];
+    };
     x = {
       port = 18099;
       agent = "x-browser";
@@ -395,6 +407,52 @@ let
     '';
   };
 
+  # Code runs in ephemeral containers in the Podman machine; only the volume persists. The
+  # image carries the skills, since the machine cannot see the Nix store.
+  unbroker = pkgs.fetchFromGitHub {
+    owner = "NousResearch";
+    repo = "hermes-agent";
+    rev = "9b904dcc22c23fe8b82834339bbdd96495072e59";
+    sparseCheckout = [ "optional-skills/security/unbroker" ];
+    hash = "sha256-8/bh5j65vrxwkZolJ3CYYPWfHVg8XVvLrqeFUoWFVQU=";
+  };
+  sandboxContext = pkgs.runCommand "alfred-sandbox-context" { } ''
+    mkdir -p $out/skills
+    cp -r ${unbroker}/optional-skills/security/unbroker $out/skills/unbroker
+    printf 'FROM %s\nCOPY skills /skills\n' ${lib.escapeShellArg cfg.sandboxBaseImage} > $out/Containerfile
+  '';
+  sandboxImage = "localhost/wave-os/alfred-sandbox:${
+    builtins.substring 11 32 sandboxContext.outPath
+  }";
+  sandboxMcp = pkgs.writeShellApplication {
+    name = "alfred-sandbox-mcp";
+    runtimeInputs = [
+      pkgs.podman
+      pkgs.jq
+    ];
+    text = ''
+      transport=(podman --connection ${lib.escapeShellArg cfg.machineName})
+      deadline=$((SECONDS + 180))
+      until "''${transport[@]}" info --format json 2>/dev/null |
+        jq -e '.host.security.rootless == true' >/dev/null 2>&1; do
+        if (( SECONDS >= deadline )); then
+          printf '%s\n' "${cfg.machineName} rootless connection was not ready within 180 seconds" >&2
+          exit 1
+        fi
+        sleep 2
+      done
+      "''${transport[@]}" image exists ${sandboxImage} ||
+        "''${transport[@]}" build --pull=missing --label io.wave-os.component=${component}-sandbox \
+          --tag ${sandboxImage} ${sandboxContext} >&2
+      "''${transport[@]}" volume exists ${lib.escapeShellArg cfg.sandboxVolume} ||
+        "''${transport[@]}" volume create --label io.wave-os.component=${component}-sandbox \
+          ${lib.escapeShellArg cfg.sandboxVolume} >/dev/null
+      exec env -i HOME="$HOME" PATH="$PATH" PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1 \
+        ${python}/bin/python ${./sandbox.py} ${lib.escapeShellArg cfg.machineName} \
+        ${sandboxImage} ${lib.escapeShellArg cfg.sandboxVolume}
+    '';
+  };
+
   # LanguageTool offline, in a container of its own without network.
   languagetoolMcp = pkgs.writeShellApplication {
     name = "alfred-languagetool-mcp";
@@ -502,6 +560,22 @@ let
     ani interakcji na X; zwracaj ustalenia i linki do samodzielnej oceny przez użytkownika.
   '';
 
+  sandboxGuidance = ''
+    MCP sandbox daje sandboksy: kontenery z Pythonem i siecią. create uruchamia sandboks, run
+    wykonuje w nim kolejne polecenia basha, a close usuwa go, gdy skończysz; po TTL bez poleceń
+    znika sam. Pliki zostają w nim do końca, katalog roboczy i zmienne nie przechodzą między
+    poleceniami. Trwały jest tylko wspólny /workspace. Nie przekazuj sandboksom haseł ani tokenów.
+
+    /skills/unbroker to skill unbroker (z agenta Hermes) do usuwania danych osobowych z data
+    brokerów i wyszukiwarek osób. Zanim go użyjesz, przeczytaj /skills/unbroker/SKILL.md;
+    jego CLI to python /skills/unbroker/scripts/pdd.py. Narzędzia Hermesa zastąp swoimi:
+    web_extract i browser_exec subagentem browser, cronjob swoimi harmonogramami. Maile do
+    brokerów przygotowuj tylko jako szkice w Gmailu lub Proton Mailu do wysłania przez
+    użytkownika; nie konfiguruj w nim SMTP ani IMAP. Działaj tylko dla osób, których zgodę
+    zapisano przy intake. Skill obejmuje głównie brokerów z USA (CCPA, DROP); dla osób z UE
+    opieraj żądania na GDPR.
+  '';
+
   xBrowser = {
     description = "Czyta i wyszukuje tweety oraz profile na X przez MCP tylko do odczytu. Nie publikuje ani nie wykonuje interakcji.";
     prompt = ''
@@ -538,7 +612,7 @@ let
 
     export default {
         prompt: readFileSync("/run/secrets/prompt.md", "utf8") + "\n\n" + ${
-          builtins.toJSON (xGuidance + import ../anytype/guidance.nix)
+          builtins.toJSON (xGuidance + sandboxGuidance + import ../anytype/guidance.nix)
         },
     	model: { provider: "openai-codex", modelId: "gpt-6.1-sol", thinkingLevel: "medium" },
     	fallbackModel: { provider: "xai", modelId: "grok-4.7", thinkingLevel: "medium" },
@@ -717,6 +791,16 @@ in
       type = lib.types.strMatching "[^@]+@sha256:[0-9a-f]{64}";
       default = "docker.io/gotenberg/gotenberg:8.37.0@sha256:f29984bd1e226bf1b93ba90af06000afa8b315853e99d27b9aaa41b93f15c769";
       description = "The Gotenberg image that renders attachments to PDF, pinned by digest.";
+    };
+    sandboxBaseImage = lib.mkOption {
+      type = lib.types.strMatching "[^@]+@sha256:[0-9a-f]{64}";
+      default = "docker.io/library/python:3.14.9-slim-trixie@sha256:35caba83af2fe6da9a5d922f9b0156f21d1246a48278c58a08bd253303ba42e8";
+      description = "The image Alfred's sandbox containers build on, pinned by digest.";
+    };
+    sandboxVolume = lib.mkOption {
+      type = lib.types.strMatching "[a-zA-Z0-9][a-zA-Z0-9_.-]*";
+      default = "wave-alfred-sandbox";
+      description = "Named volume mounted at /workspace in every sandbox container.";
     };
     machineName = lib.mkOption {
       type = lib.types.strMatching "[a-zA-Z0-9][a-zA-Z0-9_-]*";
