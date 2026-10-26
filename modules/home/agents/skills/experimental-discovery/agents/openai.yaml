@@ -1,0 +1,4 @@
+interface:
+  display_name: "Experimental Discovery"
+  short_description: "Structured experiments for poorly understood problems"
+  default_prompt: "Use $experimental-discovery to compare approaches for this problem."

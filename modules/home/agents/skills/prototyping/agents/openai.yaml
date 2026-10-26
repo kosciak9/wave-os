@@ -1,0 +1,4 @@
+interface:
+  display_name: "Prototyping"
+  short_description: "A quick runnable spike to check feasibility"
+  default_prompt: "Use $prototyping to wire this up end-to-end on a throwaway spike."

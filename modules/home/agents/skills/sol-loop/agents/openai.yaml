@@ -1,0 +1,4 @@
+interface:
+  display_name: "Sol Loop"
+  short_description: "Review a change with GPT Sol until both sides agree"
+  default_prompt: "Use $sol-loop to review this change with Sol until you both agree."

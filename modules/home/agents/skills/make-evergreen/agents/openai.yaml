@@ -1,0 +1,6 @@
+interface:
+  display_name: "Make Evergreen"
+  short_description: "Remove leftover shims, names, and versioned structure"
+  default_prompt: "Use $make-evergreen to clean up the leftovers of this change."
+policy:
+  allow_implicit_invocation: false

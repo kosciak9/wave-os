@@ -1,0 +1,4 @@
+interface:
+  display_name: "TypeScript"
+  short_description: "Coding rules for TypeScript, TSX, and React files"
+  default_prompt: "Use $typescript before editing these TypeScript files."

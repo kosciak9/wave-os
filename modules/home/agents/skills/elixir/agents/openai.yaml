@@ -1,0 +1,4 @@
+interface:
+  display_name: "Elixir"
+  short_description: "Coding rules for Elixir, Ash, Phoenix, and Ecto"
+  default_prompt: "Use $elixir before editing these Elixir files."

@@ -1,0 +1,6 @@
+interface:
+  display_name: "Agentic Coding Retro"
+  short_description: "Find where the agent setup failed you, then fix it"
+  default_prompt: "Use $agentic-coding-retro to review my recent agent sessions and propose fixes."
+policy:
+  allow_implicit_invocation: false

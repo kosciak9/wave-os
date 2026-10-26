@@ -1,0 +1,4 @@
+interface:
+  display_name: "Babysit PR"
+  short_description: "Drive a PR through CI and review to mergeable"
+  default_prompt: "Use $babysit-pr to take this pull request through CI and review."

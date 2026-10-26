@@ -1,0 +1,31 @@
+# Third-party notice
+
+`skills/full-send`, `skills/full-stop`, `skills/babysit-pr`, `skills/sol-loop`,
+and `skills/leaving-pr-comments` are adapted from `tstack`
+(https://github.com/t3dotgg/tstack), branch `main` as inspected on 2026-10-26,
+then rewritten for a shared, cross-repository skill set: the merge method, merge
+gate, PR language, checks, and branch-freshness rules are discovered at runtime
+from each repository instead of being hardcoded, and T3 Code tool names replace
+the bundled `pr-wait` watcher. The upstream `file-pr`, `council`, `modernize`,
+and `takeover` skills are not included.
+
+MIT License
+
+Copyright (c) 2026 Theo Browne
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

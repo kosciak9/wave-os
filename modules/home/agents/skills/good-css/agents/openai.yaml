@@ -1,0 +1,4 @@
+interface:
+  display_name: "Good CSS"
+  short_description: "Modern CSS instead of breakpoint ladders and wrappers"
+  default_prompt: "Use $good-css while styling this component."

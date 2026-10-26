@@ -124,11 +124,6 @@ showing the change in the running app:
   cannot open them: its proxy blocks localhost and private addresses.
 - If you cannot run or capture the UI, say so and fix that first. Do not hand
   over a UI change without showing it.
-- Franek's acceptance is the gate before production, not before further work:
-  keep developing, iterating, and building as needed. Do not merge, push to a
-  deploying branch, or deploy a UI change he has not seen and accepted, and do
-  not treat your own checks as his acceptance. If he rejects it, fix it and show
-  it again.
 
 # Evidence and source links
 

@@ -1,8 +1,8 @@
 # Agent guidance
 
 - UI changes follow the `UI changes` rules in `modules/home/agents/AGENTS.md`.
-  Pushing to `main` deploys, so a UI change reaches `main` only after Franek has
-  seen and accepted it.
+  Pushing to `main` deploys, so show the change in the running app before you
+  call it done.
 - Use T3 widgets whenever they can help, even slightly.
 - Home Manager installs `devenv` and `direnv` for the human's trusted-repo
   interactive auto-activation. Keep Zsh aliases and plugins in

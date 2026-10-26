@@ -1,0 +1,4 @@
+interface:
+  display_name: "Implementation Design"
+  short_description: "Reuse first, keep scope small, own state clearly"
+  default_prompt: "Use $implementation-design before changing this code."

@@ -17,6 +17,14 @@ let
       runHook preInstall
       mkdir -p "$out"
       cp -R . "$out/"
+      chmod -R u+w "$out"
+      mkdir -p "$out/agents"
+      cat > "$out/agents/openai.yaml" <<'YAML'
+      interface:
+        display_name: "CUA Driver"
+        short_description: "Drive native GUI apps by accessibility tree or pixels"
+        default_prompt: "Use $cua-driver to operate this application on the host."
+      YAML
       runHook postInstall
     '';
   };

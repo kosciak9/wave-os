@@ -11,12 +11,35 @@ let
     rev = "c1c8a8c1471069fb0e188eeaff69b8e8db6564a8";
     hash = "sha256-oVVACjotkHvllQGxEP8yWaEt4c3GxT0d909TUM5P3NM=";
   };
-  securityAuditSkill = "${securityAuditSource}/skills/security-audit";
+  securityAuditSkill = pkgs.runCommand "security-audit-skill" { } ''
+    mkdir -p "$out/agents"
+    cp -R ${securityAuditSource}/skills/security-audit/. "$out/"
+    chmod -R u+w "$out"
+    cat > "$out/agents/openai.yaml" <<'YAML'
+    interface:
+      display_name: "Security Audit"
+      short_description: "Source-first vulnerability review and safe fixes"
+      default_prompt: "Use $security-audit to review this code for vulnerabilities."
+    YAML
+  '';
   earshot = pkgs.callPackage ../../../packages/earshot.nix { };
   earshotSkills = pkgs.runCommand "earshot-skills-${earshot.version}" { } ''
     mkdir -p "$out"
     cp -R ${earshot.src}/skills/earshot ${earshot.src}/skills/real-sound "$out/"
     chmod -R u+w "$out"
+    mkdir -p "$out/earshot/agents" "$out/real-sound/agents"
+    cat > "$out/earshot/agents/openai.yaml" <<'YAML'
+    interface:
+      display_name: "Earshot"
+      short_description: "Judge, choose, and verify audio by measuring it"
+      default_prompt: "Use $earshot before telling me how this audio sounds."
+    YAML
+    cat > "$out/real-sound/agents/openai.yaml" <<'YAML'
+    interface:
+      display_name: "Real Sound"
+      short_description: "Licensed music, foley, and SFX mixed to picture"
+      default_prompt: "Use $real-sound to build the soundtrack for this video."
+    YAML
     substituteInPlace "$out/earshot/SKILL.md" \
       --replace-fail 'pip install -e "/path/to/earshot[mcp,llm]"' \
         '# Nix-managed: earshot and ffmpeg are already installed; do not use pip.' \
@@ -41,8 +64,6 @@ let
     "Add a short video when the change is about interaction"
     "Only screenshots and videos of the current code count"
     "If you cannot run or capture the UI, say so and fix that first."
-    "Franek's acceptance is the gate before production, not before further work"
-    "do not treat your own checks as his acceptance"
   ];
   normalize =
     text:
