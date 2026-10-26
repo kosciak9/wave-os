@@ -182,6 +182,8 @@ Scope {
         const rows = []
         for (let i = 0; i < historyModel.count; i++) {
             const row = historyModel.get(i)
+            // Battery warnings are derived from current UPower state, not durable history.
+            if (row.appKey === "battery") continue
             rows.push({ entryKey: row.entryKey, notificationId: row.notificationId, appKey: row.appKey,
                 appName: row.appName, desktopEntry: row.desktopEntry, appIcon: row.appIcon, image: row.image,
                 summary: row.summary, body: row.body, urgency: row.urgency, timestamp: row.timestamp, unread: !!row.unread })
@@ -205,7 +207,7 @@ Scope {
             if (!Array.isArray(data.history)) return
             for (let i = 0; i < data.history.length && historyModel.count < maxHistoryEntries; i++) {
                 const row = data.history[i]
-                if (!validRow(row)) continue
+                if (!validRow(row) || row.appKey === "battery") continue
                 historyModel.append({ entryKey: row.entryKey, notificationId: row.notificationId,
                     appKey: row.appKey, appName: String(row.appName || ""), desktopEntry: String(row.desktopEntry || ""),
                     appIcon: String(row.appIcon || ""), image: String(row.image || ""), summary: row.summary,
@@ -248,6 +250,7 @@ Scope {
     }
 
     function warnBattery(body: string): void {
+        clearApp("battery")
         const key = newKey()
         const notification = { id: 0, appName: "Battery", appIcon: Quickshell.shellDir + "/assets/battery.svg",
             summary: "Low battery", body: body, urgency: NotificationUrgency.Critical }

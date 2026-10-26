@@ -17,6 +17,7 @@ Scope {
     required property var weatherService
     required property var batteryService
     required property var tailscaleService
+    required property var updateService
     required property var targetScreen
     property string section: ""
     property string passwordFor: ""
@@ -554,6 +555,16 @@ Scope {
                             title: "Watch"
                             subtitle: root.watchService.status
                             checked: root.watchService.connected
+                        }
+
+                        Tile {
+                            icon: Quickshell.shellDir + "/assets/refresh.svg"
+                            title: "wave-os"
+                            subtitle: root.updateService.status
+                            checked: root.updateService.available
+                            alert: root.updateService.error.length > 0 || root.updateService.state === "update_failed_ci"
+                            opacity: root.updateService.checking ? 0.65 : 1
+                            onToggled: root.updateService.refresh()
                         }
                     }
 

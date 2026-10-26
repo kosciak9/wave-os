@@ -20,6 +20,24 @@ ShellRoot {
         id: tailscale
     }
 
+    WaveUpdate {
+        id: waveUpdate
+    }
+
+    readonly property bool t3Focused: {
+        const window = ToplevelManager.activeToplevel
+        const appId = window ? String(window.appId).toLowerCase() : ""
+        return appId === "t3code" || appId === "com.t3tools.t3code"
+    }
+
+    onT3FocusedChanged: {
+        if (!t3Focused) return
+        notifications.clearApp("t3code")
+        notifications.clearApp("com.t3tools.t3code")
+        notifications.clearApp("t3 code (beta)")
+        notifications.clearApp("t3 code")
+    }
+
     readonly property bool slackFocused: {
         const window = ToplevelManager.activeToplevel
         const appId = window ? String(window.appId).toLowerCase() : ""
@@ -117,6 +135,7 @@ ShellRoot {
         weatherService: weather
         batteryService: battery
         tailscaleService: tailscale
+        updateService: waveUpdate
     }
 
     TranscriptionBubble {

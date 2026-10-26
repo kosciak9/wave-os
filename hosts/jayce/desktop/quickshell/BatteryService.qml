@@ -16,8 +16,10 @@ Scope {
     property bool notified: false
 
     function updateWarning(): void {
-        if (!discharging || (battery.percentage >= 0.17 && battery.timeToEmpty >= 2100))
+        if (!discharging || (battery.percentage >= 0.17 && (battery.timeToEmpty <= 0 || battery.timeToEmpty >= 2100))) {
             notified = false
+            notificationService.clearApp("battery")
+        }
         if (!low || notified)
             return
         notified = true
