@@ -296,7 +296,7 @@ defmodule WaveDashboardWeb.HomeLive do
     <section class="card quota-card" id="quota-card">
       <div class="card-header">
         <h2 class="card-title">CLIproxy</h2>
-        <span class="card-detail">remaining</span>
+        <span :if={@snapshot.accounts != []} class="card-detail">remaining</span>
       </div>
       <p :if={@snapshot.status == :loading} class="muted" role="status">Loading limits…</p>
       <p :if={@snapshot.status == :not_configured} class="muted">Quota access is not configured.</p>
