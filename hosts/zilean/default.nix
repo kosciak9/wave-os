@@ -83,7 +83,12 @@
         "${config.systemd.package}/bin/systemctl --no-block reboot"
       ];
     };
-    tmpfiles.rules = [ "f /var/lib/wave-os/ssh/kosciak 0644 root root - -" ];
+    tmpfiles.rules = [
+      "f /var/lib/wave-os/ssh/kosciak 0644 root root - -"
+      # The headless host cannot reach its BIOS, which overclocks the CPU to 4.3 GHz all-core;
+      # uncorrected L1 machine checks reset it, so cap it at the 3.5 GHz base clock.
+      "w /sys/devices/system/cpu/intel_pstate/no_turbo - - - - 1"
+    ];
     # Builds, agents and containers may exhaust memory; they get throttled or killed, not the host.
     services = {
       nix-daemon.serviceConfig = {
@@ -97,6 +102,33 @@
       tailscaled.serviceConfig = {
         MemoryMin = "64M";
         ManagedOOMPreference = "omit";
+      };
+      # Quieter Smart Fan IV curves on the CPU (PECI) temperature; the chip keeps applying them
+      # if the OS hangs. Lowest points stay above the measured stall PWM: 35 for fans 1-2, 70 for fan 4.
+      fan-curves = {
+        description = "Quiet motherboard fan curves";
+        wantedBy = [ "multi-user.target" ];
+        after = [ "systemd-modules-load.service" ];
+        serviceConfig.Type = "oneshot";
+        script = ''
+          hwmon=$(echo /sys/devices/platform/nct6775.*/hwmon/hwmon*)
+          curve() {
+            fan=$1 start=$2
+            shift 2
+            point=1
+            for spec in "$@"; do
+              echo $((''${spec%/*} * 1000)) >"$hwmon/pwm''${fan}_auto_point''${point}_temp"
+              echo "''${spec#*/}" >"$hwmon/pwm''${fan}_auto_point''${point}_pwm"
+              point=$((point + 1))
+            done
+            echo "$start" >"$hwmon/pwm''${fan}_start"
+            echo 7 >"$hwmon/pwm''${fan}_temp_sel"
+            echo 5 >"$hwmon/pwm''${fan}_enable"
+          }
+          curve 1 80 50/45 60/70 70/127 80/191 90/255
+          curve 2 80 50/45 60/70 70/127 80/191 90/255
+          curve 4 130 50/95 60/115 70/150 80/200 90/255
+        '';
       };
     };
     slices = {
@@ -165,10 +197,11 @@
       extraSetFlags = [ "--operator=kosciak" ];
     };
     fstrim.enable = true;
-    # Daily short and monthly long self-tests; the 4 TB disk needs about 8 hours for the long one.
+    # Daily short and monthly long self-tests; the 4 TB disk needs about 8 hours for the long one,
+    # so it starts at 01:00 to finish before the working day.
     smartd = {
       enable = true;
-      defaults.monitored = "-a -o on -S on -W 0,50,55 -s (S/../.././02|L/../01/./03)";
+      defaults.monitored = "-a -o on -S on -W 0,50,55 -s (S/../.././02|L/../01/./01)";
     };
     btrfs.autoScrub.enable = true;
   };

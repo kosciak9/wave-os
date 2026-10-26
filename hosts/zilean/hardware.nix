@@ -13,7 +13,11 @@
       "usb_storage"
       "sd_mod"
     ];
-    kernelModules = [ "kvm-intel" ];
+    kernelModules = [
+      "kvm-intel"
+      # NCT6792D Super I/O: motherboard fan and temperature control.
+      "nct6775"
+    ];
   };
   hardware.cpu.intel.updateMicrocode = true;
 
