@@ -21,11 +21,11 @@
 }:
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "t3code-desktop";
-  version = "0.1.1";
+  version = "0.1.3";
 
   src = fetchurl {
     url = "https://github.com/pingdotgg/t3code/releases/download/v${finalAttrs.version}/T3-Code-${finalAttrs.version}-amd64.deb";
-    hash = "sha256-+o4MQn+0DSDsNbg6ZzyBXVHNdHra6RuBouz0niYnUJ4=";
+    hash = "sha256-KK7Ewhdf91OrXoosd21xfqF48uorqZ2SYF3W02ravBk=";
   };
 
   nativeBuildInputs = [

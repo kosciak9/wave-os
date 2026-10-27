@@ -10,20 +10,20 @@
 }:
 
 let
-  version = "2.1.2";
+  version = "2.2.0";
   release =
     {
       "aarch64-darwin" = {
         target = "darwin-arm64";
-        hash = "sha256-iOX6jY4pNUMINQxe14QuI/Y8C05FlM2PkbDKAGt9oiQ=";
+        hash = "sha256-wT4DNSXsdPohr49e8GKKpVU+OkAPV8eOkZUv79CKVog=";
       };
       "aarch64-linux" = {
         target = "linux-arm64";
-        hash = "sha256-1U46ltnjK2/xJ4NpJe2aOTJU0OceDffrjMoqqWLJvfE=";
+        hash = "sha256-akBkPA3KOv+dN8h8JsDuADxGq7gQ4cbd3glP+/dGC4s=";
       };
       "x86_64-linux" = {
         target = "linux-x64";
-        hash = "sha256-LhxmX16C5TFzIynyoxBmcoc0d1BuN4sX0w7qvTHRObM=";
+        hash = "sha256-/jBGuGhy5iT2ImgFj0gBofHv/8GTEDqZiCOMiRuMoCg=";
       };
     }
     .${stdenv.hostPlatform.system};

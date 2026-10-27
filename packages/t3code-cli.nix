@@ -12,18 +12,18 @@ let
   releases = {
     x86_64-linux = {
       target = "linux-x64";
-      hash = "sha256-M8Q+ovgDIVZi9aMf354byoarZ8rE8jmFZcK6EuF8IYU=";
+      hash = "sha256-Y80PBUfu9iu07OJ/p3m7+eK6hTHMaFQlaLqeeIONxoQ=";
     };
     aarch64-darwin = {
       target = "darwin-arm64";
-      hash = "sha256-j19DVIMmbB5vRrNTNv6hNONkEABFqHEstS9BuI47CwU=";
+      hash = "sha256-In99eeC4rvBQokMOQtlRAyZu+Kf3Iv6/6aKMstJmtHc=";
     };
   };
   release = releases.${stdenvNoCC.hostPlatform.system};
 in
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "t3code-cli";
-  version = "0.1.1";
+  version = "0.1.3";
 
   src = fetchurl {
     url = "https://github.com/pingdotgg/t3code/releases/download/v${finalAttrs.version}/t3-${finalAttrs.version}-${release.target}.tar.gz";
