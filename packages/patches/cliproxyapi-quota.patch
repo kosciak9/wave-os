@@ -1377,3 +1377,295 @@ index 0000000..38e5566
 +	}
 +	return result
 +}
+diff --git a/sdk/cliproxy/auth/conductor_execution.go b/sdk/cliproxy/auth/conductor_execution.go
+index 17a1b45..b887691 100644
+--- a/sdk/cliproxy/auth/conductor_execution.go
++++ b/sdk/cliproxy/auth/conductor_execution.go
+@@ -498,6 +498,10 @@ func (m *Manager) executeMixedOnce(ctx context.Context, providers []string, req
+ 	attempted := make(map[string]struct{})
+ 	var lastErr error
+ 	var upstreamErr error
++	// lastProvider names the provider that answered the last failure, so a
++	// cooldown built from that failure still names its source. The credential
++	// selection reports an empty provider on its failure path.
++	var lastProvider string
+ 	for {
+ 		if maxRetryCredentials > 0 && len(attempted) >= maxRetryCredentials {
+ 			if lastErr != nil {
+@@ -514,6 +518,13 @@ func (m *Manager) executeMixedOnce(ctx context.Context, providers []string, req
+ 		auth, executor, provider, errPick := m.pickNextMixed(ctx, providers, routeModel, pickOpts, tried)
+ 		if errPick != nil {
+ 			if shouldReturnLastErrorOnPickFailure(homeMode, lastErr, errPick) {
++				// A depleted plan allowance must answer with the cooldown that
++				// carries the recovery deadline. The upstream wording can be
++				// read by a client as a permanent rejection, which stops it
++				// from retrying at all.
++				if cooldown, ok := depletedAllowanceCooldown(routeModel, lastProvider, lastErr); ok {
++					return cliproxyexecutor.Response{}, cooldown
++				}
+ 				return cliproxyexecutor.Response{}, preferredExecutionAttemptError(lastErr, upstreamErr)
+ 			}
+ 			return cliproxyexecutor.Response{}, errPick
+@@ -550,6 +561,7 @@ func (m *Manager) executeMixedOnce(ctx context.Context, providers []string, req
+ 			result := Result{AuthID: auth.ID, Provider: provider, Model: stateModel, RouteModel: routeModel, Success: false, Error: resultErrorFromError(errPrepare), Options: pickOpts, CredentialVersion: auth.CredentialVersion, RegistrationEpoch: auth.RegistrationEpoch}
+ 			m.MarkResult(execCtx, result)
+ 			lastErr = errPrepare
++			lastProvider = provider
+ 			continue
+ 		}
+ 		executor = executorForAuth(executor, auth)
+@@ -677,6 +689,7 @@ func (m *Manager) executeMixedOnce(ctx context.Context, providers []string, req
+ 					return cliproxyexecutor.Response{}, wrapRequestStopError(authErr)
+ 				}
+ 				lastErr = authErr
++				lastProvider = provider
+ 				if homeMode {
+ 					homeAuthCount++
+ 				}
+@@ -686,6 +699,7 @@ func (m *Manager) executeMixedOnce(ctx context.Context, providers []string, req
+ 				return cliproxyexecutor.Response{}, authErr
+ 			}
+ 			lastErr = authErr
++			lastProvider = provider
+ 			if homeMode {
+ 				homeAuthCount++
+ 			}
+@@ -712,6 +726,10 @@ func (m *Manager) executeCountMixedOnce(ctx context.Context, providers []string,
+ 	attempted := make(map[string]struct{})
+ 	var lastErr error
+ 	var upstreamErr error
++	// lastProvider names the provider that answered the last failure, so a
++	// cooldown built from that failure still names its source. The credential
++	// selection reports an empty provider on its failure path.
++	var lastProvider string
+ 	for {
+ 		if maxRetryCredentials > 0 && len(attempted) >= maxRetryCredentials {
+ 			if lastErr != nil {
+@@ -728,6 +746,13 @@ func (m *Manager) executeCountMixedOnce(ctx context.Context, providers []string,
+ 		auth, executor, provider, errPick := m.pickNextMixed(ctx, providers, routeModel, pickOpts, tried)
+ 		if errPick != nil {
+ 			if shouldReturnLastErrorOnPickFailure(homeMode, lastErr, errPick) {
++				// A depleted plan allowance must answer with the cooldown that
++				// carries the recovery deadline. The upstream wording can be
++				// read by a client as a permanent rejection, which stops it
++				// from retrying at all.
++				if cooldown, ok := depletedAllowanceCooldown(routeModel, lastProvider, lastErr); ok {
++					return cliproxyexecutor.Response{}, cooldown
++				}
+ 				return cliproxyexecutor.Response{}, preferredExecutionAttemptError(lastErr, upstreamErr)
+ 			}
+ 			return cliproxyexecutor.Response{}, errPick
+@@ -764,6 +789,7 @@ func (m *Manager) executeCountMixedOnce(ctx context.Context, providers []string,
+ 			result := Result{AuthID: auth.ID, Provider: provider, Model: stateModel, RouteModel: routeModel, Success: false, Error: resultErrorFromError(errPrepare), Options: pickOpts, SkipQuotaObservation: true, CredentialVersion: auth.CredentialVersion, RegistrationEpoch: auth.RegistrationEpoch}
+ 			m.MarkResult(execCtx, result)
+ 			lastErr = errPrepare
++			lastProvider = provider
+ 			continue
+ 		}
+ 		executor = executorForAuth(executor, auth)
+@@ -895,6 +921,7 @@ func (m *Manager) executeCountMixedOnce(ctx context.Context, providers []string,
+ 					return cliproxyexecutor.Response{}, wrapRequestStopError(authErr)
+ 				}
+ 				lastErr = authErr
++				lastProvider = provider
+ 				if homeMode {
+ 					homeAuthCount++
+ 				}
+@@ -904,6 +931,7 @@ func (m *Manager) executeCountMixedOnce(ctx context.Context, providers []string,
+ 				return cliproxyexecutor.Response{}, authErr
+ 			}
+ 			lastErr = authErr
++			lastProvider = provider
+ 			if homeMode {
+ 				homeAuthCount++
+ 			}
+@@ -935,6 +963,10 @@ func (m *Manager) executeStreamMixedOnce(ctx context.Context, providers []string
+ 	attempted := make(map[string]struct{})
+ 	var lastErr error
+ 	var upstreamErr error
++	// lastProvider names the provider that answered the last failure, so a
++	// cooldown built from that failure still names its source. The credential
++	// selection reports an empty provider on its failure path.
++	var lastProvider string
+ 	var roundTiming homeRetryRoundTiming
+ 	for {
+ 		allowSameAuthRetry := homeMode && homeSameAuthRetryPending && lastHomeAuthID != "" && homeSameAuthRetries[lastHomeAuthID] == 0
+@@ -981,6 +1013,13 @@ func (m *Manager) executeStreamMixedOnce(ctx context.Context, providers []string
+ 				if homeMode {
+ 					return nil, markHomeRetryRoundExhausted(preferredErr, roundTiming.RetryAfter(), isHomeNextRoundImmediatelyAvailable(errPick))
+ 				}
++				// A depleted plan allowance must answer with the cooldown that
++				// carries the recovery deadline. The upstream wording can be
++				// read by a client as a permanent rejection, which stops it
++				// from retrying at all.
++				if cooldown, ok := depletedAllowanceCooldown(routeModel, lastProvider, lastErr); ok {
++					return nil, cooldown
++				}
+ 				return nil, preferredErr
+ 			}
+ 			return nil, errPick
+@@ -1120,6 +1159,7 @@ func (m *Manager) executeStreamMixedOnce(ctx context.Context, providers []string
+ 				m.MarkResult(execCtx, result)
+ 			}
+ 			lastErr = errPrepare
++			lastProvider = provider
+ 			if homeMode {
+ 				roundTiming.Observe(lastErr)
+ 			}
+@@ -1210,6 +1250,7 @@ func (m *Manager) executeStreamMixedOnce(ctx context.Context, providers []string
+ 					return nil, wrapRequestStopError(errStream)
+ 				}
+ 				lastErr = errStream
++				lastProvider = provider
+ 				if homeMode {
+ 					roundTiming.Observe(lastErr)
+ 				}
+@@ -1222,6 +1263,7 @@ func (m *Manager) executeStreamMixedOnce(ctx context.Context, providers []string
+ 				return nil, errStream
+ 			}
+ 			lastErr = errStream
++			lastProvider = provider
+ 			if homeMode {
+ 				roundTiming.Observe(lastErr)
+ 			}
+diff --git a/sdk/cliproxy/auth/selector.go b/sdk/cliproxy/auth/selector.go
+index 9010743..075a1ef 100644
+--- a/sdk/cliproxy/auth/selector.go
++++ b/sdk/cliproxy/auth/selector.go
+@@ -92,6 +92,53 @@ func NewModelCooldownError(model, provider string, resetIn time.Duration) error
+ 	return newModelCooldownErrorWithCause(model, provider, resetIn, nil)
+ }
+ 
++// depletedAllowanceCooldown turns a depleted plan allowance into a model
++// cooldown. The upstream failure wording can be read by a client as a
++// permanent rejection that stops it from retrying, while the cooldown answers
++// with a recovery deadline the client can wait for.
++//
++// It reports false when the failure carries no recovery deadline, because
++// without one there is nothing the client could wait for.
++func depletedAllowanceCooldown(model, provider string, err error) (error, bool) {
++	resetIn, ok := quotaLimitResetIn(err)
++	if !ok {
++		return nil, false
++	}
++	return newModelCooldownErrorWithCause(model, provider, resetIn, err), true
++}
++
++// quotaLimitResetIn reports how long a depleted plan allowance still blocks
++// the model, when the upstream failure carries that deadline. The upstream
++// codex failure reports it as "resets_in_seconds" or "resets_at".
++func quotaLimitResetIn(err error) (time.Duration, bool) {
++	if err == nil {
++		return 0, false
++	}
++	summary := ExtractUpstreamErrorSummary(err.Error())
++	if summary == "" {
++		return 0, false
++	}
++	if !mentionsDepletedAllowance(summary) {
++		return 0, false
++	}
++	if retryAfter := retryAfterFromError(err); retryAfter != nil && *retryAfter > 0 {
++		return *retryAfter, true
++	}
++	return 0, false
++}
++
++// mentionsDepletedAllowance reports whether the upstream failure reports a
++// depleted plan allowance. The upstream codex failure names it with the code
++// "usage_limit_reached", which carries an underscore, so a client that reads
++// the space-separated phrase does not match it.
++func mentionsDepletedAllowance(summary string) bool {
++	lower := strings.ToLower(summary)
++	return strings.Contains(lower, "usage_limit_reached") ||
++		strings.Contains(lower, "usage limit") ||
++		strings.Contains(lower, "quota_exceeded") ||
++		strings.Contains(lower, "quota exceeded")
++}
++
+ func newModelCooldownError(model, provider string, resetIn time.Duration) *modelCooldownError {
+ 	return newModelCooldownErrorWithCause(model, provider, resetIn, nil)
+ }
+@@ -150,6 +197,11 @@ func (e *modelCooldownError) Error() string {
+ 	}
+ 	if e.cause != nil {
+ 		if causeText := ExtractUpstreamErrorSummary(e.cause.Error()); causeText != "" {
++			// A client that classifies a 429 by its text reads account-cap wording
++			// as a permanent rejection and stops retrying, even though this
++			// cooldown expires. The wording is replaced rather than dropped, so
++			// the reader still learns the cause and the reset deadline.
++			causeText = neutralizeAccountCapWording(causeText)
+ 			errorBody["last_upstream_error"] = causeText
+ 			message += fmt.Sprintf(" (last error: %s)", causeText)
+ 			errorBody["message"] = message
+@@ -350,6 +402,70 @@ func (e *modelCooldownError) StatusCode() int {
+ 	return http.StatusTooManyRequests
+ }
+ 
++// accountCapPhrases are the wordings a client reads as a permanent account
++// cap rather than a temporary throttle. A cooldown always expires, so these
++// phrases must not reach a retryable response body.
++//
++// Each pattern matches the way the client matches it, so the wording is
++// rewritten only where the client would have read it as a cap. A separator
++// between the words of a phrase is optional where the client allows one,
++// because the client reads "quota exceeded", "quota-exceeded" and
++// "quotaexceeded" alike. A phrase the client only reads with a space is
++// matched with a space only: the client reads "usage limit" but not the
++// underscored code "usage_limit_reached", and rewriting that code would erase
++// the identity of the cause.
++var accountCapPhrases = []struct {
++	pattern     *regexp.Regexp
++	replacement string
++}{
++	{pattern: regexp.MustCompile(`(?i)insufficient[-_\s]?(?:quota|balance)`), replacement: "insufficient allowance"},
++	{pattern: regexp.MustCompile(`(?i)quota[-_\s]?exceeded`), replacement: "allowance exceeded"},
++	{pattern: regexp.MustCompile(`(?i)budget exceeded`), replacement: "allowance exceeded"},
++	{pattern: regexp.MustCompile(`(?i)limit exhausted`), replacement: "allowance exhausted"},
++	{pattern: regexp.MustCompile(`(?i)usage limit`), replacement: "usage allowance"},
++	{pattern: regexp.MustCompile(`(?i)package has expired`), replacement: "package expired"},
++	{pattern: regexp.MustCompile(`(?i)plan does not yet include`), replacement: "plan does not yet cover"},
++}
++
++// neutralizeAccountCapWording rewrites the account-cap phrases of an upstream
++// summary so the reason stays readable while the wording no longer reads as a
++// permanent rejection.
++func neutralizeAccountCapWording(text string) string {
++	if text == "" {
++		return text
++	}
++	out := text
++	for _, phrase := range accountCapPhrases {
++		out = phrase.pattern.ReplaceAllStringFunc(out, func(match string) string {
++			return preserveLeadingCase(match, phrase.replacement)
++		})
++	}
++	return out
++}
++
++// preserveLeadingCase keeps the case of the first letter of the replaced text
++// so a sentence stays a sentence.
++func preserveLeadingCase(match, replacement string) string {
++	if match == "" {
++		return replacement
++	}
++	if isUpperCase(match[0]) {
++		return capitalizeFirst(replacement)
++	}
++	return replacement
++}
++
++func isUpperCase(char byte) bool {
++	return char >= 'A' && char <= 'Z'
++}
++
++func capitalizeFirst(text string) string {
++	if text == "" {
++		return text
++	}
++	return strings.ToUpper(text[:1]) + text[1:]
++}
++
+ func (e *modelCooldownError) Headers() http.Header {
+ 	headers := make(http.Header)
+ 	headers.Set("Content-Type", "application/json")
