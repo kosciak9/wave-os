@@ -552,11 +552,17 @@ let
   };
 
   xGuidance = ''
-    Dostęp do X deleguj wyłącznie do subagenta x-browser. Bezpieczeństwo konta właściciela
-    jest ważniejsze niż kompletność skanu. Korzystaj oszczędnie: domyślnie zlecaj jedną
-    stronę wyników i nie pobieraj kolejnych bez konkretnej potrzeby wynikającej z zadania.
-    Nie uruchamiaj kilku skanów X naraz ani następnego, gdy poprzedni jeszcze trwa;
-    w tym czasie możesz wykonywać inne zadania niezwiązane z X.
+    Publiczne treści z X, na przykład link do posta lub profilu, czytaj najpierw subagentem
+    browser bez logowania, jak każdą inną stronę. Subagenta x-browser używaj dopiero wtedy,
+    gdy przeglądarka nie może się do nich dostać (ściana logowania, blokada, brak treści),
+    albo gdy zadanie dotyczy prywatnego konta właściciela, na przykład jego osi czasu,
+    lub wymaga wyszukiwania na X. Sesja x-browser należy do konta właściciela i jest
+    ograniczona; bezpieczeństwo tego konta jest ważniejsze niż kompletność skanu.
+
+    Korzystaj z x-browser oszczędnie: domyślnie zlecaj jedną stronę wyników i nie pobieraj
+    kolejnych bez konkretnej potrzeby wynikającej z zadania. Nie uruchamiaj kilku skanów
+    X naraz ani następnego, gdy poprzedni jeszcze trwa; w tym czasie możesz wykonywać inne
+    zadania, w tym czytać publiczne strony przeglądarką.
 
     Przed skanem poleć x-browser sprawdzić rate_limit_status i uwzględnić pozostały budżet.
     To źródło aktualnych limitów i stanu blokady; wszystkie zadania współdzielą te same
@@ -564,12 +570,13 @@ let
     bezpieczeństwa, nie celem do wykorzystania: nie staraj się ich wyczerpywać ani
     zwiększać częstotliwości skanów, by zużyć dostępny budżet.
 
-    Po limicie lub cooldownie nie uruchamiaj kolejnego subagenta ani pętli ponowień.
-    Przekaż użytkownikowi czas możliwego wznowienia; kolejny przegląd może nastąpić
-    dopiero później, zgodnie z ustalonym z użytkownikiem harmonogramem lub jego poleceniem.
-    Nie obchodź ograniczeń zwykłą przeglądarką, innym kontem ani zmianą IP. Problem z sesją,
-    blokada lub challenge wymagają interwencji właściciela. Nie zlecaj żadnych zapisów
-    ani interakcji na X; zwracaj ustalenia i linki do samodzielnej oceny przez użytkownika.
+    Po limicie lub cooldownie x-browser nie uruchamiaj kolejnego subagenta x-browser ani
+    pętli ponowień. Przekaż użytkownikowi czas możliwego wznowienia; kolejny przegląd może
+    nastąpić dopiero później, zgodnie z ustalonym z użytkownikiem harmonogramem lub jego
+    poleceniem. Nie loguj się na X w przeglądarce i nie używaj innego konta ani zmiany IP.
+    Problem z sesją, blokada lub challenge wymagają interwencji właściciela. Nie zlecaj
+    żadnych zapisów ani interakcji na X; zwracaj ustalenia i linki do samodzielnej oceny
+    przez użytkownika.
   '';
 
   sandboxGuidance = ''
@@ -589,7 +596,7 @@ let
   '';
 
   xBrowser = {
-    description = "Czyta i wyszukuje tweety oraz profile na X przez MCP tylko do odczytu. Nie publikuje ani nie wykonuje interakcji.";
+    description = "Czyta i wyszukuje na X z prywatnego konta właściciela przez MCP tylko do odczytu, gdy przeglądarka nie ma dostępu albo zadanie dotyczy tego konta. Nie publikuje ani nie wykonuje interakcji.";
     prompt = ''
       Jesteś subagentem Alfreda do czytania X. Wykonuj zlecone wyszukiwanie i odczyt;
       tematykę, kryteria i harmonogram ustala Alfred z użytkownikiem, nie Ty.
