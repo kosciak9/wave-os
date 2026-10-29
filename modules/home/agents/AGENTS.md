@@ -27,6 +27,12 @@ edits.
 
 # Execution
 
+- Store temporary work files and large task artifacts (downloads, model weights,
+  recovery exports and backups) in a task-specific directory under
+  `/srv/scratch` when it is mounted and writable; otherwise use `/tmp`. Check
+  the actual mount, not just directory existence, so an unavailable scratch disk
+  does not silently fill the root disk. Do not accumulate these artifacts under
+  `$HOME`.
 - Split multi-step work into independent batches with explicit dependencies.
   Give each subagent a concrete goal, relevant context and instructions, file
   scope, constraints, and expected checks. Run non-conflicting assignments in
