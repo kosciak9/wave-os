@@ -1,6 +1,5 @@
 {
   pkgs,
-  inputs,
   lib,
   config,
   ...
@@ -56,7 +55,6 @@ in
     statix
     python3
     treefmt
-    inputs.deploy-rs.packages.${pkgs.stdenv.hostPlatform.system}.deploy-rs
   ];
 
   git-hooks = {

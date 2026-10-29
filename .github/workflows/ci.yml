@@ -10,9 +10,9 @@ permissions:
   contents: read
 
 jobs:
-  nix-validate:
-    name: nix-validate
-    runs-on: macos-15
+  nix-check:
+    name: nix-check
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Check out repository
@@ -28,8 +28,41 @@ jobs:
         run: nix profile add github:NixOS/nixpkgs/31ecbaca1bdefa45dffc409f0250bd8039ea0010#devenv
       - name: Run nix-check
         run: devenv shell -- nix-check
-      - name: Run nix-eval all
-        run: devenv shell -- nix-eval all
+
+  nix-eval:
+    name: nix-eval (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [jayce, renekton, ahri, zilean, zac]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install Nix
+        uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # v31.11.3
+      - name: Configure devenv cache
+        uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
+        with:
+          name: devenv
+          installCommand: nix profile add github:NixOS/nixpkgs/31ecbaca1bdefa45dffc409f0250bd8039ea0010#cachix
+      - name: Install devenv
+        run: nix profile add github:NixOS/nixpkgs/31ecbaca1bdefa45dffc409f0250bd8039ea0010#devenv
+      - name: Run nix-eval
+        run: devenv shell -- nix-eval ${{ matrix.target }}
+
+  # Required check and deployment gate; always runs so a failed dependency fails it instead of skipping it.
+  nix-validate:
+    name: nix-validate
+    if: always()
+    needs: [nix-check, nix-eval]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every validation job
+        run: |
+          [[ "${{ needs.nix-check.result }}" == success && "${{ needs.nix-eval.result }}" == success ]]
 
   ahri-build:
     name: ahri-build
