@@ -68,6 +68,8 @@ in
   programs.zsh.generatedCompletions.opencode = "${pkgs.opencode}/bin/opencode --completions zsh";
 
   xdg.configFile = {
+    # Safety Net requires interactive policy apply; keep the active policy user-owned.
+    "cc-safety-net/policy-proposal.json".source = ./config/safety-net-policy.json;
     "opencode/commands" = {
       source = ./config/commands;
       force = true;

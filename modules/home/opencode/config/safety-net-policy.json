@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "secret_protection": {
+    "allow_paths": ["~/Developer/**/.env.worktree"]
+  }
+}
