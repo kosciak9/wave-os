@@ -181,7 +181,7 @@ let
       );
     };
   };
-  # Reached by the container itself; their credentials go in as Podman secrets.
+  # Reached by the container itself; credentials come from Podman secrets or OAuth.
   remotes = {
     # Twenty CRM.
     twenty.tools = [
@@ -222,6 +222,8 @@ let
       "t3_pending_request_respond"
       "orchestrator_capabilities"
     ];
+    # Scape exposes its tool catalog only after `/mcp_login scape`; allow tools by name then.
+    scape.tools = [ ];
   };
   policy =
     agent:
@@ -633,6 +635,7 @@ let
     			headers: { Authorization: `Bearer ''${process.env.SLACK_MIRROR_MCP_TOKEN}` },
     		},
     		t3: { url: "https://zilean.dusky-diatonic.ts.net:18443/mcp", oauth: true },
+            scape: { url: "https://api.v2.scape.app/mcp", oauth: true },
     	},
     	mcp: ${builtins.toJSON (policy "alfred" // lib.mapAttrs (_: remote: remote.tools) remotes)},
     	subagents: {
