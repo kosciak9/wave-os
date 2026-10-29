@@ -222,8 +222,18 @@ let
       "t3_pending_request_respond"
       "orchestrator_capabilities"
     ];
-    # Scape exposes its tool catalog only after `/mcp_login scape`; allow tools by name then.
-    scape.tools = [ ];
+    scape.tools = [
+      "list_meetings"
+      "search_meetings"
+      "get_meeting_summary"
+      "get_transcript"
+      "ask_scape"
+      "list_inboxes"
+      "list_drafts"
+      "search_drafts"
+      "get_draft"
+      "create_draft"
+    ];
   };
   policy =
     agent:
