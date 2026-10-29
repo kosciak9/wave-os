@@ -36,17 +36,10 @@ let
       oauth = false;
     };
   }
-  // lib.optionalAttrs (config.programs.agents.cua.enable or pkgs.stdenv.hostPlatform.isLinux) {
-    cua-driver = {
-      type = "local";
-      command = [
-        (lib.getExe (pkgs.callPackage ../../../packages/cua-driver.nix { }))
-        "mcp"
-        "--socket"
-        "${config.xdg.cacheHome}/cua-driver/cua-driver.sock"
-      ];
-    };
-  };
+  // lib.mapAttrs (_: command: {
+    type = "local";
+    inherit command;
+  }) config.programs.agents.mcpServers;
   providers = {
     cliproxy = gatewayProvider // {
       name = "tokens @ wave";

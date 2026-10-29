@@ -75,6 +75,7 @@ in
     ../../modules/home/starship
     ../../modules/home/vicinae
     ../../modules/home/zoxide
+    ../../modules/home/foxpilot
     ../../modules/home/zen-browser
     ../../modules/home/zsh
     ../../modules/home/zsh/linux.nix

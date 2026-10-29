@@ -80,6 +80,7 @@ in
   imports = [
     ./cua.nix
     ./harnesses.nix
+    ./mcp.nix
     ../worktrunk.nix
   ];
 
