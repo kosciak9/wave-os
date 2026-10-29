@@ -8,9 +8,17 @@
 
 let
   # Mirror the AUR package's core dependencies so optional database drivers stay optional.
-  sqlit = inputs.sqlit.lib.${pkgs.stdenv.hostPlatform.system}.makeSqlit {
-    extras = [ "postgres" ];
-  };
+  sqlit =
+    (inputs.sqlit.lib.${pkgs.stdenv.hostPlatform.system}.makeSqlit {
+      extras = [ "postgres" ];
+    }).overridePythonAttrs
+      (old: {
+        # Structured attrs export only `env`, so upstream's plain SETUPTOOLS_SCM_PRETEND_VERSION
+        # never reaches hatch-vcs; `env` cannot repeat that name, so export it here.
+        preBuild = (old.preBuild or "") + ''
+          export SETUPTOOLS_SCM_PRETEND_VERSION="$version"
+        '';
+      });
   weave = pkgs.callPackage ../../../packages/weave.nix { };
 in
 {
