@@ -8,14 +8,14 @@ runs:
   using: composite
   steps:
     - name: Install Nix
-      uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31
+      uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # v31.11.3
     - name: Configure Wave cache
       uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
       with:
         name: wave-os
         authToken: ${{ inputs.cachix-auth-token }}
         skipPush: true
-        installCommand: nix profile add github:NixOS/nixpkgs/34ab99075ac4f7e40cf037eef32cb1c360bb85e9#cachix
+        installCommand: nix profile add github:NixOS/nixpkgs/31ecbaca1bdefa45dffc409f0250bd8039ea0010#cachix
     - name: Build receiver, image and native player checks
       shell: bash
       run: nix build --no-write-lock-file --out-link zac-cache --print-build-logs .#zac-cache

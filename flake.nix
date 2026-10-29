@@ -3,12 +3,12 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    nixpkgs-ahri.url = "github:NixOS/nixpkgs/7fd4004d0511991fff3a0524856a9be09e28c5f0";
-    deploy-rs.url = "github:serokell/deploy-rs/45ba3f8c5cb28396fff71671806e2550b464ac86";
-    devenv-nixpkgs.url = "github:NixOS/nixpkgs/7fd4004d0511991fff3a0524856a9be09e28c5f0";
+    nixpkgs-ahri.url = "github:NixOS/nixpkgs/31ecbaca1bdefa45dffc409f0250bd8039ea0010";
+    deploy-rs.url = "github:serokell/deploy-rs/1cec0527bd09074bbee6d4461900ce5d58267217";
+    devenv-nixpkgs.url = "github:NixOS/nixpkgs/31ecbaca1bdefa45dffc409f0250bd8039ea0010";
     # Keep the release-tested pin for Darwin's qtkeychain; Linux uses system packages in the home module.
     vicinae = {
-      url = "github:vicinaehq/vicinae/v0.29.1";
+      url = "github:vicinaehq/vicinae/v0.29.2";
     };
     vicinae-extensions = {
       url = "github:vicinaehq/extensions";
@@ -46,7 +46,7 @@
     };
 
     spotifast = {
-      url = "github:crmne/spotifast/v0.13.3";
+      url = "github:crmne/spotifast/v0.14.2";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -66,7 +66,7 @@
     };
 
     hyprland-scroll-overview = {
-      url = "github:yayuuu/hyprland-scroll-overview/7ff22457dc016239eff1b19c3ea57de93404b5c9";
+      url = "github:yayuuu/hyprland-scroll-overview/07a944e4d16f11d2d9be6ce10bea74a6f1e5f2ae";
       flake = false;
     };
   };

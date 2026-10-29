@@ -809,12 +809,12 @@ in
     };
     gotenbergImage = lib.mkOption {
       type = lib.types.strMatching "[^@]+@sha256:[0-9a-f]{64}";
-      default = "docker.io/gotenberg/gotenberg:8.37.0@sha256:f29984bd1e226bf1b93ba90af06000afa8b315853e99d27b9aaa41b93f15c769";
+      default = "docker.io/gotenberg/gotenberg:8.39.0@sha256:13672f317b443c793e972b1bd2155ec62a3e7b6891b411e8196442cc053ee5f5";
       description = "The Gotenberg image that renders attachments to PDF, pinned by digest.";
     };
     sandboxBaseImage = lib.mkOption {
       type = lib.types.strMatching "[^@]+@sha256:[0-9a-f]{64}";
-      default = "docker.io/library/python:3.14.9-slim-trixie@sha256:35caba83af2fe6da9a5d922f9b0156f21d1246a48278c58a08bd253303ba42e8";
+      default = "docker.io/library/python:3.14.10-slim-trixie@sha256:3cabfd7d7aaf394e6040e79fa1eec6ca1c52b74ed9188650472695d9a9326999";
       description = "The image Alfred's sandbox containers build on, pinned by digest.";
     };
     sandboxVolume = lib.mkOption {

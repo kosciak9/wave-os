@@ -13,40 +13,23 @@ jobs:
   nix-validate:
     name: nix-validate
     runs-on: macos-15
+    timeout-minutes: 5
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install Nix
-        uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31
+        uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # v31.11.3
       - name: Configure devenv cache
         uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
         with:
           name: devenv
-          installCommand: nix profile add github:NixOS/nixpkgs/34ab99075ac4f7e40cf037eef32cb1c360bb85e9#cachix
+          installCommand: nix profile add github:NixOS/nixpkgs/31ecbaca1bdefa45dffc409f0250bd8039ea0010#cachix
       - name: Install devenv
-        run: nix profile add github:NixOS/nixpkgs/34ab99075ac4f7e40cf037eef32cb1c360bb85e9#devenv
+        run: nix profile add github:NixOS/nixpkgs/31ecbaca1bdefa45dffc409f0250bd8039ea0010#devenv
       - name: Run nix-check
         run: devenv shell -- nix-check
-      - name: Run nix-eval jayce
-        run: devenv shell -- nix-eval jayce
-      - name: Run nix-eval renekton
-        run: devenv shell -- nix-eval renekton
-      - name: Run nix-eval ahri
-        run: devenv shell -- nix-eval ahri
-      - name: Run nix-eval zilean
-        run: devenv shell -- nix-eval zilean
-      - name: Run nix-eval zac
-        run: devenv shell -- nix-eval zac
-
-  jayce-build:
-    name: jayce-build
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Build patched desktop packages
-        uses: ./.github/actions/build-jayce
+      - name: Run nix-eval all
+        run: devenv shell -- nix-eval all
 
   ahri-build:
     name: ahri-build
@@ -89,7 +72,7 @@ jobs:
       - name: Cross-build zac
         uses: ./.github/actions/build-zac
       - name: Upload SD image
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: zac-sd-image
           path: zac-cache/image/sd-image/*.img.zst
@@ -117,7 +100,7 @@ jobs:
           cachix push wave-os ./zac-cache
           cachix pin wave-os zac-current "$(readlink -f ./zac-cache)" --keep-revisions 1
       - name: Upload SD image
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: zac-sd-image
           path: zac-cache/image/sd-image/*.img.zst
@@ -128,6 +111,7 @@ jobs:
   betterleaks:
     name: betterleaks
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -135,14 +119,14 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Install Nix
-        uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31
+        uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # v31.11.3
       - name: Configure devenv cache
         uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
         with:
           name: devenv
-          installCommand: nix profile add github:NixOS/nixpkgs/34ab99075ac4f7e40cf037eef32cb1c360bb85e9#cachix
+          installCommand: nix profile add github:NixOS/nixpkgs/31ecbaca1bdefa45dffc409f0250bd8039ea0010#cachix
       - name: Install devenv
-        run: nix profile add github:NixOS/nixpkgs/34ab99075ac4f7e40cf037eef32cb1c360bb85e9#devenv
+        run: nix profile add github:NixOS/nixpkgs/31ecbaca1bdefa45dffc409f0250bd8039ea0010#devenv
       - name: Run betterleaks
         run: |
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then

@@ -14,20 +14,38 @@
   gtk4-layer-shell,
   wayland,
   wayland-protocols,
+  ffmpeg,
+  libdrm,
+  pipewire,
+  rubberband,
+  libgbm,
+  libglvnd,
+  dbus,
+  wireplumber,
+  writableTmpDirAsHomeHook,
 }:
 
 stdenv.mkDerivation {
   pname = "waytator";
-  version = "1.4.0";
+  version = "1.5.1";
 
   src = fetchFromGitHub {
     owner = "faetalize";
     repo = "waytator";
-    rev = "a142d0bac7385c7394962ea3abaec780aca3460e";
-    hash = "sha256-OnEUDSxKJCZsN0v2BV/QQ8ceI4BSaY9LH+QucziY1EA=";
+    rev = "65304f49de8bd38612c05d515ded9e81310b6162";
+    hash = "sha256-yzHS4Xy6FgVEqx4zDkr1OXQRz6xht7ILkjKUnsaXm/E=";
   };
 
   patches = [ ./waytator-save-copy.patch ];
+  doCheck = true;
+  # Recording fixtures feed frames in real time; parallel encoders make them drop frames.
+  enableParallelChecking = false;
+
+  nativeCheckInputs = [
+    dbus
+    wireplumber
+    writableTmpDirAsHomeHook
+  ];
 
   nativeBuildInputs = [
     meson
@@ -44,6 +62,12 @@ stdenv.mkDerivation {
     gtk4-layer-shell
     wayland
     wayland-protocols
+    ffmpeg
+    libdrm
+    pipewire
+    rubberband
+    libgbm
+    libglvnd
   ];
 
   postInstall = ''
@@ -51,12 +75,13 @@ stdenv.mkDerivation {
       #compdef waytator
 
       _arguments \
-        '--stdin[Read image from standard input]' \
-        '--name[Default name for an image read from standard input]:name:' \
+        '--stdin[Read image or video from standard input]' \
+        '--name[Default name for media read from standard input]:name:' \
         '--screenshot[Capture the screen and open the result]::mode:(area screen)' \
-        '--screen[Screen to capture with --screenshot]:screen:' \
-        '--notify[With --screenshot, save, copy and notify instead of opening the editor]' \
-        '--delay[With --screenshot, wait this many whole seconds first]:seconds:' \
+        '--record[Record the screen and open the result]::mode:(area screen window)' \
+        '--screen[Screen to capture with --screenshot or --record]:screen:' \
+        '--notify[With --screenshot or --record, notify instead of opening the editor]' \
+        '--delay[Wait before a screenshot or recording]:seconds:' \
         '--gapplication-service[Run as a background application service]' \
         '(--no-close-on-copy)--close-on-copy[Close after copying]' \
         '(--close-on-copy)--no-close-on-copy[Keep the window open after copying]' \
@@ -66,10 +91,12 @@ stdenv.mkDerivation {
         '--save-shortcut[Override the save shortcut]:shortcut:' \
         '--save-and-close-shortcut[Override the save and close shortcut]:shortcut:' \
         '--save-copy-and-close-shortcut[Override the save, copy and close shortcut]:shortcut:' \
+        '--screenshot-area-shortcut[Override the capture area shortcut]:shortcut:' \
+        '--screenshot-screen-shortcut[Override the capture screen shortcut]:shortcut:' \
         '--capture-area-shortcut[Override the capture area shortcut]:shortcut:' \
         '--capture-screen-shortcut[Override the capture screen shortcut]:shortcut:' \
         '(- *)'{-h,--help}'[Show help]' \
-        '1:image:_files'
+        '1:image or video:_files'
     ''}
   '';
 

@@ -3,6 +3,7 @@
   python313,
   fetchFromGitHub,
   writableTmpDirAsHomeHook,
+  installShellFiles,
 }:
 let
   # The version comes from UV_DYNAMIC_VERSIONING_BYPASS, which nixpkgs' 0.13 honours too.
@@ -10,13 +11,22 @@ let
     substituteInPlace src/httpx2/pyproject.toml src/httpcore2/pyproject.toml \
       --replace-fail '"uv-dynamic-versioning>=0.14.1"' '"uv-dynamic-versioning"'
   '';
-  # workspace-mcp 2.x needs FastMCP 4 and the MCP SDK 2, which the pinned nixpkgs
-  # does not have yet; they are scoped to this package's interpreter. The versions are
-  # the ones upstream locks: FastMCP 4.1 changes HTTP session expiry and Google token
-  # caching in ways workspace-mcp's tests reject.
+  # workspace-mcp 2.x needs FastMCP 4, which nixpkgs does not have yet;
+  # the overrides are scoped to this package's interpreter. FastMCP 4.1 defaults
+  # disabled HTTP session expiry to 1800 seconds, which workspace-mcp's tests reject.
   python = python313.override {
     self = python;
     packageOverrides = final: prev: {
+      google-api-python-client = prev.google-api-python-client.overridePythonAttrs rec {
+        version = "2.201.0";
+        src = fetchFromGitHub {
+          owner = "googleapis";
+          repo = "google-api-python-client";
+          tag = "v${version}";
+          hash = "sha256-c66IRjY8NXBvZe4Lvpza7Y5nUZoOezi5kQg6vHmbLYw=";
+        };
+      };
+
       # workspace-mcp's security floor.
       pyjwt = prev.pyjwt.overridePythonAttrs rec {
         version = "2.15.1";
@@ -45,6 +55,17 @@ let
         dependencies = old.dependencies ++ [ final.truststore ];
       });
 
+      # FastMCP's task tests require the cancellation fix in Docket 0.26.
+      pydocket = prev.pydocket.overridePythonAttrs {
+        version = "0.26.0";
+        src = fetchFromGitHub {
+          owner = "chrisguidry";
+          repo = "docket";
+          tag = "0.26.0";
+          hash = "sha256-uiwNmh8YwCPkC7Lk3M3iWAFKQhSLzyZkSi0UBTimeOk=";
+        };
+      };
+
       mcp-types = final.buildPythonPackage {
         pname = "mcp-types";
         inherit (final.mcp) version src;
@@ -72,12 +93,12 @@ let
       };
 
       mcp = prev.mcp.overridePythonAttrs (old: rec {
-        version = "2.2.0";
+        version = "2.3.0";
         src = fetchFromGitHub {
           owner = "modelcontextprotocol";
           repo = "python-sdk";
           tag = "v${version}";
-          hash = "sha256-nnpNXnQiFSGx5KQBDXHCOH0wE3cznlmI6s7vtchcj3A=";
+          hash = "sha256-CnXi78zYxm0/R4fON/DzRYMSDYM/XM/9SE3s+Cf1BR0=";
         };
         # nixpkgs lengthens a stdio test's sleep on Darwin; 2.x's tests no longer sleep there.
         postPatch = "";
@@ -142,7 +163,11 @@ let
         ];
       });
 
-      fastmcp-slim = prev.fastmcp-slim.overridePythonAttrs {
+      fastmcp-slim = prev.fastmcp-slim.overridePythonAttrs (old: {
+        # nixpkgs marks FastMCP 3 as incompatible with MCP 2; this package uses FastMCP 4.
+        meta = old.meta // {
+          broken = false;
+        };
         patches = [ ];
         dependencies =
           with final;
@@ -205,15 +230,15 @@ let
               ++ mcpClient
               ++ keyValue;
           };
-      };
+      });
 
       fastmcp = prev.fastmcp.overridePythonAttrs (old: rec {
-        version = "4.0.10";
+        version = "4.0.11";
         src = fetchFromGitHub {
           owner = "PrefectHQ";
           repo = "fastmcp";
           tag = "v${version}";
-          hash = "sha256-GAoBN+tvwRGLrq3+XXvJYaeL3X5HoHFzyQodzNMLAwY=";
+          hash = "sha256-l+5eRoUNWsHnd/0wYH1ID9zxvc+H71KNIhoHDr4xRs0=";
         };
         patches = [ ];
         optional-dependencies = {
@@ -290,20 +315,28 @@ assert lib.versionAtLeast py.mcp.version "2.2.0";
 assert lib.versionAtLeast py.pyasn1.version "0.6.4";
 py.buildPythonApplication (finalAttrs: {
   pname = "workspace-mcp";
-  version = "2.1.1";
+  version = "2.2.1";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "taylorwilsdon";
     repo = "google_workspace_mcp";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-gX4N1xKwE0FxcXZycuNExihx0yha9jt+BnlQ7GGEtCE=";
+    hash = "sha256-6aTkvFCiuHW9jaGJq27dH+Dr5L3hFRxWp3u4fmeNZ1E=";
   };
 
   build-system = with py; [
     setuptools
     wheel
   ];
+
+  nativeBuildInputs = [ installShellFiles ];
+  postInstall = ''
+    for command in workspace-mcp workspace-cli; do
+      installShellCompletion --cmd "$command" --zsh \
+        <(printf '#compdef %s\n_gnu_generic\n' "$command")
+    done
+  '';
 
   inherit dependencies;
 

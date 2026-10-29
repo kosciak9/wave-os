@@ -13,7 +13,7 @@ let
   containerName = "wave-frida";
   volume = "wave-frida-state";
   secret = name: osConfig.sops.secrets."frida/${name}".path;
-  python = pkgs.python3.withPackages (ps: [ ps.fastmcp ]);
+  python = pkgs.workspace-mcp.python.withPackages (ps: [ ps.fastmcp ]);
   bridges = {
     home-assistant = {
       port = 18097;

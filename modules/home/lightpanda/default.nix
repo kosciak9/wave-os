@@ -9,7 +9,7 @@ let
   homeDirectory = config.home.homeDirectory;
   podman = lib.getExe pkgs.podman;
   jq = lib.getExe pkgs.jq;
-  image = "docker.io/lightpanda/browser:1.0.0@sha256:5b84708cb3d9bef841aba4a4cd299f4de0609ac1bd7d4c6fbfcbf168d56b685e";
+  image = "docker.io/lightpanda/browser:1.0.2@sha256:5d1d724c476957d8c2f8393a51fd089477523b0e5aa9c783c48688785d934fb9";
   lightpandaAgent = pkgs.writeShellApplication {
     name = "lightpanda-mcp-agent";
     runtimeInputs = [

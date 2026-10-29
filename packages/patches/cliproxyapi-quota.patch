@@ -1,8 +1,8 @@
 diff --git a/internal/api/server.go b/internal/api/server.go
-index fc1646c..03468b3 100644
+index 32a7c56..5196923 100644
 --- a/internal/api/server.go
 +++ b/internal/api/server.go
-@@ -43,6 +43,7 @@ type Server struct {
+@@ -44,6 +44,7 @@ type Server struct {
  
  	// server is the underlying HTTP server.
  	server *http.Server
@@ -10,7 +10,7 @@ index fc1646c..03468b3 100644
  
  	// muxBaseListener is the shared TCP listener used to serve both HTTP and Redis protocol traffic.
  	listenerMu      sync.Mutex
-@@ -238,6 +239,8 @@ func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdk
+@@ -241,6 +242,8 @@ func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdk
  	engine.Use(s.exampleAPIKeySafeModeMiddleware())
  
  	// Setup routes
@@ -19,21 +19,21 @@ index fc1646c..03468b3 100644
  	s.setupRoutes()
  
  	// Apply additional router configurators from options
-@@ -263,7 +266,7 @@ func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdk
+@@ -266,7 +269,7 @@ func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdk
  	// Create HTTP server
  	s.server = &http.Server{
- 		Addr:    fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
--		Handler: engine,
-+		Handler: s.quota,
+ 		Addr:              fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
+-		Handler:           wrapUnconsumedRequestBodyHandler(engine),
++		Handler:           wrapUnconsumedRequestBodyHandler(s.quota),
+ 		ReadHeaderTimeout: muxSniffDeadline,
  	}
  
- 	return s
 diff --git a/internal/api/server_management_v8.go b/internal/api/server_management_v8.go
-index 0a1d10a..3c5a244 100644
+index 47cbee0..a47a82a 100644
 --- a/internal/api/server_management_v8.go
 +++ b/internal/api/server_management_v8.go
-@@ -33,6 +33,7 @@ func (s *Server) registerManagementV8Routes() {
- 	v8.GET("/routing/model-definitions/:channel", s.mgmt.GetStaticModelDefinitions)
+@@ -35,6 +35,7 @@ func (s *Server) registerManagementV8Routes() {
+ 	v8.POST("/models/refresh", s.mgmt.RefreshModelDefinitions)
  
  	v8.GET("/observability/logs", s.mgmt.GetLogs)
 +	v8.GET("/observability/quota", func(c *gin.Context) { s.quota.snapshot(c.Writer, true) })
@@ -1378,10 +1378,10 @@ index 0000000..38e5566
 +	return result
 +}
 diff --git a/sdk/cliproxy/auth/conductor_execution.go b/sdk/cliproxy/auth/conductor_execution.go
-index 17a1b45..b887691 100644
+index a7bc648..b32997e 100644
 --- a/sdk/cliproxy/auth/conductor_execution.go
 +++ b/sdk/cliproxy/auth/conductor_execution.go
-@@ -498,6 +498,10 @@ func (m *Manager) executeMixedOnce(ctx context.Context, providers []string, req
+@@ -527,6 +527,10 @@ func (m *Manager) executeMixedOnce(ctx context.Context, providers []string, req
  	attempted := make(map[string]struct{})
  	var lastErr error
  	var upstreamErr error
@@ -1392,7 +1392,7 @@ index 17a1b45..b887691 100644
  	for {
  		if maxRetryCredentials > 0 && len(attempted) >= maxRetryCredentials {
  			if lastErr != nil {
-@@ -514,6 +518,13 @@ func (m *Manager) executeMixedOnce(ctx context.Context, providers []string, req
+@@ -544,6 +548,13 @@ func (m *Manager) executeMixedOnce(ctx context.Context, providers []string, req
  		auth, executor, provider, errPick := m.pickNextMixed(ctx, providers, routeModel, pickOpts, tried)
  		if errPick != nil {
  			if shouldReturnLastErrorOnPickFailure(homeMode, lastErr, errPick) {
@@ -1406,15 +1406,15 @@ index 17a1b45..b887691 100644
  				return cliproxyexecutor.Response{}, preferredExecutionAttemptError(lastErr, upstreamErr)
  			}
  			return cliproxyexecutor.Response{}, errPick
-@@ -550,6 +561,7 @@ func (m *Manager) executeMixedOnce(ctx context.Context, providers []string, req
- 			result := Result{AuthID: auth.ID, Provider: provider, Model: stateModel, RouteModel: routeModel, Success: false, Error: resultErrorFromError(errPrepare), Options: pickOpts, CredentialVersion: auth.CredentialVersion, RegistrationEpoch: auth.RegistrationEpoch}
+@@ -581,6 +592,7 @@ func (m *Manager) executeMixedOnce(ctx context.Context, providers []string, req
+ 			result := Result{AuthID: auth.ID, Provider: provider, Model: stateModel, RouteModel: routeModel, Success: false, Error: resultErrorFromError(errPrepare), Options: pickOpts, AccessToken: authAccessTokenForRequest(execCtx, auth, pickOpts.Headers), CredentialVersion: auth.CredentialVersion, RegistrationEpoch: auth.RegistrationEpoch}
  			m.MarkResult(execCtx, result)
  			lastErr = errPrepare
 +			lastProvider = provider
  			continue
  		}
  		executor = executorForAuth(executor, auth)
-@@ -677,6 +689,7 @@ func (m *Manager) executeMixedOnce(ctx context.Context, providers []string, req
+@@ -710,6 +722,7 @@ func (m *Manager) executeMixedOnce(ctx context.Context, providers []string, req
  					return cliproxyexecutor.Response{}, wrapRequestStopError(authErr)
  				}
  				lastErr = authErr
@@ -1422,7 +1422,7 @@ index 17a1b45..b887691 100644
  				if homeMode {
  					homeAuthCount++
  				}
-@@ -686,6 +699,7 @@ func (m *Manager) executeMixedOnce(ctx context.Context, providers []string, req
+@@ -719,6 +732,7 @@ func (m *Manager) executeMixedOnce(ctx context.Context, providers []string, req
  				return cliproxyexecutor.Response{}, authErr
  			}
  			lastErr = authErr
@@ -1430,7 +1430,7 @@ index 17a1b45..b887691 100644
  			if homeMode {
  				homeAuthCount++
  			}
-@@ -712,6 +726,10 @@ func (m *Manager) executeCountMixedOnce(ctx context.Context, providers []string,
+@@ -745,6 +759,10 @@ func (m *Manager) executeCountMixedOnce(ctx context.Context, providers []string,
  	attempted := make(map[string]struct{})
  	var lastErr error
  	var upstreamErr error
@@ -1441,7 +1441,7 @@ index 17a1b45..b887691 100644
  	for {
  		if maxRetryCredentials > 0 && len(attempted) >= maxRetryCredentials {
  			if lastErr != nil {
-@@ -728,6 +746,13 @@ func (m *Manager) executeCountMixedOnce(ctx context.Context, providers []string,
+@@ -762,6 +780,13 @@ func (m *Manager) executeCountMixedOnce(ctx context.Context, providers []string,
  		auth, executor, provider, errPick := m.pickNextMixed(ctx, providers, routeModel, pickOpts, tried)
  		if errPick != nil {
  			if shouldReturnLastErrorOnPickFailure(homeMode, lastErr, errPick) {
@@ -1455,15 +1455,15 @@ index 17a1b45..b887691 100644
  				return cliproxyexecutor.Response{}, preferredExecutionAttemptError(lastErr, upstreamErr)
  			}
  			return cliproxyexecutor.Response{}, errPick
-@@ -764,6 +789,7 @@ func (m *Manager) executeCountMixedOnce(ctx context.Context, providers []string,
- 			result := Result{AuthID: auth.ID, Provider: provider, Model: stateModel, RouteModel: routeModel, Success: false, Error: resultErrorFromError(errPrepare), Options: pickOpts, SkipQuotaObservation: true, CredentialVersion: auth.CredentialVersion, RegistrationEpoch: auth.RegistrationEpoch}
+@@ -799,6 +824,7 @@ func (m *Manager) executeCountMixedOnce(ctx context.Context, providers []string,
+ 			result := Result{AuthID: auth.ID, Provider: provider, Model: stateModel, RouteModel: routeModel, Success: false, Error: resultErrorFromError(errPrepare), Options: pickOpts, SkipQuotaObservation: true, AccessToken: authAccessTokenForRequest(execCtx, auth, pickOpts.Headers), CredentialVersion: auth.CredentialVersion, RegistrationEpoch: auth.RegistrationEpoch}
  			m.MarkResult(execCtx, result)
  			lastErr = errPrepare
 +			lastProvider = provider
  			continue
  		}
  		executor = executorForAuth(executor, auth)
-@@ -895,6 +921,7 @@ func (m *Manager) executeCountMixedOnce(ctx context.Context, providers []string,
+@@ -932,6 +958,7 @@ func (m *Manager) executeCountMixedOnce(ctx context.Context, providers []string,
  					return cliproxyexecutor.Response{}, wrapRequestStopError(authErr)
  				}
  				lastErr = authErr
@@ -1471,7 +1471,7 @@ index 17a1b45..b887691 100644
  				if homeMode {
  					homeAuthCount++
  				}
-@@ -904,6 +931,7 @@ func (m *Manager) executeCountMixedOnce(ctx context.Context, providers []string,
+@@ -941,6 +968,7 @@ func (m *Manager) executeCountMixedOnce(ctx context.Context, providers []string,
  				return cliproxyexecutor.Response{}, authErr
  			}
  			lastErr = authErr
@@ -1479,7 +1479,7 @@ index 17a1b45..b887691 100644
  			if homeMode {
  				homeAuthCount++
  			}
-@@ -935,6 +963,10 @@ func (m *Manager) executeStreamMixedOnce(ctx context.Context, providers []string
+@@ -972,6 +1000,10 @@ func (m *Manager) executeStreamMixedOnce(ctx context.Context, providers []string
  	attempted := make(map[string]struct{})
  	var lastErr error
  	var upstreamErr error
@@ -1490,7 +1490,7 @@ index 17a1b45..b887691 100644
  	var roundTiming homeRetryRoundTiming
  	for {
  		allowSameAuthRetry := homeMode && homeSameAuthRetryPending && lastHomeAuthID != "" && homeSameAuthRetries[lastHomeAuthID] == 0
-@@ -981,6 +1013,13 @@ func (m *Manager) executeStreamMixedOnce(ctx context.Context, providers []string
+@@ -1019,6 +1051,13 @@ func (m *Manager) executeStreamMixedOnce(ctx context.Context, providers []string
  				if homeMode {
  					return nil, markHomeRetryRoundExhausted(preferredErr, roundTiming.RetryAfter(), isHomeNextRoundImmediatelyAvailable(errPick))
  				}
@@ -1504,7 +1504,7 @@ index 17a1b45..b887691 100644
  				return nil, preferredErr
  			}
  			return nil, errPick
-@@ -1120,6 +1159,7 @@ func (m *Manager) executeStreamMixedOnce(ctx context.Context, providers []string
+@@ -1163,6 +1202,7 @@ func (m *Manager) executeStreamMixedOnce(ctx context.Context, providers []string
  				m.MarkResult(execCtx, result)
  			}
  			lastErr = errPrepare
@@ -1512,7 +1512,7 @@ index 17a1b45..b887691 100644
  			if homeMode {
  				roundTiming.Observe(lastErr)
  			}
-@@ -1210,6 +1250,7 @@ func (m *Manager) executeStreamMixedOnce(ctx context.Context, providers []string
+@@ -1253,6 +1293,7 @@ func (m *Manager) executeStreamMixedOnce(ctx context.Context, providers []string
  					return nil, wrapRequestStopError(errStream)
  				}
  				lastErr = errStream
@@ -1520,7 +1520,7 @@ index 17a1b45..b887691 100644
  				if homeMode {
  					roundTiming.Observe(lastErr)
  				}
-@@ -1222,6 +1263,7 @@ func (m *Manager) executeStreamMixedOnce(ctx context.Context, providers []string
+@@ -1265,6 +1306,7 @@ func (m *Manager) executeStreamMixedOnce(ctx context.Context, providers []string
  				return nil, errStream
  			}
  			lastErr = errStream
@@ -1529,7 +1529,7 @@ index 17a1b45..b887691 100644
  				roundTiming.Observe(lastErr)
  			}
 diff --git a/sdk/cliproxy/auth/selector.go b/sdk/cliproxy/auth/selector.go
-index 9010743..075a1ef 100644
+index fc78054..e8ce973 100644
 --- a/sdk/cliproxy/auth/selector.go
 +++ b/sdk/cliproxy/auth/selector.go
 @@ -92,6 +92,53 @@ func NewModelCooldownError(model, provider string, resetIn time.Duration) error

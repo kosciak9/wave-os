@@ -12,7 +12,6 @@
     initrd = {
       # systemd records the active Btrfs swapfile location in EFI at hibernation,
       # then resolves it after unlocking LUKS in the initrd.
-      systemd.enable = true;
       availableKernelModules = [
         "nvme"
         "xhci_pci"

@@ -37,33 +37,22 @@ diff --git a/main.cpp b/main.cpp
 diff --git a/scrollOverview.cpp b/scrollOverview.cpp
 --- a/scrollOverview.cpp
 +++ b/scrollOverview.cpp
-@@ -5042,6 +5042,25 @@
-     const bool PRESERVEMONITORSTATE = mode == ECloseMode::PRESERVE_MONITOR_STATE;
-     const bool ACTIVATESELECTION    = !PRESERVEMONITORSTATE && activeScrollOverview().get() == this;
-     const auto MONITOR              = pMonitor.lock();
-+    if (!MONITOR || !MONITOR->m_enabled || !MONITOR->m_activeWorkspace) {
+@@ -5065,6 +5065,14 @@
+         scheduleCloseRemoval();
+         return;
+     }
++    if (!MONITOR->m_enabled || !MONITOR->m_activeWorkspace) {
 +        setClosing(true);
 +        closeRemovalPending = true;
 +        scale->setCallbackOnEnd({});
 +        // No frames will finish the close animation after the output is gone.
-+        // Defer removal so an input callback cannot destroy its own overview.
-+        if (!closeRemovalIdle) {
-+            closeRemovalIdle = wl_event_loop_add_idle(
-+                g_pCompositor->m_wlEventLoop,
-+                [](void* data) {
-+                    auto* overview = static_cast<CScrollOverview*>(data);
-+                    overview->closeRemovalIdle = nullptr;
-+                    removeOverview(overview);
-+                },
-+                this);
-+        }
++        scheduleCloseRemoval();
 +        return;
 +    }
-+
      const auto SELECTEDWORKSPACE    = PRESERVEMONITORSTATE ?
          (MONITOR ? MONITOR->m_activeWorkspace : PHLWORKSPACE{}) :
          (viewportCurrentWorkspace < images.size() && images[viewportCurrentWorkspace] ? images[viewportCurrentWorkspace]->pWorkspace : PHLWORKSPACE{});
-@@ -5062,7 +5081,7 @@
+@@ -5085,7 +5093,7 @@
          *scale = 1.F;
  
          if (!ScrollOverview::Config::getValue<int>("animations:enabled")) {
@@ -72,7 +61,7 @@ diff --git a/scrollOverview.cpp b/scrollOverview.cpp
              damage();
          }
  
-@@ -5073,7 +5092,7 @@
+@@ -5096,7 +5104,7 @@
          });
      };
  
@@ -81,7 +70,7 @@ diff --git a/scrollOverview.cpp b/scrollOverview.cpp
          const auto FOCUSEDWINDOW = getOverviewWindowToShow(Desktop::focusState()->window());
          if (!SELECTEDWORKSPACE || (FOCUSEDWINDOW && FOCUSEDWINDOW->m_workspace == SELECTEDWORKSPACE))
              closeOnWindow = FOCUSEDWINDOW;
-@@ -5097,8 +5116,8 @@
+@@ -5120,8 +5128,8 @@
          }
  
          if (sourceIdx < images.size() && targetIdx < images.size()) {
@@ -92,7 +81,7 @@ diff --git a/scrollOverview.cpp b/scrollOverview.cpp
  
              if (ACTIVATESELECTION)
                  Desktop::focusState()->fullWindowFocus(closeOnWindow.lock(), Desktop::FOCUS_REASON_DESKTOP_STATE_CHANGE);
-@@ -5106,7 +5125,7 @@
+@@ -5129,7 +5137,7 @@
              startedOn                = FINALWORKSPACE;
              viewportCurrentWorkspace = targetIdx;
  
@@ -101,7 +90,7 @@ diff --git a/scrollOverview.cpp b/scrollOverview.cpp
              viewOffset->setValueAndWarp(axisOffsetVector(workspaceOverviewLogicalOffset(sourceIdx, targetIdx, FINALPITCH), layout));
              *viewOffset = Vector2D{};
  
-@@ -5120,7 +5139,7 @@
+@@ -5143,7 +5151,7 @@
  
      if (!closeOnWindow) {
          const auto ACTIVEIDX = activeWorkspaceIndex();
@@ -110,7 +99,7 @@ diff --git a/scrollOverview.cpp b/scrollOverview.cpp
          *viewOffset = Vector2D{};
  
          for (size_t workspaceIdx = 0; workspaceIdx < images.size(); ++workspaceIdx) {
-@@ -5131,12 +5150,12 @@
+@@ -5154,12 +5162,12 @@
              break;
          }
  
@@ -127,7 +116,7 @@ diff --git a/scrollOverview.cpp b/scrollOverview.cpp
  
              for (size_t workspaceIdx = 0; workspaceIdx < images.size(); ++workspaceIdx) {
                  if (!images[workspaceIdx] || !images[workspaceIdx]->pWorkspace || images[workspaceIdx]->pWorkspace->m_id != focusSyncedFromWorkspaceID)
-@@ -5150,18 +5169,20 @@
+@@ -5173,18 +5181,20 @@
          *viewOffset = Vector2D{};
      } else {
  

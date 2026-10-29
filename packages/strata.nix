@@ -39,10 +39,16 @@ let
     CARGO_PROFILE_RELEASE_LTO = "off";
     CARGO_PROFILE_RELEASE_CODEGEN_UNITS = "16";
     TZDIR = "${tzdata}/share/zoneinfo";
-    STRATA_BUILD_COMMIT = "0a086aa3bdb251842a1e8413e2a6b35970d0b409";
+    STRATA_BUILD_COMMIT = "be3343a5992a2a5497b1a2ee7faa525be18e988f";
     STRATA_SANDBOX_ROOT = "/nix/store";
     STRATA_SANDBOX_PRLIMIT = "${util-linux}/bin/prlimit";
     STRATA_SANDBOX_GDK_PIXBUF_MODULE_FILE = "${gdk-pixbuf}/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache";
+    STRATA_TRUSTED_COMMAND_PATH = lib.makeBinPath [
+      coreutils
+      bubblewrap
+      gnutar
+      python3
+    ];
     STRATA_SANDBOX_PATH = lib.makeBinPath [
       ffmpeg
       ffmpegthumbnailer
@@ -53,7 +59,7 @@ let
   };
   package = rustPlatform.buildRustPackage {
     pname = "strata";
-    version = "1.0.0";
+    version = "1.1.1";
     memSize = 16384;
     enableParallelBuilding = true;
     QEMU_OPTS = "-serial file:xchg/serial.log -monitor none";
@@ -64,11 +70,13 @@ let
     src = fetchFromGitHub {
       owner = "lgse";
       repo = "strata";
-      rev = "0a086aa3bdb251842a1e8413e2a6b35970d0b409";
-      hash = "sha256-dFNsFCnkeZs0VwmYRyu+6Jh8XxJzv+agUlP70Fdxa5Q=";
+      rev = "be3343a5992a2a5497b1a2ee7faa525be18e988f";
+      hash = "sha256-mWFYDKlVR6/LytRBGmgZlWX70N+Qlt3Ev5W5TmJ8UdE=";
     };
 
-    cargoHash = "sha256-vuhHierqb4WsMdg890NpkaztYnfsnck2FxMz5cPMwCQ=";
+    cargoHash = "sha256-+8Ztfdf/523VTH4nozy9b5Fde+GTk0xWRMbBUBA5rKs=";
+    # Only the package builds as root inside the VM, not the vendor fetcher.
+    depsExtraArgs.preUnpack = "";
 
     nativeBuildInputs = [
       pkg-config
@@ -115,8 +123,9 @@ let
         --replace-fail /bin/true ${coreutils-full.override { singleBinary = false; }}/bin/true
       substituteInPlace src/sandbox/tests.rs \
         --replace-fail /bin/cat ${coreutils}/bin/cat
-      substituteInPlace src/trusted_command.rs \
-        --replace-fail '    "/usr/sbin",' '    "${coreutils}/bin", "${bubblewrap}/bin", "${gnutar}/bin",'
+      # Release-profile tests must retain the UI-thread guard they exercise.
+      substituteInPlace src/util/ui_thread.rs \
+        --replace-fail '    debug_assert!(' $'    #[cfg(any(test, debug_assertions))]\n    assert!('
       substituteInPlace src/services/file_providers/tests.rs src/ui/file_providers/tests.rs \
         --replace-fail /usr/bin/python3 /build/test-python3
       substituteInPlace src/portal/dbus/tests.rs \
@@ -130,6 +139,10 @@ let
       export HOME=/build/test-home
       export TMPDIR=/build/test-tmp
       mkdir -p "$HOME" "$TMPDIR"
+      # virtiofs exposes store files as nobody; provider checks require a root-owned shell.
+      cp -L /bin/sh /build/test-sh
+      mv -T /build/test-sh /bin/sh
+      ln -s ${gnutar}/bin/tar /bin/tar
       cp -L ${python3}/bin/python3 /build/test-python3
       chmod 755 /build
       chown -R 1000:100 "$PWD" "$HOME" "$TMPDIR"

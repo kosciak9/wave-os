@@ -3,7 +3,6 @@
 {
   boot = {
     initrd = {
-      systemd.enable = true;
       # udev keeps an incomplete btrfs unready forever, so "degraded" alone never mounts.
       # After a grace period for slow USB members, mark WAVE_ROOT ready anyway.
       services.udev.rules = ''

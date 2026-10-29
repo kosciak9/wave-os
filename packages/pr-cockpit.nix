@@ -29,13 +29,13 @@
 
 let
   pname = "pr-cockpit";
-  version = "unstable-2026-10-20";
-  revision = "505827aa9d3f333d17755c2d042842e2ce585a0c";
+  version = "unstable-2026-10-28";
+  revision = "8723a8256503e276263031ad2359f759bad827b8";
   src = fetchFromGitHub {
     owner = "theolundqvist";
     repo = "pr-cockpit";
     rev = revision;
-    hash = "sha256-A5S9Cm0mvpe5cg2cJ+ALxol065DIgRD3WYYtXEqo470=";
+    hash = "sha256-J204xvfYDJmuUaNBPr9ZLAqhcwmTywj9x9/KCTHrRnU=";
   };
   nodeModules = stdenvNoCC.mkDerivation {
     pname = "${pname}-node-modules";
@@ -169,7 +169,8 @@ stdenvNoCC.mkDerivation {
         'unresolve:Reopen a thread' 'dismiss-alert:Dismiss a CodeQL finding'
         'review:Submit a review' 'merge:Merge a PR' 'update-branch:Update the PR branch'
         'ready-for-review:Mark a draft ready' 'convert-to-draft:Convert to a draft'
-        'close:Close a PR' 'edit-body:Replace the PR body'
+        'close:Close a PR' 'pin:Pin a PR in Cockpit' 'unpin:Unpin a PR in Cockpit'
+        'edit-body:Replace the PR body'
         'edit-title:Replace the PR title' 'auto-merge:Configure GitHub auto-merge'
         'cockpit-auto-merge:Configure Cockpit auto-merge' 'inline-comment:Post an inline comment'
         'assign:Add assignees' 'unassign:Remove assignees' 'add-labels:Add labels'
