@@ -868,6 +868,7 @@ hl.bind("Print", hl.dsp.exec_cmd("hyprshot -m region --clipboard-only"), { descr
 hl.bind("SHIFT + Print", hl.dsp.exec_cmd("hyprshot -m region --raw | waytator --stdin " .. screenshotName), { description = "Annotate region" })
 
 hl.bind(mod .. " + SHIFT + P", hl.dsp.exec_cmd([[loginctl lock-session && sleep 2 && hyprctl dispatch 'hl.dsp.dpms({ action = "disable" })']]), { description = "Lock session and turn displays off after 2 seconds" })
+hl.bind("XF86PowerOff", hl.dsp.exec_cmd("vicinae cmd launch power:power-off"), { description = "Confirm power off" })
 hl.bind("switch:on:Lid Switch", hl.dsp.exec_cmd("wave display notify lid-close"), { locked = true, description = "Handle lid close" })
 hl.bind("switch:off:Lid Switch", hl.dsp.exec_cmd("wave display notify lid-open"), { locked = true, description = "Handle lid open" })
 

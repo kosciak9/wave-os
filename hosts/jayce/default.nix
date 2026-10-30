@@ -166,6 +166,8 @@
       HandleLidSwitch = "suspend-then-hibernate";
       HandleLidSwitchDocked = "suspend-then-hibernate";
       HandleLidSwitchExternalPower = "suspend-then-hibernate";
+      # Hyprland asks for confirmation through Vicinae instead.
+      HandlePowerKey = "ignore";
     };
     # smartd catches up on self-tests that fell due while the laptop slept.
     smartd = {
