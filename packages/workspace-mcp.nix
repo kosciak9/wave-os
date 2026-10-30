@@ -23,7 +23,10 @@ let
           owner = "googleapis";
           repo = "google-api-python-client";
           tag = "v${version}";
-          hash = "sha256-c66IRjY8NXBvZe4Lvpza7Y5nUZoOezi5kQg6vHmbLYw=";
+          # The generated docs contain names differing only in case, so the
+          # unpacked tree would hash differently on case-insensitive Darwin.
+          postFetch = "rm -r $out/docs";
+          hash = "sha256-ymzuPB8LnJcQ9uTrv/3v/QAzRlFTuc96ITh8UY4TONc=";
         };
       };
 
