@@ -33,6 +33,15 @@ let
         };
         dependencies = old.dependencies ++ [ final.click ];
       });
+
+      # The overridden interpreter rebuilds aiohttp, whose Darwin tests may reach
+      # the host's network: this one connects to https://127.0.0.1 and leaks the
+      # socket whenever a local service listens on port 443.
+      aiohttp = prev.aiohttp.overridePythonAttrs (old: {
+        disabledTests =
+          old.disabledTests
+          ++ lib.optionals stdenv.hostPlatform.isDarwin [ "test_connector_multiple_event_loop" ];
+      });
     };
   };
   py = python.pkgs;

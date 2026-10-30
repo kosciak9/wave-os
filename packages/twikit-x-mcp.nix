@@ -85,7 +85,7 @@ py.buildPythonApplication {
   '';
   build-system = [ py.setuptools ];
   dependencies = with py; [
-    mcp
+    mcp_1
     httpx
     socksio
     filetype
