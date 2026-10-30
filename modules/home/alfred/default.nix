@@ -234,6 +234,31 @@ let
       "get_draft"
       "create_draft"
     ];
+    # Cal.com; Alfred signs in with `/mcp_login cal`. Bookings only, no settings or deletions:
+    # call_api_operation would reach the whole API.
+    cal.tools = [
+      "get_app_link"
+      "search_docs"
+      "get_me"
+      "get_event_types"
+      "get_event_type"
+      "get_bookings"
+      "get_booking"
+      "get_booking_attendees"
+      "get_booking_attendee"
+      "create_booking"
+      "reschedule_booking"
+      "cancel_booking"
+      "confirm_booking"
+      "add_booking_attendee"
+      "get_schedules"
+      "get_schedule"
+      "get_default_schedule"
+      "get_availability"
+      "get_busy_times"
+      "get_connected_calendars"
+      "get_conferencing_apps"
+    ];
   };
   policy =
     agent:
@@ -653,6 +678,7 @@ let
     		},
     		t3: { url: "https://zilean.dusky-diatonic.ts.net:18443/mcp", oauth: true },
             scape: { url: "https://api.v2.scape.app/mcp", oauth: true },
+            cal: { url: "https://mcp.cal.com/mcp", oauth: true },
     	},
     	mcp: ${builtins.toJSON (policy "alfred" // lib.mapAttrs (_: remote: remote.tools) remotes)},
     	subagents: {
