@@ -40,6 +40,8 @@
       };
     };
     kernelParams = [ "console=tty0" ];
+    # The onboard Wi-Fi radio stopped receiving after overheating; ahri is wired.
+    blacklistedKernelModules = [ "brcmfmac" ];
     supportedFilesystems = [
       "btrfs"
       "ext4"
