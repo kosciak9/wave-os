@@ -41,13 +41,21 @@
     };
     kernelParams = [ "console=tty0" ];
     # The onboard Wi-Fi radio stopped receiving after overheating; ahri is wired.
-    blacklistedKernelModules = [ "brcmfmac" ];
+    # Bluetooth is unused and only draws power.
+    blacklistedKernelModules = [
+      "brcmfmac"
+      "hci_uart"
+      "btbcm"
+    ];
     supportedFilesystems = [
       "btrfs"
       "ext4"
       "vfat"
     ];
   };
+
+  # The current power supply sags under load; a lower CPU ceiling keeps peaks down.
+  powerManagement.cpufreq.max = 1000000;
 
   hardware = {
     enableAllHardware = true;
