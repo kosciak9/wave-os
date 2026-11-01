@@ -15,6 +15,7 @@ let
   ];
   # OpenWrt devices from modre-kalhotky, resolved by the router's dnsmasq on the home LAN.
   openwrtHosts = [
+    "jezek"
     "krtek"
     "myska"
     "zajic"
