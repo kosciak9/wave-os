@@ -232,7 +232,7 @@
       };
 
       wave-power-profile-policy = {
-        description = "Select performance on AC or with caffeinate, otherwise save battery power";
+        description = "Select performance on AC, otherwise balanced";
         # The daemon units pull this policy in and restart it after PartOf stops it;
         # keep it out of multi-user.target to avoid an ordering cycle.
         wantedBy = [
@@ -245,7 +245,6 @@
         ];
         after = [
           "dbus.service"
-          "systemd-logind.service"
           "power-profiles-daemon.service"
           "upower.service"
         ];

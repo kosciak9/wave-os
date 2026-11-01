@@ -102,7 +102,7 @@ enum Action {
     /// Run the night light: warm the screen through civil twilight at this location
     #[cfg(target_os = "linux")]
     NightLight,
-    /// Run the power profile policy: performance on AC or with caffeinate
+    /// Run the power profile policy: performance on AC, balanced on battery
     #[cfg(target_os = "linux")]
     PowerProfilePolicy,
     /// Keep the paired InfiniTime watch connected, its clock set and its weather fresh

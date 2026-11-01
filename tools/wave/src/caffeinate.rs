@@ -10,7 +10,6 @@ use std::time::Duration;
 use zbus::blocking::Connection;
 
 const UNIT: &str = "wave-caffeinate.service";
-/// The power profile policy recognises caffeinate by this inhibitor owner.
 const INHIBITOR_WHO: &str = "wave-caffeinate";
 const JOB_TIMEOUT: Duration = Duration::from_secs(15);
 

@@ -146,9 +146,12 @@ Scope {
     }
 
     function toggleProfile(): void {
-        PowerProfiles.profile = PowerProfiles.profile === PowerProfile.PowerSaver
-            ? (PowerProfiles.hasPerformanceProfile ? PowerProfile.Performance : PowerProfile.Balanced)
-            : PowerProfile.PowerSaver
+        if (PowerProfiles.profile === PowerProfile.PowerSaver)
+            PowerProfiles.profile = PowerProfile.Balanced
+        else if (PowerProfiles.profile === PowerProfile.Balanced && PowerProfiles.hasPerformanceProfile)
+            PowerProfiles.profile = PowerProfile.Performance
+        else
+            PowerProfiles.profile = PowerProfile.PowerSaver
     }
 
     function caffeinateStatus(): string {

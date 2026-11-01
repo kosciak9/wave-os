@@ -431,7 +431,7 @@ in
 
     wave-caffeinate = {
       Unit = {
-        Description = "Keep tasks running at performance without preventing lock or DPMS";
+        Description = "Keep tasks running without preventing lock or DPMS";
         After = [ "wayland-session-waitenv.service" ];
         PartOf = [ sessionTarget ];
         ConditionEnvironment = "WAYLAND_DISPLAY";
