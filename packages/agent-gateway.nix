@@ -77,6 +77,9 @@ let
       export ANTHROPIC_AUTH_TOKEN="$CLIPROXYAPI_API_KEY"
       unset ANTHROPIC_API_KEY
       export CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY=1
+      # With a gateway token Claude Code writes 5-minute cache entries, which
+      # expire during ordinary pauses and force full prompt rewrites.
+      export ENABLE_PROMPT_CACHING_1H=1
     ''}
     ${lib.optionalString (client == "opencode") ''
       # The background service reads this when it starts, so newer models
