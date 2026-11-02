@@ -9,6 +9,9 @@
   "plugins": ["cc-safety-net@2.6.15", "opencode-idle-compaction@0.1.0"],
   // Use the anonymous Parallel MCP instead of a separate search provider.
   "websearch": false,
+  // Auto-compaction starts this many tokens below a model's input limit; with
+  // Sol's limit from default.nix it compacts at 300k.
+  "compaction": { "buffer": 200000 },
   "agents": {
     "title": {
       "model": "cliproxy/gpt-6-luna#low",
