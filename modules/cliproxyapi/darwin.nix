@@ -61,7 +61,7 @@ let
       access.api-keys = [ ];
       oauth.auth-dir = "${stateDirectory}/auth";
       routing = {
-        strategy = "round-robin";
+        strategy = "weighted-round-robin";
         session-affinity = true;
         session-affinity-subagents = true;
         session-affinity-rebind-on = "quota";
