@@ -59,6 +59,17 @@ let
   };
   launcher = pkgs.writeShellScript "${program}-gateway" ''
     set -euo pipefail
+    ${lib.optionalString (client == "claude") ''
+      # Nix owns Claude Code. Its updater would install a native build into
+      # ~/.local/bin, which precedes the Nix profile on PATH.
+      export DISABLE_AUTOUPDATER=1
+      case "''${1:-}" in
+        install|update|upgrade)
+          printf 'Claude Code is managed by Nix; update it through wave-os.\n' >&2
+          exit 1
+          ;;
+      esac
+    ''}
     case "''${1:-}" in
       --version|-V|-v|--help|-h|--completions|completion|completions)
         exec ${lib.getExe package} "$@"
