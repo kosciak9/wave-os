@@ -46,7 +46,14 @@ let
       canonical = "openai";
       package = "@opencode/ai/providers/openai/responses";
       # Filled at launch from the gateway; see packages/agent-gateway.nix.
-      models = { };
+      models = {
+        # Sol's delegation briefs degrade with longer context.
+        "gpt-6.1-sol".limit = {
+          context = 500000;
+          input = 500000;
+          output = 128000;
+        };
+      };
     };
   };
 in
