@@ -27,6 +27,11 @@ edits.
 
 # Execution
 
+- Before reading or editing files for a task, load every skill whose description
+  matches it, and load newly matching skills when the work reaches other file
+  types or phases: for example `elixir` before the first `.ex` file and
+  `implementation-design` before any code or configuration change. Load skills
+  marked for explicit invocation only when the user asks for them.
 - Store temporary work files and large task artifacts (downloads, model weights,
   recovery exports and backups) in a task-specific directory under
   `/srv/scratch` when it is mounted and writable; otherwise use `/tmp`. Check
