@@ -30,6 +30,8 @@ These need no file.
 - Write colors in `oklch()`, with `none` as the hue of a gray, white or black.
   Derive a hover, tint or transparent version with `color-mix(in oklch, …)`.
 - Put sizes that grow with the screen in one `clamp()` token.
+- Give a box that holds text `min-block-size` or `min-inline-size`, never a
+  fixed `height` or `width`. Longer text spills out of a fixed box.
 - Put every `:hover` rule inside `@media (hover: hover) and (pointer: fine)`.
 - Style focus with `:focus-visible` and `outline`. Never write `outline: none`.
 - Give everything pressable an `:active` state.
@@ -56,6 +58,19 @@ whole page matches most of them.
 | `references/motion.md`              | easing and duration tokens, one state change that drives several values, a shadow that changes on hover, a transition between pages, the indicator under an active tab                                        |
 | `references/show-and-hide.md`       | a dialog, popover, dropdown menu or accordion                                                                                                                                                                 |
 | `references/scroll-and-viewport.md` | a carousel, a row that may overflow, a modal body, chat list or drawer that scrolls between a header and a footer, in-page links under a sticky header, an app shell on desktop or on a phone                 |
+
+## Check it against content you did not plan for
+
+Before you hand over styles, load the component with each of these and fix what
+breaks:
+
+- text ten times longer than the design, a URL with no break points, and no text
+  at all
+- the shortest and the longest label a translation can give
+- one item and twenty, in every list, row and grid
+- an image that fails to load, and one much wider or taller than the design
+- a viewport about 500px tall, and one 320px wide
+- page zoom at 200%
 
 ## Left out on purpose
 

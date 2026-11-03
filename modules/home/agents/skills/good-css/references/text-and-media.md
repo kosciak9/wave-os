@@ -84,6 +84,9 @@ Rules:
   stay whole. Move the crop with `object-position`.
 - Leave the background color off an image that has transparent areas. It shows
   through them.
+- Under light text set on the image, make the background color dark, such as
+  `oklch(0.3 0 none)`. The light one above leaves the text unreadable when the
+  file fails to load.
 - A fixed-size image in a flex row needs both sizes, as the avatar has. With
   only a width it stretches to the height of the row.
 - In Safari a failed image ignores `aspect-ratio` and draws a square box. Where
