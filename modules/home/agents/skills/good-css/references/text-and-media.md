@@ -1,5 +1,3 @@
-<!-- Generated from PRACTICES.md by scripts/build-skill.js. Do not edit. -->
-
 ## Long text that wraps, truncates or clamps
 
 Use it on any text that comes from a user or a CMS, such as names, titles, URLs

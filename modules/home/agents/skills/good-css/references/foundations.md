@@ -1,5 +1,3 @@
-<!-- Generated from PRACTICES.md by scripts/build-skill.js. Do not edit. -->
-
 ## The reset
 
 Start every new project with it. In an existing project add one rule at a time

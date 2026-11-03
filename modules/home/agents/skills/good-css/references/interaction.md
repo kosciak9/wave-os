@@ -1,5 +1,3 @@
-<!-- Generated from PRACTICES.md by scripts/build-skill.js. Do not edit. -->
-
 ## One focus ring with `:focus-visible`
 
 Use it as the focus style for every interactive element. Never write

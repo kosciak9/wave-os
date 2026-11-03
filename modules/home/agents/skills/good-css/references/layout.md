@@ -1,5 +1,3 @@
-<!-- Generated from PRACTICES.md by scripts/build-skill.js. Do not edit. -->
-
 ## Content grid with breakouts
 
 Use it wherever you would reach for a centered max-width container. One grid on

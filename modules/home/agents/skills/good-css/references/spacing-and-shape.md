@@ -1,5 +1,3 @@
-<!-- Generated from PRACTICES.md by scripts/build-skill.js. Do not edit. -->
-
 ## Section spacing that depends on its neighbors
 
 Use it on any page built from reorderable sections, above all in a CMS where an

@@ -1,5 +1,3 @@
-<!-- Generated from PRACTICES.md by scripts/build-skill.js. Do not edit. -->
-
 ## Carousel on native scroll
 
 Use it for any horizontal row of cards. The carousel is a real scroll container,

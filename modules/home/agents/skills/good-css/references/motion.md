@@ -1,5 +1,3 @@
-<!-- Generated from PRACTICES.md by scripts/build-skill.js. Do not edit. -->
-
 ## Opt-in motion
 
 Use it for every transition or animation that moves or scales something.
