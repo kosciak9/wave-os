@@ -207,6 +207,7 @@ let
     # Scheduled tasks on zilean's T3 Code and the threads their runs leave, also on the
     # environments linked there (`environmentId`); Alfred signs in with `/mcp_login t3`.
     # Linking and unlinking stay with the owner: T3 asks for them in a thread's card.
+    # Alfred is no T3 thread, so no completion wakes it: it reads delegates with task_status.
     t3.tools = [
       "list_scheduled_tasks"
       "schedule_task"
@@ -218,6 +219,10 @@ let
       "t3_thread_read"
       "t3_thread_search"
       "t3_thread_interrupt"
+      "t3_thread_send"
+      "delegate_task"
+      "task_status"
+      "task_cancel"
       "t3_pending_request_list"
       "t3_pending_request_read"
       "t3_pending_request_respond"
