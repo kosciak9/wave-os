@@ -42,6 +42,10 @@ edits.
   Give each subagent a concrete goal, relevant context and instructions, file
   scope, constraints, and expected checks. Run non-conflicting assignments in
   parallel.
+- Before sending one brief to many subagents, run it on a single batch first and
+  check the result: the child has the tools the brief needs, follows the brief,
+  and returns output that fits where it will be used. Fan out only after this
+  check passes, and fix the brief before relaunching.
 - Use targeted checks during iterations and broader validation when the
   implementation is ready, following the repository's validation rules.
 - Own integration and verification of the complete result. Review delegated
