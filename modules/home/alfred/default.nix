@@ -204,8 +204,9 @@ let
       "users"
       "describe_schema"
     ];
-    # Scheduled tasks on zilean's T3 Code and the threads their runs leave; Alfred signs in
-    # with `/mcp_login t3`.
+    # Scheduled tasks on zilean's T3 Code and the threads their runs leave, also on the
+    # environments linked there (`environmentId`); Alfred signs in with `/mcp_login t3`.
+    # Linking and unlinking stay with the owner: T3 asks for them in a thread's card.
     t3.tools = [
       "list_scheduled_tasks"
       "schedule_task"
@@ -220,6 +221,8 @@ let
       "t3_pending_request_list"
       "t3_pending_request_read"
       "t3_pending_request_respond"
+      "t3_environment_links"
+      "t3_environment_read"
       "orchestrator_capabilities"
     ];
     scape.tools = [

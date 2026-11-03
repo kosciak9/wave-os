@@ -84,6 +84,8 @@
   storageCleanup.worktreeSettledAfterDays = 7;
   # Agents need T3 preview tools to verify UI changes (see agent `UI changes` rules).
   enableAgentBrowserAccess = true;
+  # Agents, including Alfred through zilean, can act on the other hosts' servers.
+  linkedEnvironmentsEnabled = true;
   snoozeLimitedThreads = true;
   autoResumeLimitedThreads = true;
   sidebarAutoSettleAfterDays = null;
