@@ -232,6 +232,30 @@
       enable = true;
       pinentryPackage = pkgs.pinentry-curses;
     };
+    nix-ld = {
+      enable = true;
+      # T3's html_preview downloads a generic chrome-headless-shell into
+      # ~/.t3/tools; these are the libraries it loads beyond nix-ld's defaults.
+      libraries = with pkgs; [
+        alsa-lib
+        at-spi2-core
+        dbus
+        expat
+        glib
+        libdrm
+        libgbm
+        libx11
+        libxcb
+        libxcomposite
+        libxdamage
+        libxext
+        libxfixes
+        libxkbcommon
+        libxrandr
+        nspr
+        nss
+      ];
+    };
   };
   environment.systemPackages = with pkgs; [
     bubblewrap
