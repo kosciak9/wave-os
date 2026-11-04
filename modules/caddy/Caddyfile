@@ -26,6 +26,8 @@ https://tokens.wave.exposed {
 	route {
 		@outside not remote_ip 127.0.0.1 ::1 100.64.0.0/10 fd7a:115c:a1e0::/48
 		respond @outside 403
+		# The management page is what people open here; the URL stays the bare domain.
+		rewrite / /management.html
 		@management path /management.html /v8/management/*
 		handle @management {
 			reverse_proxy 127.0.0.1:8317
