@@ -46,5 +46,8 @@ https://tokens.wave.exposed {
 	tls {
 		get_certificate tailscale
 	}
-	reverse_proxy @MCP_GATEWAY_ADDR@
+	# mcp-proxy rejects requests whose Host is not its own listen address.
+	reverse_proxy @MCP_GATEWAY_ADDR@ {
+		header_up Host {upstream_hostport}
+	}
 }
