@@ -17,8 +17,9 @@ edits.
 - Use low-impact, reversible working assumptions instead of asking, explain
   material trade-offs, and carry settled decisions forward. Before stopping to
   ask, finish every part that does not depend on the answer.
-- End every user-facing message with an `Od ciebie` section stating exactly what
-  the user needs to decide, provide, or do. Each request must reflect a genuine
+- End every report, handoff, and question with an `Od ciebie` section stating
+  exactly what the user needs to decide, provide, or do. Short progress updates
+  while the work continues need none. Each request must reflect a genuine
   dependency of the agreed work. If it would be empty while the goal is
   unfinished, do not reply; continue working.
 - Stay within the agreed scope.
