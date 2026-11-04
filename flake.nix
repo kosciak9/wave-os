@@ -102,6 +102,7 @@
             deployNodes = builtins.attrNames self.deploy.nodes;
           };
           t3code-cli = final.callPackage ./packages/t3code-cli.nix { };
+          mcp-proxy = final.callPackage ./packages/mcp-proxy.nix { };
           cliproxyapi = final.callPackage ./packages/cliproxyapi.nix { inherit prev; };
           cliproxyapi-opencode-go = final.callPackage ./packages/cliproxyapi-opencode-go.nix { };
           wave-dashboard = final.callPackage ./packages/wave-dashboard.nix { };
@@ -340,6 +341,7 @@
           ];
           inherit kanagawa-kvantum;
           inherit (pkgs)
+            mcp-proxy
             wave
             camofox-browser-cli
             slack-mirror
@@ -354,6 +356,7 @@
         ${darwinSystem} = {
           deploy-rs = inputs.deploy-rs.packages.${darwinSystem}.deploy-rs;
           inherit (darwinPkgs)
+            mcp-proxy
             wave
             openclaw-sandbox-machine-check
             t3code-cli

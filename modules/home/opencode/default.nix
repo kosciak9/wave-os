@@ -9,6 +9,7 @@
 let
   gatewayPackage = import ../../../packages/agent-gateway.nix {
     inherit lib pkgs;
+    mcpApiKeyFile = osConfig.sops.secrets."mcp-gateway/api-key".path;
     apiKeyFile = osConfig.sops.secrets."cliproxyapi/api-key".path;
     baseUrlFile = osConfig.sops.secrets."cliproxyapi/base-url".path;
   };

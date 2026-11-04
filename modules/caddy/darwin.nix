@@ -10,7 +10,13 @@ let
     plugins = [ "github.com/caddy-dns/cloudflare@v0.2.4" ];
     hash = "sha256-tubXIDCJnO2mvdnPlZclwDhNGaeeYLSt7lnni3+pXDo=";
   };
-  caddyConfig = pkgs.writeText "Caddyfile" (builtins.readFile ./Caddyfile);
+  mcpGateway = import ../mcp-gateway/settings.nix;
+  caddyConfig = pkgs.writeText "Caddyfile" (
+    builtins.replaceStrings
+      [ "@MCP_GATEWAY_URL@" "@MCP_GATEWAY_ADDR@" ]
+      [ mcpGateway.baseURL mcpGateway.addr ]
+      (builtins.readFile ./Caddyfile)
+  );
 in
 {
   sops = {

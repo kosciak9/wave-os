@@ -39,3 +39,10 @@ https://tokens.wave.exposed {
 		}
 	}
 }
+
+@MCP_GATEWAY_URL@ {
+	tls {
+		get_certificate tailscale
+	}
+	reverse_proxy @MCP_GATEWAY_ADDR@
+}

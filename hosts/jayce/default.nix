@@ -29,6 +29,7 @@
 
   # The Home Manager services read these through osConfig.
   sops.secrets = {
+    "mcp-gateway/api-key".owner = "kosciak";
     "cliproxyapi/api-key".owner = "kosciak";
     "cliproxyapi/base-url".owner = "kosciak";
     "cliproxyapi/quota-key".owner = "kosciak";
