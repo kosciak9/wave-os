@@ -29,10 +29,33 @@ let
       lib.makeBinPath [ pkgs.tailscale ]
     }:/run/current-system/sw/bin:/usr/bin:/bin:/usr/sbin:/sbin";
   };
+  # T3 runs html_preview's browser from the Chrome for Testing version it pins and
+  # downloads its own build when that file is missing; the download does not run
+  # on NixOS.
+  previewBrowserVersion = "156.0.8078.70";
+  previewBrowserPlatform =
+    {
+      x86_64-linux = "linux64";
+      aarch64-darwin = "mac-arm64";
+    }
+    .${pkgs.stdenv.hostPlatform.system};
+  previewBrowser = pkgs.runCommand "t3code-preview-browser" { } ''
+    grep -qaF 'VERSION = "${previewBrowserVersion}"' ${pkgs.t3code-cli}/libexec/t3code/t3 || {
+      echo "t3code-cli no longer pins Chrome for Testing ${previewBrowserVersion}" >&2
+      exit 1
+    }
+    ln -s ${pkgs.playwright-driver.components.chromium-headless-shell}/chrome-headless-shell-${previewBrowserPlatform} $out
+  '';
 in
 {
   home = {
     packages = [ pkgs.t3code-cli ];
+    file.".t3/tools/chrome-headless-shell/${previewBrowserPlatform}/${previewBrowserVersion}/chrome-headless-shell" =
+      {
+        source = "${previewBrowser}/chrome-headless-shell";
+        # Replaces the build T3 downloaded before.
+        force = true;
+      };
     activation = {
       # Home Manager reconciles all managed services in a single activation step.
       t3codeServicesReady =
