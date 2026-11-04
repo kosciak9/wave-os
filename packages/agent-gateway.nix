@@ -104,6 +104,21 @@ let
       export ENABLE_PROMPT_CACHING_1H=1
     ''}
     ${lib.optionalString (client == "opencode") ''
+      # Inline config is loaded after project config. Keep repo MCP entries for
+      # other developers; this owner's remote servers use the gw- prefix.
+      # OpenCode requires complete entries here and replaces them by name.
+      # Inherited JSONC that jq cannot read is kept as is, without the overrides.
+      if inline=$(${lib.getExe pkgs.jq} --compact-output --null-input \
+        --argjson inherited "''${OPENCODE_CONFIG_CONTENT:-null}" '
+        ($inherited // {}) * {mcp: {servers: {
+          sentry: {type: "remote", url: "", disabled: true},
+          posthog: {type: "remote", url: "", disabled: true},
+          figma: {type: "remote", url: "", disabled: true},
+          "anonimized-mcp": {type: "remote", url: "", disabled: true}
+        }}}
+      ' 2>/dev/null); then
+        export OPENCODE_CONFIG_CONTENT="$inline"
+      fi
       # The background service reads this when it starts, so newer models
       # appear after the service restarts.
       models="''${XDG_CACHE_HOME:-$HOME/.cache}/opencode/gateway-models.json"

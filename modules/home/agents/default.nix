@@ -102,6 +102,15 @@ in
     }
   ) instructions;
 
+  programs.agents.mcpGatewayServers = [
+    "sentry"
+    "posthog"
+    "firmowid-anonymized"
+    "tcg-cheap-prod"
+    "context7"
+    "parallel-search"
+  ];
+
   home.packages = [
     earshot
     pkgs.ffmpeg
