@@ -19,6 +19,10 @@ let
     settings = {
       baseURL = "{env:CLIPROXYAPI_BASE_URL}/v1";
       apiKey = "{env:CLIPROXYAPI_API_KEY}";
+      # canonical = "openai" inherits OpenCode's WebSocket default; over it,
+      # requests after an auto compaction fail with "No tool output found for
+      # function call", apparently from CLIProxyAPI's socket history merging.
+      transport = "http";
     };
   };
   cliConfig = lib.importJSON ./config/cli.json;
