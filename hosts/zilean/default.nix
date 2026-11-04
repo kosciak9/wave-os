@@ -165,6 +165,7 @@
   security.sudo.wheelNeedsPassword = false;
 
   sops.secrets = {
+    "mcp-gateway/api-key".owner = "kosciak";
     "cliproxyapi/api-key".owner = "kosciak";
     "cliproxyapi/base-url".owner = "kosciak";
   };

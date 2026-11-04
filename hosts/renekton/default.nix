@@ -158,6 +158,7 @@
         "camofox/access-key"
         "protonmail/address"
         "protonmail/bridge-password"
+        "mcp-gateway/api-key"
         "cliproxyapi/api-key"
         "cliproxyapi/base-url"
         "cliproxyapi/quota-key"

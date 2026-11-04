@@ -1,6 +1,7 @@
 { lib, ... }:
 {
   imports = [
+    ../../modules/home/mcp-gateway
     ../../modules/home/agents
     ../../modules/home/alfred
     ../../modules/home/frida

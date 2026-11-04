@@ -3,6 +3,7 @@
   pkgs,
   apiKeyFile,
   baseUrlFile,
+  mcpApiKeyFile,
 }:
 package: client:
 let
@@ -75,6 +76,16 @@ let
         exec ${lib.getExe package} "$@"
         ;;
     esac
+    export MCP_GATEWAY_URL=${lib.escapeShellArg (import ../modules/mcp-gateway/settings.nix).baseURL}
+    unset MCP_GATEWAY_TOKEN
+    if [[ -r ${lib.escapeShellArg mcpApiKeyFile} ]]; then
+      MCP_GATEWAY_TOKEN=$(< ${lib.escapeShellArg mcpApiKeyFile})
+      if [[ -n "$MCP_GATEWAY_TOKEN" ]]; then
+        export MCP_GATEWAY_TOKEN
+      else
+        unset MCP_GATEWAY_TOKEN
+      fi
+    fi
     CLIPROXYAPI_API_KEY=$(< ${lib.escapeShellArg apiKeyFile})
     CLIPROXYAPI_BASE_URL=$(< ${lib.escapeShellArg baseUrlFile})
     export CLIPROXYAPI_API_KEY CLIPROXYAPI_BASE_URL
