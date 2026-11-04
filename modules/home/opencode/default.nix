@@ -22,25 +22,22 @@ let
     };
   };
   cliConfig = lib.importJSON ./config/cli.json;
-  mcpServers = {
-    context7 = {
+  mcpServers =
+    lib.mapAttrs (_: command: {
       type = "local";
-      command = [
-        "sh"
-        "-c"
-        "if CONTEXT7_API_KEY=$(pass show context7.com/api-key 2>/dev/null); then export CONTEXT7_API_KEY; else unset CONTEXT7_API_KEY; fi; exec npx -y @upstash/context7-mcp@4.4.1"
-      ];
-    };
-    parallel-search = {
-      type = "remote";
-      url = "https://search.parallel.ai/mcp";
-      oauth = false;
-    };
-  }
-  // lib.mapAttrs (_: command: {
-    type = "local";
-    inherit command;
-  }) config.programs.agents.mcpServers;
+      inherit command;
+    }) config.programs.agents.mcpServers
+    // lib.listToAttrs (
+      map (name: {
+        name = "gw-${name}";
+        value = {
+          type = "remote";
+          url = "${(import ../../mcp-gateway/settings.nix).baseURL}/${name}/mcp";
+          headers.Authorization = "Bearer {env:MCP_GATEWAY_TOKEN}";
+          oauth = false;
+        };
+      }) config.programs.agents.mcpGatewayServers
+    );
   providers = {
     cliproxy = gatewayProvider // {
       name = "tokens @ wave";
