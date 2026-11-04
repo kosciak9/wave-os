@@ -84,6 +84,12 @@ in
     ../worktrunk.nix
   ];
 
+  # Repositories whose project MCP servers Codex must load like Claude Code and OpenCode do.
+  programs.agents.codexTrustedProjects = [
+    "Developer/alergeek/firmowid"
+    "Developer/alergeek/tcg-cheap"
+  ];
+
   assertions = lib.mapAttrsToList (
     harness: source:
     let
