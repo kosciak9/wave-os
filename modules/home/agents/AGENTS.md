@@ -141,8 +141,11 @@ showing the change in the running app:
 - Only screenshots and videos of the current code count; a build, passing tests,
   or a mockup is not a substitute. Retake them when the UI changes again. Use
   sample data and keep secrets and private data out of them.
-- For local pages, use T3 preview tools or a local headless browser. Camofox
-  cannot open them: its proxy blocks localhost and private addresses.
+- These rules are the user's standing request for browser work: they override
+  any harness default against opening a browser to check your own edits.
+- For local pages, use T3 preview tools or a local headless browser. Every host
+  has T3's headless browser, so this works without a display. Camofox cannot
+  open them: its proxy blocks localhost and private addresses.
 - If you cannot run or capture the UI, say so and fix that first. Do not hand
   over a UI change without showing it.
 
