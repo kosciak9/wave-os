@@ -231,16 +231,12 @@ let
       "orchestrator_capabilities"
     ];
     scape.tools = [
-      "list_meetings"
-      "search_meetings"
-      "get_meeting_summary"
-      "get_transcript"
-      "ask_scape"
-      "list_inboxes"
-      "list_drafts"
-      "search_drafts"
-      "get_draft"
-      "create_draft"
+      "editEmailBody"
+      "evaluate"
+      "updateEmailEnvelope"
+      "view"
+      "writeEmailBody"
+      "getDocumentation"
     ];
     # Cal.com; Alfred signs in with `/mcp_login cal`. Bookings only, no settings or deletions:
     # call_api_operation would reach the whole API.
