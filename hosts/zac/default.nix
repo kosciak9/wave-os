@@ -309,5 +309,10 @@ in
     '';
     populateRootCommands = "";
   };
-  system.stateVersion = "26.05";
+  system = {
+    # Its hardware configuration lives here; the tool pulls in bcachefs-tools, which does not
+    # build for 32-bit ARM.
+    tools.nixos-generate-config.enable = false;
+    stateVersion = "26.05";
+  };
 }
