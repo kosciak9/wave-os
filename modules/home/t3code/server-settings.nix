@@ -25,12 +25,16 @@
   ];
   # The merge replaces arrays, so options always replace a previous model's.
   defaultModelSelection = {
-    instanceId = "opencode";
-    model = "cliproxy/gpt-6.1-sol";
+    instanceId = "claudeAgent";
+    model = "claude-opus-5-5";
     options = [
       {
-        id = "variant";
+        id = "effort";
         value = "high";
+      }
+      {
+        id = "fastMode";
+        value = false;
       }
     ];
   };
