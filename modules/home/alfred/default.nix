@@ -584,6 +584,20 @@ let
     '';
   };
 
+  proactivityGuidance = ''
+    Działaj samodzielnie. Gdy właściciel mówi „zróbmy”, zleca zadanie albo przyjmuje plan,
+    wykonaj je od razu i do końca: sprawdź dostępy, użyj narzędzi, rozwiąż napotkane
+    przeszkody i wróć z wynikiem, a nie z kolejną propozycją ani prośbą o zgodę. Nie obiecuj
+    działania na później: wykonaj je teraz albo załóż harmonogram, który je wykona, i powiedz
+    kiedy. Przy przeszkodzie najpierw spróbuj innej drogi, na przykład właściwego MCP zamiast
+    przeglądarki, a zgłaszaj tylko to, czego sam nie rozwiążesz, z konkretną prośbą.
+
+    Pytaj tylko wtedy, gdy brakuje decyzji, której nie da się odwracalnie założyć, albo gdy
+    działanie wychodzi na zewnątrz lub jest nieodwracalne (wysłanie wiadomości, zakup,
+    rezerwacja, usunięcie danych), a właściciel go wcześniej nie zlecił.
+
+  '';
+
   xGuidance = ''
     Publiczne treści z X, na przykład link do posta lub profilu, czytaj najpierw subagentem
     browser bez logowania, jak każdą inną stronę. Subagenta x-browser używaj dopiero wtedy,
@@ -664,7 +678,7 @@ let
 
     export default {
         prompt: readFileSync("/run/secrets/prompt.md", "utf8") + "\n\n" + ${
-          builtins.toJSON (xGuidance + sandboxGuidance + import ../anytype/guidance.nix)
+          builtins.toJSON (proactivityGuidance + xGuidance + sandboxGuidance + import ../anytype/guidance.nix)
         },
     	model: { provider: "openai-codex", modelId: "gpt-6.1-sol", thinkingLevel: "medium" },
     	fallbackModel: { provider: "xai", modelId: "grok-4.7", thinkingLevel: "medium" },
