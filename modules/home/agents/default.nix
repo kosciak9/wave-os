@@ -146,7 +146,16 @@ in
       target = "${codexDirectory}/AGENTS.md";
       force = true;
     };
-  };
+  }
+  # Codex skips a skill whose SKILL.md is a symlink, as in the recursive
+  # .agents/skills tree, but reads a skill directory that is one.
+  // lib.mapAttrs' (
+    name: _:
+    lib.nameValuePair "codex-skill-${name}" {
+      source = ./skills + "/${name}";
+      target = "${codexDirectory}/skills/${name}";
+    }
+  ) (builtins.readDir ./skills);
   xdg.configFile."opencode/AGENTS.md" = {
     source = ./AGENTS.md;
     force = true;
