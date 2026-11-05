@@ -39,12 +39,17 @@ let
       aarch64-darwin = "mac-arm64";
     }
     .${pkgs.stdenv.hostPlatform.system};
+  # On macOS the browser looks for its resources next to the path it was started
+  # from, so a symlink to the binary crashes; exec keeps T3's pipe descriptors.
   previewBrowser = pkgs.runCommand "t3code-preview-browser" { } ''
     grep -qaF 'VERSION = "${previewBrowserVersion}"' ${pkgs.t3code-cli}/libexec/t3code/t3 || {
       echo "t3code-cli no longer pins Chrome for Testing ${previewBrowserVersion}" >&2
       exit 1
     }
-    ln -s ${pkgs.playwright-driver.components.chromium-headless-shell}/chrome-headless-shell-${previewBrowserPlatform} $out
+    mkdir $out
+    ln -s ${pkgs.writeShellScript "chrome-headless-shell" ''
+      exec ${pkgs.playwright-driver.components.chromium-headless-shell}/chrome-headless-shell-${previewBrowserPlatform}/chrome-headless-shell "$@"
+    ''} $out/chrome-headless-shell
   '';
 in
 {
