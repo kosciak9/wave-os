@@ -46,7 +46,6 @@ in
     age-plugin-yubikey
     bat
     btop
-    gh
     httpie
     infisical
     sops
