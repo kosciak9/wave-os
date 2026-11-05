@@ -33,6 +33,11 @@ edits.
   types or phases: for example `elixir` before the first `.ex` file and
   `implementation-design` before any code or configuration change. Load skills
   marked for explicit invocation only when the user asks for them.
+- Keep secret values out of tool output: the conversation is stored, so a
+  printed secret is exposed. Before reading logs, verbose or debug runs,
+  environment or configuration dumps, or decrypted files that may hold
+  credentials, select or redact the fields you need, including credentials
+  inside URLs.
 - Store temporary work files and large task artifacts (downloads, model weights,
   recovery exports and backups) in a task-specific directory under
   `/srv/scratch` when it is mounted and writable; otherwise use `/tmp`. Check
