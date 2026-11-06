@@ -101,3 +101,14 @@ async def attachment_content(data, filename, mime_type, gotenberg_url=None):
         "so it may look different from the original and anything that could not be rendered is missing; the PDF"
     )
     return pdf_pages(pdf, label)
+
+
+async def preview(data, filename, mime_type, gotenberg_url=None):
+    """What a model reads of an attachment, labelled as a preview next to its original."""
+    label = f"Preview of {filename or 'the attachment'} ({mime_type or 'unknown type'}), not the original file:"
+    try:
+        content = await attachment_content(data, filename, mime_type, gotenberg_url)
+    except Exception:
+        logging.exception("Could not preview the attachment")
+        content = [TextContent(type="text", text="The attachment could not be previewed.")]
+    return [TextContent(type="text", text=label), *content]

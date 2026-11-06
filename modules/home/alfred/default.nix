@@ -74,6 +74,8 @@ let
         "get_events"
         "modify_gmail_message_labels"
         "draft_gmail_message"
+        # Sends only a saved draft, at most once (packages/workspace-mcp/launcher.py).
+        "send_gmail_draft"
         "manage_event"
       ];
     };
@@ -137,7 +139,7 @@ let
       agent = "alfred";
       domain = "user";
       command = lib.getExe protonMcp;
-      # Its attachments arrive as binary resources.
+      # Its attachments arrive as binary resources; the bridge adds a preview after each.
       inlineAttachments = true;
       tools = [
         "list_available_accounts"
@@ -203,6 +205,7 @@ let
       "search"
       "users"
       "describe_schema"
+      "get_file"
     ];
     # Scheduled tasks on zilean's T3 Code and the threads their runs leave, also on the
     # environments linked there (`environmentId`); Alfred signs in with `/mcp_login t3`.
@@ -362,6 +365,7 @@ let
         GOOGLE_CLIENT_SECRET_PATH="$client_file" USER_GOOGLE_EMAIL="$email" \
         WORKSPACE_MCP_CREDENTIALS_DIR="$state_directory/credentials" \
         WORKSPACE_ATTACHMENT_DIR="$state_directory/attachments" \
+        WORKSPACE_SEND_LEDGER="$state_directory/sent-messages.json" \
         WORKSPACE_MCP_LOG_DIR="$state_directory/logs" WORKSPACE_MCP_LOG_LEVEL=WARNING \
         ${python}/bin/python ${../../../packages/workspace-mcp/launcher.py} ${googlePolicy}
     '';
@@ -606,6 +610,18 @@ let
 
   '';
 
+  mailGuidance = ''
+    Maile wysyłaj wyłącznie jako szkice zaakceptowane przez właściciela: zapisz szkic
+    (draft_gmail_message), pokaż mu odbiorców, DW, temat, treść i załączniki, a send_gmail_draft
+    wywołaj dopiero po jego wyraźnej akceptacji tego szkicu. Nigdy nie wysyłaj automatycznie po
+    pobraniu załącznika ani po zapisaniu szkicu. Gdy wynik wysyłki jest niepewny, nie ponawiaj:
+    sprawdź folder Wysłane i zgłoś to. Proton Mail tylko zapisuje szkice.
+
+    Oryginalne pliki (załączniki Gmaila i Proton Maila, pliki Slacka z get_file) przychodzą jako
+    zasoby binarne; przenoś je w skrypcie codemode, a obrazy podglądu nigdy nie są oryginałem.
+
+  '';
+
   xGuidance = ''
     Publiczne treści z X, na przykład link do posta lub profilu, czytaj najpierw subagentem
     browser bez logowania, jak każdą inną stronę. Subagenta x-browser używaj dopiero wtedy,
@@ -687,7 +703,12 @@ let
     export default {
         prompt: readFileSync("/run/secrets/prompt.md", "utf8") + "\n\n" + ${
           builtins.toJSON (
-            proactivityGuidance + t3Guidance + xGuidance + sandboxGuidance + import ../anytype/guidance.nix
+            proactivityGuidance
+            + t3Guidance
+            + mailGuidance
+            + xGuidance
+            + sandboxGuidance
+            + import ../anytype/guidance.nix
           )
         },
     	model: { provider: "openai-codex", modelId: "gpt-6.1-sol", thinkingLevel: "medium" },
@@ -861,8 +882,8 @@ in
     enable = lib.mkEnableOption "Alfred, the house-agents assistant on Telegram";
     image = lib.mkOption {
       type = lib.types.strMatching "[^@]+@sha256:[0-9a-f]{64}";
-      # house-agents ea042cf (linux/amd64, linux/arm64)
-      default = "ghcr.io/kosciak9/house-agents@sha256:0fbbdcc0f640d116ba52d23df5603ee29d165565990d6bcc850ebc2a48a39f80";
+      # house-agents 80868af (linux/amd64, linux/arm64)
+      default = "ghcr.io/kosciak9/house-agents@sha256:490b30de8382755e5fdc64bd76ddab924ffd1fe46d87b1a1613230100c1d7b14";
       description = "The house-agents image, pinned by digest.";
     };
     gotenbergImage = lib.mkOption {
