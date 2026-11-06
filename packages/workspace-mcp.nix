@@ -1,5 +1,6 @@
 {
   lib,
+  stdenv,
   python313,
   fetchFromGitHub,
   writableTmpDirAsHomeHook,
@@ -189,12 +190,16 @@ let
           # Code mode needs pydantic-monty 1.1, newer than nixpkgs has.
           "tests/experimental/transforms/test_code_mode.py"
         ];
-        disabledTests = old.disabledTests ++ [
-          # Needs the unpackaged prefab-ui.
-          "TestPickerForm"
-          # Code mode, as above.
-          "test_code_mode_returns_task_tool_result"
-        ];
+        disabledTests =
+          old.disabledTests
+          ++ [
+            # Needs the unpackaged prefab-ui.
+            "TestPickerForm"
+            # Code mode, as above.
+            "test_code_mode_returns_task_tool_result"
+          ]
+          # On Darwin the build reaches PyPI despite the invalid proxy the test sets.
+          ++ lib.optionals stdenv.hostPlatform.isDarwin [ "test_fetch_invalid_proxy_environment" ];
       });
     };
   };
