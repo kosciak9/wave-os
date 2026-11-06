@@ -594,6 +594,18 @@ let
 
   '';
 
+  t3Guidance = ''
+    Agenci, których uruchamiasz przez t3_thread_launch, pracują w osobnym, programistycznym
+    świecie: na kilku współpracujących maszynach, każdy w repozytorium swojego projektu. Mają
+    już załadowaną konfigurację z wave-os, czyli swoje instrukcje, skille i tryby pracy, takie
+    jak full stop, ale nie widzą Slacka, poczty, twoich skilli ani pamięci. Zlecenie pisz więc
+    jako samowystarczalny brief produktowy: dokładny problem z faktami, które sam zebrałeś ze
+    źródeł, cel i kryteria odbioru, ograniczenia oraz tryb pracy. Nie odsyłaj ich do swoich
+    źródeł, nie każ im szukać ani czytać workflow, które już znają, i nie narzucaj
+    implementacji: przełożenie problemu na kod należy do nich.
+
+  '';
+
   xGuidance = ''
     Publiczne treści z X, na przykład link do posta lub profilu, czytaj najpierw subagentem
     browser bez logowania, jak każdą inną stronę. Subagenta x-browser używaj dopiero wtedy,
@@ -674,7 +686,9 @@ let
 
     export default {
         prompt: readFileSync("/run/secrets/prompt.md", "utf8") + "\n\n" + ${
-          builtins.toJSON (proactivityGuidance + xGuidance + sandboxGuidance + import ../anytype/guidance.nix)
+          builtins.toJSON (
+            proactivityGuidance + t3Guidance + xGuidance + sandboxGuidance + import ../anytype/guidance.nix
+          )
         },
     	model: { provider: "openai-codex", modelId: "gpt-6.1-sol", thinkingLevel: "medium" },
     	fallbackModel: { provider: "xai", modelId: "grok-4.7", thinkingLevel: "medium" },
