@@ -69,6 +69,7 @@ impl RequestBudget {
             "conversations.history" | "conversations.replies" | "subscriptions.thread.getView" => {
                 Duration::from_millis(1250)
             }
+            "files.info" => Duration::from_millis(1250),
             _ => Duration::ZERO,
         }
     }
@@ -98,6 +99,7 @@ const READ_METHODS: &[&str] = &[
     "conversations.info",
     "conversations.list",
     "conversations.replies",
+    "files.info",
     "rtm.connect",
     "subscriptions.thread.getView",
     "users.conversations",
@@ -319,6 +321,130 @@ impl SlackClient {
             .await?;
         self.unchanged(&digest)?;
         Ok((value, digest))
+    }
+
+    pub(crate) async fn download_file(&self, id: &str) -> Result<(Value, Vec<u8>)> {
+        // Synchronization must first bind the client to the archive identity.
+        if self.gate.lock().await.store.is_none() {
+            return Err(error("session_unavailable"));
+        }
+        let (metadata, digest) = self
+            .call_checked("files.info", &[("file".to_owned(), id.to_owned())])
+            .await?;
+        let file = &metadata["file"];
+        if file["id"].as_str() != Some(id) {
+            return Err(error("invalid_file_metadata"));
+        }
+        let size = file["size"]
+            .as_u64()
+            .ok_or_else(|| error("invalid_file_metadata"))?;
+        const MAX_FILE: usize = 25 * 1024 * 1024;
+        if size > MAX_FILE as u64 {
+            return Err(error("too_large"));
+        }
+        let location = file["url_private_download"]
+            .as_str()
+            .filter(|s| !s.is_empty())
+            .or_else(|| file["url_private"].as_str())
+            .ok_or_else(|| error("download_not_authorized"))?;
+        let mut url = url::Url::parse(location).map_err(|_| error("download_not_authorized"))?;
+        let session = self.checked_session().await?;
+        if fingerprint(&session) != digest {
+            return Err(error("session_changed"));
+        }
+        let store = self.gate.lock().await.store.clone();
+        let mut credentials = true;
+        for redirects in 0..=3 {
+            let host = url.host_str().unwrap_or("");
+            if url.scheme() != "https"
+                || !url.username().is_empty()
+                || url.password().is_some()
+                || !(host == "files.slack.com"
+                    || host.ends_with(".slack.com")
+                    || host.ends_with(".slack-edge.com"))
+            {
+                return Err(error("download_not_authorized"));
+            }
+            // The HTTP client has no default credentials, cookie jar or automatic redirects.
+            let mut request = self.http.get(url.clone());
+            if credentials {
+                request = request
+                    .header("Cookie", cookie_header(&session.cookie))
+                    .bearer_auth(&session.token);
+            }
+            let mut response = request
+                .send()
+                .await
+                .map_err(|_| error("transport_failed"))?;
+            if response.status().as_u16() == 429 {
+                let retry = response
+                    .headers()
+                    .get("retry-after")
+                    .and_then(|s| s.to_str().ok())
+                    .and_then(|s| s.parse::<u64>().ok())
+                    .unwrap_or(30)
+                    .clamp(1, 86400);
+                return self.rate_limit(store.as_ref(), "files.info", retry).await;
+            }
+            if response.status().is_redirection() {
+                if redirects == 3 {
+                    return Err(error("download_not_authorized"));
+                }
+                let next = response
+                    .headers()
+                    .get("location")
+                    .and_then(|v| v.to_str().ok())
+                    .and_then(|v| url.join(v).ok())
+                    .ok_or_else(|| error("download_not_authorized"))?;
+                if next.host_str() != url.host_str() {
+                    credentials = false;
+                }
+                url = next;
+                continue;
+            }
+            if !response.status().is_success() {
+                return Err(error("download_not_authorized"));
+            }
+            let html = |mime: &str| {
+                mime.split(';')
+                    .next()
+                    .unwrap_or("")
+                    .trim()
+                    .eq_ignore_ascii_case("text/html")
+            };
+            if response
+                .headers()
+                .get("content-type")
+                .and_then(|v| v.to_str().ok())
+                .is_some_and(html)
+                && !html(file["mimetype"].as_str().unwrap_or(""))
+            {
+                return Err(error("download_not_authorized"));
+            }
+            if response
+                .content_length()
+                .is_some_and(|n| n > MAX_FILE as u64)
+            {
+                return Err(error("too_large"));
+            }
+            let mut bytes = Vec::new();
+            while let Some(chunk) = response
+                .chunk()
+                .await
+                .map_err(|_| error("transport_failed"))?
+            {
+                if chunk.len() > MAX_FILE.saturating_sub(bytes.len()) {
+                    return Err(error("too_large"));
+                }
+                bytes.extend_from_slice(&chunk);
+            }
+            self.unchanged(&digest)?;
+            if bytes.len() as u64 != size {
+                return Err(error("size_mismatch"));
+            }
+            return Ok((file.clone(), bytes));
+        }
+        Err(error("download_not_authorized"))
     }
 
     async fn request(

@@ -1,3 +1,4 @@
+mod file;
 mod queries;
 mod server;
 mod session;
@@ -68,15 +69,18 @@ async fn main() -> Result<()> {
             store.set_meta("rtm_state", if offline { "offline" } else { "starting" })?;
             store.set_meta("offline", if offline { "true" } else { "false" })?;
             store.set_meta("sync_state", if offline { "offline" } else { "starting" })?;
-            let engine = if offline {
+            let client = if offline {
                 store.set_meta("auth_state", "offline")?;
                 None
             } else {
                 let client = slack::SlackClient::new(
                     session_file.context("Slack synchronization requires --session-file")?,
                 )?;
+                Some(client)
+            };
+            let engine = client.clone().map(|client| {
                 let archive = store.clone();
-                Some(tokio::spawn(async move {
+                tokio::spawn(async move {
                     loop {
                         if sync::run(archive.clone(), client.clone()).await.is_err() {
                             let _ = archive
@@ -87,9 +91,9 @@ async fn main() -> Result<()> {
                         }
                         tokio::time::sleep(Duration::from_secs(30)).await;
                     }
-                }))
-            };
-            let result = server::serve(store, token, listen).await;
+                })
+            });
+            let result = server::serve(store, client, token, listen).await;
             if let Some(engine) = engine {
                 engine.abort();
             }
