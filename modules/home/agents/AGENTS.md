@@ -44,6 +44,10 @@ edits.
   the actual mount, not just directory existence, so an unavailable scratch disk
   does not silently fill the root disk. Do not accumulate these artifacts under
   `$HOME`.
+- Stop processes by the PID you recorded or through the harness's
+  background-task tool. `pkill -f` and `pgrep -f` match full command lines,
+  including the shell that runs your own command, so killing what a pattern
+  taken from the target's command line matches can kill that shell too.
 - Split multi-step work into independent batches with explicit dependencies.
   Give each subagent a concrete goal, relevant context and instructions, file
   scope, constraints, and expected checks. Run non-conflicting assignments in
