@@ -21,10 +21,18 @@ pub fn tools() -> Value {
         ("users", "List cached user identities; optional exact id, @name, or email resolver.", json!({"user":{"type":"string"}}), vec![]),
         ("describe_schema", "Describe local tables and safe query semantics. No arbitrary SQL tool is available.", json!({}), vec![]),
     ];
-    Value::Array(definitions.into_iter().map(|(name,description,mut properties,required)| {
+    let mut tools: Vec<Value> = definitions.into_iter().map(|(name,description,mut properties,required)| {
         properties.as_object_mut().unwrap().extend(pagination.as_object().unwrap().clone());
         json!({"name":name,"description":description,"inputSchema":{"type":"object","properties":properties,"required":required,"additionalProperties":false},"annotations":{"readOnlyHint":true,"destructiveHint":false,"openWorldHint":false}})
-    }).collect())
+    }).collect();
+    tools.push(json!({"name":"get_file","description":"Return the original file bytes of an attachment of an archived message as an MCP embedded binary resource. Only files attached to messages in the local archive are available; online mirror required; maximum 25 MiB.",
+        "inputSchema":{"type":"object","properties":{
+            "channel":{"type":"string","minLength":2,"maxLength":64,"pattern":"^[CGD][A-Za-z0-9]+$"},
+            "ts":{"type":"string","minLength":17,"maxLength":17,"pattern":"^[0-9]{10}\\.[0-9]{6}$"},
+            "file_id":{"type":"string","minLength":2,"maxLength":64,"pattern":"^F[A-Za-z0-9]+$"}},
+            "required":["channel","ts","file_id"],"additionalProperties":false},
+        "annotations":{"readOnlyHint":true,"destructiveHint":false,"openWorldHint":false}}));
+    Value::Array(tools)
 }
 
 pub fn call(store: &Store, name: &str, args: &Value) -> Result<Value> {
