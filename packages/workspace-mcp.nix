@@ -12,8 +12,7 @@ let
       --replace-fail '"uv-dynamic-versioning>=0.14.1"' '"uv-dynamic-versioning"'
   '';
   # workspace-mcp 2.x needs FastMCP 4, which nixpkgs does not have yet;
-  # the overrides are scoped to this package's interpreter. FastMCP 4.1 defaults
-  # disabled HTTP session expiry to 1800 seconds, which workspace-mcp's tests reject.
+  # the overrides are scoped to this package's interpreter.
   python = python313.override {
     self = python;
     packageOverrides = final: prev: {
@@ -27,17 +26,6 @@ let
           # unpacked tree would hash differently on case-insensitive Darwin.
           postFetch = "rm -r $out/docs";
           hash = "sha256-ymzuPB8LnJcQ9uTrv/3v/QAzRlFTuc96ITh8UY4TONc=";
-        };
-      };
-
-      # workspace-mcp's security floor.
-      pyjwt = prev.pyjwt.overridePythonAttrs rec {
-        version = "2.15.1";
-        src = fetchFromGitHub {
-          owner = "jpadilla";
-          repo = "pyjwt";
-          tag = version;
-          hash = "sha256-C2l0QN8Vg2WkWniAfN/jpC6LAuy6gjcigzK1dvfJnj8=";
         };
       };
 
@@ -58,113 +46,31 @@ let
         dependencies = old.dependencies ++ [ final.truststore ];
       });
 
-      # FastMCP's task tests require the cancellation fix in Docket 0.26.
-      pydocket = prev.pydocket.overridePythonAttrs {
-        version = "0.26.0";
+      # FastMCP's task backend needs Redis credential providers from Docket 0.26.1.
+      pydocket = prev.pydocket.overridePythonAttrs (old: {
+        version = "0.26.1";
         src = fetchFromGitHub {
           owner = "chrisguidry";
           repo = "docket";
-          tag = "0.26.0";
-          hash = "sha256-uiwNmh8YwCPkC7Lk3M3iWAFKQhSLzyZkSi0UBTimeOk=";
+          tag = "python/v0.26.1";
+          hash = "sha256-2OVo3ZZlX3Fg3Vi3ipUmWIyWDcOVmv1xJi3khhHJJFw=";
         };
-      };
-
-      mcp-types = final.buildPythonPackage {
-        pname = "mcp-types";
-        inherit (final.mcp) version src;
-        sourceRoot = "${final.mcp.src.name}/src/mcp-types";
-        pyproject = true;
-
-        build-system = with final; [
-          hatchling
-          uv-dynamic-versioning
-        ];
-
-        dependencies = with final; [
-          pydantic
-          typing-extensions
-        ];
-
-        # Upstream tests run in the mcp package.
-        pythonImportsCheck = [ "mcp_types" ];
-
-        meta = {
-          description = "Model Context Protocol wire types";
-          homepage = "https://github.com/modelcontextprotocol/python-sdk/tree/main/src/mcp-types";
-          license = lib.licenses.mit;
-        };
-      };
-
-      mcp = prev.mcp.overridePythonAttrs (old: rec {
-        version = "2.3.0";
-        src = fetchFromGitHub {
-          owner = "modelcontextprotocol";
-          repo = "python-sdk";
-          tag = "v${version}";
-          hash = "sha256-CnXi78zYxm0/R4fON/DzRYMSDYM/XM/9SE3s+Cf1BR0=";
-        };
-        # nixpkgs lengthens a stdio test's sleep on Darwin; 2.x's tests no longer sleep there.
-        postPatch = "";
-        pythonRelaxDeps = [ ];
-        dependencies =
-          with final;
-          [
-            anyio
-            httpx2
-            jsonschema
-            mcp-types
-            opentelemetry-api
-            pydantic
-            pyjwt
-            python-multipart
-            sse-starlette
-            starlette
-            typing-extensions
-            typing-inspection
-            uvicorn
-          ]
-          ++ pyjwt.optional-dependencies.crypto;
-        optional-dependencies = {
-          cli = with final; [
-            python-dotenv
-            typer
-          ];
-          rich = [ final.rich ];
-        };
-        nativeCheckInputs = with final; [
-          blockbuster
-          coverage
-          dirty-equals
-          griffelib
-          inline-snapshot
-          logfire
-          opentelemetry-sdk
-          pillow
-          pytest-examples
-          pytest-xdist
-          pytestCheckHook
-          trio
-          python-dotenv
-          pyyaml
-          typer
-          rich
-        ];
-        # The example stories run as a test plugin from the source tree.
-        preCheck = ''
-          export PYTHONPATH="$PWD/examples:$PYTHONPATH"
+        postUnpack = (old.postUnpack or "") + ''
+          sourceRoot+=/python
         '';
-        disabledTestPaths = [
-          # Documentation translation tooling, which needs the unpackaged Zensical.
-          "tests/docs/test_translations.py"
-        ];
-        disabledTests = old.disabledTests ++ [
-          # The stdio server subprocess gets a minimal environment without PYTHONPATH,
-          # so it cannot import mcp from the build sandbox.
-          "test_client_with_stdio_parameters_launches_the_server_as_a_subprocess"
-          "test_tool_call_and_notification_round_trip_over_a_stdio_subprocess"
-          "test_a_tool_spawned_childs_stdout_writes_never_reach_the_wire"
-        ];
       });
+
+      # FastMCP validates OpenAPI 3.1.2, supported since 0.6.
+      openapi-pydantic = prev.openapi-pydantic.overridePythonAttrs rec {
+        version = "0.6.0";
+        src = fetchFromGitHub {
+          owner = "mike-oakley";
+          repo = "openapi-pydantic";
+          tag = "v${version}";
+          hash = "sha256-8vjZ2Sy5LY3h5PacLyUIga/xorGM27WmWxAHI6i7wUs=";
+        };
+        build-system = [ final.hatchling ];
+      };
 
       fastmcp-slim = prev.fastmcp-slim.overridePythonAttrs (old: {
         # nixpkgs marks FastMCP 3 as incompatible with MCP 2; this package uses FastMCP 4.
@@ -236,12 +142,12 @@ let
       });
 
       fastmcp = prev.fastmcp.overridePythonAttrs (old: rec {
-        version = "4.0.11";
+        version = "4.1.6";
         src = fetchFromGitHub {
           owner = "PrefectHQ";
           repo = "fastmcp";
           tag = "v${version}";
-          hash = "sha256-l+5eRoUNWsHnd/0wYH1ID9zxvc+H71KNIhoHDr4xRs0=";
+          hash = "sha256-FzJkoFfmbgS/XQn+5JjegcrqMF7jTy8Wnq6jHcrCZK8=";
         };
         patches = [ ];
         optional-dependencies = {
@@ -278,7 +184,9 @@ let
           ]
           ++ inline-snapshot.optional-dependencies.dirty-equals;
         disabledTestPaths = old.disabledTestPaths ++ [
-          # Code mode needs pydantic-monty 0.0.21, newer than nixpkgs has.
+          # Needs the unpackaged prefab-ui.
+          "tests/server/test_session_scope.py"
+          # Code mode needs pydantic-monty 1.1, newer than nixpkgs has.
           "tests/experimental/transforms/test_code_mode.py"
         ];
         disabledTests = old.disabledTests ++ [
@@ -312,20 +220,20 @@ let
     markdown-it-py
   ];
 in
-assert lib.versionAtLeast py.fastmcp.version "4.0.10";
+assert lib.versionAtLeast py.fastmcp.version "4.1.2";
 assert lib.versionOlder py.fastmcp.version "5";
 assert lib.versionAtLeast py.mcp.version "2.2.0";
 assert lib.versionAtLeast py.pyasn1.version "0.6.4";
 py.buildPythonApplication (finalAttrs: {
   pname = "workspace-mcp";
-  version = "2.2.1";
+  version = "2.3.0";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "taylorwilsdon";
     repo = "google_workspace_mcp";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-6aTkvFCiuHW9jaGJq27dH+Dr5L3hFRxWp3u4fmeNZ1E=";
+    hash = "sha256-wUqsnVQYCa9oPbXlDE7Z5dOZpCfYpbDpsCuYWhqAuGI=";
   };
 
   build-system = with py; [
@@ -343,9 +251,13 @@ py.buildPythonApplication (finalAttrs: {
 
   inherit dependencies;
 
-  # Upstream's security floor wants urllib3 2.8; raising it here would rebuild some
-  # 200 packages of this interpreter, so the urllib3 of nixpkgs stays until it catches up.
-  pythonRelaxDeps = [ "urllib3" ];
+  # Keep nixpkgs' shared dependencies until it catches up with upstream's security
+  # floors; overriding them here would rebuild much of this interpreter.
+  pythonRelaxDeps = [
+    "urllib3"
+    "opentelemetry-api"
+    "dnspython"
+  ];
 
   doCheck = true;
 

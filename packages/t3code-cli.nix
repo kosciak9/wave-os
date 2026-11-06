@@ -13,18 +13,18 @@ let
   releases = {
     x86_64-linux = {
       target = "linux-x64";
-      hash = "sha256-IdUNzJxjQiGxG1jWqUNQ0sbuNpBXN7BUsR+k66KVqYs=";
+      hash = "sha256-wImJK/eSLi5zxvRKXR6hJcmfcON4wYNhy77S+6GSDmw=";
     };
     aarch64-darwin = {
       target = "darwin-arm64";
-      hash = "sha256-aNydc5MMYmZYEM1Ppm9rCiP4lsippOaTo3lPoJDVRqo=";
+      hash = "sha256-/s+ylu0UKULQyy3uHFOm+spUpAEqMSpHDU3GwyFdGrM=";
     };
   };
   release = releases.${stdenvNoCC.hostPlatform.system};
 in
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "t3code-cli";
-  version = "0.1.5";
+  version = "0.1.7";
 
   src = fetchurl {
     url = "https://github.com/pingdotgg/t3code/releases/download/v${finalAttrs.version}/t3-${finalAttrs.version}-${release.target}.tar.gz";
@@ -47,7 +47,8 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   dontStrip = true;
 
   postUnpack = lib.optionalString stdenvNoCC.hostPlatform.isLinux ''
-    rm -r "$sourceRoot/node_modules/@ff-labs/fff-bin-linux-x64-musl"
+    rm -r "$sourceRoot/node_modules/@ff-labs/fff-bin-linux-x64-musl" \
+      "$sourceRoot/node_modules/@yuuang/ffi-rs-linux-x64-musl"
   '';
 
   installPhase = ''

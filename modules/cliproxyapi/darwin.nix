@@ -30,10 +30,10 @@ let
   };
   managementPanel = pkgs.fetchurl {
     name = "management.html";
-    url = "https://github.com/router-for-me/Cli-Proxy-API-Management-Center/releases/download/v1.26.6/management.html";
-    hash = "sha256-Rq7bvCZeod9VQsVVZcOkdbIhTReKQkUVJgxE5d4eLmM=";
+    url = "https://github.com/router-for-me/Cli-Proxy-API-Management-Center/releases/download/v1.27.3/management.html";
+    hash = "sha256-FNP0ivIpT4v2XMnS2S65pHe0ei+ziib4IN6/aAGgW8k=";
   };
-  managementStatic = pkgs.linkFarm "cliproxyapi-management-v1.26.6" [
+  managementStatic = pkgs.linkFarm "cliproxyapi-management-v1.27.3" [
     {
       name = "management.html";
       path = managementPanel;
