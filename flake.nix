@@ -141,7 +141,6 @@
         // prev.lib.optionalAttrs prev.stdenv.hostPlatform.isLinux {
           t3code-desktop = final.callPackage ./packages/t3code-desktop.nix { };
           sendspin-player = final.callPackage ./packages/sendspin-player.nix { };
-          pr-cockpit = final.callPackage ./packages/pr-cockpit.nix { };
           spotifast = final.callPackage ./packages/spotifast.nix {
             spotifast = inputs.spotifast.packages.${final.stdenv.hostPlatform.system}.default;
           };
@@ -348,7 +347,6 @@
             slack-mirror-context
             slack-mirror-image
             spotifast
-            pr-cockpit
             t3code-cli
             t3code-desktop
             ;

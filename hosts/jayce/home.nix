@@ -69,7 +69,6 @@ in
     ../../modules/home/git.nix
     ../../modules/home/neovim
     ../../modules/home/opencode
-    ../../modules/home/pr-cockpit
     ../../modules/home/t3code
     ../../modules/home/t3code/desktop.nix
     ../../modules/home/starship
