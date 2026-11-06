@@ -1,17 +1,22 @@
+import asyncio
+import base64
 import json
 import logging
 import mimetypes
 import os
 import re
 import sys
+import time
 from pathlib import Path
 
 from fastmcp.exceptions import ToolError
 from fastmcp.server.middleware import Middleware
 from fastmcp.tools import ToolResult
-from mcp.types import TextContent
+from mcp.types import EmbeddedResource, TextContent, ToolAnnotations
 
-from alfred_attachments import MAX_PDF_PAGES, MAX_TEXT_CHARS, attachment_content
+from alfred_attachments import MAX_PDF_PAGES, MAX_TEXT_CHARS, preview
+
+MAX_ATTACHMENT_BYTES = 64 * 1024 * 1024
 
 
 def mail_attachments(attachments):
@@ -40,6 +45,97 @@ def mail_attachments(attachments):
         except binascii.Error:
             raise ToolError(f"The content of {filename} is not standard base64.") from None
     return attachments
+
+
+class SendLedger:
+    """Every draft sent, by its ID, so a repeated call never sends a draft twice.
+
+    A draft is "sending" from just before it goes to Gmail until Gmail answers; one left "sending"
+    or marked "unknown" may have been delivered, so it is never sent again.
+    """
+
+    def __init__(self, path):
+        self.path = Path(path)
+        self.lock = asyncio.Lock()
+
+    def read(self):
+        try:
+            return json.loads(self.path.read_text(encoding="utf-8"))
+        except FileNotFoundError:
+            return {}
+
+    def write(self, draft_id, entry):
+        entries = self.read()
+        entries[draft_id] = {**entry, "updated_at": int(time.time())}
+        temporary = self.path.with_suffix(".tmp")
+        with open(temporary, "w", encoding="utf-8") as target:
+            json.dump(entries, target)
+            target.flush()
+            os.fsync(target.fileno())
+        os.replace(temporary, self.path)
+
+
+def register_send_draft(server, ledger):
+    """send_gmail_draft: upstream composes and sends in one call; the owner approves drafts instead."""
+    # Gmail's drafts.send needs the compose scope, which drafting already holds.
+    from auth.scopes import GMAIL_COMPOSE_SCOPE
+    from auth.service_decorator import require_google_service
+    from core.utils import handle_http_errors
+    from googleapiclient.errors import HttpError
+
+    @server.tool(
+        title="Send Gmail Draft",
+        annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=True, openWorldHint=True),
+    )
+    @handle_http_errors("send_gmail_draft", service_type="gmail")
+    @require_google_service("gmail", ["gmail_read", GMAIL_COMPOSE_SCOPE])
+    async def send_gmail_draft(service, user_google_email: str, draft_id: str) -> str:
+        """SEND an existing Gmail draft exactly as saved; this cannot be undone. Only for a draft the user
+        reviewed and explicitly approved for sending; never right after creating it. Sending the same draft
+        again never sends it twice. If the outcome is unknown, the message may have been delivered: search
+        the Sent folder and tell the user instead of sending again."""
+        async with ledger.lock:
+            entry = ledger.read().get(draft_id)
+            if entry and entry["state"] == "sent":
+                return f"Not sent again: draft {draft_id} was already sent. {entry['result']}"
+            if entry and entry["state"] != "failed":
+                raise ToolError(
+                    f"Not sent: an earlier send of draft {draft_id} has an unknown outcome and may have been delivered. "
+                    "Search the Sent folder (search_gmail_messages with in:sent) and tell the user."
+                )
+            draft = await asyncio.to_thread(
+                service.users().drafts().get(userId="me", id=draft_id, format="metadata").execute
+            )
+            headers = {
+                header["name"].lower(): header["value"] for header in draft["message"]["payload"].get("headers", [])
+            }
+            summary = ", ".join(
+                f"{name}: {headers[name.lower()]}" for name in ("To", "Cc", "Bcc", "Subject") if name.lower() in headers
+            )
+            ledger.write(draft_id, {"state": "sending"})
+        try:
+            sent = await asyncio.to_thread(
+                service.users().drafts().send(userId="me", body={"id": draft_id}).execute, num_retries=0
+            )
+        except HttpError as error:
+            # Gmail refused it; a server error may come after the message went out.
+            definite = error.resp.status < 500
+            ledger.write(draft_id, {"state": "failed" if definite else "unknown"})
+            if definite:
+                raise
+            raise ToolError(
+                f"Sending draft {draft_id} failed with an ambiguous error, so it may have been delivered. "
+                "Search the Sent folder before doing anything else."
+            ) from error
+        except Exception as error:
+            ledger.write(draft_id, {"state": "unknown"})
+            raise ToolError(
+                f"Sending draft {draft_id} failed with an ambiguous error, so it may have been delivered. "
+                "Search the Sent folder before doing anything else."
+            ) from error
+        result = f"Sent draft {draft_id} as message {sent['id']} ({summary})."
+        ledger.write(draft_id, {"state": "sent", "result": result})
+        return result
 
 
 class WorkspacePolicy(Middleware):
@@ -75,8 +171,13 @@ class WorkspacePolicy(Middleware):
                         "description": "System-label IDs to add or remove.",
                     }
             elif tool.name in {"draft_gmail_message", "send_gmail_message"}:
-                action = "Create a Gmail draft" if tool.name == "draft_gmail_message" else "Send a Gmail message only when the user requests sending"
-                description = f"{action}, optionally as a reply, with attachments passed as base64 content. Does not read host files, attachment URLs or account signatures. Use file_read inside codemode to attach an exported local file; do not copy file bytes through model context."
+                action = (
+                    "Save a Gmail draft without sending it; set forward_message_id to draft a forward. To send it, show the user "
+                    "the draft and call send_gmail_draft only after they approve it"
+                    if tool.name == "draft_gmail_message"
+                    else "Send a Gmail message only when the user requests sending"
+                )
+                description = f"{action}. Attachments are passed as base64 content; host files, attachment URLs and account signatures are not read. Pass file bytes inside codemode (resource.blob of an MCP binary resource, or file_read of a RAM file); do not copy them through model context."
                 for key in ("from_email", "include_signature"):
                     properties.pop(key, None)
                 properties["attachments"] = {
@@ -94,8 +195,9 @@ class WorkspacePolicy(Middleware):
                     "description": "Files to attach, each as base64 content with a file name.",
                 }
             elif tool.name == "get_gmail_attachment_content" and self.inline_attachments:
-                description = "Download a Gmail attachment. Set return_base64=true to get the ORIGINAL file, not a PDF conversion: structuredContent.result is a JSON string with filename, mime_type and content (standard base64). Inside codemode parse that JSON and pass these fields to file_import with encoding base64; then edit using Office or text tools. Never return the base64 to model context. With return_base64=false, preview only: "
-                description += f"an image or the first {MAX_PDF_PAGES} pages of a PDF come back as images, a text file as text (up to {MAX_TEXT_CHARS} characters); "
+                properties.pop("return_base64", None)
+                description = "Download a Gmail attachment. The ORIGINAL file comes back as an MCP binary resource {type: 'resource', resource: {uri, mimeType, blob}, _meta: {filename, size}}; inside codemode pass resource.blob to file_import with encoding base64, or on to another tool's base64 input. A preview for the model follows it: "
+                description += f"an image or the first {MAX_PDF_PAGES} pages of a PDF as images, a text file as text (up to {MAX_TEXT_CHARS} characters); "
                 description += (
                     "HTML and any other document (Word, Excel, PowerPoint, OpenDocument, RTF, other image formats…) is converted to PDF with Gotenberg and comes back as its page images, marked as a conversion that may differ from the original."
                     if self.gotenberg_url
@@ -120,7 +222,6 @@ class WorkspacePolicy(Middleware):
         if name not in self.allowed_tools:
             raise ToolError("Tool is not permitted by the Workspace MCP policy.")
         arguments = dict(context.message.arguments or {})
-        original = name == "get_gmail_attachment_content" and arguments.get("return_base64", False)
         if "userGoogleEmail" in arguments:
             if arguments.pop("userGoogleEmail") != self.email:
                 raise ToolError("Only the configured Google account is permitted.")
@@ -161,8 +262,6 @@ class WorkspacePolicy(Middleware):
                 raise ToolError("Mail must use the configured Google account.")
             arguments["include_signature"] = False
         elif name == "get_gmail_attachment_content" and self.inline_attachments:
-            if not isinstance(original, bool):
-                raise ToolError("return_base64 must be a boolean.")
             # Read the saved original ourselves; upstream's textual base64 block is unnecessary.
             arguments["return_base64"] = False
 
@@ -175,8 +274,6 @@ class WorkspacePolicy(Middleware):
         text = "\n".join(block.text for block in result.content if isinstance(block, TextContent))
         saved_paths = re.findall(r"^📎 Saved to: (.+)$", text, re.MULTILINE)
         if not saved_paths:
-            if original:
-                raise ToolError("The original attachment could not be downloaded. Fetch the message again to obtain a current attachment ID.")
             return result
         # Filenames are untrusted mail metadata and may contain forged response lines.
         saved_path = Path(saved_paths[-1]).resolve()
@@ -185,39 +282,31 @@ class WorkspacePolicy(Middleware):
             raise ToolError("The saved attachment is outside the configured attachment directory.")
         filename = re.search(r"^Filename: (.+)$", text, re.MULTILINE)
         try:
-            if original:
-                import base64
-
-                name = filename.group(1) if filename else saved_path.name
-                with open(saved_path, "rb") as source:
-                    data = source.read(64 * 1024 * 1024 + 1)
-                if len(data) > 64 * 1024 * 1024:
-                    raise ToolError("The attachment exceeds the 64 MiB file limit.")
-                payload = json.dumps({
-                    "filename": name,
-                    "mime_type": mimetypes.guess_type(name)[0] or "application/octet-stream",
-                    "content": base64.b64encode(data).decode("ascii"),
-                })
-                return ToolResult(
-                    content=[TextContent(type="text", text=payload)],
-                    structured_content={"result": payload},
-                )
-            name = filename and filename.group(1)
-            mime_type = mimetypes.guess_type(name or saved_path)[0] or mimetypes.guess_type(saved_path)[0] or ""
-            content = await attachment_content(
-                saved_path.read_bytes(), name, mime_type, self.gotenberg_url
-            )
-        except Exception:
-            if original:
-                raise
-            logging.exception("Could not read the attachment")
-            content = [TextContent(type="text", text="The attachment could not be read.")]
+            with open(saved_path, "rb") as source:
+                data = source.read(MAX_ATTACHMENT_BYTES + 1)
         finally:
             saved_path.unlink()
+        if len(data) > MAX_ATTACHMENT_BYTES:
+            raise ToolError("The attachment exceeds the 64 MiB file limit.")
+        name = filename.group(1) if filename else saved_path.name
+        mime_type = mimetypes.guess_type(name)[0] or ""
+        original = EmbeddedResource.model_validate({
+            "type": "resource",
+            "resource": {
+                "uri": f"gmail-attachment://{saved_path.name}",
+                "mimeType": mime_type or "application/octet-stream",
+                "blob": base64.b64encode(data).decode("ascii"),
+            },
+            "_meta": {"filename": name, "size": len(data)},
+        })
         summary = text.split("\n📎", 1)[0]
         # The tool declares its text as structured output.
         return ToolResult(
-            content=[TextContent(type="text", text=summary), *content],
+            content=[
+                TextContent(type="text", text=summary),
+                original,
+                *await preview(data, name, mime_type, self.gotenberg_url),
+            ],
             structured_content={"result": summary},
         )
 
@@ -239,6 +328,8 @@ def main():
             policy.get("gotenbergUrl"),
         )
     )
+    if "send_gmail_draft" in policy["allowedTools"]:
+        register_send_draft(upstream.server, SendLedger(os.environ["WORKSPACE_SEND_LEDGER"]))
     sys.argv = [
         "workspace-mcp",
         "--transport", "stdio",

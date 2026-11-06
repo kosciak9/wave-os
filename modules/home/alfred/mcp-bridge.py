@@ -2,8 +2,9 @@
 
 Usage: mcp-bridge.py [--inline-attachments <Gotenberg URL>] <name> <port> <token file> <command> [args...]
 
-With --inline-attachments, binary resources in tool results, which Alfred cannot read, come back
-as images or text, as Gmail attachments do.
+With --inline-attachments, every binary resource in a tool result is followed by a preview Alfred's
+model reads (images or text, as for Gmail attachments); the resource itself stays, so a script can
+pass the original bytes on.
 """
 
 import base64
@@ -24,24 +25,26 @@ class InlineAttachments(Middleware):
         self.gotenberg_url = gotenberg_url
 
     async def on_call_tool(self, context, call_next):
-        from alfred_attachments import attachment_content
+        from alfred_attachments import preview
 
         result = await call_next(context)
         content = []
         for block in result.content:
+            content.append(block)
             if not (isinstance(block, EmbeddedResource) and isinstance(block.resource, BlobResourceContents)):
-                content.append(block)
                 continue
             filename = (block.meta or {}).get("filename")
             mime_type = block.resource.mimeType or mimetypes.guess_type(filename or "")[0] or ""
-            content.append(TextContent(type="text", text=f"Attachment {filename or block.resource.uri} ({mime_type or 'unknown type'}):"))
             try:
-                data = base64.b64decode(block.resource.blob)
-                content.extend(await attachment_content(data, filename, mime_type, self.gotenberg_url))
-            except Exception:
-                logging.exception("Could not read the attachment")
-                content.append(TextContent(type="text", text="The attachment could not be read."))
-        return ToolResult(content=content, structured_content=result.structured_content, meta=result.meta)
+                data = base64.b64decode(block.resource.blob, validate=True)
+            except ValueError:
+                logging.exception("The attachment is not base64")
+                content.append(TextContent(type="text", text="The attachment could not be previewed."))
+                continue
+            content.extend(await preview(data, filename or block.resource.uri, mime_type, self.gotenberg_url))
+        return ToolResult(
+            content=content, structured_content=result.structured_content, meta=result.meta, is_error=result.is_error
+        )
 
 
 def main():
