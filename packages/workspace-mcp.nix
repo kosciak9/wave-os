@@ -1,17 +1,11 @@
 {
   lib,
-  stdenv,
   python313,
   fetchFromGitHub,
   writableTmpDirAsHomeHook,
   installShellFiles,
 }:
 let
-  # The version comes from UV_DYNAMIC_VERSIONING_BYPASS, which nixpkgs' 0.13 honours too.
-  relaxUvDynamicVersioning = ''
-    substituteInPlace src/httpx2/pyproject.toml src/httpcore2/pyproject.toml \
-      --replace-fail '"uv-dynamic-versioning>=0.14.1"' '"uv-dynamic-versioning"'
-  '';
   # workspace-mcp 2.x needs FastMCP 4, which nixpkgs does not have yet;
   # the overrides are scoped to this package's interpreter.
   python = python313.override {
@@ -29,23 +23,6 @@ let
           hash = "sha256-ymzuPB8LnJcQ9uTrv/3v/QAzRlFTuc96ITh8UY4TONc=";
         };
       };
-
-      httpcore2 = prev.httpcore2.overridePythonAttrs (old: {
-        inherit (final.httpx2) version src;
-        postPatch = relaxUvDynamicVersioning + old.postPatch;
-      });
-
-      httpx2 = prev.httpx2.overridePythonAttrs (old: rec {
-        version = "2.14.0";
-        src = fetchFromGitHub {
-          owner = "pydantic";
-          repo = "httpx2";
-          tag = "v${version}";
-          hash = "sha256-B3sLgMfJIzsM0gDVgvTEFeil0q7VG+xt0jgUcfPVU9w=";
-        };
-        postPatch = relaxUvDynamicVersioning + old.postPatch;
-        dependencies = old.dependencies ++ [ final.truststore ];
-      });
 
       # FastMCP's task backend needs Redis credential providers from Docket 0.26.1.
       pydocket = prev.pydocket.overridePythonAttrs (old: {
@@ -190,16 +167,12 @@ let
           # Code mode needs pydantic-monty 1.1, newer than nixpkgs has.
           "tests/experimental/transforms/test_code_mode.py"
         ];
-        disabledTests =
-          old.disabledTests
-          ++ [
-            # Needs the unpackaged prefab-ui.
-            "TestPickerForm"
-            # Code mode, as above.
-            "test_code_mode_returns_task_tool_result"
-          ]
-          # On Darwin the build reaches PyPI despite the invalid proxy the test sets.
-          ++ lib.optionals stdenv.hostPlatform.isDarwin [ "test_fetch_invalid_proxy_environment" ];
+        disabledTests = old.disabledTests ++ [
+          # Needs the unpackaged prefab-ui.
+          "TestPickerForm"
+          # Code mode, as above.
+          "test_code_mode_returns_task_tool_result"
+        ];
       });
     };
   };
@@ -260,8 +233,6 @@ py.buildPythonApplication (finalAttrs: {
   # floors; overriding them here would rebuild much of this interpreter.
   pythonRelaxDeps = [
     "urllib3"
-    "opentelemetry-api"
-    "dnspython"
   ];
 
   doCheck = true;
@@ -276,19 +247,6 @@ py.buildPythonApplication (finalAttrs: {
     opentelemetry-exporter-otlp
     requests
     writableTmpDirAsHomeHook
-  ];
-
-  # The external OAuth provider frees its validation slot in a future callback that
-  # Python 3.13 runs only after the awaiting coroutine resumes, so these back-to-back
-  # validations find the slot still taken. It serves HTTP mode only, not stdio.
-  disabledTests = [
-    "test_validation_failure_returns_none_and_releases_capacity"
-    "test_validation_cache_is_off_by_default"
-    "test_cached_token_skips_userinfo_and_keeps_its_identity"
-    "test_cached_token_is_revalidated_after_ttl"
-    "test_failed_validation_is_not_cached"
-    "test_validation_cache_is_bounded"
-    "test_invalid_identity_is_not_cached"
   ];
 
   pythonImportsCheck = [

@@ -1,17 +1,8 @@
-{ config, pkgs, ... }:
-let
-  worktrunk = pkgs.worktrunk.overrideAttrs {
-    # TODO: Re-enable checks when Worktrunk process-table tests support Darwin sandboxes.
-    # Darwin sandboxes hide the process table, breaking upstream shell-probe tests.
-    # Skip the slow test suite there; Linux keeps the nixpkgs checks enabled.
-    doCheck = !pkgs.stdenv.hostPlatform.isDarwin;
-  };
-in
+{ config, ... }:
 {
   programs.worktrunk = {
     enable = true;
     enableZshIntegration = true;
-    package = worktrunk;
     settings = {
       # Same layout as T3's worktreesDirectory: <dir>/<repo>/<branch>.
       worktree-path = "${config.home.homeDirectory}/Developer/worktrees/{{ repo }}/{{ branch | sanitize }}";
