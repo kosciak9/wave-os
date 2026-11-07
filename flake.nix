@@ -66,7 +66,7 @@
     };
 
     hyprland-scroll-overview = {
-      url = "github:yayuuu/hyprland-scroll-overview/07a944e4d16f11d2d9be6ce10bea74a6f1e5f2ae";
+      url = "github:yayuuu/hyprland-scroll-overview/3eb62e3e0093d54cbdcf4f58c831b5b53b3b1ff2";
       flake = false;
     };
   };
