@@ -186,9 +186,12 @@ hl.gesture({ fingers = 3, direction = "horizontal", action = "scroll_move", scal
 hl.gesture({ fingers = 3, direction = "vertical", action = "workspace", scale = 1.8 })
 
 local workspaceNames = { "web", "code", "chat", "notes", "music" }
+-- "name:<x>" addresses a separate named workspace, so window rules target the numbered one by id.
+local workspaceIds = {}
 for index, name in ipairs(workspaceNames) do
+    workspaceIds[name] = tostring(index)
     hl.workspace_rule({
-        workspace = tostring(index),
+        workspace = workspaceIds[name],
         persistent = true,
         default_name = name,
     })
@@ -211,39 +214,39 @@ hl.window_rule({
 hl.window_rule({
     name = "browser-workspace",
     match = { title = ".*(Firefox|Zen).*" },
-    workspace = "name:web",
+    workspace = workspaceIds.web,
 })
 
 hl.window_rule({
     name = "cursor-workspace",
     match = { title = ".*Cursor.*" },
-    workspace = "name:code",
+    workspace = workspaceIds.code,
 })
 
 hl.window_rule({
     name = "telegram-workspace",
     match = { title = ".*Telegram.*" },
-    workspace = "name:chat",
+    workspace = workspaceIds.chat,
     scrolling_width = 0.3,
 })
 
 hl.window_rule({
     name = "slack-workspace",
     match = { title = ".*Slack.*" },
-    workspace = "name:chat",
+    workspace = workspaceIds.chat,
     scrolling_width = 0.7,
 })
 
 hl.window_rule({
     name = "obsidian-workspace",
     match = { title = ".*Obsidian.*" },
-    workspace = "name:notes",
+    workspace = workspaceIds.notes,
 })
 
 hl.window_rule({
     name = "spotify-workspace",
     match = { title = ".*Spotify.*" },
-    workspace = "name:music",
+    workspace = workspaceIds.music,
 })
 
 local function dispatch(dispatcher)
@@ -266,7 +269,7 @@ end
 local function nextWorkspaceId()
     local used = {}
     for _, workspace in ipairs(hl.get_workspaces()) do
-        if workspace.id > 0 then
+        if workspace.id and workspace.id > 0 then
             used[workspace.id] = true
         end
     end

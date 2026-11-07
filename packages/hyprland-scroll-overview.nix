@@ -20,10 +20,6 @@ hyprland.stdenv.mkDerivation {
 
   patches = [ ./hyprland-scroll-overview-hotplug.patch ];
 
-  postPatch = ''
-    substituteInPlace Makefile --replace-fail lua5.4 lua
-  '';
-
   enableParallelBuilding = true;
 
   buildPhase = ''
