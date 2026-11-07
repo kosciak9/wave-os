@@ -94,6 +94,48 @@ in
       ];
     })
 
+    # Deploys reach these hosts over Tailscale: restarting tailscaled during a switch cuts
+    # deploy-rs's sessions, so the deploy rolls back. A new tailscaled starts once activation,
+    # including deploy-rs's confirmation, is over.
+    (lib.mkIf (cfg.deployTarget.enable && config.services.tailscale.enable) {
+      systemd.services = {
+        tailscaled.restartIfChanged = false;
+        wave-tailscaled-update = {
+          description = "Restart tailscaled into a new version after activation";
+          wantedBy = [ "multi-user.target" ];
+          after = [ "tailscaled.service" ];
+          restartTriggers = [ config.services.tailscale.package ];
+          path = [ config.systemd.package ];
+          serviceConfig = {
+            Type = "oneshot";
+            RemainAfterExit = true;
+          };
+          script =
+            let
+              pgrep = lib.getExe' pkgs.procps "pgrep";
+              sleep = lib.getExe' pkgs.coreutils "sleep";
+              # deploy-rs's activate-rs wrapper execs its `activate` binary, which waits for the
+              # health window and the confirmation.
+              restart = pkgs.writeShellScript "wave-tailscaled-restart" ''
+                while ${pgrep} -f -- '-deploy-rs-[^/]*/bin/activate ' >/dev/null ||
+                  ${pgrep} -f switch-to-configuration >/dev/null; do
+                  ${sleep} 5
+                done
+                # deploy-rs reads the result of its confirmed activation over the old tunnel.
+                ${sleep} 30
+                ${lib.getExe' config.systemd.package "systemctl"} restart tailscaled.service
+              '';
+            in
+            ''
+              pid=$(systemctl show --property=MainPID --value tailscaled.service)
+              if [[ $pid != 0 && $(readlink -f /proc/$pid/exe) != ${config.services.tailscale.package}/* ]]; then
+                systemd-run --no-block --collect --description="Restart tailscaled after activation" ${restart}
+              fi
+            '';
+        };
+      };
+    })
+
     (lib.mkIf cfg.autoDeploy.enable {
       assertions = [
         {
