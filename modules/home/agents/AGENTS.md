@@ -47,7 +47,9 @@ edits.
 - Split multi-step work into independent batches with explicit dependencies.
   Give each subagent a concrete goal, relevant context and instructions, file
   scope, constraints, and expected checks. Run non-conflicting assignments in
-  parallel.
+  parallel. Parallel children share the host's CPU and memory: give them
+  targeted checks, and run full validations and other heavy builds one at a
+  time.
 - Before sending one brief to many subagents, run it on a single batch first and
   check the result: the child has the tools the brief needs, follows the brief,
   and returns output that fits where it will be used. Fan out only after this
