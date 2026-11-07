@@ -103,6 +103,19 @@
         MemoryMin = "64M";
         ManagedOOMPreference = "omit";
       };
+      # Bless only a boot that still awaits it. A switch restarts sshd and tailscaled and, through
+      # boot-complete.target, systemd-bless-boot; once the installer has replaced the booted
+      # entry, marking it good again fails the switch and deploy-rs rolls it back.
+      systemd-bless-boot.serviceConfig.ExecCondition =
+        let
+          bless = "${config.systemd.package}/lib/systemd/systemd-bless-boot";
+        in
+        pkgs.writeShellScript "bless-boot-pending" ''
+          case "$(${bless} status)" in
+            indeterminate | dirty) ;;
+            *) exit 1 ;;
+          esac
+        '';
       # Quieter Smart Fan IV curves on the CPU (PECI) temperature; the chip keeps applying them
       # if the OS hangs. Lowest points stay above the measured stall PWM: 35 for fans 1-2, 70 for fan 4.
       fan-curves = {
