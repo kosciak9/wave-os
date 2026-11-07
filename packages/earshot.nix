@@ -12,21 +12,18 @@ let
 in
 python3Packages.buildPythonPackage (finalAttrs: {
   pname = "earshot";
-  version = "0.4.0";
+  version = "0.4.1";
   pyproject = true;
 
   src = fetchFromGitHub {
     owner = "Leonxlnx";
     repo = "earshot";
-    rev = "591fa3e028032e6dce56620a20e932e35667e8d8";
-    hash = "sha256-DgVH9MdKfxXieYBSN3LlKUbd4BtT+sLY2sCNggPMD9E=";
+    rev = "4ac3d2ac2b151e1c23376f9ce7f3047a17050013";
+    hash = "sha256-vRK2g/iPbPSJGum52yNO/lQ9Ch+7EQMtkrVZsr69Kwc=";
   };
 
   build-system = [ python3Packages.setuptools ];
   nativeBuildInputs = [ installShellFiles ];
-
-  # Keep the LLM sleep mock from intercepting subprocess's polling sleeps.
-  patches = [ ./earshot-isolate-test-sleep.patch ];
 
   # MCP's subprocess environment must retain Nix's Python dependency paths.
   postPatch = ''
