@@ -608,6 +608,11 @@ let
     źródeł, nie każ im szukać ani czytać workflow, które już znają, i nie narzucaj
     implementacji: przełożenie problemu na kod należy do nich.
 
+    Każdego takiego agenta uruchamiaj w osobnym worktree: podaj workspaceStrategy z type
+    "worktree" i baseRef, czyli gałęzią, od której ma zacząć (zwykle domyślną gałęzią
+    projektu, np. main). Bez baseRef T3 odrzuca uruchomienie, a bez workspaceStrategy agent
+    pracuje w głównym checkoucie projektu.
+
   '';
 
   mailGuidance = ''
