@@ -1378,10 +1378,10 @@ index 0000000..38e5566
 +	return result
 +}
 diff --git a/sdk/cliproxy/auth/conductor_execution.go b/sdk/cliproxy/auth/conductor_execution.go
-index a7bc648..b32997e 100644
+index adb9b4d..596ee2e 100644
 --- a/sdk/cliproxy/auth/conductor_execution.go
 +++ b/sdk/cliproxy/auth/conductor_execution.go
-@@ -527,6 +527,10 @@ func (m *Manager) executeMixedOnce(ctx context.Context, providers []string, req
+@@ -532,6 +532,10 @@ func (m *Manager) executeMixedOnce(ctx context.Context, providers []string, req
  	attempted := make(map[string]struct{})
  	var lastErr error
  	var upstreamErr error
@@ -1392,21 +1392,19 @@ index a7bc648..b32997e 100644
  	for {
  		if maxRetryCredentials > 0 && len(attempted) >= maxRetryCredentials {
  			if lastErr != nil {
-@@ -544,6 +548,13 @@ func (m *Manager) executeMixedOnce(ctx context.Context, providers []string, req
+@@ -549,6 +553,11 @@ func (m *Manager) executeMixedOnce(ctx context.Context, providers []string, req
  		auth, executor, provider, errPick := m.pickNextMixed(ctx, providers, routeModel, pickOpts, tried)
  		if errPick != nil {
  			if shouldReturnLastErrorOnPickFailure(homeMode, lastErr, errPick) {
-+				// A depleted plan allowance must answer with the cooldown that
-+				// carries the recovery deadline. The upstream wording can be
-+				// read by a client as a permanent rejection, which stops it
-+				// from retrying at all.
++				// A depleted plan allowance answers as the cooldown it starts,
++				// so even the first failure reports the recovery deadline.
 +				if cooldown, ok := depletedAllowanceCooldown(routeModel, lastProvider, lastErr); ok {
 +					return cliproxyexecutor.Response{}, cooldown
 +				}
  				return cliproxyexecutor.Response{}, preferredExecutionAttemptError(lastErr, upstreamErr)
  			}
  			return cliproxyexecutor.Response{}, errPick
-@@ -581,6 +592,7 @@ func (m *Manager) executeMixedOnce(ctx context.Context, providers []string, req
+@@ -586,6 +595,7 @@ func (m *Manager) executeMixedOnce(ctx context.Context, providers []string, req
  			result := Result{AuthID: auth.ID, Provider: provider, Model: stateModel, RouteModel: routeModel, Success: false, Error: resultErrorFromError(errPrepare), Options: pickOpts, AccessToken: authAccessTokenForRequest(execCtx, auth, pickOpts.Headers), CredentialVersion: auth.CredentialVersion, RegistrationEpoch: auth.RegistrationEpoch}
  			m.MarkResult(execCtx, result)
  			lastErr = errPrepare
@@ -1414,7 +1412,7 @@ index a7bc648..b32997e 100644
  			continue
  		}
  		executor = executorForAuth(executor, auth)
-@@ -710,6 +722,7 @@ func (m *Manager) executeMixedOnce(ctx context.Context, providers []string, req
+@@ -715,6 +725,7 @@ func (m *Manager) executeMixedOnce(ctx context.Context, providers []string, req
  					return cliproxyexecutor.Response{}, wrapRequestStopError(authErr)
  				}
  				lastErr = authErr
@@ -1422,7 +1420,7 @@ index a7bc648..b32997e 100644
  				if homeMode {
  					homeAuthCount++
  				}
-@@ -719,6 +732,7 @@ func (m *Manager) executeMixedOnce(ctx context.Context, providers []string, req
+@@ -724,6 +735,7 @@ func (m *Manager) executeMixedOnce(ctx context.Context, providers []string, req
  				return cliproxyexecutor.Response{}, authErr
  			}
  			lastErr = authErr
@@ -1430,7 +1428,7 @@ index a7bc648..b32997e 100644
  			if homeMode {
  				homeAuthCount++
  			}
-@@ -745,6 +759,10 @@ func (m *Manager) executeCountMixedOnce(ctx context.Context, providers []string,
+@@ -750,6 +762,10 @@ func (m *Manager) executeCountMixedOnce(ctx context.Context, providers []string,
  	attempted := make(map[string]struct{})
  	var lastErr error
  	var upstreamErr error
@@ -1441,21 +1439,19 @@ index a7bc648..b32997e 100644
  	for {
  		if maxRetryCredentials > 0 && len(attempted) >= maxRetryCredentials {
  			if lastErr != nil {
-@@ -762,6 +780,13 @@ func (m *Manager) executeCountMixedOnce(ctx context.Context, providers []string,
+@@ -767,6 +783,11 @@ func (m *Manager) executeCountMixedOnce(ctx context.Context, providers []string,
  		auth, executor, provider, errPick := m.pickNextMixed(ctx, providers, routeModel, pickOpts, tried)
  		if errPick != nil {
  			if shouldReturnLastErrorOnPickFailure(homeMode, lastErr, errPick) {
-+				// A depleted plan allowance must answer with the cooldown that
-+				// carries the recovery deadline. The upstream wording can be
-+				// read by a client as a permanent rejection, which stops it
-+				// from retrying at all.
++				// A depleted plan allowance answers as the cooldown it starts,
++				// so even the first failure reports the recovery deadline.
 +				if cooldown, ok := depletedAllowanceCooldown(routeModel, lastProvider, lastErr); ok {
 +					return cliproxyexecutor.Response{}, cooldown
 +				}
  				return cliproxyexecutor.Response{}, preferredExecutionAttemptError(lastErr, upstreamErr)
  			}
  			return cliproxyexecutor.Response{}, errPick
-@@ -799,6 +824,7 @@ func (m *Manager) executeCountMixedOnce(ctx context.Context, providers []string,
+@@ -804,6 +825,7 @@ func (m *Manager) executeCountMixedOnce(ctx context.Context, providers []string,
  			result := Result{AuthID: auth.ID, Provider: provider, Model: stateModel, RouteModel: routeModel, Success: false, Error: resultErrorFromError(errPrepare), Options: pickOpts, SkipQuotaObservation: true, AccessToken: authAccessTokenForRequest(execCtx, auth, pickOpts.Headers), CredentialVersion: auth.CredentialVersion, RegistrationEpoch: auth.RegistrationEpoch}
  			m.MarkResult(execCtx, result)
  			lastErr = errPrepare
@@ -1463,7 +1459,7 @@ index a7bc648..b32997e 100644
  			continue
  		}
  		executor = executorForAuth(executor, auth)
-@@ -932,6 +958,7 @@ func (m *Manager) executeCountMixedOnce(ctx context.Context, providers []string,
+@@ -938,6 +960,7 @@ func (m *Manager) executeCountMixedOnce(ctx context.Context, providers []string,
  					return cliproxyexecutor.Response{}, wrapRequestStopError(authErr)
  				}
  				lastErr = authErr
@@ -1471,7 +1467,7 @@ index a7bc648..b32997e 100644
  				if homeMode {
  					homeAuthCount++
  				}
-@@ -941,6 +968,7 @@ func (m *Manager) executeCountMixedOnce(ctx context.Context, providers []string,
+@@ -947,6 +970,7 @@ func (m *Manager) executeCountMixedOnce(ctx context.Context, providers []string,
  				return cliproxyexecutor.Response{}, authErr
  			}
  			lastErr = authErr
@@ -1479,7 +1475,7 @@ index a7bc648..b32997e 100644
  			if homeMode {
  				homeAuthCount++
  			}
-@@ -972,6 +1000,10 @@ func (m *Manager) executeStreamMixedOnce(ctx context.Context, providers []string
+@@ -978,6 +1002,10 @@ func (m *Manager) executeStreamMixedOnce(ctx context.Context, providers []string
  	attempted := make(map[string]struct{})
  	var lastErr error
  	var upstreamErr error
@@ -1490,21 +1486,19 @@ index a7bc648..b32997e 100644
  	var roundTiming homeRetryRoundTiming
  	for {
  		allowSameAuthRetry := homeMode && homeSameAuthRetryPending && lastHomeAuthID != "" && homeSameAuthRetries[lastHomeAuthID] == 0
-@@ -1019,6 +1051,13 @@ func (m *Manager) executeStreamMixedOnce(ctx context.Context, providers []string
+@@ -1025,6 +1053,11 @@ func (m *Manager) executeStreamMixedOnce(ctx context.Context, providers []string
  				if homeMode {
  					return nil, markHomeRetryRoundExhausted(preferredErr, roundTiming.RetryAfter(), isHomeNextRoundImmediatelyAvailable(errPick))
  				}
-+				// A depleted plan allowance must answer with the cooldown that
-+				// carries the recovery deadline. The upstream wording can be
-+				// read by a client as a permanent rejection, which stops it
-+				// from retrying at all.
++				// A depleted plan allowance answers as the cooldown it starts,
++				// so even the first failure reports the recovery deadline.
 +				if cooldown, ok := depletedAllowanceCooldown(routeModel, lastProvider, lastErr); ok {
 +					return nil, cooldown
 +				}
  				return nil, preferredErr
  			}
  			return nil, errPick
-@@ -1163,6 +1202,7 @@ func (m *Manager) executeStreamMixedOnce(ctx context.Context, providers []string
+@@ -1169,6 +1202,7 @@ func (m *Manager) executeStreamMixedOnce(ctx context.Context, providers []string
  				m.MarkResult(execCtx, result)
  			}
  			lastErr = errPrepare
@@ -1512,7 +1506,7 @@ index a7bc648..b32997e 100644
  			if homeMode {
  				roundTiming.Observe(lastErr)
  			}
-@@ -1253,6 +1293,7 @@ func (m *Manager) executeStreamMixedOnce(ctx context.Context, providers []string
+@@ -1259,6 +1293,7 @@ func (m *Manager) executeStreamMixedOnce(ctx context.Context, providers []string
  					return nil, wrapRequestStopError(errStream)
  				}
  				lastErr = errStream
@@ -1520,7 +1514,7 @@ index a7bc648..b32997e 100644
  				if homeMode {
  					roundTiming.Observe(lastErr)
  				}
-@@ -1265,6 +1306,7 @@ func (m *Manager) executeStreamMixedOnce(ctx context.Context, providers []string
+@@ -1271,6 +1306,7 @@ func (m *Manager) executeStreamMixedOnce(ctx context.Context, providers []string
  				return nil, errStream
  			}
  			lastErr = errStream
@@ -1529,143 +1523,104 @@ index a7bc648..b32997e 100644
  				roundTiming.Observe(lastErr)
  			}
 diff --git a/sdk/cliproxy/auth/selector.go b/sdk/cliproxy/auth/selector.go
-index fc78054..e8ce973 100644
+index 9d88187..de51428 100644
 --- a/sdk/cliproxy/auth/selector.go
 +++ b/sdk/cliproxy/auth/selector.go
-@@ -92,6 +92,53 @@ func NewModelCooldownError(model, provider string, resetIn time.Duration) error
+@@ -84,15 +84,40 @@ const (
+ type modelCooldownError struct {
+ 	model    string
+ 	resetIn  time.Duration
++	resetAt  time.Time
+ 	provider string
+ 	cause    error
+ }
+ 
++// usageLimitCooldown is the shortest cooldown reported to clients as a usage
++// limit rather than a retryable rate limit. Codex and OpenCode sleep until
++// Retry-After before retrying, so a depleted plan allowance that blocks the
++// model for hours would stall the session instead of letting the agent switch
++// models. It stays above the 60 seconds of per-minute throttles, which are
++// worth waiting out.
++const usageLimitCooldown = 2 * time.Minute
++
+ // NewModelCooldownError creates an error representing model-level cooldown.
+ func NewModelCooldownError(model, provider string, resetIn time.Duration) error {
  	return newModelCooldownErrorWithCause(model, provider, resetIn, nil)
  }
  
-+// depletedAllowanceCooldown turns a depleted plan allowance into a model
-+// cooldown. The upstream failure wording can be read by a client as a
-+// permanent rejection that stops it from retrying, while the cooldown answers
-+// with a recovery deadline the client can wait for.
-+//
-+// It reports false when the failure carries no recovery deadline, because
-+// without one there is nothing the client could wait for.
++// depletedAllowanceCooldown turns the last failure into a model cooldown when
++// it is a 429 that blocks the credential for at least usageLimitCooldown, so
++// the first failing request already answers with the recovery deadline and
++// the same usage-limit body as the requests that follow it. The deadline is
++// the last credential's; the selector reports the earliest one afterwards.
 +func depletedAllowanceCooldown(model, provider string, err error) (error, bool) {
-+	resetIn, ok := quotaLimitResetIn(err)
-+	if !ok {
++	if statusCodeFromError(err) != http.StatusTooManyRequests {
 +		return nil, false
 +	}
-+	return newModelCooldownErrorWithCause(model, provider, resetIn, err), true
-+}
-+
-+// quotaLimitResetIn reports how long a depleted plan allowance still blocks
-+// the model, when the upstream failure carries that deadline. The upstream
-+// codex failure reports it as "resets_in_seconds" or "resets_at".
-+func quotaLimitResetIn(err error) (time.Duration, bool) {
-+	if err == nil {
-+		return 0, false
++	retryAfter := retryAfterFromError(err)
++	if retryAfter == nil || *retryAfter < usageLimitCooldown {
++		return nil, false
 +	}
-+	summary := ExtractUpstreamErrorSummary(err.Error())
-+	if summary == "" {
-+		return 0, false
-+	}
-+	if !mentionsDepletedAllowance(summary) {
-+		return 0, false
-+	}
-+	if retryAfter := retryAfterFromError(err); retryAfter != nil && *retryAfter > 0 {
-+		return *retryAfter, true
-+	}
-+	return 0, false
-+}
-+
-+// mentionsDepletedAllowance reports whether the upstream failure reports a
-+// depleted plan allowance. The upstream codex failure names it with the code
-+// "usage_limit_reached", which carries an underscore, so a client that reads
-+// the space-separated phrase does not match it.
-+func mentionsDepletedAllowance(summary string) bool {
-+	lower := strings.ToLower(summary)
-+	return strings.Contains(lower, "usage_limit_reached") ||
-+		strings.Contains(lower, "usage limit") ||
-+		strings.Contains(lower, "quota_exceeded") ||
-+		strings.Contains(lower, "quota exceeded")
++	return newModelCooldownErrorWithCause(model, provider, *retryAfter, err), true
 +}
 +
  func newModelCooldownError(model, provider string, resetIn time.Duration) *modelCooldownError {
  	return newModelCooldownErrorWithCause(model, provider, resetIn, nil)
  }
-@@ -150,6 +197,11 @@ func (e *modelCooldownError) Error() string {
+@@ -105,10 +130,21 @@ func newModelCooldownErrorWithCause(model, provider string, resetIn time.Duratio
+ 		model:    model,
+ 		provider: provider,
+ 		resetIn:  resetIn,
++		resetAt:  time.Now().Add(resetIn),
+ 		cause:    cause,
  	}
- 	if e.cause != nil {
- 		if causeText := ExtractUpstreamErrorSummary(e.cause.Error()); causeText != "" {
-+			// A client that classifies a 429 by its text reads account-cap wording
-+			// as a permanent rejection and stops retrying, even though this
-+			// cooldown expires. The wording is replaced rather than dropped, so
-+			// the reader still learns the cause and the reset deadline.
-+			causeText = neutralizeAccountCapWording(causeText)
- 			errorBody["last_upstream_error"] = causeText
- 			message += fmt.Sprintf(" (last error: %s)", causeText)
- 			errorBody["message"] = message
-@@ -350,6 +402,70 @@ func (e *modelCooldownError) StatusCode() int {
- 	return http.StatusTooManyRequests
  }
  
-+// accountCapPhrases are the wordings a client reads as a permanent account
-+// cap rather than a temporary throttle. A cooldown always expires, so these
-+// phrases must not reach a retryable response body.
-+//
-+// Each pattern matches the way the client matches it, so the wording is
-+// rewritten only where the client would have read it as a cap. A separator
-+// between the words of a phrase is optional where the client allows one,
-+// because the client reads "quota exceeded", "quota-exceeded" and
-+// "quotaexceeded" alike. A phrase the client only reads with a space is
-+// matched with a space only: the client reads "usage limit" but not the
-+// underscored code "usage_limit_reached", and rewriting that code would erase
-+// the identity of the cause.
-+var accountCapPhrases = []struct {
-+	pattern     *regexp.Regexp
-+	replacement string
-+}{
-+	{pattern: regexp.MustCompile(`(?i)insufficient[-_\s]?(?:quota|balance)`), replacement: "insufficient allowance"},
-+	{pattern: regexp.MustCompile(`(?i)quota[-_\s]?exceeded`), replacement: "allowance exceeded"},
-+	{pattern: regexp.MustCompile(`(?i)budget exceeded`), replacement: "allowance exceeded"},
-+	{pattern: regexp.MustCompile(`(?i)limit exhausted`), replacement: "allowance exhausted"},
-+	{pattern: regexp.MustCompile(`(?i)usage limit`), replacement: "usage allowance"},
-+	{pattern: regexp.MustCompile(`(?i)package has expired`), replacement: "package expired"},
-+	{pattern: regexp.MustCompile(`(?i)plan does not yet include`), replacement: "plan does not yet cover"},
++func (e *modelCooldownError) isUsageLimit() bool {
++	return e.resetIn >= usageLimitCooldown
 +}
 +
-+// neutralizeAccountCapWording rewrites the account-cap phrases of an upstream
-+// summary so the reason stays readable while the wording no longer reads as a
-+// permanent rejection.
-+func neutralizeAccountCapWording(text string) string {
-+	if text == "" {
-+		return text
-+	}
-+	out := text
-+	for _, phrase := range accountCapPhrases {
-+		out = phrase.pattern.ReplaceAllStringFunc(out, func(match string) string {
-+			return preserveLeadingCase(match, phrase.replacement)
-+		})
-+	}
-+	return out
++// resetsAt is the recovery time in whole seconds, rounded up so a client that
++// resumes at it never arrives before the cooldown ends.
++func (e *modelCooldownError) resetsAt() time.Time {
++	return e.resetAt.Add(time.Second - 1).Truncate(time.Second).UTC()
 +}
 +
-+// preserveLeadingCase keeps the case of the first letter of the replaced text
-+// so a sentence stays a sentence.
-+func preserveLeadingCase(match, replacement string) string {
-+	if match == "" {
-+		return replacement
+ func (e *modelCooldownError) IsModelCooldown() bool {
+ 	return true
+ }
+@@ -156,6 +192,19 @@ func (e *modelCooldownError) Error() string {
+ 			errorBody["message"] = message
+ 		}
+ 	}
++	if e.isUsageLimit() {
++		// Codex stops without retrying on the "usage_limit_reached" type and
++		// reads resets_at; OpenCode stops on the "usage limit" wording. T3 Code
++		// reads the reset from "(reset after ...)" in Claude Code's error and
++		// from the trailing "Resets at" in OpenCode's.
++		resetsAt := e.resetsAt()
++		message = fmt.Sprintf("You've hit your usage limit for %s (reset after %s). Switch to another model. Resets at %s.",
++			modelName, displayDuration, resetsAt.Format(time.RFC3339))
++		errorBody["type"] = "usage_limit_reached"
++		errorBody["message"] = message
++		errorBody["resets_at"] = resetsAt.Unix()
++		errorBody["resets_in_seconds"] = resetSeconds
 +	}
-+	if isUpperCase(match[0]) {
-+		return capitalizeFirst(replacement)
+ 	payload := map[string]any{"error": errorBody}
+ 	data, err := json.Marshal(payload)
+ 	if err != nil {
+@@ -359,6 +408,14 @@ func (e *modelCooldownError) Headers() http.Header {
+ 		resetSeconds = 0
+ 	}
+ 	headers.Set("Retry-After", strconv.Itoa(resetSeconds))
++	if e.isUsageLimit() {
++		// Over WebSocket, Codex turns these into a rate-limit snapshot: its
++		// message names the model, and T3 Code resumes the thread at the
++		// reset. The HTTP handlers forward only Retry-After.
++		headers.Set("x-codex-limit-name", e.model)
++		headers.Set("x-codex-primary-used-percent", "100")
++		headers.Set("x-codex-primary-reset-at", strconv.FormatInt(e.resetsAt().Unix(), 10))
 +	}
-+	return replacement
-+}
-+
-+func isUpperCase(char byte) bool {
-+	return char >= 'A' && char <= 'Z'
-+}
-+
-+func capitalizeFirst(text string) string {
-+	if text == "" {
-+		return text
-+	}
-+	return strings.ToUpper(text[:1]) + text[1:]
-+}
-+
- func (e *modelCooldownError) Headers() http.Header {
- 	headers := make(http.Header)
- 	headers.Set("Content-Type", "application/json")
+ 	return headers
+ }
+ 
