@@ -40,7 +40,8 @@
   };
   services = {
     alfred = {
-      enable = true;
+      # Paused while its runtime is refactored, so it stops spending Codex.
+      enable = false;
       # Podman permits one active VM; shared with Frida, Slack mirror and browsers.
       machineName = "openclaw-sandbox";
     };
