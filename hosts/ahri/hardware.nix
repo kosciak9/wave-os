@@ -46,6 +46,8 @@
       "brcmfmac"
       "hci_uart"
       "btbcm"
+      # The radio's SDIO Bluetooth function still autoloads this driver.
+      "btsdio"
     ];
     supportedFilesystems = [
       "btrfs"
