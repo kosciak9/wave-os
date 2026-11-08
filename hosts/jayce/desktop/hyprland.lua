@@ -126,12 +126,14 @@ hl.config({
         disable_splash_rendering = true,
         force_default_wallpaper = 0,
         always_follow_on_dnd = true,
-        layers_hog_keyboard_focus = true,
         focus_on_activate = false,
         middle_click_paste = false,
         mouse_move_enables_dpms = true,
         key_press_enables_dpms = true,
         on_focus_under_fullscreen = 2,
+    },
+    layers = {
+        layers_hog_keyboard_focus = true,
     },
 })
 
