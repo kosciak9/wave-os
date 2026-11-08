@@ -156,6 +156,7 @@
         "alfred/substack-session-token"
         "alfred/x-session.json"
         "camofox/access-key"
+        "camofox/vnc-password"
         "protonmail/address"
         "protonmail/bridge-password"
         "mcp-gateway/api-key"

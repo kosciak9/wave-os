@@ -22,6 +22,7 @@ let
       --publish 127.0.0.1:16080:6080 \
       --env ENABLE_VNC=1 \
       --env VNC_BIND=0.0.0.0 \
+      --env VNC_PASSWORD \
     '';
     imageBuildPrelude = ''
       deadline=$((SECONDS + 180))
@@ -53,6 +54,13 @@ let
             fi
             export CAMOFOX_ACCESS_KEY="$access_key"
             unset CAMOFOX_API_KEY
+            # noVNC controls the browser the owner logs in to; x11vnc reads 8 characters of it.
+            vnc_password=$(< ${lib.escapeShellArg osConfig.sops.secrets."camofox/vnc-password".path})
+            if [[ -z "$vnc_password" ]]; then
+              printf '%s\n' "refusing to start Camofox: VNC_PASSWORD is empty" >&2
+              exit 1
+            fi
+            export VNC_PASSWORD="$vnc_password"
 
             # image_build performs the rootless openclaw-sandbox readiness check before
             # inspecting or building the image, and before any network/container operation.
