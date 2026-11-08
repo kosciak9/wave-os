@@ -62,7 +62,38 @@ in
           }
         ];
       };
-      extraOptions = [ "-vmui.customDashboardsPath=${./dashboards}" ];
+      extraOptions = [
+        "-vmui.customDashboardsPath=${./dashboards}"
+        # Serves the vmalert UI at /vmalert/.
+        "-vmalert.proxyURL=http://127.0.0.1:8880"
+      ];
+    };
+    vmalert.instances."" = {
+      enable = true;
+      settings = {
+        "datasource.url" = "http://127.0.0.1:8428";
+        "httpListenAddr" = "127.0.0.1:8880";
+        # Alerts are only viewed in VictoriaMetrics for now; nothing is notified.
+        "notifier.blackhole" = true;
+        # Stores the ALERTS series, so an alert that fired unseen stays queryable.
+        "remoteWrite.url" = "http://127.0.0.1:8428";
+      };
+      rules.groups = [
+        {
+          name = "openwrt";
+          rules = [
+            {
+              # Only zajic's 88E6141 switch exports per-port counters. Healthy, its CPU port
+              # stays below 3 PAUSE/s over 6 h; before the switch ran out of buffers on
+              # 2026-11-07 the rate grew for days and crossed 5/s three days earlier.
+              alert = "SwitchPauseFramesRising";
+              expr = ''rate(node_ethtool_p05_out_pause{job="openwrt"}[6h]) > 5'';
+              for = "1h";
+              annotations.summary = "{{ $labels.host }}: switch sends {{ $value | printf \"%.1f\" }} PAUSE frames/s to the CPU; reboot it before large frames stop passing";
+            }
+          ];
+        }
+      ];
     };
     victorialogs = {
       enable = true;
