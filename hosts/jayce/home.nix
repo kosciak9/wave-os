@@ -444,6 +444,25 @@ in
         TimeoutStopSec = 5;
       };
     };
+    wave-caffeinate-agents = {
+      Unit = {
+        Description = "Caffeinate while T3 Code agents run";
+        After = [
+          "wayland-session-waitenv.service"
+          "t3code.service"
+        ];
+        PartOf = [ sessionTarget ];
+        ConditionEnvironment = "WAYLAND_DISPLAY";
+      };
+      Service = {
+        ExecStart = "${lib.getExe pkgs.wave} caffeinate agents";
+        # t3 issues the read-only token for the local orchestration API.
+        Environment = [ "PATH=${lib.makeBinPath [ pkgs.t3code-cli ]}" ];
+        Restart = "always";
+        RestartSec = 10;
+      };
+      Install.WantedBy = [ sessionTarget ];
+    };
     quickshell = {
       Unit = {
         After = lib.mkForce [ "wayland-session-waitenv.service" ];
