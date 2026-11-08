@@ -1,0 +1,12 @@
+# A sandbox reaches the internet but nothing local: not the host, whose loopback services the
+# Podman machine forwards at 192.168.127.254, not the other containers, the LAN or the tailnet.
+# Only DNS goes to the machine's two resolvers.
+table inet sandbox {
+	chain output {
+		type filter hook output priority filter; policy accept;
+		oifname "lo" accept
+		ip daddr { 169.254.1.1, 192.168.127.1 } meta l4proto { tcp, udp } th dport 53 accept
+		ip daddr { 0.0.0.0/8, 10.0.0.0/8, 100.64.0.0/10, 127.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/16, 224.0.0.0/3 } reject
+		ip6 daddr { ::/127, fc00::/7, fe80::/10, ff00::/8 } reject
+	}
+}

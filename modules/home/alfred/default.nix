@@ -499,10 +499,17 @@ let
     sparseCheckout = [ "optional-skills/security/unbroker" ];
     hash = "sha256-8/bh5j65vrxwkZolJ3CYYPWfHVg8XVvLrqeFUoWFVQU=";
   };
+  # nftables applies sandbox.nft to each sandbox's network from a container of its own.
   sandboxContext = pkgs.runCommand "alfred-sandbox-context" { } ''
     mkdir -p $out/skills
     cp -r ${unbroker}/optional-skills/security/unbroker $out/skills/unbroker
-    printf 'FROM %s\nCOPY skills /skills\n' ${lib.escapeShellArg cfg.sandboxBaseImage} > $out/Containerfile
+    cp ${./sandbox.nft} $out/sandbox.nft
+    cat > $out/Containerfile <<'EOF'
+    FROM ${cfg.sandboxBaseImage}
+    RUN apt-get update && apt-get install --yes --no-install-recommends nftables && rm -rf /var/lib/apt/lists/*
+    COPY sandbox.nft /etc/sandbox.nft
+    COPY skills /skills
+    EOF
   '';
   sandboxImage = "localhost/wave-os/alfred-sandbox:${
     builtins.substring 11 32 sandboxContext.outPath
@@ -695,7 +702,8 @@ let
   '';
 
   sandboxGuidance = ''
-    MCP sandbox daje sandboksy: kontenery z Pythonem i siecią. create uruchamia sandboks, run
+    MCP sandbox daje sandboksy: kontenery z Pythonem i internetem, bez dostępu do sieci lokalnej,
+    hosta i innych kontenerów. create uruchamia sandboks, run
     wykonuje w nim kolejne polecenia basha, a close usuwa go, gdy skończysz; po TTL bez poleceń
     znika sam. Pliki zostają w nim do końca, katalog roboczy i zmienne nie przechodzą między
     poleceniami. Trwały jest tylko wspólny /workspace. Nie przekazuj sandboksom haseł ani tokenów.
