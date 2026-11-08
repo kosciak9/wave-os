@@ -880,6 +880,11 @@ in
 {
   options.services.alfred = {
     enable = lib.mkEnableOption "Alfred, the house-agents assistant on Telegram";
+    agent.enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Whether to run the agent itself; without it only its MCP bridges, Gotenberg and Proton Mail Bridge run, e.g. to evaluate a new runtime against them.";
+    };
     image = lib.mkOption {
       type = lib.types.strMatching "[^@]+@sha256:[0-9a-f]{64}";
       # house-agents 80868af (linux/amd64, linux/arm64)
@@ -932,7 +937,7 @@ in
     '';
     launchd.agents = {
       alfred = {
-        enable = true;
+        inherit (cfg.agent) enable;
         domain = "user";
         config = {
           ProgramArguments = [ (lib.getExe supervisor) ];
