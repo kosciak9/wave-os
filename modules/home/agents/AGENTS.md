@@ -87,25 +87,24 @@ edits.
   their capabilities better fit the task. Model families are not proven
   interchangeable: verify results and preserve the role-specific requirements
   below, including Sol for code review and Opus for design critique.
-- Some OpenCode Go models have separate per-model and per-plan limits. A
-  provider refusal such as `usage limit reached` is a capacity failure requiring
-  an upward model change. Do not retry in a loop or fan out more children on the
-  exhausted model. Change the inference source once and resume from the
-  preserved brief, work and evidence; tell the user which source hit the limit
-  and which one now continues the work. Inspect existing changes before resuming
-  and never duplicate or discard another agent's work.
-- On a usage-limit refusal, escalate to the next suitable tier: Luna work to
-  Sol, substantial technical work or code review from Sol to Opus, and Opus work
-  to Fable. Never recover by moving to a lower tier or a lateral model. If that
-  escalation is unavailable or the highest suitable tier is exhausted, stop the
-  delegated attempt, wait and escalate to the operator. Do not retry, downgrade
-  or substitute another model while waiting.
+- A provider refusal such as `usage limit reached`, including OpenCode Go's
+  separate per-model and per-plan limits, is a capacity failure. Do not retry or
+  fan out more children on the exhausted model. Escalate once to the next
+  suitable tier: Luna work to Sol, substantial technical work from Sol to Opus,
+  and Opus work to Fable; never to a lower tier or a lateral model (code review
+  has its own stand-in below). Inspect existing changes, resume from the
+  preserved brief, work and evidence without duplicating or discarding another
+  agent's work, and tell the user which source hit the limit and which one
+  continues. If no suitable higher tier is available, stop the delegated attempt
+  and escalate to the operator.
 
 - Delegate code review to Sol, not Luna. The reviewer must be read-only and must
   not be the subagent that wrote the change. Give it the requirements, relevant
-  diff and checks; inspect its evidence and findings yourself. Add an Opus pass
-  for high-risk/architectural concerns or the usage-limit escalation above, not
-  as a routine replacement for Sol.
+  diff and checks; inspect its evidence and findings yourself. Sol reviews
+  better than the other models: while Sol is out of quota, Sonnet (`claudeAgent`
+  / `claude-sonnet-5-5`, `effort: high`) reviews in its place until Sol's quota
+  resets. Add an Opus pass for high-risk/architectural concerns, not as a
+  routine replacement for Sol.
 - Always use Opus for frontend visual and design critique, even when Sol wrote
   or reviewed the code. Provide the design goals and screenshots of the actual
   running states, not only source code. Functional code review remains Sol's

@@ -58,7 +58,9 @@ never continue a review with `t3_thread_send`, `create_threads`, or
 `t3_thread_launch`.
 
 Outside T3 Code, use a native subagent configured to run Sol, and keep its ID.
-If no route runs Sol, report the blocker. Do not substitute another model.
+
+While Sol is out of quota, run the rounds with Sonnet until its quota resets,
+and say so in the ledger. If no route runs either, report the blocker.
 
 Do not edit the scoped files while the review runs, and do not start a second
 reviewer. A timeout, error, or silence is not approval; cancel, confirm it
@@ -115,13 +117,12 @@ Do not push during the loop. Push after agreement only when the user asked to
 push, ship, or update the PR. When you push to a PR, add a line to the PR
 description in the PR's language:
 
-- English:
-  `Reviewed with sol-loop: <N> rounds with <model>. Sol verdict: approved`
+- English: `Reviewed with sol-loop: <N> rounds with <model>. Verdict: approved`
 - Polish:
-  `Przejrzane przez sol-loop: <N> rund z <model>. Werdykt Sol: zaakceptowane`
+  `Przejrzane przez sol-loop: <N> rund z <model>. Werdykt: zaakceptowane`
 
 Add `on <effort>` only when it is verified.
 
-Report the rounds, the model, what Sol changed, diff size before and after, the
-fixed and declined findings with reasons, usage if exposed, and whether you
-pushed.
+Report the rounds, the model, what the review changed, diff size before and
+after, the fixed and declined findings with reasons, usage if exposed, and
+whether you pushed.
