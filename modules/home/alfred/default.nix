@@ -361,7 +361,7 @@ let
         ${lib.escapeShellArg cfg.gotenbergImage} gotenberg \
         --api-disable-download-from --webhook-disable \
         --chromium-disable-javascript --chromium-deny-public-ips --chromium-deny-private-ips \
-        --prometheus-disable-collect --log-level=warn
+        --log-level=warn
     '';
   };
   googleMcp = pkgs.writeShellApplication {
@@ -937,12 +937,12 @@ in
     };
     gotenbergImage = lib.mkOption {
       type = lib.types.strMatching "[^@]+@sha256:[0-9a-f]{64}";
-      default = "docker.io/gotenberg/gotenberg:8.39.0@sha256:13672f317b443c793e972b1bd2155ec62a3e7b6891b411e8196442cc053ee5f5";
+      default = "docker.io/gotenberg/gotenberg:9.2.0@sha256:e1840b4c1ee113078cc153b8359433c9511ab544c1a15cd45b09f81c9329118a";
       description = "The Gotenberg image that renders attachments to PDF, pinned by digest.";
     };
     sandboxBaseImage = lib.mkOption {
       type = lib.types.strMatching "[^@]+@sha256:[0-9a-f]{64}";
-      default = "docker.io/library/python:3.14.10-slim-trixie@sha256:3cabfd7d7aaf394e6040e79fa1eec6ca1c52b74ed9188650472695d9a9326999";
+      default = "docker.io/library/python:3.14.10-slim-trixie@sha256:9aaa474097d094040649f2162a627c0049b408f52138d980916788d80f04802f";
       description = "The image Alfred's sandbox containers build on, pinned by digest.";
     };
     sandboxVolume = lib.mkOption {
