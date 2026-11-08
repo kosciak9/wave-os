@@ -68,10 +68,9 @@ edits.
   cost more coordination than it saves. The tiers below are a menu, not a
   required sequence: choose the lowest tier that fits; do not run every task
   through all four.
-- Use these current defaults in T3. Resolve the exact IDs and advertised options
-  through `orchestrator_capabilities`; pass them explicitly to `delegate_task`
-  and verify the returned provider, model and options. Outside T3, select the
-  corresponding family from the native model catalog.
+- Use these current defaults in T3 and verify the provider, model and options
+  `delegate_task` returns. Outside T3, select the corresponding family from the
+  native model catalog.
 
   | Tier  | T3 provider and model              | Default options                                   | Recommended work                                                                                                                                       |
   | ----- | ---------------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -120,11 +119,7 @@ edits.
   Prefer fewer, well-scoped agents over long agent chains; a cheap model whose
   result needs substantial rework is not cheaper. Use T3 Usage/Limits to inspect
   actual reported quota where available.
-- In T3, use `shared` isolation for read-only review of current uncommitted work
-  and `worktree` for independent writers; worktrees do not copy uncommitted
-  edits. Run independent children asynchronously in parallel. Each review round
-  is a new delegated task with the original brief, prior findings, responses and
-  unresolved objections.
+- In T3, give independent writers `worktree` isolation.
 - When delegating UI work, pass on the `UI changes` rules and ask for the
   preview and screenshot paths back. The user does not see subagent reports, so
   check the artifacts yourself and show them.
