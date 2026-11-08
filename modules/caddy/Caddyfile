@@ -1,5 +1,7 @@
 {
-	admin 127.0.0.1:2019
+	# Off: Caddy runs as root, and every Podman container reaches the host's loopback, where a
+	# spoofed Host header passes the admin origin check. A new config takes a daemon restart.
+	admin off
 	auto_https disable_redirects
 	skip_install_trust
 }
