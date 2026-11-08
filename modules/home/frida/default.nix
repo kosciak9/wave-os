@@ -112,6 +112,7 @@ let
         )
       },
       model: { provider: "openai-codex", modelId: "gpt-6.1-sol", thinkingLevel: "medium" },
+      fallbackModel: { provider: "xai", modelId: "grok-4.7", thinkingLevel: "medium" },
       telegram: { chatId: Number(process.env.TELEGRAM_CHAT_ID) },
       whisperUrl: "http://host.containers.internal:18080/v1/audio/transcriptions",
       mcpServers: {
