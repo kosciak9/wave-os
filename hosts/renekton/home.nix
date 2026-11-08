@@ -45,7 +45,10 @@
       # Podman permits one active VM; shared with Frida, Slack mirror and browsers.
       machineName = "openclaw-sandbox";
     };
-    frida.enable = true;
+    frida = {
+      # Paused like Alfred, so it stops spending Codex.
+      enable = false;
+    };
     slack-mirror = {
       enable = true;
       sync.enable = true;
