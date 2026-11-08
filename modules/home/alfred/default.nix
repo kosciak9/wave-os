@@ -15,6 +15,7 @@ let
   logDirectory = "${home}/.local/state/alfred";
   googleState = "${logDirectory}/google-workspace";
   xState = "${logDirectory}/x";
+  whatsappState = "${logDirectory}/whatsapp";
   protonState = "${logDirectory}/proton";
   secret = name: osConfig.sops.secrets."alfred/${name}".path;
   mcpTokenFile = secret "mcp-token";
@@ -182,6 +183,28 @@ let
         builtins.fromJSON (builtins.readFile ../../../packages/twikit-x-mcp/tools.json)
       );
     };
+    # The owner's account, linked as a companion device; the server cannot send. WhatsApp
+    # delivers messages only to a connected device, so the server runs before the first call.
+    whatsapp = {
+      port = 18103;
+      agent = "alfred";
+      domain = "user";
+      command = lib.getExe whatsappMcp;
+      startNow = true;
+      # Its media arrive as binary resources; the bridge adds a preview after each.
+      inlineAttachments = true;
+      tools = [
+        "whatsapp_status"
+        "list_chats"
+        "get_chat"
+        "list_messages"
+        "search_messages"
+        "get_message_context"
+        "search_contacts"
+        "download_media"
+        "request_older_history"
+      ];
+    };
   };
   # Reached by the container itself; credentials come from Podman secrets or OAuth.
   remotes = {
@@ -295,8 +318,13 @@ let
       # The container cannot read files the server saves on the host.
       inlineAttachments = true;
       gotenbergUrl = "http://127.0.0.1:${toString gotenbergPort}";
+      inherit whisperUrl;
     }
   );
+
+  # whisper-server (modules/home/whisper) transcribes recorded attachments; directly, since its
+  # recording proxy archives what it hears, and these are other people's voices.
+  whisperUrl = "http://127.0.0.1:18081/v1/audio/transcriptions";
 
   # Gotenberg renders attachments the model cannot read to PDF. It has no way out: an internal
   # network, no downloads or webhooks, and Chromium loads nothing but the file it converts.
@@ -341,6 +369,7 @@ let
     runtimeInputs = [
       pkgs.coreutils
       pkgs.jq
+      pkgs.ffmpeg
     ];
     text = ''
       umask 077
@@ -452,6 +481,15 @@ let
     '';
   };
 
+  # The archive and the device keys live in whatsappState; `whatsapp-mcp login` links it.
+  whatsappMcp = pkgs.writeShellApplication {
+    name = "alfred-whatsapp-mcp";
+    text = ''
+      exec env -i HOME="$HOME" PATH="$PATH" \
+        ${lib.getExe pkgs.whatsapp-mcp} serve --data-dir ${lib.escapeShellArg whatsappState} --log-level warn
+    '';
+  };
+
   # Code runs in ephemeral containers in the Podman machine; only the volume persists. The
   # image carries the skills, since the machine cannot see the Nix store.
   unbroker = pkgs.fetchFromGitHub {
@@ -544,13 +582,19 @@ let
           ++ lib.optionals (bridge.inlineAttachments or false) [
             "--inline-attachments"
             "http://127.0.0.1:${toString gotenbergPort}"
+            whisperUrl
           ]
+          ++ lib.optional (bridge.startNow or false) "--start-now"
           ++ [
             name
             (toString bridge.port)
             mcpTokenFile
             bridge.command
           ];
+      # ffmpeg turns recorded attachments into audio for Whisper.
+      EnvironmentVariables = lib.optionalAttrs (bridge.inlineAttachments or false) {
+        PATH = "${lib.makeBinPath [ pkgs.ffmpeg ]}:/usr/bin:/bin:/usr/sbin:/sbin";
+      };
       RunAtLoad = true;
       KeepAlive = true;
       ProcessType = "Background";
@@ -929,7 +973,10 @@ in
         message = "Alfred reads Slack through services.slack-mirror.";
       }
     ];
-    home.packages = [ pkgs.protonmail-bridge ];
+    home.packages = [
+      pkgs.protonmail-bridge
+      pkgs.whatsapp-mcp
+    ];
     # Bridge prints only --help, which zsh's generic completion parses.
     programs.zsh.generatedCompletions.protonmail-bridge = "printf '#compdef protonmail-bridge\\n_gnu_generic\\n'";
     home.activation.alfred = lib.hm.dag.entryBetween [ "setupLaunchAgents" ] [ "writeBoundary" ] ''

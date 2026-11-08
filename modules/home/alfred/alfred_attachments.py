@@ -1,4 +1,4 @@
-"""Turns mail attachments into content a model reads; shared by Alfred's mail MCP servers."""
+"""Turns attachments into content a model reads; shared by Alfred's mail and WhatsApp MCP servers."""
 
 import logging
 import mimetypes
@@ -68,13 +68,73 @@ async def convert_to_pdf(data, filename, mime_type, gotenberg_url):
     return response.content, engine
 
 
-async def attachment_content(data, filename, mime_type, gotenberg_url=None):
-    """An attachment as content a model reads: images, PDF pages as images, or text.
+class NoSound(Exception):
+    pass
 
-    Any other file is rendered to PDF first when Gotenberg is configured, and says so.
+
+async def transcribe(data, whisper_url):
+    """The speech in a recording, as Whisper hears it.
+
+    The recording becomes plain 16 kHz WAV here, with a neutral name and no tags: whisper-server's
+    own conversion leaves its input on disk when it fails, and logs the name and tags. The two
+    timeouts stay within house-agents' five minutes for a whole MCP call.
+    """
+    import asyncio
+    import tempfile
+
+    import httpx
+
+    # A file, not a pipe: MP4 and M4A may keep their index at the end.
+    with tempfile.NamedTemporaryFile() as source:
+        source.write(data)
+        source.flush()
+        process = await asyncio.create_subprocess_exec(
+            "ffmpeg", "-nostdin", "-loglevel", "error", "-i", source.name,
+            "-map", "0:a:0", "-map_metadata", "-1", "-ac", "1", "-ar", "16000", "-f", "wav", "pipe:1",
+            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+        )
+        try:
+            wav, error = await asyncio.wait_for(process.communicate(), 60)
+        except TimeoutError:
+            process.kill()
+            await process.wait()
+            raise
+    if process.returncode:
+        if b"matches no streams" in error:
+            raise NoSound
+        raise RuntimeError(f"ffmpeg could not read the recording: {error.decode(errors='replace')[-300:]}")
+    async with httpx.AsyncClient(timeout=150) as client:
+        response = await client.post(
+            whisper_url, files=[("file", ("recording.wav", wav, "audio/wav"))], data={"response_format": "json"}
+        )
+    response.raise_for_status()
+    return response.json()["text"].strip()
+
+
+async def attachment_content(data, filename, mime_type, gotenberg_url=None, whisper_url=None):
+    """An attachment as content a model reads: images, PDF pages as images, text, or a transcript.
+
+    Recordings are transcribed when Whisper is configured, and any other file is rendered to PDF
+    first when Gotenberg is configured; both say so.
     """
     import base64
 
+    if mime_type.startswith(("audio/", "video/")):
+        if not whisper_url:
+            return [TextContent(type="text", text=f"The content of a {mime_type} file cannot be shown.")]
+        try:
+            text = await transcribe(data, whisper_url)
+        except NoSound:
+            return [TextContent(type="text", text=f"The {mime_type} file has no sound to transcribe.")]
+        except Exception:
+            logging.exception("Could not transcribe the recording")
+            return [TextContent(type="text", text=f"The content of a {mime_type} file cannot be shown: transcribing it with Whisper failed.")]
+        return [
+            TextContent(
+                type="text",
+                text="Its speech transcribed by Whisper, which can mishear words:\n" + (text or "(no speech recognised)"),
+            )
+        ]
     if mime_type == "application/pdf":
         return pdf_pages(data, "PDF")
     if mime_type in MODEL_IMAGE_TYPES:
@@ -103,11 +163,11 @@ async def attachment_content(data, filename, mime_type, gotenberg_url=None):
     return pdf_pages(pdf, label)
 
 
-async def preview(data, filename, mime_type, gotenberg_url=None):
+async def preview(data, filename, mime_type, gotenberg_url=None, whisper_url=None):
     """What a model reads of an attachment, labelled as a preview next to its original."""
     label = f"Preview of {filename or 'the attachment'} ({mime_type or 'unknown type'}), not the original file:"
     try:
-        content = await attachment_content(data, filename, mime_type, gotenberg_url)
+        content = await attachment_content(data, filename, mime_type, gotenberg_url, whisper_url)
     except Exception:
         logging.exception("Could not preview the attachment")
         content = [TextContent(type="text", text="The attachment could not be previewed.")]

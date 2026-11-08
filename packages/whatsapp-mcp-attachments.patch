@@ -1,0 +1,70 @@
+diff --git a/server.go b/server.go
+index 3c09cb4..ec3032c 100644
+--- a/server.go
++++ b/server.go
+@@ -7,6 +7,7 @@ import (
+ 	"errors"
+ 	"fmt"
+ 	"net/url"
++	"path/filepath"
+ 	"sort"
+ 	"strings"
+ 	"time"
+@@ -638,14 +639,13 @@ type DownloadMediaIn struct {
+ }
+ 
+ type DownloadMediaOut struct {
+-	Path     string `json:"path"`
+ 	Mime     string `json:"mime"`
+ 	Size     int    `json:"size_bytes"`
+-	Inlined  bool   `json:"inlined_as_image"`
+-	FileName string `json:"file_name,omitempty"`
++	FileName string `json:"file_name"`
+ }
+ 
+-const maxInlineImage = 4 << 20
++// The original travels in the result, for clients that cannot read this host's files.
++const maxMediaBytes = 64 << 20
+ 
+ func (a *App) downloadMedia(ctx context.Context, _ *mcp.CallToolRequest, in DownloadMediaIn) (*mcp.CallToolResult, DownloadMediaOut, error) {
+ 	m, err := a.findMessage(ctx, in.Chat, in.MessageID)
+@@ -662,18 +662,21 @@ func (a *App) downloadMedia(ctx context.Context, _ *mcp.CallToolRequest, in Down
+ 	if err != nil {
+ 		return nil, DownloadMediaOut{}, err
+ 	}
++	if len(data) > maxMediaBytes {
++		return nil, DownloadMediaOut{}, fmt.Errorf("the attachment (%d bytes) exceeds the %d MiB limit", len(data), maxMediaBytes>>20)
++	}
+ 	mimeType := strings.TrimSpace(strings.Split(m.Mime, ";")[0])
+-	out := DownloadMediaOut{Path: path, Mime: mimeType, Size: len(data), FileName: m.FileName}
++	name := m.FileName
++	if name == "" {
++		name = filepath.Base(path)
++	}
++	out := DownloadMediaOut{Mime: mimeType, Size: len(data), FileName: name}
+ 	outJSON, _ := json.Marshal(&out)
+-	res := &mcp.CallToolResult{}
+-	if strings.HasPrefix(mimeType, "image/") && mimeType != "image/webp" && len(data) <= maxInlineImage {
+-		out.Inlined = true
+-		outJSON, _ = json.Marshal(&out)
+-		res.Content = []mcp.Content{&mcp.TextContent{Text: string(outJSON)}, &mcp.ImageContent{Data: data, MIMEType: mimeType}}
+-	} else {
+-		res.Content = []mcp.Content{&mcp.TextContent{Text: string(outJSON)}}
++	original := &mcp.EmbeddedResource{
++		Resource: &mcp.ResourceContents{URI: "whatsapp-media://" + url.PathEscape(m.ChatJID) + "/" + url.PathEscape(m.ID), MIMEType: mimeType, Blob: data},
++		Meta:     mcp.Meta{"filename": name, "size": len(data)},
+ 	}
+-	return res, out, nil
++	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: string(outJSON)}, original}}, out, nil
+ }
+ 
+ type RequestHistoryIn struct {
+@@ -863,7 +866,7 @@ func newMCPServer(a *App) *mcp.Server {
+ 	mcp.AddTool(s, &mcp.Tool{Name: "search_contacts", Annotations: ro,
+ 		Description: "Find people by name or phone number fragment (address book names, WhatsApp profile names). Returns JIDs usable as `chat`/`sender`."}, a.searchContacts)
+ 	mcp.AddTool(s, &mcp.Tool{Name: "download_media", Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true, OpenWorldHint: new(true)},
+-		Description: "Download the image/video/audio/document attached to a message into the local media cache and return its file path. Images are also returned inline so you can look at them. Requires a live connection."}, a.downloadMedia)
++		Description: "Download the image/video/audio/document attached to a message. The original file comes back as an MCP binary resource {type: 'resource', resource: {uri, mimeType, blob}, _meta: {filename, size}}, up to 64 MiB. Requires a live connection."}, a.downloadMedia)
+ 	mcp.AddTool(s, &mcp.Tool{Name: "request_older_history", Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: new(true)},
+ 		Description: "Ask the user's phone to send messages older than the oldest archived one for a chat (WhatsApp on-demand history sync). Waits briefly and reports how many arrived. The phone must be online. Repeat to go further back."}, a.requestHistory)
+ 

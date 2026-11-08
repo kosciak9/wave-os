@@ -1,0 +1,37 @@
+diff --git a/main.go b/main.go
+index ac681c1..2708df2 100644
+--- a/main.go
++++ b/main.go
+@@ -345,8 +345,8 @@ func runServe(ctx context.Context, dataDir string, log zerolog.Logger, transport
+ 	}
+ }
+ 
+-// openForServe connects to WhatsApp if this process can take the connection lock; otherwise
+-// (e.g. a second MCP client spawned another stdio instance) it serves the archive read-only.
++// openForServe connects to WhatsApp if this process can take the connection lock, and fails
++// otherwise, so that a supervisor retries instead of keeping a server that never connects.
+ func openForServe(ctx context.Context, dataDir string, log zerolog.Logger) (*App, func(), error) {
+ 	if err := os.MkdirAll(dataDir, 0o700); err != nil {
+ 		return nil, nil, err
+@@ -364,20 +364,7 @@ func openForServe(ctx context.Context, dataDir string, log zerolog.Logger) (*App
+ 		}
+ 		return app, cleanup, nil
+ 	}
+-	if _, statErr := os.Stat(dbPath(dataDir)); statErr != nil {
+-		return nil, nil, err
+-	}
+-	log.Warn().Msg("another instance owns the WhatsApp connection; serving the archive read-only")
+-	db, dbErr := openDB(dbPath(dataDir), true)
+-	if dbErr != nil {
+-		return nil, nil, dbErr
+-	}
+-	st = NewStore(db)
+-	if err := st.checkInitialized(ctx); err != nil {
+-		db.Close()
+-		return nil, nil, err
+-	}
+-	return &App{store: st, mode: "read-only (another instance is connected)"}, func() { db.Close() }, nil
++	return nil, nil, err
+ }
+ 
+ func requireToken(token string, next http.Handler) http.Handler {

@@ -129,6 +129,7 @@
           mcp-email-server = final.callPackage ./packages/mcp-email-server.nix { };
           substack-mcp = final.callPackage ./packages/substack-mcp.nix { };
           twikit-x-mcp = final.callPackage ./packages/twikit-x-mcp.nix { };
+          whatsapp-mcp = final.callPackage ./packages/whatsapp-mcp.nix { };
           workspace-mcp = final.callPackage ./packages/workspace-mcp.nix { };
           camofox-browser-source = final.callPackage ./packages/camofox-browser-source.nix { };
           camofox-browser-cli = final.callPackage ./packages/camofox-browser-cli.nix { };
@@ -367,6 +368,7 @@
             anytype-mcp
             substack-mcp
             twikit-x-mcp
+            whatsapp-mcp
             workspace-mcp
             camofox-browser-source
             camofox-browser-cli

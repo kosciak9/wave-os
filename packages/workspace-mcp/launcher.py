@@ -139,12 +139,13 @@ def register_send_draft(server, ledger):
 
 
 class WorkspacePolicy(Middleware):
-    def __init__(self, allowed_tools, email, inline_attachments=False, gotenberg_url=None):
+    def __init__(self, allowed_tools, email, inline_attachments=False, gotenberg_url=None, whisper_url=None):
         self.allowed_tools = frozenset(allowed_tools)
         self.email = email
         # Attachments come back as their content, for clients that cannot read the host's files.
         self.inline_attachments = inline_attachments
         self.gotenberg_url = gotenberg_url
+        self.whisper_url = whisper_url
 
     async def on_list_tools(self, context, call_next):
         tools = await call_next(context)
@@ -198,6 +199,8 @@ class WorkspacePolicy(Middleware):
                 properties.pop("return_base64", None)
                 description = "Download a Gmail attachment. The ORIGINAL file comes back as an MCP binary resource {type: 'resource', resource: {uri, mimeType, blob}, _meta: {filename, size}}; inside codemode pass resource.blob to file_import with encoding base64, or on to another tool's base64 input. A preview for the model follows it: "
                 description += f"an image or the first {MAX_PDF_PAGES} pages of a PDF as images, a text file as text (up to {MAX_TEXT_CHARS} characters); "
+                if self.whisper_url:
+                    description += "a recording (audio or video) as a Whisper transcript of its speech; "
                 description += (
                     "HTML and any other document (Word, Excel, PowerPoint, OpenDocument, RTF, other image formats…) is converted to PDF with Gotenberg and comes back as its page images, marked as a conversion that may differ from the original."
                     if self.gotenberg_url
@@ -305,7 +308,7 @@ class WorkspacePolicy(Middleware):
             content=[
                 TextContent(type="text", text=summary),
                 original,
-                *await preview(data, name, mime_type, self.gotenberg_url),
+                *await preview(data, name, mime_type, self.gotenberg_url, self.whisper_url),
             ],
             structured_content={"result": summary},
         )
@@ -326,6 +329,7 @@ def main():
             email,
             policy.get("inlineAttachments", False),
             policy.get("gotenbergUrl"),
+            policy.get("whisperUrl"),
         )
     )
     if "send_gmail_draft" in policy["allowedTools"]:
