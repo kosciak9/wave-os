@@ -108,6 +108,14 @@ in
       ];
     };
 
+    # uwsm keeps XDG_SESSION_ID out of the manager environment and publishes it
+    # only in this file; Soteria registers for exactly that session, so it must
+    # also stop with it instead of outliving it in the lingering user manager.
+    systemd.user.services.polkit-soteria = {
+      partOf = [ "graphical-session.target" ];
+      serviceConfig.EnvironmentFile = "-%t/uwsm/env_session.conf";
+    };
+
     systemd.services.kosciak-avatar = {
       description = "Set the kosciak AccountsService avatar";
       wantedBy = [ "multi-user.target" ];
