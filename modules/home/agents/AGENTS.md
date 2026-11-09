@@ -77,7 +77,7 @@ edits.
   | Luna  | `codex` / `gpt-6-luna`             | `reasoningEffort: low`, `serviceTier: default`    | Cheap, bounded verification; focused exploration, extraction, classification and log triage. Not final judgment about correctness, security or design. |
   | Sol   | `codex` / `gpt-6.1-sol`            | `reasoningEffort: medium`, `serviceTier: default` | Default for substantial implementation and technical investigation. Use `high` for subtle code review.                                                 |
   | Opus  | `claudeAgent` / `claude-opus-5-5`  | `effort: high`, `fastMode: false`                 | UI/visual/design critique, difficult architectural judgment and high-risk or subtle analysis.                                                          |
-  | Fable | `claudeAgent` / `claude-fable-5-1` | `effort: high`                                    | Exceptionally difficult, open-ended or long-horizon work when Opus is demonstrably insufficient. Not a routine implementation or second-opinion model. |
+  | Fable | `claudeAgent` / `claude-fable-5-2` | `effort: high`                                    | Exceptionally difficult, open-ended or long-horizon work when Opus is demonstrably insufficient. Not a routine implementation or second-opinion model. |
 
 - Also use OpenCode Go through T3's `opencode` provider as an alternative for
   bounded and substantial technical work, not as a fifth quality tier. Start
