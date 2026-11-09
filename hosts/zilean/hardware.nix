@@ -53,6 +53,18 @@
         "x-systemd.device-timeout=30s"
       ];
     };
+    # Rootless podman storage grows with every worktree's dev containers; keep it off the 120 GB root SSD.
+    "/home/kosciak/.local/share/containers" = {
+      device = "/dev/disk/by-label/ZILEAN_SCRATCH";
+      fsType = "btrfs";
+      options = [
+        "subvol=containers"
+        "noatime"
+        "compress=zstd"
+        "nofail"
+        "x-systemd.device-timeout=30s"
+      ];
+    };
     "/nix" = {
       device = "/dev/disk/by-label/ZILEAN_ROOT";
       fsType = "btrfs";
