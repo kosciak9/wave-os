@@ -65,8 +65,11 @@
       flake = false;
     };
 
+    # Stay before ff6c2f9: its global renderRect hook copies a relative jump
+    # into the trampoline unrelocated, which crashes Hyprland 0.57.1 on blur.
+    # Move on once upstream drops that hook or HookSystem relocates jumps.
     hyprland-scroll-overview = {
-      url = "github:yayuuu/hyprland-scroll-overview/3eb62e3e0093d54cbdcf4f58c831b5b53b3b1ff2";
+      url = "github:yayuuu/hyprland-scroll-overview/a8dcca6fe3ddc2164774cb6925bc67c0b974a78f";
       flake = false;
     };
   };
