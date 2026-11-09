@@ -41,9 +41,6 @@
   services = {
     alfred = {
       enable = true;
-      # Paused while its runtime is refactored, so it stops spending Codex; its
-      # MCP bridges stay up to evaluate the new runtime against them.
-      agent.enable = false;
       # Podman permits one active VM; shared with Frida, Slack mirror and browsers.
       machineName = "openclaw-sandbox";
     };

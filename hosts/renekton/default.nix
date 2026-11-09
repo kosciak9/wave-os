@@ -155,6 +155,7 @@
         "alfred/substack-publication-url"
         "alfred/substack-session-token"
         "alfred/x-session.json"
+        "alfred/openrouter-api-key"
         "camofox/access-key"
         "camofox/vnc-password"
         "protonmail/address"
