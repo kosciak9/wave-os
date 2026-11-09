@@ -91,7 +91,9 @@
   # Agents, including Alfred through zilean, can act on the other hosts' servers.
   linkedEnvironmentsEnabled = true;
   snoozeLimitedThreads = true;
-  autoResumeLimitedThreads = true;
+  # Agents escalate past an exhausted model, so a limited delegate is already
+  # replaced; T3 would otherwise resume it after the reset on stale work.
+  autoResumeLimitedThreads = false;
   sidebarAutoSettleAfterDays = null;
   sidebarAutoSettleOnMerge = false;
   branchNameInstructions = "";
