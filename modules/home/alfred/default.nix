@@ -639,8 +639,7 @@ let
     Działaj samodzielnie. Gdy właściciel mówi „zróbmy”, zleca zadanie albo przyjmuje plan,
     wykonaj je od razu i do końca: sprawdź dostępy, użyj narzędzi, rozwiąż napotkane
     przeszkody i wróć z wynikiem, a nie z kolejną propozycją ani prośbą o zgodę. Nie obiecuj
-    działania na później: wykonaj je teraz albo załóż harmonogram, który je wykona, i powiedz
-    kiedy. Przy przeszkodzie najpierw spróbuj innej drogi, na przykład właściwego MCP zamiast
+    działania na później: wykonaj je teraz albo powiedz, kiedy do niego wrócisz. Przy przeszkodzie najpierw spróbuj innej drogi, na przykład właściwego MCP zamiast
     przeglądarki, a zgłaszaj tylko to, czego sam nie rozwiążesz, z konkretną prośbą.
 
     Pytaj tylko wtedy, gdy brakuje decyzji, której nie da się odwracalnie założyć, albo gdy
@@ -718,6 +717,38 @@ let
     opieraj żądania na GDPR.
   '';
 
+  # Alfred himself only talks and delegates: the MCP servers belong to his workers.
+  frontGuidance = ''
+    Jesteś rozmówcą: odpowiadasz szybko i zwięźle. Sam nie sięgasz do źródeł ani usług
+    (poczta, kalendarz, Slack, notatki, CRM, T3, sieć i inne MCP): masz tę rozmowę, swoją
+    pamięć, skille i pliki z czatu. Wszystko inne robi pracownik w tle, którego uruchamiasz
+    narzędziem subagent (agent general); kilka niezależnych spraw możesz dać kilku pracownikom
+    naraz albo jednemu, który sam podzieli pracę. Pracownik nie widzi tej rozmowy, więc dostaje
+    samowystarczalny brief: cel, fakty, które już znasz, kryteria odbioru i czego nie robić bez
+    zgody właściciela. Po zleceniu powiedz krótko, że się tym zajmujesz, i zakończ turę; raport
+    przyjdzie sam. Nie zgaduj tego, co pracownik dopiero sprawdzi.
+
+    Z raportu przekaż właścicielowi tylko to, co dla niego istotne. Raport, który niczego dla
+    niego nie zmienia, kwituj NO_REPLY, tak jak zaplanowane polecenie bez wyniku.
+
+    Pilnuj spraw w czasie: gdy czekasz na odpowiedź właściciela, na kogoś innego albo na termin,
+    ustaw sobie pobudkę z notatką, po co wracasz: schedule_wakeup w ciągu godziny, a na
+    późniejszą chwilę cron_create z recurring: false. Gdy właściciel nie odpowiada, wróć do
+    sprawy, zamiast o niej zapominać. Powtarzalne harmonogramy (recurring: true) to ostateczność,
+    gdy sprawa nie ma innego wyzwalacza; zakładaj je tylko na wyraźną prośbę właściciela.
+
+  '';
+
+  workerGuidance = ''
+    Teraz działasz jako pracownik w tle: wykonujesz jedno zadanie z briefu, który napisałeś
+    sobie jako rozmówca; samej rozmowy z właścicielem nie widzisz. Wykonaj je do końca swoimi
+    narzędziami i zwróć zwięzły raport: co ustaliłeś lub zrobiłeś, ze źródłami, czego nie udało
+    się sprawdzić i co czeka na decyzję właściciela. Raport czytasz potem ty jako rozmówca, nie
+    właściciel. Pobudek ani harmonogramów nie ustawiaj: gdy do sprawy trzeba wrócić, napisz
+    w raporcie kiedy i po co.
+
+  '';
+
   xBrowser = {
     description = "Czyta i wyszukuje na X z prywatnego konta właściciela przez MCP tylko do odczytu, gdy przeglądarka nie ma dostępu albo zadanie dotyczy tego konta. Nie publikuje ani nie wykonuje interakcji.";
     prompt = ''
@@ -752,19 +783,14 @@ let
     	headers: { Authorization: `Bearer ''${process.env.ALFRED_MCP_TOKEN}` },
     });
 
+    const prompt = readFileSync("/run/secrets/prompt.md", "utf8") + "\n\n";
+
     export default {
-        prompt: readFileSync("/run/secrets/prompt.md", "utf8") + "\n\n" + ${
-          builtins.toJSON (
-            proactivityGuidance
-            + t3Guidance
-            + mailGuidance
-            + xGuidance
-            + sandboxGuidance
-            + import ../anytype/guidance.nix
-          )
-        },
-    	model: { provider: "openai-codex", modelId: "gpt-6.1-sol", thinkingLevel: "medium" },
-    	fallbackModel: { provider: "xai", modelId: "grok-4.7", thinkingLevel: "medium" },
+        prompt: prompt + ${builtins.toJSON (proactivityGuidance + xGuidance + frontGuidance)},
+    	model: { provider: "openrouter", modelId: "openai/gpt-6-luna", thinkingLevel: "low" },
+    	fallbackModel: { provider: "openai-codex", modelId: "gpt-6-luna", thinkingLevel: "low" },
+    	// The model itself, so its fallback covers memory as well.
+    	smallModel: { provider: "openrouter", modelId: "openai/gpt-6-luna" },
     	telegram: { chatId: Number(process.env.TELEGRAM_CHAT_ID) },
     	// whisper-recording-proxy on the host.
         whisperUrl: "http://host.containers.internal:18080/v1/audio/transcriptions?transcription_prefix=true",
@@ -785,7 +811,22 @@ let
             scape: { url: "https://api.v2.scape.app/mcp", oauth: true },
             cal: { url: "https://mcp.cal.com/mcp", oauth: true },
     	},
-    	mcp: ${builtins.toJSON (policy "alfred" // lib.mapAttrs (_: remote: remote.tools) remotes)},
+    	mcp: {},
+    	// Every worker, the general subagent, connects to the servers itself.
+    	worker: {
+    		prompt: prompt + ${
+        builtins.toJSON (
+          workerGuidance
+          + proactivityGuidance
+          + t3Guidance
+          + mailGuidance
+          + xGuidance
+          + sandboxGuidance
+          + import ../anytype/guidance.nix
+        )
+      },
+    		mcp: ${builtins.toJSON (policy "alfred" // lib.mapAttrs (_: remote: remote.tools) remotes)},
+    	},
     	subagents: {
     		browser: {
     			description: ${builtins.toJSON browser.description},
@@ -889,6 +930,7 @@ let
       printf '%s' "$(< ${lib.escapeShellArg (secret "twenty-mcp-url")})" | put_secret wave-alfred-twenty-url -
       printf '%s' "$(< ${lib.escapeShellArg (secret "twenty-api-key")})" | put_secret wave-alfred-twenty-key -
       printf '%s' "$(< "$slack_token_file")" | put_secret wave-alfred-slack-token -
+      printf '%s' "$(< ${lib.escapeShellArg (secret "openrouter-api-key")})" | put_secret wave-alfred-openrouter-key -
 
       instance=$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')
       child=""
@@ -923,6 +965,7 @@ let
         --secret source=wave-alfred-twenty-url,type=env,target=TWENTY_MCP_URL \
         --secret source=wave-alfred-twenty-key,type=env,target=TWENTY_API_KEY \
         --secret source=wave-alfred-slack-token,type=env,target=SLACK_MIRROR_MCP_TOKEN \
+        --secret source=wave-alfred-openrouter-key,type=env,target=OPENROUTER_API_KEY \
         "$image" &
       child=$!
       wait "$child"
@@ -939,8 +982,8 @@ in
     };
     image = lib.mkOption {
       type = lib.types.strMatching "[^@]+@sha256:[0-9a-f]{64}";
-      # house-agents 80868af (linux/amd64, linux/arm64)
-      default = "ghcr.io/kosciak9/house-agents@sha256:490b30de8382755e5fdc64bd76ddab924ffd1fe46d87b1a1613230100c1d7b14";
+      # house-agents 6fa4edd (linux/amd64, linux/arm64)
+      default = "ghcr.io/kosciak9/house-agents@sha256:92146c12c2e382a6d6e22bbebe9529984ac076e1376be1abdf794a6620790dd8";
       description = "The house-agents image, pinned by digest.";
     };
     gotenbergImage = lib.mkOption {
