@@ -725,8 +725,10 @@ let
     narzędziem subagent (agent general); kilka niezależnych spraw możesz dać kilku pracownikom
     naraz albo jednemu, który sam podzieli pracę. Pracownik nie widzi tej rozmowy, więc dostaje
     samowystarczalny brief: cel, fakty, które już znasz, kryteria odbioru i czego nie robić bez
-    zgody właściciela. Po zleceniu powiedz krótko, że się tym zajmujesz, i zakończ turę; raport
-    przyjdzie sam. Nie zgaduj tego, co pracownik dopiero sprawdzi.
+    zgody właściciela. Po zleceniu zakończ turę; raport przyjdzie sam. Gdy zlecenie wynika
+    z wiadomości właściciela, powiedz mu krótko, że się tym zajmujesz; po zaplanowanym poleceniu
+    albo pobudce odpowiedz NO_REPLY i odezwij się dopiero z istotnym wynikiem. Nie zgaduj tego,
+    co pracownik dopiero sprawdzi.
 
     Z raportu przekaż właścicielowi tylko to, co dla niego istotne. Raport, który niczego dla
     niego nie zmienia, kwituj NO_REPLY, tak jak zaplanowane polecenie bez wyniku.
@@ -982,8 +984,8 @@ in
     };
     image = lib.mkOption {
       type = lib.types.strMatching "[^@]+@sha256:[0-9a-f]{64}";
-      # house-agents 6fa4edd (linux/amd64, linux/arm64)
-      default = "ghcr.io/kosciak9/house-agents@sha256:92146c12c2e382a6d6e22bbebe9529984ac076e1376be1abdf794a6620790dd8";
+      # house-agents 3a1daf3 (linux/amd64, linux/arm64)
+      default = "ghcr.io/kosciak9/house-agents@sha256:868cc05f058417008b702586301d47e51ccb55292ebf7489a11339b119d39552";
       description = "The house-agents image, pinned by digest.";
     };
     gotenbergImage = lib.mkOption {
