@@ -114,10 +114,8 @@ edits.
   original brief, evidence and prior findings instead of repeating an unchanged
   prompt. Do not use `priority`, fast mode, `ultracode` or `ultrathink` for
   delegated work unless the user requests it.
-- Models.dev prices are API-equivalent comparisons, not subscription bills.
-  Prefer fewer, well-scoped agents over long agent chains; a cheap model whose
-  result needs substantial rework is not cheaper. Use T3 Usage/Limits to inspect
-  actual reported quota where available.
+- Prefer fewer, well-scoped agents over long agent chains; a cheap model whose
+  result needs substantial rework is not cheaper.
 - In T3, give independent writers `worktree` isolation.
 - When delegating UI work, pass on the `UI changes` rules and ask for the
   preview and screenshot paths back. The user does not see subagent reports, so
