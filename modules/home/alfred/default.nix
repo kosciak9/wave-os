@@ -739,6 +739,15 @@ let
     sprawy, zamiast o niej zapominać. Powtarzalne harmonogramy (recurring: true) to ostateczność,
     gdy sprawa nie ma innego wyzwalacza; zakładaj je tylko na wyraźną prośbę właściciela.
 
+    Uprząż pilnuje źródeł za ciebie. Kalendarz budzi cię o 7:00 z planem dnia oraz na początku
+    i na końcu każdego wpisu z godziną. Nowe nieprzeczytane maile (Gmail, Proton) i wiadomości ze Slacka
+    uprząż dopisuje do rozmowy po cichu, w blokach <source>, bez budzenia cię. O 9:00, 13:00
+    i 18:00 budzi cię na przegląd: zajmij się tym, co od poprzedniego przeglądu przyszło ze
+    źródeł, i otwartymi sprawami, które zebrał strażnik, osobny agent pilnujący spraw z rozmowy.
+    Strażnik ustawia ci też pobudki w tych sprawach; widzisz je wśród pobudek z etykietą guard,
+    a kalendarza z etykietą kalendarz. Nie zakładaj więc własnych cyklicznych kontroli poczty,
+    Slacka ani kalendarza.
+
   '';
 
   workerGuidance = ''
@@ -776,6 +785,27 @@ let
     '';
   };
 
+  # When the harness wakes Alfred to review his sources, with the guard's open matters.
+  reviews = {
+    cron = "0 9,13,18 * * *";
+    timeZone = "Europe/Warsaw";
+    prompt = "Pora przeglądu źródeł i otwartych spraw.";
+    guard = {
+      prompt = lib.concatStringsSep " " [
+        "Jesteś strażnikiem: osobnym agentem, który pilnuje otwartych spraw asystenta Alfreda."
+        "Z zapisu rozmowy właściciela z Alfredem z ostatniej doby wypisz sprawy, które wciąż są"
+        "otwarte: pytania do właściciela bez odpowiedzi, plany i bloki pracy z czasem, obietnice"
+        "Alfreda albo właściciela, terminy. Pomiń sprawy zamknięte. Każda sprawa w jednej linii:"
+        "czego dotyczy, od kiedy wisi i jaki był ostatni ruch. Bez wstępu i komentarza; jeśli nic"
+        "nie jest otwarte, napisz „(brak)”. Zacznij każdą linię od chwili, w której warto do sprawy"
+        "wrócić, w przyszłości: „RRRR-MM-DD GG:MM | ”. W zapisie user to właściciel, agent to"
+        "Alfred, scheduled to pobudki i polecenia z harmonogramu, a report to raporty pracowników."
+      ];
+      heading = "Otwarte sprawy z rozmowy, zebrane przez strażnika:";
+      wake = "Pobudka od strażnika w otwartej sprawie:";
+    };
+  };
+
   # Read by house-agents in the container; the secrets come from Podman secrets and the env file.
   agentConfig = pkgs.writeText "house-agents.config.ts" ''
     import { readFileSync } from "node:fs";
@@ -786,6 +816,8 @@ let
     });
 
     const prompt = readFileSync("/run/secrets/prompt.md", "utf8") + "\n\n";
+
+    ${builtins.readFile ./sources.ts}
 
     export default {
         prompt: prompt + ${builtins.toJSON (proactivityGuidance + xGuidance + frontGuidance)},
@@ -845,6 +877,8 @@ let
     	},
     	// After the night retro (04:00), once its run has ended.
     	compaction: { cron: "0 5 * * *", timeZone: "Europe/Warsaw" },
+    	sources,
+    	reviews: ${builtins.toJSON reviews},
     	stateDir: "/data/state",
     };
   '';
@@ -984,8 +1018,8 @@ in
     };
     image = lib.mkOption {
       type = lib.types.strMatching "[^@]+@sha256:[0-9a-f]{64}";
-      # house-agents 3a1daf3 (linux/amd64, linux/arm64)
-      default = "ghcr.io/kosciak9/house-agents@sha256:868cc05f058417008b702586301d47e51ccb55292ebf7489a11339b119d39552";
+      # house-agents 75d3ea6 (linux/amd64, linux/arm64)
+      default = "ghcr.io/kosciak9/house-agents@sha256:5873e63e79fd7c50a59a36d622b12f0a4a8a0631146d77068feba5e98b769157";
       description = "The house-agents image, pinned by digest.";
     };
     gotenbergImage = lib.mkOption {
