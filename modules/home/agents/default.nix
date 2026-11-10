@@ -109,6 +109,7 @@ in
     "tcg-cheap-prod"
     "context7"
     "parallel-search"
+    "openseo"
   ];
 
   home.packages = [
