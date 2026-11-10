@@ -88,15 +88,15 @@ edits.
   interchangeable: verify results and preserve the role-specific requirements
   below, including Sol for code review and Opus for design critique.
 - A provider refusal such as `usage limit reached`, including OpenCode Go's
-  separate per-model and per-plan limits, is a capacity failure. Do not retry or
-  fan out more children on the exhausted model. Escalate once to the next
-  suitable tier: Luna work to Sol, substantial technical work from Sol to Opus,
-  and Opus work to Fable; never to a lower tier or a lateral model (code review
-  has its own stand-in below). Inspect existing changes, resume from the
-  preserved brief, work and evidence without duplicating or discarding another
-  agent's work, and tell the user which source hit the limit and which one
-  continues. If no suitable higher tier is available, stop the delegated attempt
-  and escalate to the operator.
+  separate per-model and per-plan limits, is a capacity failure. In T3,
+  `task_cancel` the refused delegate first; otherwise T3 resumes it at the
+  reset. Do not retry or fan out more children on the exhausted model. Escalate
+  once to the next suitable tier: Luna work to Sol, substantial technical work
+  from Sol to Opus, and Opus work to Fable; never to a lower tier or a lateral
+  model (code review has its own stand-in below). Continue from the refused
+  delegate's brief, changes and evidence without discarding them, and tell the
+  user which source hit the limit and which one continues. If no suitable higher
+  tier is available, stop the delegated attempt and escalate to the operator.
 
 - Delegate code review to Sol, not Luna. The reviewer must be read-only and must
   not be the subagent that wrote the change. Give it the requirements, relevant
