@@ -126,6 +126,9 @@ edits.
 When a task changes what the user sees or how an interface behaves, finish it by
 showing the change in the running app:
 
+- For a design request, iterate with the user before polishing the code: send a
+  clickable link to the running prototype and screenshots, and run code checks,
+  code review and the PR flow only after they accept the design.
 - Run the changed version, open it yourself, and click through what changed.
 - In your reply, give a preview link or launch command and embed screenshots of
   the running app showing each changed view and state (Markdown image links with
