@@ -740,13 +740,17 @@ let
     gdy sprawa nie ma innego wyzwalacza; zakładaj je tylko na wyraźną prośbę właściciela.
 
     Uprząż pilnuje źródeł za ciebie. Kalendarz budzi cię o 7:00 z planem dnia oraz na początku
-    i na końcu każdego wpisu z godziną. Nowe nieprzeczytane maile (Gmail, Proton) i wiadomości ze Slacka
-    uprząż dopisuje do rozmowy po cichu, w blokach <source>, bez budzenia cię. O 9:00, 13:00
-    i 18:00 budzi cię na przegląd: zajmij się tym, co od poprzedniego przeglądu przyszło ze
-    źródeł, i otwartymi sprawami, które zebrał strażnik, osobny agent pilnujący spraw z rozmowy.
-    Strażnik ustawia ci też pobudki w tych sprawach; widzisz je wśród pobudek z etykietą guard,
-    a kalendarza z etykietą kalendarz. Nie zakładaj więc własnych cyklicznych kontroli poczty,
-    Slacka ani kalendarza.
+    i na końcu każdego wpisu z godziną. Nowe nieprzeczytane maile (Gmail, Proton), wiadomości ze
+    Slacka i cudze wiadomości z WhatsAppa uprząż dopisuje do rozmowy po cichu, w blokach <source>,
+    bez budzenia cię. O 9:00, 13:00 i 18:00 budzi cię na przegląd: zajmij się tym, co od
+    poprzedniego przeglądu przyszło ze źródeł, i otwartymi sprawami, które zebrał strażnik, osobny
+    agent pilnujący spraw z rozmowy i twojego notatnika. Strażnik ustawia ci też pobudki w tych
+    sprawach; widzisz je wśród pobudek z etykietą guard, a kalendarza z etykietą kalendarz. Nie
+    zakładaj więc własnych cyklicznych kontroli poczty, Slacka, WhatsAppa ani kalendarza.
+
+    Prowadzisz notatnik (narzędzie scratchpad), który zawsze widzisz: zapisuj w nim, czego
+    pilnujesz i na co czekasz, i usuwaj sprawy zamknięte. Zlecenia z jednej tury wracają jednym
+    raportem. Nocą, o 4:00, uprząż daje ci przebieg minionej doby na retro.
 
   '';
 
@@ -804,6 +808,18 @@ let
       heading = "Otwarte sprawy z rozmowy, zebrane przez strażnika:";
       wake = "Pobudka od strażnika w otwartej sprawie:";
     };
+  };
+
+  # The night retro: Alfred reads his last day and keeps what he learns, before the compaction.
+  retro = {
+    cron = "0 4 * * *";
+    timeZone = "Europe/Warsaw";
+    prompt = lib.concatStringsSep " " [
+      "Nocne retro. Poniżej przebieg minionej doby: co pisał właściciel, co mu odpowiadałeś,"
+      "co zlecałeś i co przyszło w raportach. Twoje skille to zasady, które sam wyciągasz z pracy"
+      "z właścicielem: dopisuj je i poprawiaj (skill_write), a nieaktualne zastępuj. Możesz też"
+      "poprawić notatnik i ustawić pobudki. Właściciel tego nie czyta: zakończ odpowiedzią NO_REPLY."
+    ];
   };
 
   # Read by house-agents in the container; the secrets come from Podman secrets and the env file.
@@ -879,6 +895,7 @@ let
     	compaction: { cron: "0 5 * * *", timeZone: "Europe/Warsaw" },
     	sources,
     	reviews: ${builtins.toJSON reviews},
+    	retro: ${builtins.toJSON retro},
     	stateDir: "/data/state",
     };
   '';
@@ -1018,8 +1035,8 @@ in
     };
     image = lib.mkOption {
       type = lib.types.strMatching "[^@]+@sha256:[0-9a-f]{64}";
-      # house-agents 75d3ea6 (linux/amd64, linux/arm64)
-      default = "ghcr.io/kosciak9/house-agents@sha256:5873e63e79fd7c50a59a36d622b12f0a4a8a0631146d77068feba5e98b769157";
+      # house-agents 9a80385 (linux/amd64, linux/arm64)
+      default = "ghcr.io/kosciak9/house-agents@sha256:49742a7c5fd7d2c82cd833701e58f7c4dcffcb202b15dfbc1ded794c5f219481";
       description = "The house-agents image, pinned by digest.";
     };
     gotenbergImage = lib.mkOption {

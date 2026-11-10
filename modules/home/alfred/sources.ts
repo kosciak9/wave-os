@@ -1,8 +1,9 @@
 // Alfred's sources, which house-agents reads on its own every few minutes
 // (`config.sources`), inlined into house-agents.config.ts. The calendar wakes
 // Alfred: at 7:00 with the day's plan and at the start and end of every timed
-// entry. Unread mail and Slack messages that arrive after a source's first
-// read come into the conversation as notes, without waking him; what was
+// entry. Unread mail, Slack messages and others' WhatsApp messages that
+// arrive after a source's first read come into the conversation as notes,
+// without waking him; what was
 // already there is never noted, so neither a deploy nor reading the newest
 // ones brings up a backlog.
 
@@ -202,9 +203,44 @@ const slack = async ({ call, cursor, now }: Read): Promise<Update> => {
 	return { cursor: next, notes: [`Nowe nieprzeczytane wiadomości na Slacku:\n${lines.join("\n")}`] };
 };
 
+type WhatsAppChat = { jid: string; name?: string; is_group?: boolean; last_message_at?: string };
+type WhatsAppMessage = { id: string; kind?: string; sender?: string; text?: string; time: string };
+// Chats read per poll, the most recently active first.
+const WHATSAPP_CHATS = 30;
+
+const whatsapp = async ({ call, cursor, now }: Read): Promise<Update> => {
+	const seen = seenOf(cursor);
+	if (!seen) return { cursor: { since: now, seen: [], last: now } };
+	const last = (cursor as { last?: number }).last ?? seen.since;
+	// A minute back, so a message stored late is not missed; seen ids are noted once.
+	const after = new Date(last - 60_000).toISOString();
+	const { chats = [] } = JSON.parse(await call("whatsapp", "list_chats", { limit: WHATSAPP_CHATS })) as { chats?: WhatsAppChat[] };
+	const items: { chat: WhatsAppChat; message: WhatsAppMessage }[] = [];
+	for (const chat of chats.filter((c) => Date.parse(c.last_message_at ?? "") >= Date.parse(after))) {
+		const read = async (args: Record<string, unknown>) =>
+			(JSON.parse(await call("whatsapp", "list_messages", { chat: chat.jid, after, limit: 50, ...args })) as { messages?: WhatsAppMessage[] }).messages ?? [];
+		// The owner's own messages are no news to him.
+		const own = new Set((await read({ sender: "me" })).map((m) => m.id));
+		for (const message of await read({})) if (!own.has(message.id)) items.push({ chat, message });
+	}
+	const { added, cursor: next } = fresh(seen, items.map(({ message }) => ({ id: message.id, at: Date.parse(message.time) })));
+	const lines = items
+		.filter(({ message }) => added.includes(message.id))
+		.map(({ chat, message }) => {
+			const where = chat.is_group ? `grupa „${chat.name ?? chat.jid}”` : (chat.name ?? chat.jid);
+			const what = message.kind && message.kind !== "text" ? `[${message.kind}] ${clip(message.text ?? "", 200)}` : clip(message.text ?? "", 300);
+			return `- ${where} · ${message.sender ?? "?"}: ${what}`;
+		});
+	return {
+		cursor: { ...next, last: Math.max(last, ...items.map(({ message }) => Date.parse(message.time)).filter(Number.isFinite)) },
+		notes: lines.length ? [`Nowe wiadomości na WhatsAppie:\n${lines.join("\n")}`] : [],
+	};
+};
+
 const sources = {
 	kalendarz: { everyMinutes: 5, poll: calendar },
 	gmail: { everyMinutes: 5, poll: gmail },
 	proton: { everyMinutes: 5, poll: proton },
 	slack: { everyMinutes: 5, poll: slack },
+	whatsapp: { everyMinutes: 5, poll: whatsapp },
 };
