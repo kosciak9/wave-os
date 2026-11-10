@@ -50,10 +50,10 @@ edits.
   parallel. Parallel children share the host's CPU and memory: give them
   targeted checks, and run full validations and other heavy builds one at a
   time.
-- Before sending one brief to many subagents, run it on a single batch first and
-  check the result: the child has the tools the brief needs, follows the brief,
-  and returns output that fits where it will be used. Fan out only after this
-  check passes, and fix the brief before relaunching.
+- Before sending a new or changed brief to many subagents, run it on a single
+  batch first and check the result: the child has the tools the brief needs,
+  follows the brief, and returns output that fits where it will be used. Fan out
+  only after this check passes, and fix the brief before relaunching.
 - Use targeted checks during iterations and broader validation when the
   implementation is ready, following the repository's validation rules.
 - Own integration and verification of the complete result. Review delegated
