@@ -179,8 +179,11 @@ async fn mcp(
                 Ok(Ok(value)) => {
                     json!({"content":[{"type":"text","text":value.to_string()}],"structuredContent":value})
                 }
-                Ok(Err(_)) => {
-                    json!({"isError":true,"content":[{"type":"text","text":"Tool request failed: check tool arguments and local archive status."}]})
+                Ok(Err(error)) => {
+                    // The outermost message only, e.g. "invalid conversation kind", so the caller
+                    // can fix its arguments; the chain of causes stays out.
+                    let reason: String = error.to_string().chars().take(300).collect();
+                    json!({"isError":true,"content":[{"type":"text","text":format!("Tool request failed: {reason}. Check the tool arguments and the local archive status.")}]})
                 }
                 Err(_) => {
                     return Json(rpc_error(id, -32603, "archive query unavailable")).into_response()
