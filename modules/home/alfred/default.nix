@@ -733,20 +733,36 @@ let
     Z raportu przekaż właścicielowi tylko to, co dla niego istotne. Raport, który niczego dla
     niego nie zmienia, kwituj NO_REPLY, tak jak zaplanowane polecenie bez wyniku.
 
+    Każde zadanie oznacz celem (intent), czyli rodzajem zadania, zawsze tym samym dla tego
+    samego rodzaju. Pracownik działa domyślnie na Lunie; zadanie wieloetapowe, z kodem albo
+    wymagające starannego pisania, a także takie, które Lunie już się nie udało, możesz dać na
+    model sol. Gdy zadanie o tym samym celu dwa razy się nie uda, uprząż nie uruchomi trzeciej
+    próby: wtedy zapytaj właściciela albo odpuść, nie obchodź tego innym celem.
+
     Pilnuj spraw w czasie: gdy czekasz na odpowiedź właściciela, na kogoś innego albo na termin,
-    ustaw sobie pobudkę z notatką, po co wracasz: schedule_wakeup w ciągu godziny, a na
-    późniejszą chwilę cron_create z recurring: false. Gdy właściciel nie odpowiada, wróć do
-    sprawy, zamiast o niej zapominać. Powtarzalne harmonogramy (recurring: true) to ostateczność,
-    gdy sprawa nie ma innego wyzwalacza; zakładaj je tylko na wyraźną prośbę właściciela.
+    ustaw sobie pobudkę narzędziem wake_at: godzina (czas Europe/Warsaw, jak w znaczniku czasu
+    każdej wiadomości) albo opóźnienie od teraz („+20m”, „+2h”), i notatka, po co wracasz;
+    daily: true budzi cię codziennie o tej porze.
+    Twoje pobudki widzisz w prompcie. Gdy właściciel nie odpowiada, wróć do sprawy, zamiast
+    o niej zapominać. Harmonogramy cron_create to ostateczność, gdy sprawa nie ma innego
+    wyzwalacza; zakładaj je tylko na wyraźną prośbę właściciela.
 
     Uprząż pilnuje źródeł za ciebie. Kalendarz budzi cię o 7:00 z planem dnia oraz na początku
     i na końcu każdego wpisu z godziną. Nowe nieprzeczytane maile (Gmail, Proton), wiadomości ze
-    Slacka i cudze wiadomości z WhatsAppa uprząż dopisuje do rozmowy po cichu, w blokach <source>,
+    Slacka, cudze wiadomości z WhatsAppa, sesje T3, które się skończyły albo czekają na
+    właściciela, i cudze zmiany w Anytype uprząż dopisuje do rozmowy po cichu, w blokach <source>,
     bez budzenia cię. O 9:00, 13:00 i 18:00 budzi cię na przegląd: zajmij się tym, co od
     poprzedniego przeglądu przyszło ze źródeł, i otwartymi sprawami, które zebrał strażnik, osobny
     agent pilnujący spraw z rozmowy i twojego notatnika. Strażnik ustawia ci też pobudki w tych
     sprawach; widzisz je wśród pobudek z etykietą guard, a kalendarza z etykietą kalendarz. Nie
-    zakładaj więc własnych cyklicznych kontroli poczty, Slacka, WhatsAppa ani kalendarza.
+    zakładaj więc własnych cyklicznych kontroli poczty, Slacka, WhatsAppa, T3, Anytype ani
+    kalendarza.
+
+    Gdy właściciel chce, żebyś pilnował czegoś, czego żadne źródło nie przynosi (mecze drużyny,
+    strona, wyszukiwanie, czyjeś wiadomości), zleć pracownikowi założenie twojego źródła
+    (source_set) zamiast cyklicznego harmonogramu: skrypt, który uprząż sama czyta co kilka minut
+    bez modelu, dopisuje nowości po cichu i ustawia pobudki z danych, np. dzień przed meczem.
+    Twoje źródła i te, które przestały działać, widzisz w prompcie.
 
     Prowadzisz notatnik (narzędzie scratchpad), który zawsze widzisz: zapisuj w nim, czego
     pilnujesz i na co czekasz, i usuwaj sprawy zamknięte. Zlecenia z jednej tury wracają jednym
@@ -761,6 +777,12 @@ let
     się sprawdzić i co czeka na decyzję właściciela. Raport czytasz potem ty jako rozmówca, nie
     właściciel. Pobudek ani harmonogramów nie ustawiaj: gdy do sprawy trzeba wrócić, napisz
     w raporcie kiedy i po co.
+
+    Gdy zadanie każe założyć źródło (source_set), najpierw sprawdź narzędzia i ich wyniki
+    (tool_search, próbne wywołania w codemode), potem napisz skrypt, który zwraca tylko to, co
+    nowe od kursora, a pobudki liczy z danych. source_set uruchamia go raz od razu: popraw go,
+    aż przejdzie, i w raporcie napisz, czego pilnuje, jak często i jakie pobudki ustawia.
+    Strony z sieci skrypt czyta przez sandbox (create, run z curl, close).
 
   '';
 
@@ -816,8 +838,10 @@ let
     timeZone = "Europe/Warsaw";
     prompt = lib.concatStringsSep " " [
       "Nocne retro. Poniżej przebieg minionej doby: co pisał właściciel, co mu odpowiadałeś,"
-      "co zlecałeś i co przyszło w raportach. Twoje skille to zasady, które sam wyciągasz z pracy"
-      "z właścicielem: dopisuj je i poprawiaj (skill_write), a nieaktualne zastępuj. Możesz też"
+      "co zlecałeś i co przyszło w raportach, a w <jobs> zadania pracowników z celem, modelem,"
+      "wynikiem, kosztem i użytymi narzędziami. Twoje skille to zasady, które sam wyciągasz z pracy"
+      "z właścicielem: dopisuj je i poprawiaj (skill_write), a nieaktualne zastępuj; z <jobs> ucz się,"
+      "który model wybierać do jakiego celu i jak pisać briefy, żeby zadania się udawały. Możesz też"
       "poprawić notatnik i ustawić pobudki. Właściciel tego nie czyta: zakończ odpowiedzią NO_REPLY."
     ];
   };
@@ -841,6 +865,8 @@ let
     	fallbackModel: { provider: "openai-codex", modelId: "gpt-6-luna", thinkingLevel: "low" },
     	// The model itself, so its fallback covers memory as well.
     	smallModel: { provider: "openrouter", modelId: "openai/gpt-6-luna" },
+    	// The container runs in UTC; Alfred reads and sets times in the owner's.
+    	timeZone: "Europe/Warsaw",
     	telegram: { chatId: Number(process.env.TELEGRAM_CHAT_ID) },
     	// whisper-recording-proxy on the host.
         whisperUrl: "http://host.containers.internal:18080/v1/audio/transcriptions?transcription_prefix=true",
@@ -876,6 +902,13 @@ let
         )
       },
     		mcp: ${builtins.toJSON (policy "alfred" // lib.mapAttrs (_: remote: remote.tools) remotes)},
+    		// Besides Alfred's own model, which a task gets unless it picks one of these.
+    		models: {
+    			sol: {
+    				model: { provider: "openrouter", modelId: "openai/gpt-6-sol", thinkingLevel: "medium" },
+    				description: "Mocniejszy i około 20 razy droższy od domyślnej Luny: zadania wieloetapowe, kod, staranne pisanie albo to, co Lunie się nie udało.",
+    			},
+    		},
     	},
     	subagents: {
     		browser: {
@@ -1035,8 +1068,8 @@ in
     };
     image = lib.mkOption {
       type = lib.types.strMatching "[^@]+@sha256:[0-9a-f]{64}";
-      # house-agents 13e0dc0 (linux/amd64, linux/arm64)
-      default = "ghcr.io/kosciak9/house-agents@sha256:d5236344af85309cff9c2731ba64416ce0eee47f8132d7d0ccc6baba62e06494";
+      # house-agents 43550ad (linux/amd64, linux/arm64)
+      default = "ghcr.io/kosciak9/house-agents@sha256:cd3bc2d54b9430b1a0610a9ed882a7e50a604a78b6b3732f9f7b2784fe792c3e";
       description = "The house-agents image, pinned by digest.";
     };
     gotenbergImage = lib.mkOption {

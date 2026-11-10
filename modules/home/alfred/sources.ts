@@ -1,7 +1,8 @@
 // Alfred's sources, which house-agents reads on its own every few minutes
 // (`config.sources`), inlined into house-agents.config.ts. The calendar wakes
 // Alfred: at 7:00 with the day's plan and at the start and end of every timed
-// entry. Unread mail, Slack messages and others' WhatsApp messages that
+// entry. Unread mail, Slack messages, others' WhatsApp messages, T3 sessions
+// that ended or wait for the owner, and others' changes in Anytype that
 // arrive after a source's first read come into the conversation as notes,
 // without waking him; what was
 // already there is never noted, so neither a deploy nor reading the newest
@@ -237,10 +238,98 @@ const whatsapp = async ({ call, cursor, now }: Read): Promise<Update> => {
 	};
 };
 
+type T3Thread = {
+	threadId: string;
+	title?: string;
+	status: string;
+	latestRunId?: string | null;
+	updatedAt?: string;
+	pullRequests?: { url: string; state?: string }[];
+};
+// A run that ended, or waits for the owner, is news; one still running is not yet.
+const T3_STATUS: Record<string, string> = {
+	completed: "skończona",
+	failed: "nieudana",
+	interrupted: "przerwana",
+	cancelled: "anulowana",
+	waiting: "czeka na odpowiedź",
+};
+
+// Threads of zilean's T3 whose latest run ended or waits since the last read;
+// those the owner settled or snoozed are his already.
+const t3 = async ({ call, cursor, now }: Read): Promise<Update> => {
+	const { threads = [] } = JSON.parse(
+		await call("t3", "t3_thread_list", {
+			allProjects: true,
+			limit: 30,
+			settled: false,
+			snoozed: false,
+			statuses: Object.keys(T3_STATUS),
+		}),
+	) as { threads?: T3Thread[] };
+	const runs = threads.map((thread) => ({
+		thread,
+		id: `${thread.threadId}:${thread.latestRunId ?? ""}:${thread.status}`,
+		at: Date.parse(thread.updatedAt ?? "") || now,
+	}));
+	const seen = seenOf(cursor);
+	// What is listed at first is no news.
+	if (!seen) return { cursor: { since: now, seen: runs.map((run) => run.id).slice(-SEEN) } };
+	const { added, cursor: next } = fresh(seen, runs);
+	const lines = runs
+		.filter((run) => added.includes(run.id))
+		.map(({ thread }) => {
+			const open = (thread.pullRequests ?? []).filter((pr) => pr.state === "open").map((pr) => pr.url);
+			return `- „${clip(thread.title ?? "", 120)}”: ${T3_STATUS[thread.status] ?? thread.status} (wątek ${thread.threadId}${open.length ? `, otwarte PR: ${open.join(", ")}` : ""})`;
+		});
+	return { cursor: next, notes: lines.length ? [`Sesje T3:\n${lines.join("\n")}`] : [] };
+};
+
+type AnytypeObject = { id: string; name?: string; type?: string; properties?: { last_modified_by?: string; last_modified_date?: string } };
+
+// Objects others changed in the shared Anytype space; the space's own member is
+// the account Alfred (and the owner's tools) write as.
+const anytype = async ({ call, cursor, now }: Read): Promise<Update> => {
+	const seen = seenOf(cursor);
+	if (!seen) return { cursor: { since: now, seen: [] } };
+	const me = (JSON.parse(await call("anytype", "API-get-member-me", {})) as { identity?: string }).identity;
+	if (!me) throw new Error("API-get-member-me: no identity");
+	const { data = [] } = JSON.parse(
+		// Alfred's own writes come in bursts and must not hide others' changes.
+		await call("anytype", "API-search-space", {
+			limit: 100,
+			sorts: [{ property: "last_modified_date", direction: "desc" }],
+			fields: ["name", "last_modified_date", "last_modified_by"],
+		}),
+	) as { data?: AnytypeObject[] };
+	const changes = data
+		.filter((object) => !String(object.properties?.last_modified_by ?? "").includes(me))
+		.map((object) => ({
+			object,
+			id: `${object.id}:${object.properties?.last_modified_date ?? ""}`,
+			at: Date.parse(object.properties?.last_modified_date ?? "") || 0,
+		}));
+	const { added, cursor: next } = fresh(seen, changes);
+	if (added.length === 0) return { cursor: next };
+	const { data: members = [] } = JSON.parse(await call("anytype", "API-list-members", {})) as {
+		data?: { name?: string; identity?: string }[];
+	};
+	const who = (by: string) => members.find((member) => member.identity && by.includes(member.identity))?.name ?? "ktoś";
+	const lines = changes
+		.filter((change) => added.includes(change.id))
+		.map(
+			({ object }) =>
+				`- ${who(object.properties?.last_modified_by ?? "")}: ${object.type ?? "obiekt"} „${clip(object.name ?? "", 120)}” (id ${object.id})`,
+		);
+	return { cursor: next, notes: [`Zmiany innych osób w Anytype:\n${lines.join("\n")}`] };
+};
+
 const sources = {
 	kalendarz: { everyMinutes: 5, poll: calendar },
 	gmail: { everyMinutes: 5, poll: gmail },
 	proton: { everyMinutes: 5, poll: proton },
 	slack: { everyMinutes: 5, poll: slack },
 	whatsapp: { everyMinutes: 5, poll: whatsapp },
+	t3: { everyMinutes: 5, poll: t3 },
+	anytype: { everyMinutes: 10, poll: anytype },
 };
