@@ -40,6 +40,11 @@
 
     nix-flatpak.url = "github:gmodena/nix-flatpak?ref=v0.8.0";
 
+    claude-code = {
+      url = "github:sadjow/claude-code-nix/v2.1.322";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     sqlit = {
       url = "github:Maxteabag/sqlit";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -136,8 +141,8 @@
           workspace-mcp = final.callPackage ./packages/workspace-mcp.nix { };
           camofox-browser-source = final.callPackage ./packages/camofox-browser-source.nix { };
           camofox-browser-cli = final.callPackage ./packages/camofox-browser-cli.nix { };
-          claude-code = wrapAgentHarness (final.callPackage ./packages/claude-code.nix {
-            inherit prev;
+          claude-code = wrapAgentHarness (import ./packages/claude-code.nix {
+            inherit (inputs.claude-code.overlays.default final prev) claude-code;
           }) "claude-code";
           codex = wrapAgentHarness (final.callPackage ./packages/codex.nix { inherit prev; }) "codex";
           omp = wrapAgentHarness (final.callPackage ./packages/omp.nix { }) "omp";
