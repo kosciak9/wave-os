@@ -81,6 +81,7 @@ let
     --env CAMOFOX_COOKIES_DIR=/home/node/.camofox/cookies \
     --env MAX_SESSIONS=10 \
     --env MAX_TABS_PER_SESSION=6 \
+    --env MAX_OLD_SPACE_SIZE=512 \
     --env SESSION_TIMEOUT_MS=1800000 \
     --env BROWSER_IDLE_TIMEOUT_MS=300000 \
     --env TAB_INACTIVITY_MS=1800000 \
