@@ -38,10 +38,11 @@ let
     buildArch = "x86_64";
     transport = "podman_remote";
     transportExec = "podman_remote_exec";
+    inherit (cfg) port;
     imageBuildPrelude = podmanRemoteFunctions;
-    # The owner logs in through noVNC: loopback only, reached over the tailnet (vncServe).
+    # The owner logs in through noVNC on loopback; the host decides how to reach it.
     extraRunArgs = lib.optionalString cfg.vnc.enable ''
-      --publish 127.0.0.1:16080:6080 \
+      --publish 127.0.0.1:${toString cfg.vnc.port}:6080 \
       --env ENABLE_VNC=1 \
       --env VNC_BIND=0.0.0.0 \
       --env VNC_PASSWORD \
@@ -118,22 +119,25 @@ let
   };
 in
 {
-  options.services.camofox.vnc.enable =
-    lib.mkEnableOption "noVNC on the tailnet, for logging the browser's profiles in";
+  options.services.camofox = {
+    port = lib.mkOption {
+      type = lib.types.port;
+      default = 9377;
+      description = "Loopback port of the Camofox API.";
+    };
+    vnc = {
+      enable = lib.mkEnableOption "noVNC on loopback, for logging the browser's profiles in";
+      port = lib.mkOption {
+        type = lib.types.port;
+        default = 16080;
+        description = "Loopback port of noVNC.";
+      };
+    };
+  };
 
   config = {
     home.packages = [ common.imageBuild ];
     home.activation.camofoxDirectories = common.activation;
-    systemd.user.services.camofox-vnc-serve = lib.mkIf cfg.vnc.enable {
-      Unit.Description = "Tailnet endpoint for Camofox noVNC";
-      Service = {
-        ExecStart = "${lib.getExe pkgs.tailscale} serve --https=6080 --yes http://127.0.0.1:16080";
-        Restart = "always";
-        RestartSec = 10;
-        UMask = "0077";
-      };
-      Install.WantedBy = [ "default.target" ];
-    };
     systemd.user.services.camofox-browser = {
       Unit = {
         Description = "Local Camofox browser server";

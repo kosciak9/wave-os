@@ -1,6 +1,11 @@
 # Alfred's stack runs as a user of its own, so kosciak's agents, scheduled tasks and dev
 # containers cannot read his secrets, logins or Podman volumes.
-{ lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
   uid = 1001;
@@ -86,11 +91,42 @@ in
   home-manager.users.alfred = {
     imports = [
       ../../modules/home/alfred
+      ../../modules/home/anytype
+      ../../modules/home/camofox/linux.nix
       ../../modules/home/frida
+      ../../modules/home/lightpanda
       ../../modules/home/slack-mirror
       ../../modules/home/zsh
       ../../modules/home/zsh/linux.nix
     ];
     home.stateVersion = "26.11";
+    services = {
+      alfred.enable = true;
+      # His own browser and logins, next to kosciak's on 9377 and 16080.
+      camofox = {
+        port = 9387;
+        vnc = {
+          enable = true;
+          port = 16081;
+        };
+      };
+      slack-mirror = {
+        enable = true;
+        sync.enable = true;
+      };
+    };
+  };
+
+  # The owner logs Alfred's Camofox profiles in over the tailnet; only the Tailscale operator
+  # (kosciak) may run `tailscale serve`.
+  home-manager.users.kosciak.systemd.user.services.alfred-camofox-vnc-serve = {
+    Unit.Description = "Tailnet endpoint for Alfred's Camofox noVNC";
+    Service = {
+      ExecStart = "${lib.getExe pkgs.tailscale} serve --https=6080 --yes http://127.0.0.1:${toString config.home-manager.users.alfred.services.camofox.vnc.port}";
+      Restart = "always";
+      RestartSec = 10;
+      UMask = "0077";
+    };
+    Install.WantedBy = [ "default.target" ];
   };
 }
