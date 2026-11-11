@@ -1,7 +1,8 @@
 // Alfred's sources, which house-agents reads on its own every few minutes
 // (`config.sources`), inlined into house-agents.config.ts. The calendar wakes
 // Alfred: at 7:00 with the day's plan and at the start and end of every timed
-// entry. Unread mail, Slack messages, others' WhatsApp messages, T3 sessions
+// entry; a T3 session that needs the owner wakes him once it has stood for two
+// hours. Unread mail, Slack messages, others' WhatsApp messages, T3 sessions
 // that ended or wait for the owner, and others' changes in Anytype that
 // arrive after a source's first read come into the conversation as notes,
 // without waking him; what was
@@ -254,35 +255,50 @@ const T3_STATUS: Record<string, string> = {
 	cancelled: "anulowana",
 	waiting: "czeka na odpowiedź",
 };
+// The owner watches T3 himself: a session that needs him wakes Alfred only
+// once it has stood this long untouched.
+const T3_LOST_AFTER = 2 * 3600 * 1000;
 
-// Threads of zilean's T3 whose latest run ended or waits since the last read;
-// those the owner settled or snoozed are his already.
+// Threads of zilean's T3 whose latest run ended or waits; those the owner
+// settled or snoozed are his already. Each thread is noted once per status,
+// however many runs it takes, so Alfred knows what the owner worked on. One
+// that waits for him, failed, broke off or left an open PR wakes Alfred
+// when it has stood untouched for T3_LOST_AFTER; any move in it sets the
+// wake-up anew, and one that is settled drops it.
 const t3 = async ({ call, cursor, now }: Read): Promise<Update> => {
 	const { threads = [] } = JSON.parse(
 		await call("t3", "t3_thread_list", {
 			allProjects: true,
-			limit: 30,
+			// The most a call gives: one that needs the owner must not drop out.
+			limit: 100,
 			settled: false,
 			snoozed: false,
 			statuses: Object.keys(T3_STATUS),
 		}),
 	) as { threads?: T3Thread[] };
-	const runs = threads.map((thread) => ({
+	const sessions = threads.map((thread) => ({
 		thread,
-		id: `${thread.threadId}:${thread.latestRunId ?? ""}:${thread.status}`,
+		id: `${thread.threadId}:${thread.status}`,
 		at: Date.parse(thread.updatedAt ?? "") || now,
+		touched: Date.parse(thread.updatedAt ?? ""),
+		open: (thread.pullRequests ?? []).filter((pr) => pr.state === "open").map((pr) => pr.url),
 	}));
+	const line = ({ thread, open }: (typeof sessions)[number]) =>
+		`„${clip(thread.title ?? "", 120)}”: ${T3_STATUS[thread.status] ?? thread.status} (wątek ${thread.threadId}${open.length ? `, otwarte PR: ${open.join(", ")}` : ""})`;
+	const wakes = sessions
+		// Without its last move there is no telling how long it stands.
+		.filter(({ thread, open, touched }) => Number.isFinite(touched) && (!["completed", "cancelled"].includes(thread.status) || open.length > 0))
+		.map((session) => ({
+			key: `${session.thread.threadId}:${session.thread.latestRunId ?? ""}`,
+			at: session.touched + T3_LOST_AFTER,
+			prompt: `T3: od dwóch godzin nic się nie dzieje w sesji ${line(session)}.`,
+		}));
 	const seen = seenOf(cursor);
 	// What is listed at first is no news.
-	if (!seen) return { cursor: { since: now, seen: runs.map((run) => run.id).slice(-SEEN) } };
-	const { added, cursor: next } = fresh(seen, runs);
-	const lines = runs
-		.filter((run) => added.includes(run.id))
-		.map(({ thread }) => {
-			const open = (thread.pullRequests ?? []).filter((pr) => pr.state === "open").map((pr) => pr.url);
-			return `- „${clip(thread.title ?? "", 120)}”: ${T3_STATUS[thread.status] ?? thread.status} (wątek ${thread.threadId}${open.length ? `, otwarte PR: ${open.join(", ")}` : ""})`;
-		});
-	return { cursor: next, notes: lines.length ? [`Sesje T3:\n${lines.join("\n")}`] : [] };
+	if (!seen) return { cursor: { since: now, seen: sessions.map((session) => session.id).slice(-SEEN) }, wakes };
+	const { added, cursor: next } = fresh(seen, sessions);
+	const lines = sessions.filter((session) => added.includes(session.id)).map((session) => `- ${line(session)}`);
+	return { cursor: next, notes: lines.length ? [`Sesje T3:\n${lines.join("\n")}`] : [], wakes };
 };
 
 type AnytypeObject = { id: string; name?: string; type?: string; properties?: { last_modified_by?: string; last_modified_date?: string } };
