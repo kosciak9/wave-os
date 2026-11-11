@@ -1,6 +1,6 @@
 """A stdio MCP server of ephemeral sandboxes: containers that live until they sit idle for their TTL.
 
-Usage: sandbox.py <Podman connection> <image> <volume>
+Usage: sandbox.py <image> <volume>
 """
 
 import asyncio
@@ -12,7 +12,7 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from pydantic import Field
 
-connection, image, volume = sys.argv[1:]
+image, volume = sys.argv[1:]
 mcp = FastMCP("sandbox")
 LABEL = "io.wave-os.component=alfred-sandbox"
 PREFIX = "wave-alfred-sandbox-"
@@ -31,7 +31,7 @@ ready = {}
 
 async def podman(*args):
     process = await asyncio.create_subprocess_exec(
-        "podman", "--connection", connection, *args,
+        "podman", *args,
         stdin=asyncio.subprocess.DEVNULL,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.STDOUT,

@@ -15,6 +15,7 @@ import base64
 import contextlib
 import logging
 import mimetypes
+import os
 import sys
 
 import anyio
@@ -72,7 +73,9 @@ def main():
         token = source.read().strip()
     if len(token) < 32:
         sys.exit(f"{token_file} holds no token")
-    transport = StdioTransport(command, args, keep_alive=True)
+    # The service's own environment, not the MCP client's minimal default: rootless Podman finds
+    # its runtime directory and the user's systemd through XDG_RUNTIME_DIR and the session bus.
+    transport = StdioTransport(command, args, env=dict(os.environ), keep_alive=True)
     auth = StaticTokenVerifier({token: {"client_id": "alfred", "scopes": []}})
     if start_now:
         # A session with other options makes the transport restart the server, and
@@ -92,7 +95,7 @@ def main():
 
         @contextlib.asynccontextmanager
         async def start(server):
-            # A server that cannot start stops the bridge, for launchd to retry; keep_alive
+            # A server that cannot start stops the bridge, for systemd to retry; keep_alive
             # leaves it running for the proxy's sessions.
             async with backend.new():
                 pass

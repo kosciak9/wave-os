@@ -12,17 +12,17 @@ let
   home = config.home.homeDirectory;
   component = "alfred";
   containerName = "wave-alfred";
-  logDirectory = "${home}/.local/state/alfred";
-  googleState = "${logDirectory}/google-workspace";
-  xState = "${logDirectory}/x";
-  whatsappState = "${logDirectory}/whatsapp";
-  protonState = "${logDirectory}/proton";
+  stateDirectory = "${home}/.local/state/alfred";
+  googleState = "${stateDirectory}/google-workspace";
+  xState = "${stateDirectory}/x";
+  whatsappState = "${stateDirectory}/whatsapp";
+  protonState = "${stateDirectory}/proton";
   secret = name: osConfig.sops.secrets."alfred/${name}".path;
   mcpTokenFile = secret "mcp-token";
 
   # MCP servers run on the host, where their data and logins are, each behind a loopback
-  # Streamable HTTP bridge that only the holder of the generated token may use; every
-  # container in the Podman machine can reach the host's loopback. `agent` is the one who
+  # Streamable HTTP bridge that only the holder of the generated token may use; Alfred's
+  # container reaches exactly these loopback ports (containerPorts). `agent` is the one who
   # may use its tools: Alfred or a subagent.
   # PyMuPDF renders the pages of PDF attachments for the model.
   python = pkgs.workspace-mcp.pythonEnvironment.override (old: {
@@ -40,14 +40,11 @@ let
     anytype = {
       port = 18101;
       agent = "alfred";
-      domain = "user";
       tools = builtins.fromJSON (builtins.readFile ../anytype/tools.json);
     };
     obsidian = {
       port = 18091;
       agent = "alfred";
-      # In the GUI session, so macOS can ask once for access to the vault's folder.
-      domain = "gui";
       command = lib.getExe obsidianMcp;
       tools = [
         "obsidian_list_vaults"
@@ -61,7 +58,6 @@ let
     google = {
       port = 18092;
       agent = "alfred";
-      domain = "user";
       command = lib.getExe googleMcp;
       tools = [
         "search_gmail_messages"
@@ -84,7 +80,6 @@ let
     camofox = {
       port = 18093;
       agent = "browser";
-      domain = "user";
       command = lib.getExe camofoxMcp;
       tools = [
         "camofox_create_tab"
@@ -102,7 +97,6 @@ let
     substack = {
       port = 18094;
       agent = "alfred";
-      domain = "user";
       command = lib.getExe substackMcp;
       tools = [
         "get_draft"
@@ -138,7 +132,6 @@ let
     proton = {
       port = 18100;
       agent = "alfred";
-      domain = "user";
       command = lib.getExe protonMcp;
       # Its attachments arrive as binary resources; the bridge adds a preview after each.
       inlineAttachments = true;
@@ -158,14 +151,12 @@ let
     languagetool = {
       port = 18095;
       agent = "alfred";
-      domain = "user";
       command = lib.getExe languagetoolMcp;
       tools = [ "lt_check_text" ];
     };
     sandbox = {
       port = 18102;
       agent = "alfred";
-      domain = "user";
       command = lib.getExe sandboxMcp;
       tools = [
         "create"
@@ -177,7 +168,6 @@ let
     x = {
       port = 18099;
       agent = "x-browser";
-      domain = "user";
       command = lib.getExe xMcp;
       tools = builtins.attrNames (
         builtins.fromJSON (builtins.readFile ../../../packages/twikit-x-mcp/tools.json)
@@ -188,7 +178,6 @@ let
     whatsapp = {
       port = 18103;
       agent = "alfred";
-      domain = "user";
       command = lib.getExe whatsappMcp;
       startNow = true;
       # Its media arrive as binary resources; the bridge adds a preview after each.
@@ -325,32 +314,29 @@ let
   # whisper-server (modules/home/whisper) transcribes recorded attachments; directly, since its
   # recording proxy archives what it hears, and these are other people's voices.
   whisperUrl = "http://127.0.0.1:18081/v1/audio/transcriptions";
+  # whisper-recording-proxy (modules/home/whisper), which Alfred's own voice messages go through.
+  recordingProxyPort = 18080;
+
+  # The host's loopback ports Alfred's container reaches on its own loopback; pasta forwards
+  # only these, so nothing else on the host is reachable through it.
+  containerPorts = lib.mapAttrsToList (_: bridge: bridge.port) bridges ++ [
+    slackMirror.port
+    gotenbergPort
+    recordingProxyPort
+  ];
 
   # Gotenberg renders attachments the model cannot read to PDF. It has no way out: an internal
   # network, no downloads or webhooks, and Chromium loads nothing but the file it converts.
   gotenbergPort = 18096;
   gotenberg = pkgs.writeShellApplication {
     name = "alfred-gotenberg";
-    runtimeInputs = [
-      pkgs.podman
-      pkgs.jq
-    ];
+    runtimeInputs = [ pkgs.podman ];
     text = ''
-      transport=(podman --connection ${lib.escapeShellArg cfg.machineName})
-      deadline=$((SECONDS + 180))
-      until "''${transport[@]}" info --format json 2>/dev/null |
-        jq -e '.host.security.rootless == true' >/dev/null 2>&1; do
-        if (( SECONDS >= deadline )); then
-          printf '%s\n' "${cfg.machineName} rootless connection was not ready within 180 seconds" >&2
-          exit 1
-        fi
-        sleep 2
-      done
-      "''${transport[@]}" network exists ${containerName}-gotenberg ||
-        "''${transport[@]}" network create --internal --label io.wave-os.component=${component} \
+      podman network exists ${containerName}-gotenberg ||
+        podman network create --internal --label io.wave-os.component=${component} \
           ${containerName}-gotenberg >/dev/null
-      "''${transport[@]}" rm --force ${containerName}-gotenberg >/dev/null 2>&1 || true
-      exec "''${transport[@]}" run --rm --name ${containerName}-gotenberg \
+      podman rm --force ${containerName}-gotenberg >/dev/null 2>&1 || true
+      exec podman run --rm --name ${containerName}-gotenberg \
         --label io.wave-os.component=${component} \
         --pull=missing --network ${containerName}-gotenberg --http-proxy=false \
         --publish 127.0.0.1:${toString gotenbergPort}:3000 \
@@ -400,10 +386,24 @@ let
     '';
   };
 
-  # Proton Mail Bridge runs in the GUI session, where it keeps its vault key in the login
-  # keychain. Its IMAP and SMTP listen on loopback with a certificate of its own, which
-  # `export-tls-cert` in `protonmail-bridge --cli` writes to bridgeCertificate.
+  # Proton Mail Bridge keeps its vault key in `pass`, in a store of its own encrypted to a
+  # passphrase-less GPG key: a headless host has no keychain that would unlock it. Its IMAP
+  # and SMTP listen on loopback with a certificate of its own, which `export-tls-cert` in
+  # `protonmail-bridge --cli` writes to bridgeCertificate.
   bridgeCertificate = "${config.xdg.configHome}/protonmail/bridge-tls/cert.pem";
+  bridgeKeychain = "${stateDirectory}/proton-bridge";
+  protonBridge = pkgs.writeShellApplication {
+    name = "protonmail-bridge";
+    runtimeInputs = [
+      pkgs.pass
+      pkgs.gnupg
+    ];
+    text = ''
+      export GNUPGHOME=${lib.escapeShellArg "${bridgeKeychain}/gnupg"}
+      export PASSWORD_STORE_DIR=${lib.escapeShellArg "${bridgeKeychain}/password-store"}
+      exec ${lib.getExe pkgs.protonmail-bridge} "$@"
+    '';
+  };
   protonMcp = pkgs.writeShellApplication {
     name = "alfred-proton-mcp";
     runtimeInputs = [ pkgs.coreutils ];
@@ -440,7 +440,8 @@ let
     name = "alfred-camofox-mcp";
     runtimeInputs = [ pkgs.coreutils ];
     text = ''
-      access_key=$(< ${lib.escapeShellArg osConfig.sops.secrets."camofox/access-key".path})
+      # Generated by the Camofox service (modules/home/camofox/linux.nix).
+      access_key=$(< ${lib.escapeShellArg "${config.xdg.stateHome}/camofox/access-key"})
       exec env -i HOME="$HOME" PATH="$PATH" \
         CAMOFOX_BASE_URL=http://127.0.0.1:9377 CAMOFOX_ACCESS_KEY="$access_key" \
         CAMOFOX_USER_ID=alfred \
@@ -490,8 +491,7 @@ let
     '';
   };
 
-  # Code runs in ephemeral containers in the Podman machine; only the volume persists. The
-  # image carries the skills, since the machine cannot see the Nix store.
+  # Code runs in ephemeral containers; only the volume persists. The image carries the skills.
   unbroker = pkgs.fetchFromGitHub {
     owner = "NousResearch";
     repo = "hermes-agent";
@@ -518,28 +518,19 @@ let
     name = "alfred-sandbox-mcp";
     runtimeInputs = [
       pkgs.podman
-      pkgs.jq
+      pkgs.coreutils
     ];
     text = ''
-      transport=(podman --connection ${lib.escapeShellArg cfg.machineName})
-      deadline=$((SECONDS + 180))
-      until "''${transport[@]}" info --format json 2>/dev/null |
-        jq -e '.host.security.rootless == true' >/dev/null 2>&1; do
-        if (( SECONDS >= deadline )); then
-          printf '%s\n' "${cfg.machineName} rootless connection was not ready within 180 seconds" >&2
-          exit 1
-        fi
-        sleep 2
-      done
-      "''${transport[@]}" image exists ${sandboxImage} ||
-        "''${transport[@]}" build --pull=missing --label io.wave-os.component=${component}-sandbox \
+      podman image exists ${sandboxImage} ||
+        podman build --pull=missing --label io.wave-os.component=${component}-sandbox \
           --tag ${sandboxImage} ${sandboxContext} >&2
-      "''${transport[@]}" volume exists ${lib.escapeShellArg cfg.sandboxVolume} ||
-        "''${transport[@]}" volume create --label io.wave-os.component=${component}-sandbox \
+      podman volume exists ${lib.escapeShellArg cfg.sandboxVolume} ||
+        podman volume create --label io.wave-os.component=${component}-sandbox \
           ${lib.escapeShellArg cfg.sandboxVolume} >/dev/null
-      exec env -i HOME="$HOME" PATH="$PATH" PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1 \
-        ${python}/bin/python ${./sandbox.py} ${lib.escapeShellArg cfg.machineName} \
-        ${sandboxImage} ${lib.escapeShellArg cfg.sandboxVolume}
+      # Rootless Podman finds newuidmap and its runtime through XDG_RUNTIME_DIR and PATH.
+      exec env -i HOME="$HOME" PATH="$PATH" XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" \
+        PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1 \
+        ${python}/bin/python ${./sandbox.py} ${sandboxImage} ${lib.escapeShellArg cfg.sandboxVolume}
     '';
   };
 
@@ -548,8 +539,9 @@ let
     name = "alfred-languagetool-mcp";
     runtimeInputs = [ pkgs.podman ];
     text = ''
-      ${lib.getExe pkgs.openclaw-languagetool-mcp-image}
-      exec podman --connection ${lib.escapeShellArg cfg.machineName} run --rm -i \
+      # stdout is the MCP channel; a first-run image build logs to stderr.
+      ${lib.getExe pkgs.openclaw-languagetool-mcp-image} >&2
+      exec podman run --rm -i \
         --network none --pull never --read-only \
         --cap-drop ALL --security-opt no-new-privileges --user 65532:65532 \
         --tmpfs /tmp:rw,noexec,nosuid,nodev,size=128m --workdir /tmp \
@@ -560,57 +552,68 @@ let
     '';
   };
 
-  bridgeAgent = name: bridge: {
-    enable = true;
-    inherit (bridge) domain;
-    config = {
-      ProgramArguments =
-        if name == "anytype" then
-          [
-            "${python}/bin/python"
-            "${../anytype/mcp-bridge.py}"
-            "alfred"
-            (toString bridge.port)
-            mcpTokenFile
-            "${../anytype/tools.json}"
-            (secret "anytype-api-key")
-            "--space-file"
-            (secret "anytype-space-id")
-            "--command"
-            (lib.getExe pkgs.anytype-mcp)
-            "--api-url"
-            "http://127.0.0.1:31012"
-          ]
-        else
-          [
-            "${python}/bin/python"
-            "${scripts}/mcp-bridge.py"
-          ]
-          ++ lib.optionals (bridge.inlineAttachments or false) [
-            "--inline-attachments"
-            "http://127.0.0.1:${toString gotenbergPort}"
-            whisperUrl
-          ]
-          ++ lib.optional (bridge.startNow or false) "--start-now"
-          ++ [
-            name
-            (toString bridge.port)
-            mcpTokenFile
-            bridge.command
-          ];
-      # ffmpeg turns recorded attachments into audio for Whisper.
-      EnvironmentVariables = lib.optionalAttrs (bridge.inlineAttachments or false) {
-        PATH = "${lib.makeBinPath [ pkgs.ffmpeg ]}:/usr/bin:/bin:/usr/sbin:/sbin";
-      };
-      RunAtLoad = true;
-      KeepAlive = true;
-      ProcessType = "Background";
-      ThrottleInterval = 30;
-      Umask = 63;
-      StandardOutPath = "/dev/null";
-      StandardErrorPath = "${logDirectory}/mcp-${name}.error.log";
+  service = description: execStart: {
+    Unit.Description = description;
+    Service = {
+      ExecStart = execStart;
+      Restart = "always";
+      RestartSec = 30;
+      UMask = "0077";
     };
+    Install.WantedBy = [ "default.target" ];
   };
+
+  bridgeService =
+    name: bridge:
+    lib.recursiveUpdate
+      (service "Alfred's ${name} MCP bridge" (
+        lib.escapeShellArgs (
+          if name == "anytype" then
+            [
+              "${python}/bin/python"
+              "${../anytype/mcp-bridge.py}"
+              "alfred"
+              (toString bridge.port)
+              mcpTokenFile
+              "${../anytype/tools.json}"
+              (secret "anytype-api-key")
+              "--space-file"
+              (secret "anytype-space-id")
+              "--command"
+              (lib.getExe pkgs.anytype-mcp)
+              "--api-url"
+              "http://127.0.0.1:31012"
+            ]
+          else
+            [
+              "${python}/bin/python"
+              "${scripts}/mcp-bridge.py"
+            ]
+            ++ lib.optionals (bridge.inlineAttachments or false) [
+              "--inline-attachments"
+              "http://127.0.0.1:${toString gotenbergPort}"
+              whisperUrl
+            ]
+            ++ lib.optional (bridge.startNow or false) "--start-now"
+            ++ [
+              name
+              (toString bridge.port)
+              mcpTokenFile
+              bridge.command
+            ]
+        )
+      ))
+      {
+        # ffmpeg turns recorded attachments into audio for Whisper.
+        Service.Environment =
+          lib.optional (bridge.inlineAttachments or false)
+            "PATH=${
+              lib.makeBinPath [
+                pkgs.ffmpeg
+                pkgs.coreutils
+              ]
+            }";
+      };
 
   browser = {
     description = "Szuka i czyta w sieci, a w przeglądarce Camofox także klika i wypełnia formularze, również na stronach dynamicznych i chronionych przed botami.";
@@ -886,7 +889,7 @@ let
     import { readFileSync } from "node:fs";
 
     const bridge = (port: number) => ({
-    	url: `http://host.containers.internal:''${port}/mcp`,
+    	url: `http://127.0.0.1:''${port}/mcp`,
     	headers: { Authorization: `Bearer ''${process.env.ALFRED_MCP_TOKEN}` },
     });
 
@@ -908,8 +911,8 @@ let
     	timeZone: "Europe/Warsaw",
     	telegram: { chatId: Number(process.env.TELEGRAM_CHAT_ID) },
     	// whisper-recording-proxy on the host.
-        whisperUrl: "http://host.containers.internal:18080/v1/audio/transcriptions?transcription_prefix=true",
-    	gotenbergUrl: "http://host.containers.internal:${toString gotenbergPort}",
+        whisperUrl: "http://127.0.0.1:${toString recordingProxyPort}/v1/audio/transcriptions?transcription_prefix=true",
+    	gotenbergUrl: "http://127.0.0.1:${toString gotenbergPort}",
     	mcpServers: {
     ${lib.concatMapAttrsStringSep "\n" (
       name: bridge: "		${name}: bridge(${toString bridge.port}),"
@@ -919,7 +922,7 @@ let
     			headers: { Authorization: `Bearer ''${process.env.TWENTY_API_KEY}` },
     		},
     		slack: {
-    			url: "http://host.containers.internal:${toString slackMirror.port}/mcp",
+    			url: "http://127.0.0.1:${toString slackMirror.port}/mcp",
     			headers: { Authorization: `Bearer ''${process.env.SLACK_MIRROR_MCP_TOKEN}` },
     		},
     		t3: { url: "https://zilean.dusky-diatonic.ts.net:18443/mcp", oauth: true },
@@ -996,7 +999,6 @@ let
       pkgs.curl
     ];
     text = ''
-      machine=${lib.escapeShellArg cfg.machineName}
       env_file=${lib.escapeShellArg (secret "env")}
       prompt_file=${lib.escapeShellArg (secret "prompt.md")}
       token_file=${lib.escapeShellArg mcpTokenFile}
@@ -1010,27 +1012,7 @@ let
         exit 1
       fi
 
-      if ! state=$(podman machine inspect "$machine" | jq -er '
-        if length == 1 and .[0].Rootful == false then .[0].State else error("rootful machine") end'); then
-        printf '%s\n' "Provision a rootless $machine machine before starting Alfred" >&2
-        exit 1
-      fi
-      if [[ "$state" == stopped ]]; then
-        if ! podman machine start --update-connection=false "$machine"; then
-          printf '%s\n' "Could not start $machine; Podman permits only one active managed VM." >&2
-          exit 1
-        fi
-      fi
-      transport=(podman --connection "$machine")
       deadline=$((SECONDS + 180))
-      until "''${transport[@]}" info --format json 2>/dev/null |
-        jq -e '.host.security.rootless == true' >/dev/null 2>&1; do
-        if (( SECONDS >= deadline )); then
-          printf '%s\n' "$machine rootless connection was not ready within 180 seconds" >&2
-          exit 1
-        fi
-        sleep 2
-      done
       # The agent leaves out an MCP server it cannot reach at start.
       for port in ${
         lib.concatMapAttrsStringSep " " (_: bridge: toString bridge.port) bridges
@@ -1044,25 +1026,25 @@ let
         done
       done
 
-      if "''${transport[@]}" container exists ${containerName}; then
-        stale_id=$("''${transport[@]}" container inspect ${containerName} |
+      if podman container exists ${containerName}; then
+        stale_id=$(podman container inspect ${containerName} |
           jq -er '.[0] | if .Config.Labels["io.wave-os.component"] == "${component}"
             then .Id else error("container is not owned by Alfred") end')
-        "''${transport[@]}" rm --force "$stale_id" >/dev/null
+        podman rm --force "$stale_id" >/dev/null
       fi
       # The conversation, memory, schedules and logins: keep and back up.
-      if "''${transport[@]}" volume exists "$volume"; then
-        "''${transport[@]}" volume inspect "$volume" |
+      if podman volume exists "$volume"; then
+        podman volume inspect "$volume" |
           jq -e '.[0].Labels["io.wave-os.component"] == "${component}"' >/dev/null
       else
-        "''${transport[@]}" volume create --label io.wave-os.component=${component} "$volume" >/dev/null
+        podman volume create --label io.wave-os.component=${component} "$volume" >/dev/null
       fi
       put_secret() {
-        if "''${transport[@]}" secret exists "$1"; then
-          "''${transport[@]}" secret inspect "$1" |
+        if podman secret exists "$1"; then
+          podman secret inspect "$1" |
             jq -e '.[0].Spec.Labels["io.wave-os.component"] == "${component}"' >/dev/null
         fi
-        "''${transport[@]}" secret create --replace --label io.wave-os.component=${component} "$1" "$2" >/dev/null
+        podman secret create --replace --label io.wave-os.component=${component} "$1" "$2" >/dev/null
       }
       put_secret wave-alfred-config ${agentConfig}
       put_secret wave-alfred-prompt "$prompt_file"
@@ -1076,12 +1058,12 @@ let
       child=""
       cleanup() {
         local container_id
-        if container_id=$("''${transport[@]}" container inspect ${containerName} 2>/dev/null |
+        if container_id=$(podman container inspect ${containerName} 2>/dev/null |
           jq -er --arg instance "$instance" '.[0] |
             if .Config.Labels["io.wave-os.component"] == "${component}" and
                .Config.Labels["io.wave-os.supervisor"] == $instance
             then .Id else empty end'); then
-          "''${transport[@]}" stop --time 20 "$container_id" >/dev/null 2>&1 || true
+          podman stop --time 20 "$container_id" >/dev/null 2>&1 || true
         fi
         if [[ -n "$child" ]]; then
           wait "$child" || true
@@ -1090,10 +1072,15 @@ let
       trap cleanup EXIT
       trap 'exit 143' TERM
       trap 'exit 130' INT
-      "''${transport[@]}" run --rm --name ${containerName} \
+      podman run --rm --name ${containerName} \
         --label io.wave-os.component=${component} \
         --label "io.wave-os.supervisor=$instance" \
-        --pull=missing --network bridge --http-proxy=false \
+        --pull=missing --http-proxy=false \
+        --network ${
+          lib.escapeShellArg (
+            "pasta:" + lib.concatMapStringsSep "," (port: "-T,${toString port}") containerPorts
+          )
+        } \
         --cap-drop ALL --security-opt no-new-privileges \
         --read-only --tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m,mode=1777 \
         --pids-limit 256 --memory 1g --cpus 2 \
@@ -1141,11 +1128,6 @@ in
       default = "wave-alfred-sandbox";
       description = "Named volume mounted at /workspace in every sandbox container.";
     };
-    machineName = lib.mkOption {
-      type = lib.types.strMatching "[a-zA-Z0-9][a-zA-Z0-9_-]*";
-      default = "wave-services";
-      description = "Pre-provisioned rootless Podman machine and connection.";
-    };
     dataVolume = lib.mkOption {
       type = lib.types.strMatching "[a-zA-Z0-9][a-zA-Z0-9_.-]*";
       default = "wave-alfred-state";
@@ -1156,73 +1138,33 @@ in
   config = lib.mkIf cfg.enable {
     assertions = [
       {
-        assertion = pkgs.stdenv.hostPlatform.isDarwin;
-        message = "Alfred launchd supervision requires Darwin.";
-      }
-      {
         assertion = slackMirror.enable;
         message = "Alfred reads Slack through services.slack-mirror.";
       }
     ];
     home.packages = [
-      pkgs.protonmail-bridge
+      protonBridge
       pkgs.whatsapp-mcp
     ];
     # Bridge prints only --help, which zsh's generic completion parses.
     programs.zsh.generatedCompletions.protonmail-bridge = "printf '#compdef protonmail-bridge\\n_gnu_generic\\n'";
-    home.activation.alfred = lib.hm.dag.entryBetween [ "setupLaunchAgents" ] [ "writeBoundary" ] ''
-      run install -d -m 0700 ${lib.escapeShellArg logDirectory}
+    home.activation.alfred = lib.hm.dag.entryBetween [ "reloadSystemd" ] [ "writeBoundary" ] ''
+      run install -d -m 0700 ${lib.escapeShellArg stateDirectory} \
+        ${lib.escapeShellArg bridgeKeychain} ${lib.escapeShellArg "${bridgeKeychain}/gnupg"}
     '';
-    launchd.agents = {
-      alfred = {
-        inherit (cfg.agent) enable;
-        domain = "user";
-        config = {
-          ProgramArguments = [ (lib.getExe supervisor) ];
-          RunAtLoad = true;
-          KeepAlive = true;
-          ProcessType = "Background";
-          ThrottleInterval = 30;
-          ExitTimeOut = 30;
-          Umask = 63;
-          StandardOutPath = "${logDirectory}/launchd.log";
-          StandardErrorPath = "${logDirectory}/launchd.error.log";
-        };
-      };
-      protonmail-bridge = {
-        enable = true;
-        domain = "gui";
-        config = {
-          ProgramArguments = [
-            (lib.getExe pkgs.protonmail-bridge)
-            "--noninteractive"
-          ];
-          RunAtLoad = true;
-          KeepAlive = true;
-          ProcessType = "Background";
-          ThrottleInterval = 30;
-          Umask = 63;
-          StandardOutPath = "/dev/null";
-          StandardErrorPath = "${logDirectory}/protonmail-bridge.error.log";
-        };
-      };
-      alfred-gotenberg = {
-        enable = true;
-        domain = "user";
-        config = {
-          ProgramArguments = [ (lib.getExe gotenberg) ];
-          RunAtLoad = true;
-          KeepAlive = true;
-          ProcessType = "Background";
-          ThrottleInterval = 30;
-          Umask = 63;
-          StandardOutPath = "/dev/null";
-          StandardErrorPath = "${logDirectory}/gotenberg.error.log";
-        };
-      };
+    systemd.user.services = {
+      alfred = lib.mkIf cfg.agent.enable (
+        lib.recursiveUpdate (service "Alfred, the house-agents assistant" (lib.getExe supervisor)) {
+          Service.TimeoutStopSec = 30;
+        }
+      );
+      protonmail-bridge = service "Proton Mail Bridge for Alfred" "${lib.getExe protonBridge} --noninteractive";
+      alfred-gotenberg = service "Gotenberg, rendering Alfred's attachments to PDF" (
+        lib.getExe gotenberg
+      );
     }
     // lib.mapAttrs' (
-      name: bridge: lib.nameValuePair "alfred-mcp-${name}" (bridgeAgent name bridge)
+      name: bridge: lib.nameValuePair "alfred-mcp-${name}" (bridgeService name bridge)
     ) bridges;
   };
 }

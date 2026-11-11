@@ -3,12 +3,8 @@
   imports = [
     ../../modules/home/mcp-gateway
     ../../modules/home/agents
-    ../../modules/home/alfred
-    ../../modules/home/frida
     ../../modules/home/podman/darwin.nix
-    ../../modules/home/slack-mirror
     ../../modules/home/camofox
-    ../../modules/home/lightpanda
     ../../modules/home/cli
     ../../modules/home/devenv
     ../../modules/home/ghostty
@@ -18,11 +14,9 @@
     ../../modules/home/t3code
     ../../modules/home/starship
     ../../modules/home/vicinae
-    ../../modules/home/whisper/darwin.nix
     ../../modules/home/zoxide
     ../../modules/home/zen-browser
     ../../modules/home/zsh
-    ../../modules/home/anytype
     ./aerospace.nix
   ];
 
@@ -37,23 +31,6 @@
           >/dev/null 2>&1 </dev/null || true
       fi
     '';
-  };
-  services = {
-    alfred = {
-      enable = true;
-      # Podman permits one active VM; shared with Frida, Slack mirror and browsers.
-      machineName = "openclaw-sandbox";
-    };
-    frida = {
-      # Paused like Alfred, so it stops spending Codex.
-      enable = false;
-    };
-    slack-mirror = {
-      enable = true;
-      sync.enable = true;
-      # Podman permits one active VM; sharing it does not couple service lifecycles.
-      machineName = "openclaw-sandbox";
-    };
   };
   programs = {
     home-manager.enable = true;

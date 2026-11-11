@@ -1,11 +1,13 @@
 {
   config,
   lib,
+  osConfig,
   pkgs,
   ...
 }:
 
 let
+  cfg = config.services.camofox;
   homeDirectory = config.home.homeDirectory;
   podman = lib.getExe pkgs.podman;
   jq = lib.getExe pkgs.jq;
@@ -37,6 +39,13 @@ let
     transport = "podman_remote";
     transportExec = "podman_remote_exec";
     imageBuildPrelude = podmanRemoteFunctions;
+    # The owner logs in through noVNC: loopback only, reached over the tailnet (vncServe).
+    extraRunArgs = lib.optionalString cfg.vnc.enable ''
+      --publish 127.0.0.1:16080:6080 \
+      --env ENABLE_VNC=1 \
+      --env VNC_BIND=0.0.0.0 \
+      --env VNC_PASSWORD \
+    '';
   };
   camofoxAgent = pkgs.writeShellApplication {
     name = "camofox-browser-agent";
@@ -74,6 +83,15 @@ let
             [[ -n "$access_key" ]] || { printf '%s\n' "refusing to start Camofox: access key is empty" >&2; exit 1; }
             export CAMOFOX_ACCESS_KEY="$access_key"
             unset CAMOFOX_API_KEY
+            ${lib.optionalString cfg.vnc.enable ''
+              # noVNC controls the browser the owner logs in to; x11vnc reads 8 characters of it.
+              vnc_password=$(< ${lib.escapeShellArg osConfig.sops.secrets."camofox/vnc-password".path})
+              if [[ -z "$vnc_password" ]]; then
+                printf '%s\n' "refusing to start Camofox: VNC_PASSWORD is empty" >&2
+                exit 1
+              fi
+              export VNC_PASSWORD="$vnc_password"
+            ''}
 
             if ! info=$(podman_remote info --format json); then
               printf '%s\n' "refusing to start Camofox: rootless Podman user API info failed" >&2
@@ -100,28 +118,43 @@ let
   };
 in
 {
-  home.packages = [ common.imageBuild ];
-  home.activation.camofoxDirectories = common.activation;
-  systemd.user.services.camofox-browser = {
-    Unit = {
-      Description = "Local Camofox browser server";
-      Wants = [ "podman.socket" ];
-      After = [ "podman.socket" ];
+  options.services.camofox.vnc.enable =
+    lib.mkEnableOption "noVNC on the tailnet, for logging the browser's profiles in";
+
+  config = {
+    home.packages = [ common.imageBuild ];
+    home.activation.camofoxDirectories = common.activation;
+    systemd.user.services.camofox-vnc-serve = lib.mkIf cfg.vnc.enable {
+      Unit.Description = "Tailnet endpoint for Camofox noVNC";
+      Service = {
+        ExecStart = "${lib.getExe pkgs.tailscale} serve --https=6080 --yes http://127.0.0.1:16080";
+        Restart = "always";
+        RestartSec = 10;
+        UMask = "0077";
+      };
+      Install.WantedBy = [ "default.target" ];
     };
-    Service = {
-      Type = "simple";
-      ExecStart = lib.getExe camofoxAgent;
-      Restart = "always";
-      RestartSec = 10;
-      UMask = "0077";
-      RestrictAddressFamilies = [
-        "AF_UNIX"
-        "AF_INET"
-        "AF_INET6"
-      ];
-      StandardOutput = "append:${homeDirectory}/.camofox/logs/systemd.log";
-      StandardError = "append:${homeDirectory}/.camofox/logs/systemd.error.log";
+    systemd.user.services.camofox-browser = {
+      Unit = {
+        Description = "Local Camofox browser server";
+        Wants = [ "podman.socket" ];
+        After = [ "podman.socket" ];
+      };
+      Service = {
+        Type = "simple";
+        ExecStart = lib.getExe camofoxAgent;
+        Restart = "always";
+        RestartSec = 10;
+        UMask = "0077";
+        RestrictAddressFamilies = [
+          "AF_UNIX"
+          "AF_INET"
+          "AF_INET6"
+        ];
+        StandardOutput = "append:${homeDirectory}/.camofox/logs/systemd.log";
+        StandardError = "append:${homeDirectory}/.camofox/logs/systemd.error.log";
+      };
+      Install.WantedBy = [ "default.target" ];
     };
-    Install.WantedBy = [ "default.target" ];
   };
 }

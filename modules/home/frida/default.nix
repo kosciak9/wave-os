@@ -7,8 +7,6 @@
 }:
 let
   cfg = config.services.frida;
-  home = config.home.homeDirectory;
-  logDirectory = "${home}/.local/state/frida";
   component = "frida";
   containerName = "wave-frida";
   volume = "wave-frida-state";
@@ -70,28 +68,35 @@ let
       ];
     };
   };
-  bridgeAgent = name: bridge: {
-    enable = true;
-    domain = "user";
-    config = {
-      ProgramArguments = [
-        "${python}/bin/python"
-        "${bridge.script}"
-        bridge.name
-        (toString bridge.port)
-        (secret "mcp-token")
-        (toString (pkgs.writeText "frida-${name}-tools.json" (builtins.toJSON bridge.tools)))
-      ]
-      ++ bridge.args;
-      RunAtLoad = true;
-      KeepAlive = true;
-      ProcessType = "Background";
-      ThrottleInterval = 30;
-      Umask = 63;
-      StandardOutPath = "/dev/null";
-      StandardErrorPath = "${logDirectory}/mcp-${name}.error.log";
+  # The recording proxy of modules/home/whisper; Frida's container reaches it and the bridges
+  # on its own loopback, and nothing else on the host.
+  recordingProxyPort = 18080;
+  containerPorts = lib.mapAttrsToList (_: bridge: bridge.port) bridges ++ [ recordingProxyPort ];
+  service = description: execStart: {
+    Unit.Description = description;
+    Service = {
+      ExecStart = execStart;
+      Restart = "always";
+      RestartSec = 30;
+      UMask = "0077";
     };
+    Install.WantedBy = [ "default.target" ];
   };
+  bridgeService =
+    name: bridge:
+    service "Frida's ${name} MCP bridge" (
+      lib.escapeShellArgs (
+        [
+          "${python}/bin/python"
+          "${bridge.script}"
+          bridge.name
+          (toString bridge.port)
+          (secret "mcp-token")
+          (toString (pkgs.writeText "frida-${name}-tools.json" (builtins.toJSON bridge.tools)))
+        ]
+        ++ bridge.args
+      )
+    );
   agentConfig = pkgs.writeText "frida-house-agents.config.ts" ''
     export default {
       prompt: ${
@@ -113,11 +118,11 @@ let
       },
       model: { provider: "openai-codex", modelId: "gpt-6.1-sol", thinkingLevel: "medium" },
       telegram: { chatId: Number(process.env.TELEGRAM_CHAT_ID) },
-      whisperUrl: "http://host.containers.internal:18080/v1/audio/transcriptions",
+      whisperUrl: "http://127.0.0.1:${toString recordingProxyPort}/v1/audio/transcriptions",
       mcpServers: {
     ${lib.concatMapAttrsStringSep "\n" (name: bridge: ''
       "${name}": {
-        url: "http://host.containers.internal:${toString bridge.port}/mcp",
+        url: "http://127.0.0.1:${toString bridge.port}/mcp",
         headers: { Authorization: `Bearer ''${process.env.FRIDA_MCP_TOKEN}` },
       },
     '') bridges}
@@ -155,7 +160,6 @@ let
       pkgs.curl
     ];
     text = ''
-      machine=${lib.escapeShellArg config.services.alfred.machineName}
       env_file=${lib.escapeShellArg (secret "env")}
       image=${lib.escapeShellArg config.services.alfred.image}
 
@@ -164,21 +168,7 @@ let
         printf '%s\n' 'frida/env must set TELEGRAM_BOT_TOKEN and a numeric group TELEGRAM_CHAT_ID' >&2
         exit 1
       fi
-      state=$(podman machine inspect "$machine" | jq -er '
-        if length == 1 and .[0].Rootful == false then .[0].State else error("rootful machine") end')
-      if [[ "$state" == stopped ]]; then
-        podman machine start --update-connection=false "$machine"
-      fi
-      transport=(podman --connection "$machine")
       deadline=$((SECONDS + 180))
-      until "''${transport[@]}" info --format json 2>/dev/null |
-        jq -e '.host.security.rootless == true' >/dev/null; do
-        if (( SECONDS >= deadline )); then
-          printf '%s\n' "$machine rootless connection was not ready within 180 seconds" >&2
-          exit 1
-        fi
-        sleep 2
-      done
       for port in ${lib.concatMapAttrsStringSep " " (_: bridge: toString bridge.port) bridges}; do
         until [[ "$(curl -s -o /dev/null -w '%{http_code}' --max-time 3 "http://127.0.0.1:$port/mcp")" != 000 ]]; do
           if (( SECONDS >= deadline )); then
@@ -188,24 +178,24 @@ let
           sleep 2
         done
       done
-      if "''${transport[@]}" container exists ${containerName}; then
-        stale_id=$("''${transport[@]}" container inspect ${containerName} |
+      if podman container exists ${containerName}; then
+        stale_id=$(podman container inspect ${containerName} |
           jq -er '.[0] | if .Config.Labels["io.wave-os.component"] == "${component}"
             then .Id else error("container is not owned by Frida") end')
-        "''${transport[@]}" rm --force "$stale_id" >/dev/null
+        podman rm --force "$stale_id" >/dev/null
       fi
-      if "''${transport[@]}" volume exists ${volume}; then
-        "''${transport[@]}" volume inspect ${volume} |
+      if podman volume exists ${volume}; then
+        podman volume inspect ${volume} |
           jq -e '.[0].Labels["io.wave-os.component"] == "${component}"' >/dev/null
       else
-        "''${transport[@]}" volume create --label io.wave-os.component=${component} ${volume} >/dev/null
+        podman volume create --label io.wave-os.component=${component} ${volume} >/dev/null
       fi
       put_secret() {
-        if "''${transport[@]}" secret exists "$1"; then
-          "''${transport[@]}" secret inspect "$1" |
+        if podman secret exists "$1"; then
+          podman secret inspect "$1" |
             jq -e '.[0].Spec.Labels["io.wave-os.component"] == "${component}"' >/dev/null
         fi
-        "''${transport[@]}" secret create --replace --label io.wave-os.component=${component} "$1" "$2" >/dev/null
+        podman secret create --replace --label io.wave-os.component=${component} "$1" "$2" >/dev/null
       }
       put_secret wave-frida-config ${agentConfig}
       put_secret wave-frida-mcp-token ${lib.escapeShellArg (secret "mcp-token")}
@@ -214,12 +204,12 @@ let
       child=""
       cleanup() {
         local container_id
-        if container_id=$("''${transport[@]}" container inspect ${containerName} 2>/dev/null |
+        if container_id=$(podman container inspect ${containerName} 2>/dev/null |
           jq -er --arg instance "$instance" '.[0] |
             if .Config.Labels["io.wave-os.component"] == "${component}" and
                .Config.Labels["io.wave-os.supervisor"] == $instance
             then .Id else empty end'); then
-          "''${transport[@]}" stop --time 20 "$container_id" >/dev/null 2>&1 || true
+          podman stop --time 20 "$container_id" >/dev/null 2>&1 || true
         fi
         if [[ -n "$child" ]]; then
           wait "$child" || true
@@ -228,10 +218,15 @@ let
       trap cleanup EXIT
       trap 'exit 143' TERM
       trap 'exit 130' INT
-      "''${transport[@]}" run --rm --name ${containerName} \
+      podman run --rm --name ${containerName} \
         --label io.wave-os.component=${component} \
         --label "io.wave-os.supervisor=$instance" \
-        --pull=missing --network bridge --http-proxy=false \
+        --pull=missing --http-proxy=false \
+        --network ${
+          lib.escapeShellArg (
+            "pasta:" + lib.concatMapStringsSep "," (port: "-T,${toString port}") containerPorts
+          )
+        } \
         --cap-drop ALL --security-opt no-new-privileges \
         --read-only --tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m,mode=1777 \
         --pids-limit 256 --memory 1g --cpus 2 \
@@ -249,34 +244,13 @@ in
   options.services.frida.enable = lib.mkEnableOption "Frida, the household assistant on Telegram";
 
   config = lib.mkIf cfg.enable {
-    assertions = [
-      {
-        assertion = pkgs.stdenv.hostPlatform.isDarwin;
-        message = "Frida launchd supervision requires Darwin.";
-      }
-    ];
-    home.activation.frida = lib.hm.dag.entryBetween [ "setupLaunchAgents" ] [ "writeBoundary" ] ''
-      run install -d -m 0700 ${lib.escapeShellArg logDirectory}
-    '';
-    launchd.agents = {
-      frida = {
-        enable = true;
-        domain = "user";
-        config = {
-          ProgramArguments = [ (lib.getExe supervisor) ];
-          RunAtLoad = true;
-          KeepAlive = true;
-          ProcessType = "Background";
-          ThrottleInterval = 30;
-          ExitTimeOut = 30;
-          Umask = 63;
-          StandardOutPath = "${logDirectory}/launchd.log";
-          StandardErrorPath = "${logDirectory}/launchd.error.log";
-        };
+    systemd.user.services = {
+      frida = lib.recursiveUpdate (service "Frida, the household assistant" (lib.getExe supervisor)) {
+        Service.TimeoutStopSec = 30;
       };
     }
     // lib.mapAttrs' (
-      name: bridge: lib.nameValuePair "frida-mcp-${name}" (bridgeAgent name bridge)
+      name: bridge: lib.nameValuePair "frida-mcp-${name}" (bridgeService name bridge)
     ) bridges;
   };
 }

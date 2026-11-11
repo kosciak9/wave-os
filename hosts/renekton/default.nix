@@ -137,29 +137,8 @@
   sops.secrets =
     lib.genAttrs
       [
-        "alfred/env"
-        "frida/env"
-        "frida/mcp-token"
-        "frida/home-assistant-mcp-url"
-        "frida/anytype-api-key"
-        "frida/anytype-space-id"
-        "alfred/prompt.md"
-        "alfred/mcp-token"
-        "alfred/anytype-api-key"
-        "alfred/anytype-space-id"
-        "alfred/obsidian-vault-path"
-        "alfred/google-workspace-client.json"
-        "alfred/google-workspace-email"
-        "alfred/twenty-mcp-url"
-        "alfred/twenty-api-key"
-        "alfred/substack-publication-url"
-        "alfred/substack-session-token"
-        "alfred/x-session.json"
-        "alfred/openrouter-api-key"
         "camofox/access-key"
         "camofox/vnc-password"
-        "protonmail/address"
-        "protonmail/bridge-password"
         "mcp-gateway/api-key"
         "cliproxyapi/api-key"
         "cliproxyapi/base-url"
@@ -168,8 +147,6 @@
         "cliproxyapi/management-key"
         "cliproxyapi/opencode-go-keys"
         "cliproxyapi/opencode-zen-keys"
-        "slack-mirror/mcp-token"
-        "slack-mirror/session.json"
       ]
       (_: {
         owner = "kosciak";
