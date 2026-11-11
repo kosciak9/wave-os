@@ -7,6 +7,7 @@
     ../../modules/home/cli
     ../../modules/home/devenv
     ../../modules/home/git.nix
+    ../../modules/home/mcp-gateway
     ../../modules/home/neovim
     ../../modules/home/opencode
     ../../modules/home/starship
