@@ -723,9 +723,11 @@ let
     (poczta, kalendarz, Slack, notatki, CRM, T3, sieć i inne MCP): masz tę rozmowę, swoją
     pamięć, skille i pliki z czatu. Wszystko inne robi pracownik w tle, którego uruchamiasz
     narzędziem subagent (agent general); kilka niezależnych spraw możesz dać kilku pracownikom
-    naraz albo jednemu, który sam podzieli pracę. Pracownik nie widzi tej rozmowy, więc dostaje
-    samowystarczalny brief: cel, fakty, które już znasz, kryteria odbioru i czego nie robić bez
-    zgody właściciela. Po zleceniu zakończ turę; raport przyjdzie sam. Gdy zlecenie wynika
+    naraz albo jednemu, który sam podzieli pracę. Pracownik nie widzi tej rozmowy, więc zadanie
+    ma stać samo: cel, fakty, które już znasz, kryteria odbioru i czego nie robić bez zgody
+    właściciela. Zanim pracownik ruszy, dyspozytor (osobny, mocniejszy model, który widzi tę
+    rozmowę, twoją pamięć i skille) dopisuje mu brief i dobiera model. Po zleceniu zakończ turę;
+    raport przyjdzie sam. Gdy zlecenie wynika
     z wiadomości właściciela, powiedz mu krótko, że się tym zajmujesz; po zaplanowanym poleceniu
     albo pobudce odpowiedz NO_REPLY i odezwij się dopiero z istotnym wynikiem. Nie zgaduj tego,
     co pracownik dopiero sprawdzi.
@@ -734,8 +736,8 @@ let
     niego nie zmienia, kwituj NO_REPLY, tak jak zaplanowane polecenie bez wyniku.
 
     Każde zadanie oznacz celem (intent), czyli rodzajem zadania, zawsze tym samym dla tego
-    samego rodzaju. Pracownik działa domyślnie na Lunie, najtańszej; do zadania możesz wybrać
-    inny model (haiku, sonnet, sol), opisany przy narzędziu subagent. Gdy zadanie o tym samym
+    samego rodzaju. Model pracownika możesz podpowiedzieć (haiku, sonnet, sol, opisane przy
+    narzędziu subagent); ostatecznie wybiera go dyspozytor. Gdy zadanie o tym samym
     celu dwa razy się nie uda, uprząż nie uruchomi trzeciej próby: wtedy zapytaj właściciela
     albo odpuść, nie obchodź tego innym celem.
 
@@ -813,6 +815,25 @@ let
     '';
   };
 
+  # Between Alfred and his workers: it reads what he asked, the conversation, his memory and
+  # skills, picks each task's model and writes its brief. The harness adds the models and
+  # the answer's format.
+  dispatcherPrompt = ''
+    Jesteś dyspozytorem asystenta Alfreda. Alfred, szybki model, rozmawia z właścicielem
+    i postanowił zlecić zadania pracownikom; opisał, czego trzeba. Pracownik nie widzi rozmowy
+    ani pamięci Alfreda: zna tylko brief, który napiszesz.
+
+    Na podstawie rozmowy, pamięci i skilli wybierz dla każdego zadania model pracownika,
+    najtańszy, który zadanie udźwignie; default to Luna, najtańsza, do prostych odczytów,
+    sprawdzeń i krótkich zadań. Model wskazany przez Alfreda traktuj jako podpowiedź. Napisz
+    brief: cel, fakty potrzebne do zadania, czego nie robić bez zgody właściciela i co ma
+    wrócić w raporcie. Zachowaj wszystkie konkrety z zadania Alfreda (nazwy, liczby,
+    identyfikatory, linki, ścieżki). Długość briefu dopasuj do zadania: proste sprawdzenie to
+    kilka zdań, złożona praca dostaje pełny brief. Nie dodawaj zadań, o które nikt nie prosił, i nie
+    zmyślaj faktów; czego nie wiesz, każ pracownikowi ustalić. Popraw błędy Alfreda (daty,
+    kto co powiedział).
+  '';
+
   # When the harness wakes Alfred to review his sources, with the guard's open matters.
   reviews = {
     cron = "0 9,13,18 * * *";
@@ -836,6 +857,12 @@ let
         "Alfred, scheduled to pobudki i polecenia z harmonogramu, a report to raporty pracowników."
       ];
       heading = "Otwarte sprawy z rozmowy, zebrane przez strażnika:";
+      # Luna listed answered questions and calendar entries as open matters; Sonnet keeps to
+      # what is open, as well as Opus at half the price (alfred-evals guard replay).
+      model = {
+        provider = "openrouter";
+        modelId = "anthropic/claude-sonnet-5.5";
+      };
       wake = "Pobudka od strażnika w otwartej sprawie:";
     };
   };
@@ -871,10 +898,10 @@ let
 
     export default {
         prompt: prompt + ${builtins.toJSON (proactivityGuidance + xGuidance + frontGuidance)},
-    	// Alfred talks and writes his workers' briefs on Opus; his workers, the
-    	// guard and his memory run on cheaper models. Any of them that fails falls
-    	// back to Luna on Codex, past OpenRouter.
-    	model: { provider: "openrouter", modelId: "anthropic/claude-opus-5.5", thinkingLevel: "low" },
+    	// Alfred talks on Terra, fast; Opus briefs his workers (the dispatcher) and
+    	// guards his open matters; his workers and memory run on cheaper models. Any
+    	// of them that fails falls back to Luna on Codex, past OpenRouter.
+    	model: { provider: "openrouter", modelId: "openai/gpt-6.1-terra", thinkingLevel: "low" },
     	fallbackModel: { provider: "openai-codex", modelId: "gpt-6-luna", thinkingLevel: "low" },
     	smallModel: { provider: "openrouter", modelId: "openai/gpt-6-luna" },
     	// The container runs in UTC; Alfred reads and sets times in the owner's.
@@ -914,8 +941,12 @@ let
         )
       },
     		mcp: ${builtins.toJSON (policy "alfred" // lib.mapAttrs (_: remote: remote.tools) remotes)},
-    		// A task gets Luna unless Alfred picks one of these for it.
+    		// A task gets Luna unless the dispatcher picks one of these for it.
     		model: luna,
+    		dispatcher: {
+    			model: { provider: "openrouter", modelId: "anthropic/claude-opus-5.5", thinkingLevel: "low" },
+    			prompt: ${builtins.toJSON dispatcherPrompt},
+    		},
     		models: {
     			haiku: {
     				model: { provider: "openrouter", modelId: "anthropic/claude-haiku-5.5", thinkingLevel: "low" },
@@ -1091,8 +1122,8 @@ in
     };
     image = lib.mkOption {
       type = lib.types.strMatching "[^@]+@sha256:[0-9a-f]{64}";
-      # house-agents 4ad1f49 (linux/amd64, linux/arm64)
-      default = "ghcr.io/kosciak9/house-agents@sha256:5c12614c9e74511a9565638144e08e496e7e900696239f470a093eae37103adb";
+      # house-agents e8fa1e0 (linux/amd64, linux/arm64)
+      default = "ghcr.io/kosciak9/house-agents@sha256:a67666b00c358098503cf7aa187b267ab57c29eca2da64b725c26c402a5e9ecc";
       description = "The house-agents image, pinned by digest.";
     };
     gotenbergImage = lib.mkOption {
