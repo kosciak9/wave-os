@@ -734,10 +734,10 @@ let
     niego nie zmienia, kwituj NO_REPLY, tak jak zaplanowane polecenie bez wyniku.
 
     Każde zadanie oznacz celem (intent), czyli rodzajem zadania, zawsze tym samym dla tego
-    samego rodzaju. Pracownik działa domyślnie na Lunie; zadanie wieloetapowe, z kodem albo
-    wymagające starannego pisania, a także takie, które Lunie już się nie udało, możesz dać na
-    model sol. Gdy zadanie o tym samym celu dwa razy się nie uda, uprząż nie uruchomi trzeciej
-    próby: wtedy zapytaj właściciela albo odpuść, nie obchodź tego innym celem.
+    samego rodzaju. Pracownik działa domyślnie na Lunie, najtańszej; do zadania możesz wybrać
+    inny model (haiku, sonnet, sol), opisany przy narzędziu subagent. Gdy zadanie o tym samym
+    celu dwa razy się nie uda, uprząż nie uruchomi trzeciej próby: wtedy zapytaj właściciela
+    albo odpuść, nie obchodź tego innym celem.
 
     Pilnuj spraw w czasie: gdy czekasz na odpowiedź właściciela, na kogoś innego albo na termin,
     ustaw sobie pobudkę narzędziem wake_at: godzina (czas Europe/Warsaw, jak w znaczniku czasu
@@ -751,7 +751,9 @@ let
     i na końcu każdego wpisu z godziną. Nowe nieprzeczytane maile (Gmail, Proton), wiadomości ze
     Slacka, cudze wiadomości z WhatsAppa, sesje T3, które się skończyły albo czekają na
     właściciela, i cudze zmiany w Anytype uprząż dopisuje do rozmowy po cichu, w blokach <source>,
-    bez budzenia cię. O 9:00, 13:00 i 18:00 budzi cię na przegląd: zajmij się tym, co od
+    bez budzenia cię. Sesja T3, która czeka na właściciela, nie udała się, urwała albo zostawiła
+    otwarty PR, budzi cię dopiero wtedy, gdy stoi bez ruchu od dwóch godzin. O 9:00, 13:00
+    i 18:00 budzi cię na przegląd: zajmij się tym, co od
     poprzedniego przeglądu przyszło ze źródeł, i otwartymi sprawami, które zebrał strażnik, osobny
     agent pilnujący spraw z rozmowy i twojego notatnika. Strażnik ustawia ci też pobudki w tych
     sprawach; widzisz je wśród pobudek z etykietą guard, a kalendarza z etykietą kalendarz. Nie
@@ -823,7 +825,11 @@ let
         "jeszcze coś zrobić: pytania, na które właściciel ma odpowiedzieć, plany i bloki pracy"
         "z czasem, obietnice Alfreda albo właściciela, terminy. To, co Alfred tylko przekazał"
         "właścicielowi (alert, faktura, powiadomienie), nie jest otwartą sprawą, dopóki"
-        "właściciel nie poprosi o działanie. Pomiń sprawy zamknięte. Każda sprawa w jednej linii:"
+        "właściciel nie poprosi o działanie. Nie są nią też: pytanie właściciela, na które Alfred"
+        "już odpowiedział, nawet odmownie; to, na co pracownik trafił przy okazji, a o co nikt nie"
+        "prosił; stałe polecenia i dawne harmonogramy; sesje T3 i PR-y, które właściciel widzi sam."
+        "Sprawa, którą właściciel odłożył, wraca na czas, który sam wskazał; ta, którą zbył albo"
+        "zamknął, jest zamknięta. Pomiń sprawy zamknięte. Każda sprawa w jednej linii:"
         "czego dotyczy, od kiedy wisi i jaki był ostatni ruch. Bez wstępu i komentarza; jeśli nic"
         "nie jest otwarte, napisz „(brak)”. Zacznij każdą linię od chwili, w której warto do sprawy"
         "wrócić, w przyszłości: „RRRR-MM-DD GG:MM | ”. W zapisie user to właściciel, agent to"
@@ -861,11 +867,15 @@ let
 
     ${builtins.readFile ./sources.ts}
 
+    const luna = { provider: "openrouter", modelId: "openai/gpt-6-luna", thinkingLevel: "low" } as const;
+
     export default {
         prompt: prompt + ${builtins.toJSON (proactivityGuidance + xGuidance + frontGuidance)},
-    	model: { provider: "openrouter", modelId: "openai/gpt-6-luna", thinkingLevel: "low" },
+    	// Alfred talks and writes his workers' briefs on Opus; his workers, the
+    	// guard and his memory run on cheaper models. Any of them that fails falls
+    	// back to Luna on Codex, past OpenRouter.
+    	model: { provider: "openrouter", modelId: "anthropic/claude-opus-5.5", thinkingLevel: "low" },
     	fallbackModel: { provider: "openai-codex", modelId: "gpt-6-luna", thinkingLevel: "low" },
-    	// The model itself, so its fallback covers memory as well.
     	smallModel: { provider: "openrouter", modelId: "openai/gpt-6-luna" },
     	// The container runs in UTC; Alfred reads and sets times in the owner's.
     	timeZone: "Europe/Warsaw",
@@ -904,11 +914,20 @@ let
         )
       },
     		mcp: ${builtins.toJSON (policy "alfred" // lib.mapAttrs (_: remote: remote.tools) remotes)},
-    		// Besides Alfred's own model, which a task gets unless it picks one of these.
+    		// A task gets Luna unless Alfred picks one of these for it.
+    		model: luna,
     		models: {
+    			haiku: {
+    				model: { provider: "openrouter", modelId: "anthropic/claude-haiku-5.5", thinkingLevel: "low" },
+    				description: "Claude Haiku 5.5, w cenie Luny: szybkie odczyty, zestawienia i krótkie teksty, gdy Luna radzi sobie słabo.",
+    			},
+    			sonnet: {
+    				model: { provider: "openrouter", modelId: "anthropic/claude-sonnet-5.5", thinkingLevel: "medium" },
+    				description: "Claude Sonnet 5.5, około 20 razy droższy od Luny: staranne pisanie, analiza i ocena, zadania wieloetapowe.",
+    			},
     			sol: {
     				model: { provider: "openrouter", modelId: "openai/gpt-6-sol", thinkingLevel: "medium" },
-    				description: "Mocniejszy i około 20 razy droższy od domyślnej Luny: zadania wieloetapowe, kod, staranne pisanie albo to, co Lunie się nie udało.",
+    				description: "GPT-6 Sol, około 20 razy droższy od Luny: kod i długie zadania techniczne, wieloetapowe.",
     			},
     		},
     	},
@@ -916,6 +935,7 @@ let
     		browser: {
     			description: ${builtins.toJSON browser.description},
     			prompt: ${builtins.toJSON browser.prompt},
+    			model: luna,
     			mcp: ${builtins.toJSON (policy "browser")},
     			// Lightpanda from the image, a fresh one for each run; only reading: Camofox interacts.
     			lightpanda: true,
@@ -923,6 +943,7 @@ let
             "x-browser": {
                 description: ${builtins.toJSON xBrowser.description},
                 prompt: ${builtins.toJSON xBrowser.prompt},
+                model: luna,
                 mcp: ${builtins.toJSON (policy "x-browser")},
             },
     	},
@@ -1070,8 +1091,8 @@ in
     };
     image = lib.mkOption {
       type = lib.types.strMatching "[^@]+@sha256:[0-9a-f]{64}";
-      # house-agents 43550ad (linux/amd64, linux/arm64)
-      default = "ghcr.io/kosciak9/house-agents@sha256:cd3bc2d54b9430b1a0610a9ed882a7e50a604a78b6b3732f9f7b2784fe792c3e";
+      # house-agents 4ad1f49 (linux/amd64, linux/arm64)
+      default = "ghcr.io/kosciak9/house-agents@sha256:5c12614c9e74511a9565638144e08e496e7e900696239f470a093eae37103adb";
       description = "The house-agents image, pinned by digest.";
     };
     gotenbergImage = lib.mkOption {
