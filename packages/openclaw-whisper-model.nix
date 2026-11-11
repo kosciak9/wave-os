@@ -25,6 +25,6 @@ stdenvNoCC.mkDerivation {
     description = "Whisper large-v3-turbo quantized speech recognition model for OpenClaw";
     homepage = "https://huggingface.co/ggerganov/whisper.cpp";
     license = lib.licenses.mit;
-    platforms = [ "aarch64-darwin" ];
+    platforms = lib.platforms.all;
   };
 }

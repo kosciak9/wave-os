@@ -18,7 +18,7 @@ let
     ];
     text = ''
       if ! dns_name=$(tailscale status --json 2>/dev/null | jq -er '
-        [.Peer[] | select(.HostName == "renekton") | .DNSName] |
+        [.Peer[] | select(.HostName == "zilean") | .DNSName] |
         select(length == 1) | .[0] | rtrimstr(".") |
         select(test("^[a-zA-Z0-9-]+\\.[a-zA-Z0-9.-]+\\.ts\\.net$"))
       '); then

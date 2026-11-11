@@ -8,7 +8,6 @@
 let
   adapterRev = "616c822e4be208e23695ccdb1afff9f2bdbbb760";
   languageToolVersion = "6.6";
-  platform = "linux-arm64";
   debianSnapshot = "20260914T000000Z";
 in
 stdenvNoCC.mkDerivation {
@@ -109,7 +108,7 @@ stdenvNoCC.mkDerivation {
 
   passthru = {
     adapterCommit = adapterRev;
-    inherit debianSnapshot languageToolVersion platform;
+    inherit debianSnapshot languageToolVersion;
   };
 
   meta = {

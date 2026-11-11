@@ -1,43 +1,25 @@
 {
-  config,
   lib,
   pkgs,
   ...
 }:
 
 let
-  homeDirectory = config.home.homeDirectory;
   podman = lib.getExe pkgs.podman;
-  jq = lib.getExe pkgs.jq;
   image = "docker.io/lightpanda/browser:1.0.3@sha256:d901cf2374b8372935f690da1db896b8c1d5317022d462fdceeaf4813e8be724";
   lightpandaAgent = pkgs.writeShellApplication {
     name = "lightpanda-mcp-agent";
-    runtimeInputs = [
-      pkgs.podman
-      pkgs.jq
-      pkgs.coreutils
-    ];
+    runtimeInputs = [ pkgs.podman ];
     text = ''
       set -euo pipefail
-      deadline=$((SECONDS + 180))
-      while ! info=$(${podman} --connection openclaw-sandbox info --format json 2>/dev/null) ||
-        ! printf '%s\n' "$info" | ${jq} -e '.host.security.rootless == true' >/dev/null 2>&1; do
-        if (( SECONDS >= deadline )); then
-          printf '%s\n' "openclaw-sandbox was not reachable as a rootless Podman connection within 180 seconds" >&2
-          exit 1
-        fi
-        sleep 2
-      done
-
-      ${podman} --connection openclaw-sandbox network inspect openclaw-lightpanda >/dev/null 2>&1 ||
-        ${podman} --connection openclaw-sandbox network create --driver bridge openclaw-lightpanda >/dev/null
-      ${podman} --connection openclaw-sandbox rm --force openclaw-lightpanda >/dev/null 2>&1 || true
+      ${podman} network inspect openclaw-lightpanda >/dev/null 2>&1 ||
+        ${podman} network create --driver bridge openclaw-lightpanda >/dev/null
+      ${podman} rm --force openclaw-lightpanda >/dev/null 2>&1 || true
 
       # Every MCP session is an isolated page and cookie jar; nothing persists.
-      exec ${podman} --connection openclaw-sandbox run --rm \
+      exec ${podman} run --rm \
         --name openclaw-lightpanda \
         --pull=missing \
-        --platform linux/arm64 \
         --network openclaw-lightpanda \
         --publish 127.0.0.1:9378:9378 \
         --read-only \
@@ -59,18 +41,14 @@ let
   };
 in
 {
-  launchd.agents.lightpanda-mcp = {
-    enable = true;
-    domain = "gui";
-    config = {
-      ProgramArguments = [ (lib.getExe lightpandaAgent) ];
-      RunAtLoad = true;
-      KeepAlive = true;
-      ProcessType = "Background";
-      Umask = 63;
-      ThrottleInterval = 10;
-      StandardOutPath = "${homeDirectory}/Library/Logs/OpenClaw/lightpanda.log";
-      StandardErrorPath = "${homeDirectory}/Library/Logs/OpenClaw/lightpanda.error.log";
+  systemd.user.services.lightpanda-mcp = {
+    Unit.Description = "Lightpanda MCP browser";
+    Service = {
+      ExecStart = lib.getExe lightpandaAgent;
+      Restart = "always";
+      RestartSec = 10;
+      UMask = "0077";
     };
+    Install.WantedBy = [ "default.target" ];
   };
 }

@@ -358,6 +358,14 @@
             spotifast
             t3code-cli
             t3code-desktop
+            openclaw-languagetool-mcp-context
+            openclaw-languagetool-mcp-image
+            openclaw-whisper-model
+            anytype-mcp
+            substack-mcp
+            twikit-x-mcp
+            whatsapp-mcp
+            workspace-mcp
             ;
         };
         ${darwinSystem} = {
@@ -370,14 +378,6 @@
             slack-mirror
             slack-mirror-context
             slack-mirror-image
-            openclaw-languagetool-mcp-context
-            openclaw-languagetool-mcp-image
-            openclaw-whisper-model
-            anytype-mcp
-            substack-mcp
-            twikit-x-mcp
-            whatsapp-mcp
-            workspace-mcp
             camofox-browser-source
             camofox-browser-cli
             ;
