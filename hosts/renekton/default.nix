@@ -10,7 +10,6 @@
     ../../modules/wave/darwin.nix
     ../../modules/sops.nix
     ../../modules/caddy/darwin.nix
-    ../../modules/cliproxyapi/darwin.nix
     ../../modules/monitoring/darwin.nix
     ./firewall.nix
     ./network-guard.nix
@@ -142,11 +141,6 @@
         "mcp-gateway/api-key"
         "cliproxyapi/api-key"
         "cliproxyapi/base-url"
-        "cliproxyapi/quota-key"
-        "cliproxyapi/client-keys"
-        "cliproxyapi/management-key"
-        "cliproxyapi/opencode-go-keys"
-        "cliproxyapi/opencode-zen-keys"
       ]
       (_: {
         owner = "kosciak";

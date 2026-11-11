@@ -1,7 +1,6 @@
 { lib, ... }:
 {
   imports = [
-    ../../modules/home/mcp-gateway
     ../../modules/home/agents
     ../../modules/home/podman/darwin.nix
     ../../modules/home/camofox
