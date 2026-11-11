@@ -32,7 +32,7 @@ let
   # T3 runs html_preview's browser from the Chrome for Testing version it pins and
   # downloads its own build when that file is missing; the download does not run
   # on NixOS.
-  previewBrowserVersion = "156.0.8078.80";
+  previewBrowserVersion = "157.0.8103.38";
   previewBrowserPlatform =
     {
       x86_64-linux = "linux64";

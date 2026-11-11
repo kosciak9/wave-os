@@ -8,23 +8,24 @@
   makeWrapper,
   installShellFiles,
   versionCheckHook,
+  vulkan-loader,
 }:
 let
   releases = {
     x86_64-linux = {
       target = "linux-x64";
-      hash = "sha256-wImJK/eSLi5zxvRKXR6hJcmfcON4wYNhy77S+6GSDmw=";
+      hash = "sha256-AUECUzXaM0dZzs2Ns0g+CXcvNgDKA2dGmFJOfZQpE2I=";
     };
     aarch64-darwin = {
       target = "darwin-arm64";
-      hash = "sha256-/s+ylu0UKULQyy3uHFOm+spUpAEqMSpHDU3GwyFdGrM=";
+      hash = "sha256-fS64wGh7cMoDqdNUmDgYUtN5KYNYnoLR+xgxwI8LIwE=";
     };
   };
   release = releases.${stdenvNoCC.hostPlatform.system};
 in
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "t3code-cli";
-  version = "0.1.7";
+  version = "0.1.9";
 
   src = fetchurl {
     url = "https://github.com/pingdotgg/t3code/releases/download/v${finalAttrs.version}/t3-${finalAttrs.version}-${release.target}.tar.gz";
@@ -39,7 +40,11 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     autoPatchelfHook
     patchelf
   ];
-  buildInputs = lib.optional stdenvNoCC.hostPlatform.isLinux stdenv.cc.cc.lib;
+  # Voice transcription loads libggml-vulkan, which needs the Vulkan loader.
+  buildInputs = lib.optionals stdenvNoCC.hostPlatform.isLinux [
+    stdenv.cc.cc.lib
+    vulkan-loader
+  ];
 
   dontConfigure = true;
   dontBuild = true;
@@ -48,7 +53,8 @@ stdenvNoCC.mkDerivation (finalAttrs: {
 
   postUnpack = lib.optionalString stdenvNoCC.hostPlatform.isLinux ''
     rm -r "$sourceRoot/node_modules/@ff-labs/fff-bin-linux-x64-musl" \
-      "$sourceRoot/node_modules/@yuuang/ffi-rs-linux-x64-musl"
+      "$sourceRoot/node_modules/@yuuang/ffi-rs-linux-x64-musl" \
+      "$sourceRoot/node_modules/@koromix/koffi-linux-x64/musl_x64"
   '';
 
   installPhase = ''
