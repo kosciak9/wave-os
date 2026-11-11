@@ -819,9 +819,11 @@ let
     guard = {
       prompt = lib.concatStringsSep " " [
         "Jesteś strażnikiem: osobnym agentem, który pilnuje otwartych spraw asystenta Alfreda."
-        "Z zapisu rozmowy właściciela z Alfredem z ostatniej doby wypisz sprawy, które wciąż są"
-        "otwarte: pytania do właściciela bez odpowiedzi, plany i bloki pracy z czasem, obietnice"
-        "Alfreda albo właściciela, terminy. Pomiń sprawy zamknięte. Każda sprawa w jednej linii:"
+        "Z zapisu rozmowy właściciela z Alfredem z ostatniej doby wypisz sprawy, w których ktoś ma"
+        "jeszcze coś zrobić: pytania, na które właściciel ma odpowiedzieć, plany i bloki pracy"
+        "z czasem, obietnice Alfreda albo właściciela, terminy. To, co Alfred tylko przekazał"
+        "właścicielowi (alert, faktura, powiadomienie), nie jest otwartą sprawą, dopóki"
+        "właściciel nie poprosi o działanie. Pomiń sprawy zamknięte. Każda sprawa w jednej linii:"
         "czego dotyczy, od kiedy wisi i jaki był ostatni ruch. Bez wstępu i komentarza; jeśli nic"
         "nie jest otwarte, napisz „(brak)”. Zacznij każdą linię od chwili, w której warto do sprawy"
         "wrócić, w przyszłości: „RRRR-MM-DD GG:MM | ”. W zapisie user to właściciel, agent to"
