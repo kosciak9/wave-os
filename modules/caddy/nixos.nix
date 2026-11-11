@@ -1,14 +1,13 @@
 # Public names of the model gateway (tokens.wave.exposed) and the MCP gateway, both tailnet-only.
 {
   config,
+  lib,
   pkgs,
   ...
 }:
 
 let
   mcpGateway = import ../mcp-gateway/settings.nix;
-  # TODO(cutover): settings.nix still names renekton's gateway until clients move here.
-  mcpGatewayURL = "https://${config.networking.hostName}.dusky-diatonic.ts.net:18111";
 in
 {
   sops = {
@@ -38,12 +37,19 @@ in
       extraConfig =
         builtins.replaceStrings
           [ "@MCP_GATEWAY_URL@" "@MCP_GATEWAY_ADDR@" ]
-          [ mcpGatewayURL mcpGateway.addr ]
+          [ mcpGateway.baseURL mcpGateway.addr ]
           (builtins.readFile ./gateway.Caddyfile);
     };
     # Caddy fetches the certificate of the MCP gateway's tailnet name from tailscaled.
     tailscale.permitCertUid = config.services.caddy.user;
   };
+
+  # Through the site name, so a lost TLS policy or a certificate that Caddy cannot renew fails
+  # the check instead of the gateway itself; pinned to loopback, so it checks this host's Caddy.
+  wave.health.checks.tokens = ''
+    test "$(${lib.getExe pkgs.curl} --silent --output /dev/null --write-out '%{http_code}' --max-time 5 \
+      --resolve tokens.wave.exposed:443:127.0.0.1 https://tokens.wave.exposed/v1/models)" = 401
+  '';
 
   networking.firewall.interfaces.tailscale0.allowedTCPPorts = [
     443

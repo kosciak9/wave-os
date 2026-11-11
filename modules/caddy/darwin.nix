@@ -1,31 +1,10 @@
 {
-  config,
   lib,
   pkgs,
   ...
 }:
 
-let
-  caddy = pkgs.caddy.withPlugins {
-    plugins = [ "github.com/caddy-dns/cloudflare@v0.2.4" ];
-    hash = "sha256-tubXIDCJnO2mvdnPlZclwDhNGaeeYLSt7lnni3+pXDo=";
-  };
-  mcpGateway = import ../mcp-gateway/settings.nix;
-  caddyConfig = pkgs.writeText "Caddyfile" (
-    builtins.replaceStrings
-      [ "@MCP_GATEWAY_URL@" "@MCP_GATEWAY_ADDR@" ]
-      [ mcpGateway.baseURL mcpGateway.addr ]
-      (builtins.readFile ./Caddyfile)
-  );
-in
 {
-  sops = {
-    secrets."cloudflare/dns-api-token" = { };
-    templates."caddy-cloudflare.env" = {
-      content = "CLOUDFLARE_API_TOKEN=${config.sops.placeholder."cloudflare/dns-api-token"}";
-    };
-  };
-
   system.activationScripts.preActivation.text = ''
     /usr/bin/install -d -m 0750 -o root -g wheel /var/lib/caddy
     /usr/bin/touch /var/log/caddy.log /var/log/caddy-error.log
@@ -36,12 +15,10 @@ in
   launchd.daemons.caddy = {
     serviceConfig = {
       ProgramArguments = [
-        (lib.getExe caddy)
+        (lib.getExe pkgs.caddy)
         "run"
-        "--envfile"
-        config.sops.templates."caddy-cloudflare.env".path
         "--config"
-        "${caddyConfig}"
+        "${./Caddyfile}"
         "--adapter"
         "caddyfile"
       ];
