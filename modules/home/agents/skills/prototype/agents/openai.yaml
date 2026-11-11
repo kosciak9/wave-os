@@ -1,0 +1,6 @@
+interface:
+  display_name: "Prototype"
+  short_description: "Build several UI variants behind a live picker"
+  default_prompt: "Use $prototype to build three genuinely different versions of this component."
+policy:
+  allow_implicit_invocation: false
