@@ -239,6 +239,9 @@ class WorkspacePolicy(Middleware):
                 raise ToolError("Only calendar event creation and updates are permitted.")
             if arguments["action"] == "update" and not arguments.get("event_id"):
                 raise ToolError("Updating a calendar event requires its event ID.")
+        elif name == "update_drive_file":
+            if any(arguments.get(key) is not None for key in ("writers_can_share", "copy_requires_writer_permission")):
+                raise ToolError("Sharing settings are not permitted.")
         elif name == "modify_gmail_message_labels":
             # Gmail represents read/star flags and archiving as system-label changes.
             permitted_labels = {"INBOX", "UNREAD", "STARRED", "IMPORTANT"}
@@ -338,8 +341,7 @@ def main():
         "workspace-mcp",
         "--transport", "stdio",
         "--permissions",
-        "gmail:send" if "send_gmail_message" in policy["allowedTools"] else "gmail:drafts",
-        "calendar:full",
+        *policy["permissions"],
     ]
     upstream.main()
 

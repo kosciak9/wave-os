@@ -74,12 +74,79 @@ let
         # Sends only a saved draft, at most once (packages/workspace-mcp/launcher.py).
         "send_gmail_draft"
         "manage_event"
+      ]
+      # Sharing and permission changes stay off (packages/workspace-mcp/launcher.py): a mail he
+      # reads could ask him to share a file. Moving or copying one into a folder someone else
+      # already shares stays possible. A download URL would point at a file on the host.
+      ++ [
+        "search_drive_files"
+        "get_drive_file_content"
+        "list_drive_items"
+        "create_drive_folder"
+        "create_drive_file"
+        "import_to_google_doc"
+        "import_to_google_slides"
+        "import_to_google_sheets"
+        "update_drive_file"
+        "copy_drive_file"
+        "get_drive_file_permissions"
+        "check_drive_file_public_access"
+        "search_docs"
+        "get_doc_content"
+        "get_doc_as_markdown"
+        "list_docs_in_folder"
+        "inspect_doc_structure"
+        "create_doc"
+        "modify_doc_text"
+        "find_and_replace_doc"
+        "insert_doc_elements"
+        "insert_doc_image"
+        "update_doc_headers_footers"
+        "update_paragraph_style"
+        "batch_update_doc"
+        "create_table_with_data"
+        "manage_doc_tab"
+        "export_doc_to_pdf"
+        "list_spreadsheets"
+        "get_spreadsheet_info"
+        "read_sheet_values"
+        "list_sheet_tables"
+        "create_spreadsheet"
+        "create_sheet"
+        "modify_sheet_values"
+        "append_table_rows"
+        "format_sheet_range"
+        "manage_conditional_formatting"
+        "manage_sheet_tab"
+        "resize_sheet_dimensions"
+        "move_sheet_rows"
+        "manage_named_range"
+        "list_contacts"
+        "get_contact"
+        "search_contacts"
+        "list_contact_groups"
+        "get_contact_group"
+        "manage_contact"
+        "manage_contacts_batch"
+        "manage_contact_group"
+      ];
+      # workspace-mcp's levels, each with the ones below it; new ones need the owner's consent.
+      permissions = [
+        "gmail:drafts"
+        "calendar:full"
+        "drive:full"
+        "docs:full"
+        "sheets:full"
+        "contacts:full"
       ];
     };
-    # The Camofox browser (modules/home/camofox); its snapshots stay out of Alfred's thread.
+    # The Camofox browser (modules/home/camofox), for his browser and his workers.
     camofox = {
       port = 18093;
-      agent = "browser";
+      agent = [
+        "alfred"
+        "browser"
+      ];
       command = lib.getExe camofoxMcp;
       tools = [
         "camofox_create_tab"
@@ -93,7 +160,7 @@ let
         "camofox_close_tab"
       ];
     };
-    # Reads the publication and edits drafts; never creates, publishes or deletes.
+    # Reads the publication and its Notes and edits drafts; never creates, publishes or deletes.
     substack = {
       port = 18094;
       agent = "alfred";
@@ -124,6 +191,10 @@ let
         "get_publication_info"
         "research_creator_posts"
         "compare_publications"
+        "list_notes"
+        "get_note"
+        "list_scheduled_notes"
+        "research_creator_notes"
         "update_draft"
       ];
     };
@@ -152,6 +223,8 @@ let
       port = 18095;
       agent = "alfred";
       command = lib.getExe languagetoolMcp;
+      # Its image takes minutes to build, past a worker's wait for the server's tools.
+      prepare = lib.getExe pkgs.openclaw-languagetool-mcp-image;
       tools = [ "lt_check_text" ];
     };
     sandbox = {
@@ -197,16 +270,66 @@ let
   };
   # Reached by the container itself; credentials come from Podman secrets or OAuth.
   remotes = {
-    # Twenty CRM.
-    twenty.tools = [
-      "get_tool_catalog"
-      "learn_tools"
-      "execute_tool"
-      "list_object_metadata_names"
-      "list_skills"
-      "load_skills"
-      "search_help_center"
-    ];
+    # Twenty CRM: its records, read and written. Its schema, roles, webhooks, workflows and
+    # sent mail and campaigns stay with the owner.
+    twenty.tools =
+      let
+        read = one: many: [
+          "find_many_${many}"
+          "find_one_${one}"
+          "group_by_${many}"
+        ];
+        write = one: many: [
+          "create_one_${one}"
+          "create_many_${many}"
+          "update_one_${one}"
+          "update_many_${many}"
+          "upsert_many_${many}"
+          "delete_one_${one}"
+          "delete_many_${many}"
+        ];
+        records = one: many: read one many ++ write one many;
+        mergeable = one: many: records one many ++ [ "merge_many_${many}" ];
+      in
+      mergeable "company" "companies"
+      ++ mergeable "person" "people"
+      ++ mergeable "opportunity" "opportunities"
+      ++ mergeable "note" "notes"
+      ++ mergeable "task" "tasks"
+      ++ mergeable "problem" "problems"
+      ++ records "note_target" "note_targets"
+      ++ records "task_target" "task_targets"
+      ++ records "attachment" "attachments"
+      ++ records "timeline_activity" "timeline_activities"
+      ++ records "message_thread_target" "message_thread_targets"
+      ++ records "calendar_event_target" "calendar_event_targets"
+      ++ read "workspace_member" "workspace_members"
+      ++ read "message" "messages"
+      ++ read "message_thread" "message_threads"
+      ++ read "message_participant" "message_participants"
+      ++ read "calendar_event" "calendar_events"
+      ++ read "calendar_event_participant" "calendar_event_participants"
+      ++ read "dashboard" "dashboards"
+      ++ [
+        "create_file_upload"
+        "complete_file_upload"
+        "draft_email"
+        "create_calendar_event"
+        "find_connected_accounts"
+        "list_dashboards"
+        "get_dashboard"
+        "get_views"
+        "get_view_fields"
+        "get_view_filters"
+        "get_view_sorts"
+        "get_view_query_parameters"
+        "list_object_metadata_names"
+        "get_object_metadata"
+        "get_field_metadata"
+        "list_skills"
+        "load_skills"
+        "search_help_center"
+      ];
     # The read-only Slack mirror (modules/home/slack-mirror) on the host.
     slack.tools = [
       "status"
@@ -227,7 +350,6 @@ let
     t3.tools = [
       "list_scheduled_tasks"
       "schedule_task"
-      "update_scheduled_task"
       "delete_scheduled_task"
       "run_scheduled_task_now"
       "t3_project_list"
@@ -238,9 +360,7 @@ let
       "t3_thread_launch"
       "t3_thread_send"
       "t3_thread_wait"
-      "t3_pending_request_list"
-      "t3_pending_request_read"
-      "t3_pending_request_respond"
+      "t3_pending_request"
       "t3_environment_links"
       "t3_environment_read"
       "orchestrator_capabilities"
@@ -281,7 +401,9 @@ let
   };
   policy =
     agent:
-    lib.mapAttrs (_: bridge: bridge.tools) (lib.filterAttrs (_: bridge: bridge.agent == agent) bridges);
+    lib.mapAttrs (_: bridge: bridge.tools) (
+      lib.filterAttrs (_: bridge: lib.elem agent (lib.toList bridge.agent)) bridges
+    );
 
   obsidianMcp = pkgs.writeShellApplication {
     name = "alfred-obsidian-mcp";
@@ -304,6 +426,7 @@ let
   googlePolicy = pkgs.writeText "alfred-google-mcp-policy.json" (
     builtins.toJSON {
       allowedTools = bridges.google.tools;
+      inherit (bridges.google) permissions;
       # The container cannot read files the server saves on the host.
       inlineAttachments = true;
       gotenbergUrl = "http://127.0.0.1:${toString gotenbergPort}";
@@ -382,6 +505,7 @@ let
         WORKSPACE_ATTACHMENT_DIR="$state_directory/attachments" \
         WORKSPACE_SEND_LEDGER="$state_directory/sent-messages.json" \
         WORKSPACE_MCP_LOG_DIR="$state_directory/logs" WORKSPACE_MCP_LOG_LEVEL=WARNING \
+        WORKSPACE_MCP_DISABLE_LOCAL_FILES=true \
         ${python}/bin/python ${../../../packages/workspace-mcp/launcher.py} ${googlePolicy}
     '';
   };
@@ -435,7 +559,7 @@ let
     '';
   };
 
-  # One Camofox session for all of Alfred's browser subagents; each works in tabs of its own.
+  # One Camofox session for all of Alfred's browser subagents and workers; each works in tabs of its own.
   camofoxMcp = pkgs.writeShellApplication {
     name = "alfred-camofox-mcp";
     runtimeInputs = [ pkgs.coreutils ];
@@ -605,15 +729,21 @@ let
         )
       ))
       {
-        # ffmpeg turns recorded attachments into audio for Whisper.
-        Service.Environment =
-          lib.optional (bridge.inlineAttachments or false)
-            "PATH=${
-              lib.makeBinPath [
-                pkgs.ffmpeg
-                pkgs.coreutils
-              ]
-            }";
+        Service = {
+          # ffmpeg turns recorded attachments into audio for Whisper.
+          Environment =
+            lib.optional (bridge.inlineAttachments or false)
+              "PATH=${
+                lib.makeBinPath [
+                  pkgs.ffmpeg
+                  pkgs.coreutils
+                ]
+              }";
+        }
+        // lib.optionalAttrs (bridge ? prepare) {
+          ExecStartPre = bridge.prepare;
+          TimeoutStartSec = "15min";
+        };
       };
 
   browser = {
