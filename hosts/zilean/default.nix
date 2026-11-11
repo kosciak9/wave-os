@@ -49,7 +49,11 @@
         ];
       };
       tailscale0 = {
-        allowedTCPPorts = [ 22 ];
+        allowedTCPPorts = [
+          22
+          22000
+        ];
+        allowedUDPPorts = [ 22000 ];
         allowedUDPPortRanges = [
           {
             from = 60000;
@@ -209,6 +213,16 @@
     tailscale = {
       enable = true;
       extraSetFlags = [ "--operator=kosciak" ];
+    };
+    # Devices and folders are configured at runtime through `syncthing cli`; peers connect over the tailnet.
+    syncthing = {
+      enable = true;
+      user = "kosciak";
+      group = "users";
+      dataDir = "/home/kosciak";
+      configDir = "/home/kosciak/.config/syncthing";
+      overrideDevices = false;
+      overrideFolders = false;
     };
     fstrim.enable = true;
     # Daily short and monthly long self-tests; the 4 TB disk needs about 8 hours for the long one,
