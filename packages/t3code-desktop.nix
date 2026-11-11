@@ -13,6 +13,7 @@
   gtk3,
   libsecret,
   libxkbcommon,
+  vulkan-loader,
   claude-code,
   codex,
   opencode,
@@ -21,11 +22,11 @@
 }:
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "t3code-desktop";
-  version = "0.1.7";
+  version = "0.1.9";
 
   src = fetchurl {
     url = "https://github.com/pingdotgg/t3code/releases/download/v${finalAttrs.version}/T3-Code-${finalAttrs.version}-amd64.deb";
-    hash = "sha256-4Tc/gEe6WC8uQK/0s0tX2aNVUT1PtHw01J0Rtchw+f4=";
+    hash = "sha256-QYx4JfcxB7e1ujurrl47SFgB3CLZ3A1RivYy95BsvdE=";
   };
 
   nativeBuildInputs = [
@@ -41,6 +42,8 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     gtk3
     libsecret
     libxkbcommon
+    # Voice transcription loads libggml-vulkan, which needs the Vulkan loader.
+    vulkan-loader
   ];
 
   sourceRoot = "root";
@@ -64,6 +67,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     # NixOS uses glibc, not the additional Alpine prebuilds in the release.
     rm -r "$app/app/node_modules/@ff-labs/fff-bin-linux-x64-musl"
     rm -r "$app/app/node_modules/@yuuang/ffi-rs-linux-x64-musl"
+    rm -r "$app/app/node_modules/@koromix/koffi-linux-x64/musl_x64"
   '';
 
   installPhase = ''
