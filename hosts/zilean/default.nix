@@ -8,6 +8,7 @@
 {
   imports = [
     ./hardware.nix
+    ./alfred.nix
     ../../modules/wave/nixos.nix
     ../../modules/sops.nix
     ../../modules/monitoring/nixos.nix
@@ -186,32 +187,13 @@
   };
   security.sudo.wheelNeedsPassword = false;
 
-  # The Home Manager services read these through osConfig.
+  # The Home Manager services read these through osConfig; Alfred's are in ./alfred.nix.
   sops.secrets =
     lib.genAttrs
       [
         "mcp-gateway/api-key"
         "cliproxyapi/api-key"
         "cliproxyapi/base-url"
-        "alfred/env"
-        "alfred/prompt.md"
-        "alfred/mcp-token"
-        "alfred/anytype-api-key"
-        "alfred/anytype-space-id"
-        "alfred/obsidian-vault-path"
-        "alfred/google-workspace-client.json"
-        "alfred/google-workspace-email"
-        "alfred/twenty-mcp-url"
-        "alfred/twenty-api-key"
-        "alfred/substack-publication-url"
-        "alfred/substack-session-token"
-        "alfred/x-session.json"
-        "alfred/openrouter-api-key"
-        "camofox/vnc-password"
-        "protonmail/address"
-        "protonmail/bridge-password"
-        "slack-mirror/mcp-token"
-        "slack-mirror/session.json"
       ]
       (_: {
         owner = "kosciak";
