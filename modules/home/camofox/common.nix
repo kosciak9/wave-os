@@ -7,6 +7,8 @@
   buildArch,
   transport,
   transportExec,
+  # The host's loopback port for the API; the container keeps 9377.
+  port ? 9377,
   imageBuildPrelude ? "",
   extraRunArgs ? "",
 }:
@@ -55,7 +57,7 @@ let
   };
   commonRunArgs = ''
     --pull=never \
-    --publish 127.0.0.1:9377:9377 \
+    --publish 127.0.0.1:${toString port}:9377 \
     --cap-drop AUDIT_WRITE \
     --cap-drop MKNOD \
     --cap-drop NET_RAW \
