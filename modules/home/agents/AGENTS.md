@@ -72,12 +72,12 @@ edits.
   `delegate_task` returns. Outside T3, select the corresponding family from the
   native model catalog.
 
-  | Tier  | T3 provider and model              | Default options                                   | Recommended work                                                                                                                                       |
-  | ----- | ---------------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-  | Luna  | `codex` / `gpt-6-luna`             | `reasoningEffort: low`, `serviceTier: default`    | Cheap, bounded verification; focused exploration, extraction, classification and log triage. Not final judgment about correctness, security or design. |
-  | Sol   | `codex` / `gpt-6.1-sol`            | `reasoningEffort: medium`, `serviceTier: default` | Default for substantial implementation and technical investigation. Use `high` for subtle code review.                                                 |
-  | Opus  | `claudeAgent` / `claude-opus-5-5`  | `effort: high`, `fastMode: false`                 | UI/visual/design critique, difficult architectural judgment and high-risk or subtle analysis.                                                          |
-  | Fable | `claudeAgent` / `claude-fable-5-2` | `effort: high`                                    | Exceptionally difficult, open-ended or long-horizon work when Opus is demonstrably insufficient. Not a routine implementation or second-opinion model. |
+  | Tier  | T3 provider and model              | Default options                                   | Fallback when out of quota                               | Recommended work                                                                                                                                       |
+  | ----- | ---------------------------------- | ------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+  | Luna  | `codex` / `gpt-6-luna`             | `reasoningEffort: low`, `serviceTier: default`    | Haiku: `claudeAgent` / `claude-haiku-5-5`, `effort: low` | Cheap, bounded verification; focused exploration, extraction, classification and log triage. Not final judgment about correctness, security or design. |
+  | Sol   | `codex` / `gpt-6.1-sol`            | `reasoningEffort: medium`, `serviceTier: default` | Opus: `claudeAgent` / `claude-opus-5-5`, `effort: high`  | Default for substantial implementation and technical investigation. Use `high` for subtle code review.                                                 |
+  | Opus  | `claudeAgent` / `claude-opus-5-5`  | `effort: high`, `fastMode: false`                 | None                                                     | UI/visual/design critique, difficult architectural judgment and high-risk or subtle analysis.                                                          |
+  | Fable | `claudeAgent` / `claude-fable-5-2` | `effort: high`                                    | Astra: `codex` / `gpt-6-astra`, `reasoningEffort: high`  | Exceptionally difficult, open-ended or long-horizon work when Opus is demonstrably insufficient. Not a routine implementation or second-opinion model. |
 
 - Also use OpenCode Go through T3's `opencode` provider as an alternative for
   bounded and substantial technical work, not as a fifth quality tier. Start
@@ -90,26 +90,27 @@ edits.
 - A provider refusal such as `usage limit reached`, including OpenCode Go's
   separate per-model and per-plan limits, is a capacity failure. In T3,
   `task_cancel` the refused delegate first; otherwise T3 resumes it at the
-  reset. Do not retry or fan out more children on the exhausted model. Escalate
-  once to the next suitable tier: Luna work to Sol, substantial technical work
-  from Sol to Opus, and Opus work to Fable; never to a lower tier or a lateral
-  model (code review has its own stand-in below). Continue from the refused
-  delegate's brief, changes and evidence without discarding them, and tell the
-  user which source hit the limit and which one continues. If no suitable higher
-  tier is available, stop the delegated attempt and escalate to the operator.
+  reset. Do not retry or fan out more children on the exhausted model. Try the
+  tier's other route first (Codex or its OpenCode Go alternative); when neither
+  runs, give the work to the tier's fallback from the table until the quota
+  resets. A fallback stands in at the same tier and is not an escalation; code
+  review keeps its own stand-in below. Continue from the refused delegate's
+  brief, changes and evidence without discarding them, and tell the user which
+  source hit the limit and which one continues. If no fallback runs, stop the
+  delegated attempt and escalate to the operator.
 
-- Delegate code review to Sol, not Luna. The reviewer must be read-only and must
-  not be the subagent that wrote the change. Give it the requirements, relevant
-  diff and checks; inspect its evidence and findings yourself. Sol reviews
-  better than the other models: while Sol is out of quota, Sonnet (`claudeAgent`
-  / `claude-sonnet-5-5`, `effort: high`) reviews in its place until Sol's quota
-  resets. Add an Opus pass for high-risk/architectural concerns, not as a
-  routine replacement for Sol.
+- Delegate code review to Sol, not Luna or Haiku. The reviewer must be read-only
+  and must not be the subagent that wrote the change. Give it the requirements,
+  relevant diff and checks; inspect its evidence and findings yourself. Sol
+  reviews better than the other models: while Sol is out of quota, Sonnet
+  (`claudeAgent` / `claude-sonnet-5-5`, `effort: high`) reviews in its place
+  until Sol's quota resets. Add an Opus pass for high-risk/architectural
+  concerns, not as a routine replacement for Sol.
 - Always use Opus for frontend visual and design critique, even when Sol wrote
   or reviewed the code. Provide the design goals and screenshots of the actual
   running states, not only source code. Functional code review remains Sol's
   job. Escalate to Fable when Opus cannot resolve a particularly difficult
-  design problem or for the usage-limit escalation above.
+  design problem.
 - Escalate one tier only for a concrete failure or unresolved risk. Preserve the
   original brief, evidence and prior findings instead of repeating an unchanged
   prompt. Do not use `priority`, fast mode, `ultracode` or `ultrathink` for
