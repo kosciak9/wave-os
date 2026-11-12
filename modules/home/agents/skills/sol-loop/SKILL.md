@@ -70,6 +70,8 @@ Round brief:
 
 ```
 Review only. Do not edit, commit, push, comment on PRs, or start subagents.
+Do not run tests, checks or builds: the parent ran them in this shared
+checkout and its databases.
 Repo: <abs path> Base: <sha> Intent: <intent> Out of scope: <scope>
 Checks: <results>
 See: git diff <base> [-- <paths>]; git status --short (read untracked).
