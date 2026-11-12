@@ -70,10 +70,16 @@
   them without decryption with
   `yq 'del(.sops) | .. | select(tag != "!!map") | path | join("/")' <file>`.
 - Changing values needs the owner's admin key: give the owner commands for their
-  own terminal: `sops set --value-stdin <file> '["group"]["name"]'`,
-  `sops unset <file> '["group"]["name"]'` or `sops edit <file>`. A new host
-  needs its `ssh-to-age` key and a creation rule in `.sops.yaml`, then
-  `sops updatekeys`.
+  own terminal. Every `sops` call asks for its passphrase, so the owner types it
+  once: first, on its own, give
+  `SOPS_AGE_KEY="$(eval "$SOPS_AGE_KEY_CMD")" env -u SOPS_AGE_KEY_CMD zsh`; then
+  the `sops` commands to run in that shell; last, `exit`. `sops set` takes a
+  JSON value; set a single-line plain string with
+  `IFS= read -rs v; printf %s "$v" | jq -Rs . | sops set --value-stdin <file> '["group"]["name"]'; unset v`,
+  one per paste, since `read` takes the next pasted line as the value. Remove a
+  key with `sops unset <file> '["group"]["name"]'` and change a multi-line value
+  with `sops edit <file>`. A new host needs its `ssh-to-age` key and a creation
+  rule in `.sops.yaml`, then `sops updatekeys`.
 - `validateSopsFiles = false` leaves no evaluation-time check: before
   committing, confirm every declared key exists in the host file; one missing
   key fails all secrets on that host at activation.
