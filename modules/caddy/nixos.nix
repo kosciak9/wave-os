@@ -33,6 +33,15 @@ in
         admin off
         auto_https disable_redirects
         skip_install_trust
+        # A client whose Wi-Fi drops for about a minute stalls its upload or response; past the
+        # default 1m idle limits Caddy aborts the request (logged as 499/504). Both limits reset
+        # on every read or write, so 3m only lets such stalls through.
+        servers {
+          timeouts {
+            read_body_idle 3m
+            write_idle 3m
+          }
+        }
       '';
       extraConfig =
         builtins.replaceStrings
