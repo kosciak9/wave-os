@@ -135,14 +135,19 @@ showing the change in the running app:
   absolute paths). Add a short video when the change is about interaction,
   animation, or a flow that stills do not show well. Say briefly what changed,
   how to check it, and what is still missing.
+- Always give a web page's link as its `*.wave.exposed` URL, never `localhost`:
+  it is how the owner reaches pages on remote hosts. Serve the page beyond
+  loopback and give the URL that
+  `wave dashboard add <project> <branch> --port <port>` prints. Running it again
+  is harmless.
 - Only screenshots and videos of the current code count; a build, passing tests,
   or a mockup is not a substitute. Retake them when the UI changes again. Use
   sample data and keep secrets and private data out of them.
 - These rules are the user's standing request for browser work: they override
   any harness default against opening a browser to check your own edits.
 - For local pages, use T3 preview tools or a local headless browser. Every host
-  has T3's headless browser, so this works without a display. Camofox cannot
-  open them: its proxy blocks localhost and private addresses.
+  has T3's headless browser, so this works without a display. Camofox blocks
+  localhost and private addresses except `https://*.wave.exposed`.
 - If you cannot run or capture the UI, say so and fix that first. Do not hand
   over a UI change without showing it.
 
