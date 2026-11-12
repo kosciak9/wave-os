@@ -111,6 +111,19 @@
           };
           t3code-cli = final.callPackage ./packages/t3code-cli.nix { };
           mcp-proxy = final.callPackage ./packages/mcp-proxy.nix { };
+          leak-scan = final.callPackage ./packages/leak-scan.nix { inherit (prev) gh; };
+          # Every gh scans the PR and issue texts it publishes (packages/leak-scan.py).
+          gh = final.symlinkJoin {
+            name = "gh-leak-scan-${prev.gh.version}";
+            inherit (prev.gh) version;
+            paths = [
+              "${final.leak-scan}/libexec/gh"
+              prev.gh
+            ];
+            meta = prev.gh.meta // {
+              mainProgram = "gh";
+            };
+          };
           cliproxyapi = final.callPackage ./packages/cliproxyapi.nix { inherit prev; };
           cliproxyapi-opencode-go = final.callPackage ./packages/cliproxyapi-opencode-go.nix { };
           wave-dashboard = final.callPackage ./packages/wave-dashboard.nix { };

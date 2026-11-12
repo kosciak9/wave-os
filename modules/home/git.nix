@@ -1,7 +1,13 @@
-{ pkgs, ... }:
+{ lib, pkgs, ... }:
 
 let
   gitIni = pkgs.formats.gitIni { };
+  # The repositories under ~/Developer/alergeek are public and work on real
+  # company data, so pushes there scan commit messages for it.
+  leakScanHook = {
+    event = "pre-push";
+    command = "${lib.getExe pkgs.leak-scan} pre-push";
+  };
 in
 {
   xdg.configFile = {
@@ -18,6 +24,7 @@ in
         name = "Franciszek Madej";
         email = "franek@alergeek.ventures";
       };
+      hook.leak-scan = leakScanHook;
     };
   };
 
