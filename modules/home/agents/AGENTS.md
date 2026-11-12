@@ -72,27 +72,28 @@ edits.
   `delegate_task` returns. Outside T3, select the corresponding family from the
   native model catalog.
 
-  | Tier  | T3 provider and model              | Default options                                   | Fallback when out of quota                               | Recommended work                                                                                                                                       |
-  | ----- | ---------------------------------- | ------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-  | Luna  | `codex` / `gpt-6-luna`             | `reasoningEffort: low`, `serviceTier: default`    | Haiku: `claudeAgent` / `claude-haiku-5-5`, `effort: low` | Cheap, bounded verification; focused exploration, extraction, classification and log triage. Not final judgment about correctness, security or design. |
-  | Sol   | `codex` / `gpt-6.1-sol`            | `reasoningEffort: medium`, `serviceTier: default` | Opus: `claudeAgent` / `claude-opus-5-5`, `effort: high`  | Default for substantial implementation and technical investigation. Use `high` for subtle code review.                                                 |
-  | Opus  | `claudeAgent` / `claude-opus-5-5`  | `effort: high`, `fastMode: false`                 | None                                                     | UI/visual/design critique, difficult architectural judgment and high-risk or subtle analysis.                                                          |
-  | Fable | `claudeAgent` / `claude-fable-5-2` | `effort: high`                                    | Astra: `codex` / `gpt-6-astra`, `reasoningEffort: high`  | Exceptionally difficult, open-ended or long-horizon work when Opus is demonstrably insufficient. Not a routine implementation or second-opinion model. |
+  | Tier  | T3 provider and model              | Default options                                   | Fallback when out of quota                                                                                                              | Recommended work                                                                                                                                       |
+  | ----- | ---------------------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+  | Luna  | `codex` / `gpt-6-luna`             | `reasoningEffort: low`, `serviceTier: default`    | Haiku: `claudeAgent` / `claude-haiku-5-5`, `effort: low`; then DeepSeek: `opencode` / `cliproxy/go/deepseek-v4.1-flash`, `variant: low` | Cheap, bounded verification; focused exploration, extraction, classification and log triage. Not final judgment about correctness, security or design. |
+  | Sol   | `codex` / `gpt-6.1-sol`            | `reasoningEffort: medium`, `serviceTier: default` | Opus: `claudeAgent` / `claude-opus-5-5`, `effort: high`                                                                                 | Default for substantial implementation and technical investigation. Use `high` for subtle code review.                                                 |
+  | Opus  | `claudeAgent` / `claude-opus-5-5`  | `effort: high`, `fastMode: false`                 | None                                                                                                                                    | UI/visual/design critique, difficult architectural judgment and high-risk or subtle analysis.                                                          |
+  | Fable | `claudeAgent` / `claude-fable-5-2` | `effort: high`                                    | Astra: `codex` / `gpt-6-astra`, `reasoningEffort: high`                                                                                 | Exceptionally difficult, open-ended or long-horizon work when Opus is demonstrably insufficient. Not a routine implementation or second-opinion model. |
 
-- Also use OpenCode Go through T3's `opencode` provider as an alternative for
-  bounded and substantial technical work, not as a fifth quality tier. Start
-  with `cliproxy/go/gpt-6-luna` at `variant: low` for Luna's bounded tasks and
-  `cliproxy/go/deepseek-v4-pro` at `variant: medium` for Sol's implementation
-  and investigation work. Other `cliproxy/go/*` models remain available when
-  their capabilities better fit the task. Model families are not proven
-  interchangeable: verify results and preserve the role-specific requirements
-  below, including Sol for code review and Opus for design critique.
-- A provider refusal such as `usage limit reached`, including OpenCode Go's
-  separate per-model and per-plan limits, is a capacity failure. In T3,
-  `task_cancel` the refused delegate first; otherwise T3 resumes it at the
-  reset. Do not retry or fan out more children on the exhausted model. Try the
-  tier's other route first (Codex or its OpenCode Go alternative); when neither
-  runs, give the work to the tier's fallback from the table until the quota
+- Also use T3's `opencode` provider as a second route for Luna and Sol, not as a
+  fifth quality tier: GPT-6 Luna as `cliproxy/go/gpt-6-luna` at `variant: low`
+  for Luna's bounded tasks, and Kimi K3.1 Pro as `cliproxy/go/kimi-k3.1-pro` at
+  `variant: high` for Sol's implementation and investigation work. Kimi K3.1 Pro
+  matches Sol at `medium` on benchmarks but takes several times longer per task.
+  Other `opencode` models remain available when their capabilities better fit
+  the task. Model families are not proven interchangeable: verify results and
+  preserve the role-specific requirements below, including Sol for code review
+  and Opus for design critique.
+- A provider refusal such as `usage limit reached`, including per-model and
+  per-plan limits, is a capacity failure. In T3, `task_cancel` the refused
+  delegate first; otherwise T3 resumes it at the reset. Do not retry or fan out
+  more children on the exhausted model. If the tier has a second route (Luna,
+  Sol), try it first; otherwise, or when it also fails, give the work to the
+  first fallback from the table that runs, in the listed order, until the quota
   resets. A fallback stands in at the same tier and is not an escalation; code
   review keeps its own stand-in below. Continue from the refused delegate's
   brief, changes and evidence without discarding them, and tell the user which
