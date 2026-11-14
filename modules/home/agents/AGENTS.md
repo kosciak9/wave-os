@@ -81,9 +81,9 @@ edits.
 
 - For the simplest Light work, first try models on T3's `opencode` provider,
   starting with DeepSeek V4.1 Flash on Morph (`cliproxy/morph/dsv41flash`),
-  which the Ultra plan serves without a token charge, then OpenCode Go or x-ai
-  models: their subscriptions are already paid and otherwise go unused. Move to
-  other Light models only when none of them fits the task or runs.
+  which the Ultra plan serves without a token charge, then x-ai models: their
+  subscriptions are already paid and otherwise go unused. Move to other Light
+  models only when none of them fits the task or runs.
 
 - A refusal such as `usage limit reached` or a missing subscription is a
   capacity failure. In T3, `task_cancel` the refused delegate first; otherwise

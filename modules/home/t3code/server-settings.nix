@@ -16,10 +16,6 @@
     }
     {
       provider = "opencode";
-      model = "cliproxy/go/minimax-m3.1-flash";
-    }
-    {
-      provider = "opencode";
       model = "cliproxy/morph/dsv41flash";
     }
   ];
