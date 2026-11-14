@@ -156,6 +156,7 @@
           camofox-browser-cli = final.callPackage ./packages/camofox-browser-cli.nix { };
           claude-code = wrapAgentHarness (import ./packages/claude-code.nix {
             inherit (inputs.claude-code.overlays.default final prev) claude-code;
+            inherit (final) bashInteractive;
           }) "claude-code";
           codex = wrapAgentHarness (final.callPackage ./packages/codex.nix { inherit prev; }) "codex";
           omp = wrapAgentHarness (final.callPackage ./packages/omp.nix { }) "omp";
