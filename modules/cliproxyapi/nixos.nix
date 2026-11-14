@@ -93,7 +93,32 @@ let
         claude = [
           ((zenUpstream "opencode-zen-messages") // { base-url = "https://opencode.ai/inference"; })
         ];
-        openai-compatibility = [ (zenUpstream "opencode-zen-chat") ];
+        openai-compatibility = [
+          (zenUpstream "opencode-zen-chat")
+          {
+            name = "morph";
+            prefix = "morph";
+            base-url = "https://api.morphllm.com/v1";
+            # Chat models only; Ultra covers Kimi K3.1 and DeepSeek V4.1 Flash, the
+            # rest bill per token. The abliterated model answers 403 until Morph
+            # approves the account for it.
+            # Clients see morph/<alias> instead of morph/morph-<model>.
+            models =
+              map
+                (name: {
+                  inherit name;
+                  alias = lib.removePrefix "morph-" name;
+                })
+                [
+                  "morph-kimik31"
+                  "morph-glm53-744b"
+                  "morph-glm53flash"
+                  "morph-dsv41flash"
+                  "morph-dsv41flash-1017"
+                  "morph-dsv41flash-abliterated"
+                ];
+          }
+        ];
       };
     }
   );
@@ -138,6 +163,7 @@ let
       } \
         --slurpfile go ${lib.escapeShellArg config.sops.secrets."cliproxyapi/opencode-go-keys".path} \
         --slurpfile zen ${lib.escapeShellArg config.sops.secrets."cliproxyapi/opencode-zen-keys".path} \
+        --slurpfile morph ${lib.escapeShellArg config.sops.secrets."cliproxyapi/morph-keys".path} \
         --rawfile quota ${lib.escapeShellArg config.sops.secrets."cliproxyapi/quota-key".path} \
         --rawfile management ${lib.escapeShellArg config.sops.secrets."cliproxyapi/management-key".path} \
         --arg plugin ${goPlugin} '
@@ -149,22 +175,26 @@ let
           ($management | rtrimstr("\n")) as $management_key |
           ($quota | rtrimstr("\n")) as $quota_key |
           if ($clients[0] | valid_keys and length > 0) and ($go[0] | valid_keys) and
-            ($zen[0] | valid_keys) and
+            ($zen[0] | valid_keys) and ($morph[0] | valid_keys) and
             ($management_key | length > 0 and test("^[^\\r\\n]+$")) and
             ($quota_key | length >= 32 and test("^[^\\r\\n]+$")) and
             ($clients[0] | index($management_key) == null and index($quota_key) == null) and
             ($go[0] | index($quota_key) == null) and ($zen[0] | index($quota_key) == null) and
+            ($morph[0] | index($quota_key) == null) and
             ($quota_key != $management_key) then
             .access["api-keys"] = $clients[0] |
             .management["secret-key"] = $management_key |
             .plugins.configs[$plugin]["api-keys"] = ($go[0] | map({value: .})) |
             .["api-keys"] |= with_entries(.value |= (map(
-              (.name | ltrimstr("opencode-zen-")) as $protocol |
-              .models = ($models[0].zen[$protocol] // {} | keys | map({name: .})) |
-              with_keys($zen) |
-              if .name == "opencode-zen-responses" then
-                .keys |= map(. + {"disable-codex-cloaking": true})
-              else . end) |
+              if .name == "morph" then with_keys($morph)
+              else
+                (.name | ltrimstr("opencode-zen-")) as $protocol |
+                .models = ($models[0].zen[$protocol] // {} | keys | map({name: .})) |
+                with_keys($zen) |
+                if .name == "opencode-zen-responses" then
+                  .keys |= map(. + {"disable-codex-cloaking": true})
+                else . end
+              end) |
               # An empty list would expose the built-in models of the executor.
               map(select(.models != []))))
           else error("CLIProxyAPI requires valid key arrays and distinct management and quota keys") end
@@ -198,6 +228,7 @@ in
       [
         "cliproxyapi/client-keys"
         "cliproxyapi/management-key"
+        "cliproxyapi/morph-keys"
         "cliproxyapi/opencode-go-keys"
         "cliproxyapi/opencode-zen-keys"
       ]
