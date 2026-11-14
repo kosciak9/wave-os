@@ -22,21 +22,23 @@ OUTPUT_LIMIT = 50_000
 # older than the TTL. A command pushes that time past its own timeout while it runs, so the
 # sandbox outlives it, and touches it again when done.
 WATCHDOG = 'touch /tmp/alive; while (( $(date +%s) - $(stat -c %Y /tmp/alive) < TTL )); do sleep 15; done'
-COMMAND = 'touch -d "@$(( $(date +%s) + TIMEOUT + 60 ))" /tmp/alive; timeout --kill-after=10 "$TIMEOUT" bash -c "$1"; status=$?; touch /tmp/alive; exit $status'
+# The command comes on stdin, as a file: an argument as long as an inlined file would exceed the
+# kernel's limit on one argument. The command itself reads nothing on its stdin.
+COMMAND = 'script=$(mktemp); cat > "$script"; touch -d "@$(( $(date +%s) + TIMEOUT + 60 ))" /tmp/alive; timeout --kill-after=10 "$TIMEOUT" bash "$script" < /dev/null; status=$?; rm -f "$script"; touch /tmp/alive; exit $status'
 
 # Sandboxes this server started whose network rules are in place, by name, with their container
 # IDs. Commands run only in these; the others, from before a restart, are removed at start.
 ready = {}
 
 
-async def podman(*args):
+async def podman(*args, input=None):
     process = await asyncio.create_subprocess_exec(
         "podman", *args,
-        stdin=asyncio.subprocess.DEVNULL,
+        stdin=asyncio.subprocess.DEVNULL if input is None else asyncio.subprocess.PIPE,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.STDOUT,
     )
-    output, _ = await process.communicate()
+    output, _ = await process.communicate(input)
     return process.returncode, output.decode(errors="replace")
 
 
@@ -105,8 +107,9 @@ async def run(
     is longer than 50,000 characters.
     """
     status, output = await podman(
-        "exec", "--env", f"TIMEOUT={timeout_seconds}", sandbox_container(sandbox),
-        "bash", "-c", COMMAND, "bash", command,
+        "exec", "--interactive", "--env", f"TIMEOUT={timeout_seconds}", sandbox_container(sandbox),
+        "bash", "-c", COMMAND,
+        input=command.encode(),
     )
     if len(output) > OUTPUT_LIMIT:
         output = f"[first {len(output) - OUTPUT_LIMIT} characters left out]\n{output[-OUTPUT_LIMIT:]}"
