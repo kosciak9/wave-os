@@ -46,11 +46,14 @@ def sandbox_container(sandbox):
     return ready[sandbox]
 
 
+# Workers see only the first line of each tool's description, and rarely look up the arguments, so
+# the first line names the argument the tool takes.
 @mcp.tool
 async def create(ttl_minutes: Annotated[int, Field(ge=1, le=1440)] = 30) -> str:
-    """Start a sandbox, a Debian container with Python 3 and internet access; returns its name.
+    """Start a sandbox and return its name, which run and close take as `sandbox`.
 
-    It reaches nothing local: not the host, the LAN, the tailnet or other containers.
+    A sandbox is a Debian container with Python 3 and internet access. It reaches nothing local:
+    not the host, the LAN, the tailnet or other containers.
 
     It is removed with everything in it once no command has run in it for `ttl_minutes`, except
     /workspace, which every sandbox shares and which persists. /skills holds read-only skills,
@@ -95,7 +98,7 @@ async def run(
     command: str,
     timeout_seconds: Annotated[int, Field(ge=1, le=1800)] = 600,
 ) -> str:
-    """Run `command` with bash in a sandbox, in /workspace.
+    """Run `command` with bash in /workspace of `sandbox`, the name create returned.
 
     Files stay for the sandbox's next commands; the working directory and environment do not.
     Returns the exit status (124 after the timeout) and the combined output, only its end when it
@@ -124,7 +127,7 @@ async def list_sandboxes() -> str:
 
 @mcp.tool
 async def close(sandbox: str) -> str:
-    """Remove a sandbox now, with everything in it but /workspace."""
+    """Remove `sandbox` (the name create returned) now, with everything in it but /workspace."""
     status, output = await podman("rm", "--force", "--time", "0", sandbox_container(sandbox))
     if status != 0:
         raise ToolError(output)
