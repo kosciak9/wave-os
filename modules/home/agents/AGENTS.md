@@ -66,24 +66,28 @@ edits.
 - Delegate only for useful parallelism, fresh context, specialist judgment or
   tool isolation. Do a direct read or command yourself when delegation would
   cost more coordination than it saves.
-- Models in the same class are interchangeable. Choose the lowest class that
-  fits the work; the classes are a menu, not a sequence to run every task
-  through. In T3, take a model from the class that `orchestrator_capabilities`
-  offers and verify what `delegate_task` returns; outside T3, choose from the
-  native catalog.
+- Choose the lowest class that fits the work. Within a class, take Morph's Ultra
+  models (DeepSeek V4.1 Flash, Kimi K3.1 Pro) first, except for code review
+  below: the plan serves them without a token charge. Then use the rest of the
+  class; the classes are a menu, not a sequence to run every task through. In
+  T3, take a model from the class that `orchestrator_capabilities` offers and
+  verify what `delegate_task` returns; outside T3, choose from the native
+  catalog.
 
-  | Class   | Models                                                                                                           | Effort                  | Work                                                                                                                                                   |
-  | ------- | ---------------------------------------------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-  | Light   | GPT-6 Luna, Haiku 5.5, DeepSeek V4.1 Flash, and other cheap models T3 currently offers, such as MiniMax or Flint | low                     | Cheap, bounded verification; focused exploration, extraction, classification and log triage. Not final judgment about correctness, security or design. |
-  | Worker  | GPT-6.1 Sol, Sonnet 5.5, Kimi K3.1 Pro                                                                           | medium; high for review | Substantial implementation, technical investigation and code review.                                                                                   |
-  | Main    | Opus 5.5                                                                                                         | high, no fast mode      | UI/visual/design critique, difficult architectural judgment and high-risk or subtle analysis.                                                          |
-  | Hardest | Fable 5.2, GPT-6 Astra                                                                                           | high                    | Rarely: exceptionally difficult, open-ended or long-horizon work when Opus is demonstrably insufficient. Not a routine second opinion.                 |
+  | Class   | Models                                                                                                               | Effort                  | Work                                                                                                                                                   |
+  | ------- | -------------------------------------------------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+  | Light   | DeepSeek V4.1 Flash on Morph first; GPT-6 Luna, Haiku 5.5, and other cheap models T3 currently offers, such as Flint | low                     | Cheap, bounded verification; focused exploration, extraction, classification and log triage. Not final judgment about correctness, security or design. |
+  | Worker  | Kimi K3.1 Pro on Morph first for routine implementation and investigation; GPT-6.1 Sol, Sonnet 5.5                   | medium; high for review | Substantial implementation, technical investigation and code review.                                                                                   |
+  | Main    | Opus 5.5                                                                                                             | high, no fast mode      | UI/visual/design critique, difficult architectural judgment and high-risk or subtle analysis.                                                          |
+  | Hardest | Fable 5.2, GPT-6 Astra                                                                                               | high                    | Rarely: exceptionally difficult, open-ended or long-horizon work when Opus is demonstrably insufficient. Not a routine second opinion.                 |
 
-- For the simplest Light work, first try models on T3's `opencode` provider,
-  starting with DeepSeek V4.1 Flash on Morph (`cliproxy/morph/dsv41flash`),
-  which the Ultra plan serves without a token charge, then x-ai models: their
-  subscriptions are already paid and otherwise go unused. Move to other Light
-  models only when none of them fits the task or runs.
+- Morph's models run on T3's `opencode` provider: DeepSeek V4.1 Flash as
+  `cliproxy/morph/dsv41flash`, Kimi K3.1 Pro as `cliproxy/morph/kimik31`. For
+  Light work, after DeepSeek prefer x-ai models, whose subscription is already
+  paid, then the other Light models.
+- Ultra limits Kimi to about 24k uncached input tokens per minute. Run one Kimi
+  delegate at a time, and give parallel or large-context Worker tasks to Sol or
+  Sonnet; treat a Kimi per-minute `429` as a capacity failure.
 
 - A refusal such as `usage limit reached` or a missing subscription is a
   capacity failure. In T3, `task_cancel` the refused delegate first; otherwise
