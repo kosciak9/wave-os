@@ -65,57 +65,41 @@ edits.
 
 - Delegate only for useful parallelism, fresh context, specialist judgment or
   tool isolation. Do a direct read or command yourself when delegation would
-  cost more coordination than it saves. The tiers below are a menu, not a
-  required sequence: choose the lowest tier that fits; do not run every task
-  through all four.
-- Use these current defaults in T3 and verify the provider, model and options
-  `delegate_task` returns. Outside T3, select the corresponding family from the
-  native model catalog.
+  cost more coordination than it saves.
+- Models in the same class are interchangeable. Choose the lowest class that
+  fits the work; the classes are a menu, not a sequence to run every task
+  through. In T3, take a model from the class that `orchestrator_capabilities`
+  offers and verify what `delegate_task` returns; outside T3, choose from the
+  native catalog.
 
-  | Tier  | T3 provider and model              | Default options                                   | Fallback when out of quota                                                                                                              | Recommended work                                                                                                                                       |
-  | ----- | ---------------------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-  | Luna  | `codex` / `gpt-6-luna`             | `reasoningEffort: low`, `serviceTier: default`    | Haiku: `claudeAgent` / `claude-haiku-5-5`, `effort: low`; then DeepSeek: `opencode` / `cliproxy/go/deepseek-v4.1-flash`, `variant: low` | Cheap, bounded verification; focused exploration, extraction, classification and log triage. Not final judgment about correctness, security or design. |
-  | Sol   | `codex` / `gpt-6.1-sol`            | `reasoningEffort: medium`, `serviceTier: default` | Opus: `claudeAgent` / `claude-opus-5-5`, `effort: high`                                                                                 | Default for substantial implementation and technical investigation. Use `high` for subtle code review.                                                 |
-  | Opus  | `claudeAgent` / `claude-opus-5-5`  | `effort: high`, `fastMode: false`                 | None                                                                                                                                    | UI/visual/design critique, difficult architectural judgment and high-risk or subtle analysis.                                                          |
-  | Fable | `claudeAgent` / `claude-fable-5-2` | `effort: high`                                    | Astra: `codex` / `gpt-6-astra`, `reasoningEffort: high`                                                                                 | Exceptionally difficult, open-ended or long-horizon work when Opus is demonstrably insufficient. Not a routine implementation or second-opinion model. |
+  | Class   | Models                                                                                                           | Effort                  | Work                                                                                                                                                   |
+  | ------- | ---------------------------------------------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+  | Light   | GPT-6 Luna, Haiku 5.5, DeepSeek V4.1 Flash, and other cheap models T3 currently offers, such as MiniMax or Flint | low                     | Cheap, bounded verification; focused exploration, extraction, classification and log triage. Not final judgment about correctness, security or design. |
+  | Worker  | GPT-6.1 Sol, Sonnet 5.5, Kimi K3.1 Pro                                                                           | medium; high for review | Substantial implementation, technical investigation and code review.                                                                                   |
+  | Main    | Opus 5.5                                                                                                         | high, no fast mode      | UI/visual/design critique, difficult architectural judgment and high-risk or subtle analysis.                                                          |
+  | Hardest | Fable 5.2, GPT-6 Astra                                                                                           | high                    | Rarely: exceptionally difficult, open-ended or long-horizon work when Opus is demonstrably insufficient. Not a routine second opinion.                 |
 
-- Also use T3's `opencode` provider as a second route for Luna and Sol, not as a
-  fifth quality tier: GPT-6 Luna as `cliproxy/go/gpt-6-luna` at `variant: low`
-  for Luna's bounded tasks, and Kimi K3.1 Pro as `cliproxy/go/kimi-k3.1-pro` at
-  `variant: high` for Sol's implementation and investigation work. Kimi K3.1 Pro
-  matches Sol at `medium` on benchmarks but takes several times longer per task.
-  Other `opencode` models remain available when their capabilities better fit
-  the task. Model families are not proven interchangeable: verify results and
-  preserve the role-specific requirements below, including Sol for code review
-  and Opus for design critique.
-- A provider refusal such as `usage limit reached`, including per-model and
-  per-plan limits, is a capacity failure. In T3, `task_cancel` the refused
-  delegate first; otherwise T3 resumes it at the reset. Do not retry or fan out
-  more children on the exhausted model. If the tier has a second route (Luna,
-  Sol), try it first; otherwise, or when it also fails, give the work to the
-  first fallback from the table that runs, in the listed order, until the quota
-  resets. A fallback stands in at the same tier and is not an escalation; code
-  review keeps its own stand-in below. Continue from the refused delegate's
-  brief, changes and evidence without discarding them, and tell the user which
-  source hit the limit and which one continues. If no fallback runs, stop the
-  delegated attempt and escalate to the operator.
-
-- Delegate code review to Sol, not Luna or Haiku. The reviewer must be read-only
-  and must not be the subagent that wrote the change. Give it the requirements,
-  relevant diff and checks; inspect its evidence and findings yourself. Sol
-  reviews better than the other models: while Sol is out of quota, Sonnet
-  (`claudeAgent` / `claude-sonnet-5-5`, `effort: high`) reviews in its place
-  until Sol's quota resets. Add an Opus pass for high-risk/architectural
-  concerns, not as a routine replacement for Sol.
-- Always use Opus for frontend visual and design critique, even when Sol wrote
-  or reviewed the code. Provide the design goals and screenshots of the actual
-  running states, not only source code. Functional code review remains Sol's
-  job. Escalate to Fable when Opus cannot resolve a particularly difficult
-  design problem.
-- Escalate one tier only for a concrete failure or unresolved risk. Preserve the
-  original brief, evidence and prior findings instead of repeating an unchanged
-  prompt. Do not use `priority`, fast mode, `ultracode` or `ultrathink` for
-  delegated work unless the user requests it.
+- A refusal such as `usage limit reached` or a missing subscription is a
+  capacity failure. In T3, `task_cancel` the refused delegate first; otherwise
+  T3 resumes it at the reset. Do not retry or fan out more children on that
+  model. Continue on another model of the same class from the refused delegate's
+  brief, changes and evidence, and tell the user which model failed and which
+  one continues. If no model of the class runs, stop the delegated attempt and
+  escalate to the operator.
+- Delegate code review to the Worker class, preferring GPT-6.1 Sol, which
+  reviews best. The reviewer must be read-only and must not be the subagent that
+  wrote the change. Give it the requirements, relevant diff and checks; inspect
+  its evidence and findings yourself. Add an Opus pass for
+  high-risk/architectural concerns, not as a routine replacement.
+- Always use Opus for frontend visual and design critique, even when a Worker
+  wrote or reviewed the code. Provide the design goals and screenshots of the
+  actual running states, not only source code. Functional code review remains
+  the Worker's job. Escalate to Fable when Opus cannot resolve a particularly
+  difficult design problem.
+- Escalate one class only for a concrete failure or unresolved risk. Preserve
+  the original brief, evidence and prior findings instead of repeating an
+  unchanged prompt. Do not use `priority`, fast mode, `ultracode` or
+  `ultrathink` for delegated work unless the user requests it.
 - Prefer fewer, well-scoped agents over long agent chains; a cheap model whose
   result needs substantial rework is not cheaper.
 - In T3, give independent writers `worktree` isolation.
