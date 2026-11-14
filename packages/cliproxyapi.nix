@@ -15,7 +15,10 @@ prev.cliproxyapi.overrideAttrs (old: {
 
   vendorHash = "sha256-02Qqrs9lQ0kE+Tnk/SWvlkLXGSh8RQPxRawFZogRYNc=";
 
-  patches = (old.patches or [ ]) ++ [ ./patches/cliproxyapi-quota.patch ];
+  patches = (old.patches or [ ]) ++ [
+    ./patches/cliproxyapi-quota.patch
+    ./patches/cliproxyapi-client-model-lists.patch
+  ];
 
   nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [ installShellFiles ];
 

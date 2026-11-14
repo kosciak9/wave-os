@@ -100,6 +100,7 @@ let
       export ANTHROPIC_BASE_URL="$CLIPROXYAPI_BASE_URL"
       export ANTHROPIC_AUTH_TOKEN="$CLIPROXYAPI_API_KEY"
       unset ANTHROPIC_API_KEY
+      # The gateway lists only Anthropic's own models to Claude clients.
       export CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY=1
       # With a gateway token Claude Code writes 5-minute cache entries, which
       # expire during ordinary pauses and force full prompt rewrites.
