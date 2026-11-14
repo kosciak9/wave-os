@@ -20,7 +20,7 @@
     }
     {
       provider = "opencode";
-      model = "cliproxy/go/deepseek-v4.1-flash";
+      model = "cliproxy/morph/dsv41flash";
     }
   ];
   # The merge replaces arrays, so options always replace a previous model's.
@@ -40,7 +40,7 @@
   };
   textGenerationModelSelection = {
     instanceId = "opencode";
-    model = "cliproxy/go/deepseek-v4.1-flash";
+    model = "cliproxy/morph/dsv41flash";
     options = [
       {
         id = "variant";
