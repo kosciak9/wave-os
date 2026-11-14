@@ -45,6 +45,10 @@ let
                 {name: "[Free] \(free_name($parts[1]))"}
               elif $parts[0] == "go" and ($parts | length) == 2 then
                 {name: "[Go] \(name(["opencode-go", "opencode"]; $parts[1]))"}
+              elif $parts[0] == "morph" and ($parts | length) == 2 then
+                # models.dev lists Morph models but not the abliterated variant.
+                ($parts[1] | rtrimstr("-abliterated")) as $base |
+                {name: "[Morph] \(name(["morph"]; "morph-\($base)"))\(if $base == $parts[1] then "" else " Abliterated" end)"}
               else
                 {name: "[\($owners[.owned_by] // .owned_by // "Gateway")] \(name(["openai", "opencode"]; .id))"}
               end) + (
