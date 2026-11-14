@@ -79,6 +79,11 @@ edits.
   | Main    | Opus 5.5                                                                                                         | high, no fast mode      | UI/visual/design critique, difficult architectural judgment and high-risk or subtle analysis.                                                          |
   | Hardest | Fable 5.2, GPT-6 Astra                                                                                           | high                    | Rarely: exceptionally difficult, open-ended or long-horizon work when Opus is demonstrably insufficient. Not a routine second opinion.                 |
 
+- For the simplest Light work, first try models on T3's `opencode` provider,
+  such as OpenCode Go or x-ai models: their subscriptions are already paid and
+  otherwise go unused. Move to other Light models only when none of them fits
+  the task or runs.
+
 - A refusal such as `usage limit reached` or a missing subscription is a
   capacity failure. In T3, `task_cancel` the refused delegate first; otherwise
   T3 resumes it at the reset. Do not retry or fan out more children on that
