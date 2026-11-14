@@ -125,7 +125,6 @@
             };
           };
           cliproxyapi = final.callPackage ./packages/cliproxyapi.nix { inherit prev; };
-          cliproxyapi-opencode-go = final.callPackage ./packages/cliproxyapi-opencode-go.nix { };
           wave-dashboard = final.callPackage ./packages/wave-dashboard.nix { };
           slack-mirror = final.callPackage ./packages/slack-mirror.nix { };
           slack-mirror-context = final.callPackage ./packages/slack-mirror-context.nix { };

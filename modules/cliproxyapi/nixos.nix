@@ -38,10 +38,6 @@ let
       path = managementPanel;
     }
   ];
-  goPlugin = "opencode-go-cliproxyapi";
-  # The host loads only regular files, so the config script copies the library.
-  pluginLibrary = "${goPlugin}${pkgs.stdenv.hostPlatform.extensions.sharedLibrary}";
-  pluginFile = "${stateDirectory}/plugins/${pluginLibrary}";
   settings = pkgs.writeText "cliproxyapi-settings.json" (
     builtins.toJSON {
       config-version = 8;
@@ -75,18 +71,6 @@ let
         logs-max-total-size-mb = 64;
       };
       observability.usage.usage-statistics-enabled = true;
-      plugins = {
-        enabled = true;
-        dir = "${stateDirectory}/plugins";
-        # The config script adds the Go plan keys.
-        configs.${goPlugin} = {
-          enabled = true;
-          model-prefix = {
-            enabled = true;
-            value = "go";
-          };
-        };
-      };
       api-keys = {
         codex = [ (zenUpstream "opencode-zen-responses") ];
         # The Claude executor appends /v1/messages itself.
@@ -135,17 +119,12 @@ let
     text = ''
       umask 077
       state=${lib.escapeShellArg stateDirectory}
-      # The server's start and the refresh unit may run this at once; they share the plugin copy.
+      # The server's start and the refresh unit may run this at once; they share the catalog.
       exec 9>>"$state/config.lock"
       flock 9
       catalog=${lib.escapeShellArg modelCatalog}
-      mkdir -p "$state/auth" "$state/logs" "$state/plugins"
-      chmod 700 "$state" "$state/auth" "$state/logs" "$state/plugins"
-      plugin=${lib.escapeShellArg pluginFile}
-      if ! cmp -s ${pkgs.cliproxyapi-opencode-go}/lib/${pluginLibrary} "$plugin"; then
-        install -m 0500 ${pkgs.cliproxyapi-opencode-go}/lib/${pluginLibrary} "$plugin.new"
-        mv -f "$plugin.new" "$plugin"
-      fi
+      mkdir -p "$state/auth" "$state/logs"
+      chmod 700 "$state" "$state/auth" "$state/logs"
       cd "$state"
       config_file=$(mktemp "$state/config.XXXXXX")
       catalog_file=$(mktemp "$state/models.XXXXXX")
@@ -161,12 +140,10 @@ let
       jq --slurpfile models "$catalog" --slurpfile clients ${
         lib.escapeShellArg config.sops.secrets."cliproxyapi/client-keys".path
       } \
-        --slurpfile go ${lib.escapeShellArg config.sops.secrets."cliproxyapi/opencode-go-keys".path} \
         --slurpfile zen ${lib.escapeShellArg config.sops.secrets."cliproxyapi/opencode-zen-keys".path} \
         --slurpfile morph ${lib.escapeShellArg config.sops.secrets."cliproxyapi/morph-keys".path} \
         --rawfile quota ${lib.escapeShellArg config.sops.secrets."cliproxyapi/quota-key".path} \
-        --rawfile management ${lib.escapeShellArg config.sops.secrets."cliproxyapi/management-key".path} \
-        --arg plugin ${goPlugin} '
+        --rawfile management ${lib.escapeShellArg config.sops.secrets."cliproxyapi/management-key".path} '
           def valid_keys: type == "array" and
             all(.[]; type == "string" and length > 0 and test("^[^\\r\\n]+$"));
           def with_keys($list):
@@ -174,17 +151,15 @@ let
             else .keys = ($list[0] | map({"api-key": .})) end;
           ($management | rtrimstr("\n")) as $management_key |
           ($quota | rtrimstr("\n")) as $quota_key |
-          if ($clients[0] | valid_keys and length > 0) and ($go[0] | valid_keys) and
-            ($zen[0] | valid_keys) and ($morph[0] | valid_keys) and
+          if ($clients[0] | valid_keys and length > 0) and ($zen[0] | valid_keys) and ($morph[0] | valid_keys) and
             ($management_key | length > 0 and test("^[^\\r\\n]+$")) and
             ($quota_key | length >= 32 and test("^[^\\r\\n]+$")) and
             ($clients[0] | index($management_key) == null and index($quota_key) == null) and
-            ($go[0] | index($quota_key) == null) and ($zen[0] | index($quota_key) == null) and
+            ($zen[0] | index($quota_key) == null) and
             ($morph[0] | index($quota_key) == null) and
             ($quota_key != $management_key) then
             .access["api-keys"] = $clients[0] |
             .management["secret-key"] = $management_key |
-            .plugins.configs[$plugin]["api-keys"] = ($go[0] | map({value: .})) |
             .["api-keys"] |= with_entries(.value |= (map(
               if .name == "morph" then with_keys($morph)
               else
@@ -229,7 +204,6 @@ in
         "cliproxyapi/client-keys"
         "cliproxyapi/management-key"
         "cliproxyapi/morph-keys"
-        "cliproxyapi/opencode-go-keys"
         "cliproxyapi/opencode-zen-keys"
       ]
       (_: {
