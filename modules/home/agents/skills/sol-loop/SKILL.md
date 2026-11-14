@@ -60,8 +60,9 @@ never continue a review with `t3_thread_send`, `create_threads`, or
 Outside T3 Code, use a native subagent configured to run Sol, and keep its ID.
 
 When Sol does not run, fall back to Kimi K3.1 Pro on Morph (in T3, the
-`opencode` provider's `cliproxy/morph/kimik31`), then to Sonnet, and say so in
-the ledger. If none of them runs, report the blocker.
+`opencode` provider's `cliproxy/morph/kimik31`) unless another Kimi delegate is
+running or Kimi wrote the change, then to Sonnet, and say so in the ledger. If
+none of them runs, report the blocker.
 
 Do not edit the scoped files while the review runs, and do not start a second
 reviewer. A timeout, error, or silence is not approval; cancel, confirm it
