@@ -18,6 +18,7 @@ prev.cliproxyapi.overrideAttrs (old: {
   patches = (old.patches or [ ]) ++ [
     ./patches/cliproxyapi-quota.patch
     ./patches/cliproxyapi-client-model-lists.patch
+    ./patches/cliproxyapi-morph-rate-limit.patch
   ];
 
   nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [ installShellFiles ];
