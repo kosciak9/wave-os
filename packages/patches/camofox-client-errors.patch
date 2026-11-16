@@ -1,8 +1,9 @@
 diff --git a/lib/browser-errors.js b/lib/browser-errors.js
+index 3f6d8d7..f548ba2 100644
 --- a/lib/browser-errors.js
 +++ b/lib/browser-errors.js
-@@ -106,6 +106,10 @@
-           msg.includes('intercepts pointer events');
+@@ -132,6 +132,10 @@ export function isElementInteractionError(err) {
+          msg.includes('intercepts pointer events');
  }
  
 +export function navigationNetworkErrorCode(err) {
@@ -12,17 +13,17 @@ diff --git a/lib/browser-errors.js b/lib/browser-errors.js
  export function browserErrorStatus(err) {
    if (err?.code === 'tab_timeout') return 410;
    if (isTabDestroyedError(err) || isPageCrashedError(err)) return 410;
-@@ -112,6 +116,8 @@
-   if (isStaleRefsError(err) || isElementInteractionError(err) || isAmbiguousSelectorError(err)) return 422;
+@@ -139,6 +143,8 @@ export function browserErrorStatus(err) {
    if (isInvalidSelectorError(err)) return 400;
+   if (isInvalidExpressionError(err)) return 400;
    if (isNavigationRaceError(err)) return 409;
 +  const networkCode = navigationNetworkErrorCode(err);
 +  if (networkCode) return networkCode === 'NS_ERROR_PROXY_FORBIDDEN' ? 403 : 502;
    if (isDeadContextError(err) || isTabLockQueueTimeout(err) || isUserConcurrencyTimeout(err) || isBrowserLaunchError(err)) return 503;
    return err?.statusCode || null;
  }
-@@ -124,6 +130,8 @@
-   if (isInvalidSelectorError(err)) return 'invalid_selector';
+@@ -152,6 +158,8 @@ export function browserErrorCode(err) {
+   if (isInvalidExpressionError(err)) return 'invalid_expression';
    if (isAmbiguousSelectorError(err)) return 'ambiguous_selector';
    if (isNavigationRaceError(err)) return 'navigation_race';
 +  const networkCode = navigationNetworkErrorCode(err);
@@ -31,9 +32,10 @@ diff --git a/lib/browser-errors.js b/lib/browser-errors.js
    if (isTabLockQueueTimeout(err)) return 'tab_unresponsive';
    if (isUserConcurrencyTimeout(err)) return 'concurrency_timeout';
 diff --git a/server.js b/server.js
+index 5c4f662..3701589 100644
 --- a/server.js
 +++ b/server.js
-@@ -61,6 +61,7 @@
+@@ -71,6 +71,7 @@ import {
    safePageUrl, urlDomain, hashIdentifier,
    isDeadContextError, isPageCrashedError, isTimeoutError,
    isTabLockQueueTimeout, isTabDestroyedError,
@@ -41,7 +43,8 @@ diff --git a/server.js b/server.js
    browserErrorStatus, browserErrorCode, browserErrorRecovery, isRetryableBrowserError,
  } from './lib/browser-errors.js';
  
-@@ -284,7 +285,16 @@
+@@ -290,6 +291,15 @@ async function fillLocator(locator, text) {
+ 
  function safeError(err) {
    if (CONFIG.nodeEnv === 'production') {
 +    // Explicit client errors come from route validation, not browser internals.
@@ -56,12 +59,16 @@ diff --git a/server.js b/server.js
      log('error', 'internal error', { error: err.message, stack: err.stack });
      return 'Internal server error';
    }
-   return err.message;
- }
-@@ -3193,4 +3203,4 @@
+@@ -3903,10 +3913,10 @@ app.post('/tabs/:tabId/navigate', async (req, res) => {
+       let searchFallback = null;
+       let navigationHttpStatus = null;
+       
 -      if (!targetUrl) throw new Error('url or macro required');
 +      if (!targetUrl) throw Object.assign(new Error('url or macro required'), { statusCode: 400 });
        
        const urlErr = validateUrl(targetUrl);
 -      if (urlErr) throw new Error(urlErr);
 +      if (urlErr) throw Object.assign(new Error(urlErr), { statusCode: 400 });
+       
+       return await withTabLock(tabId, async () => {
+         const currentSessionKey = found?.listItemId || resolvedSessionKey;

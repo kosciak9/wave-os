@@ -1,37 +1,72 @@
+diff --git a/lib/select-option.js b/lib/select-option.js
+index 4258dd9..118ec84 100644
+--- a/lib/select-option.js
++++ b/lib/select-option.js
+@@ -1,12 +1,20 @@
+-/** Select an option by its accessible label, then by its HTML value. */
++/** Resolve label or value without attempting a mutation. */
+ export async function selectOption(locator, option) {
++  const match = await locator.evaluate((element, requested) => {
++    if (element.tagName !== 'SELECT') return null;
++    const matches = Array.from(element.options).filter(item => item.value === requested || item.label === requested);
++    return matches.length === 1 ? { value: matches[0].value } : null;
++  }, option, { timeout: 3000 });
++  if (!match) {
++    const error = new Error('Option must uniquely match one native select label or value. Call snapshot to inspect the current options.');
++    error.statusCode = 422;
++    error.mutationOutcome = 'not_dispatched';
++    throw error;
++  }
+   try {
+-    return await locator.selectOption({ label: option });
+-  } catch (labelError) {
+-    try {
+-      return await locator.selectOption({ value: option });
+-    } catch {
+-      throw labelError;
+-    }
++    return await locator.selectOption({ value: match.value }, { timeout: 5000 });
++  } catch (error) {
++    error.mutationOutcome = 'unknown';
++    throw error;
+   }
+ }
 diff --git a/server.js b/server.js
+index cc235fe..5c4f662 100644
 --- a/server.js
 +++ b/server.js
-@@ -563,4 +563,5 @@
+@@ -742,6 +742,7 @@ class TabLock {
+ 
+ // Per-tab locks to serialize operations on the same tab
  const tabLocks = new Map(); // tabId -> TabLock
 +const tabOperations = new Map(); // tabId -> operations still running, even after a lock timeout
  
  function getTabLock(tabId) {
    if (!tabLocks.has(tabId)) tabLocks.set(tabId, new TabLock());
-@@ -570,10 +571,21 @@
- // Timeout is INSIDE the lock so each operation gets its full budget
- // regardless of how long it waited in the queue.
+@@ -753,10 +754,20 @@ function getTabLock(tabId) {
+ // keep its lock held until the underlying promise actually settles, so later
+ // queued work cannot overlap with a still-running (zombie) Playwright operation
+ // and corrupt CDP state.
 -async function withTabLock(tabId, operation, timeoutMs = HANDLER_TIMEOUT_MS, onTimeout) {
 +async function withTabLock(tabId, operation, timeoutMs = HANDLER_TIMEOUT_MS, onTimeout, trackOperation = true) {
    const lock = getTabLock(tabId);
    await lock.acquire(TAB_LOCK_TIMEOUT_MS);
+   const operationPromise = Promise.resolve().then(operation);
++  if (trackOperation) {
++    let pending = tabOperations.get(tabId);
++    if (!pending) tabOperations.set(tabId, pending = new Set());
++    pending.add(operationPromise);
++    const remove = () => {
++      pending.delete(operationPromise);
++      if (pending.size === 0 && tabOperations.get(tabId) === pending) tabOperations.delete(tabId);
++    };
++    operationPromise.then(remove, remove);
++  }
+   let releaseOnSettlement = false;
    try {
--    return await withTimeout(operation(), timeoutMs, 'action');
-+    const activeOperation = Promise.resolve().then(operation);
-+    if (trackOperation) {
-+      let pending = tabOperations.get(tabId);
-+      if (!pending) tabOperations.set(tabId, pending = new Set());
-+      pending.add(activeOperation);
-+      const remove = () => {
-+        pending.delete(activeOperation);
-+        if (pending.size === 0 && tabOperations.get(tabId) === pending) tabOperations.delete(tabId);
-+      };
-+      activeOperation.then(remove, remove);
-+    }
-+    return await withTimeout(activeOperation, timeoutMs, 'action');
-   } catch (err) {
-     if (onTimeout && isTimeoutError(err)) {
-       await onTimeout();
-@@ -3790,6 +3802,6 @@
+     return await withTimeout(operationPromise, timeoutMs, 'action');
+@@ -4774,7 +4785,7 @@ app.post('/tabs/:tabId/wait', async (req, res) => {
+  *             schema:
   *               $ref: '#/components/schemas/Error'
   *       409:
 - *         description: Page changed during the click; caller should take a fresh snapshot and retry with current refs.
@@ -39,14 +74,15 @@ diff --git a/server.js b/server.js
   *         content:
   *           application/json:
   *             schema:
-@@ -3797,5 +3809,6 @@
+@@ -4782,6 +4793,7 @@ app.post('/tabs/:tabId/wait', async (req, res) => {
   */
  app.post('/tabs/:tabId/click', async (req, res) => {
    const tabId = req.params.tabId;
 +  let pointerOutcome = 'not_dispatched';
    
    try {
-@@ -3873,41 +3848,12 @@
+     const { userId, ref, selector, coordinates, expected_role: expectedRoleInput, expected_accessible_name: expectedAccessibleNameInput } = req.body;
+@@ -4882,43 +4894,14 @@ app.post('/tabs/:tabId/click', async (req, res) => {
              log('info', 'click constrained selector to visible match', { selector: locatorOrSelector });
            }
          }
@@ -96,14 +132,18 @@ diff --git a/server.js b/server.js
 +        });
 +        if (pointerOutcome !== 'dispatched') throw new Error('Pointer dispatch not acknowledged');
        };
-@@ -3947,5 +3896,5 @@
+       
+       if (hasCoordinates) {
+@@ -4986,7 +4969,7 @@ app.post('/tabs/:tabId/click', async (req, res) => {
          tabState.refs = new Map();
          const newUrl = tabState.page.url();
          tabState.visitedUrls.add(newUrl);
 -        return { ok: true, url: newUrl, refsAvailable: false };
 +        return { ok: true, outcome: 'dispatched', url: newUrl, refsAvailable: false };
        } else {
-@@ -3958,15 +3907,12 @@
+         await tabState.page.waitForTimeout(500);
+       }
+@@ -4997,17 +4980,14 @@ app.post('/tabs/:tabId/click', async (req, res) => {
        try {
          tabState.refs = await refreshTabRefs(tabState, { reason: 'post_click', timeoutMs: postClickBudget });
        } catch (e) {
@@ -125,7 +165,9 @@ diff --git a/server.js b/server.js
 +      if (newUrl) tabState.visitedUrls.add(newUrl);
 +      return { ok: true, outcome: 'dispatched', url: newUrl, refsAvailable: tabState.refs.size > 0 };
      }, HANDLER_TIMEOUT_MS, () => destroyTimedOutTab(session, tabId, 'operation_timeout', userId)));
-@@ -3976,4 +3922,30 @@
+     
+     log('info', 'clicked', { reqId: req.reqId, tabId, url: result.url });
+@@ -5015,6 +4995,32 @@ app.post('/tabs/:tabId/click', async (req, res) => {
      res.json(result);
    } catch (err) {
      log('error', 'click failed', { reqId: req.reqId, tabId, error: err.message });
@@ -156,8 +198,9 @@ diff --git a/server.js b/server.js
 +      });
 +    }
      if (err.code !== 'tab_timeout' && err.message?.includes('timed out')) {
-@@ -3983,12 +3955,13 @@
-         if (found?.tabState?.page && !found.tabState.page.isClosed()) {
+       try {
+         const session = sessions.get(normalizeUserId(req.body.userId));
+@@ -5023,11 +5029,12 @@ app.post('/tabs/:tabId/click', async (req, res) => {
            found.tabState.refs = await refreshTabRefs(found.tabState, { reason: 'click_timeout' });
            found.tabState.lastSnapshot = null;
            return res.status(409).json({
@@ -175,14 +218,18 @@ diff --git a/server.js b/server.js
              url: safePageUrl(found.tabState.page),
              refsCount: found.tabState.refs.size,
            });
-@@ -3998,5 +3971,5 @@
+@@ -5036,7 +5043,7 @@ app.post('/tabs/:tabId/click', async (req, res) => {
+         log('warn', 'post-timeout refresh failed', { error: refreshErr.message });
        }
      }
 -    handleRouteError(err, req, res);
 +    handleRouteError(err, req, res, { outcome: 'not_dispatched', dispatched: false });
    }
  });
-@@ -4003,2 +3976,36 @@
+ 
+@@ -5196,6 +5203,40 @@ app.post('/tabs/:tabId/drag', async (req, res) => {
+   }
+ });
  
 +// Operator-only barrier. A lock timeout can release the lock while its original
 +// promise is still running, so the lock alone cannot establish settlement.
@@ -219,7 +266,9 @@ diff --git a/server.js b/server.js
 +});
 +
  // --- /tabs/:tabId/upload timeouts (ms) ---
-@@ -4421,7 +4428,8 @@
+ // UPLOAD_UI_TIMEOUT_MS is the default for the request's optional `timeout`: the
+ // overall budget to wait for an upload UI to appear after the trigger is
+@@ -5616,6 +5657,7 @@ app.post('/tabs/:tabId/type', async (req, res) => {
  // Select a native form option by its visible label or HTML value.
  app.post('/tabs/:tabId/select', async (req, res) => {
    const tabId = req.params.tabId;
@@ -227,8 +276,8 @@ diff --git a/server.js b/server.js
    try {
      const { userId, ref, selector, option } = req.body;
      const session = sessions.get(normalizeUserId(userId));
-     const found = session && findTab(session, tabId);
-@@ -4447,11 +4455,14 @@
+@@ -5641,13 +5683,16 @@ app.post('/tabs/:tabId/select', async (req, res) => {
+         error.statusCode = 422;
          throw error;
        }
 +      selectionOutcome = 'unknown';
@@ -245,35 +294,4 @@ diff --git a/server.js b/server.js
 +    handleRouteError(err, req, res, { outcome, dispatched: outcome === 'not_dispatched' ? false : outcome === 'dispatched' ? true : null });
    }
  });
-diff --git a/lib/select-option.js b/lib/select-option.js
---- a/lib/select-option.js
-+++ b/lib/select-option.js
-@@ -1,12 +1,20 @@
--/** Select an option by its accessible label, then by its HTML value. */
-+/** Resolve label or value without attempting a mutation. */
- export async function selectOption(locator, option) {
-+  const match = await locator.evaluate((element, requested) => {
-+    if (element.tagName !== 'SELECT') return null;
-+    const matches = Array.from(element.options).filter(item => item.value === requested || item.label === requested);
-+    return matches.length === 1 ? { value: matches[0].value } : null;
-+  }, option, { timeout: 3000 });
-+  if (!match) {
-+    const error = new Error('Option must uniquely match one native select label or value. Call snapshot to inspect the current options.');
-+    error.statusCode = 422;
-+    error.mutationOutcome = 'not_dispatched';
-+    throw error;
-+  }
-   try {
--    return await locator.selectOption({ label: option });
--  } catch (labelError) {
--    try {
--      return await locator.selectOption({ value: option });
--    } catch {
--      throw labelError;
--    }
-+    return await locator.selectOption({ value: match.value }, { timeout: 5000 });
-+  } catch (error) {
-+    error.mutationOutcome = 'unknown';
-+    throw error;
-   }
- }
+ 

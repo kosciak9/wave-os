@@ -6,17 +6,17 @@
 }:
 
 let
-  version = "1.18.1";
+  version = "1.19.0";
   upstreamRev = "v${version}";
   camoufox =
     {
       "aarch64-darwin" = {
         arch = "arm64";
-        sha256 = "3a105a2fc929e80a79b4b7fce2c93ed62c4fb2c877f3c1ed2a5d66a1c4fe968f";
+        sha256 = "60447260af8bebdb0ec3f2aa72f687b879e5598367303de2e3fdbc7a5be8c124";
       };
       "x86_64-linux" = {
         arch = "x86_64";
-        sha256 = "924f3109ccd6d47cd6a0384d67a345fadf975d48b6319f8dbbd5954c588982bd";
+        sha256 = "5720d45b894ce1770543de024c6f10d514b38be560fa2dc3226b3d8586caf672";
       };
     }
     .${stdenvNoCC.hostPlatform.system}
@@ -30,7 +30,7 @@ stdenvNoCC.mkDerivation {
     owner = "jo-inc";
     repo = "camofox-browser";
     rev = upstreamRev;
-    hash = "sha256-ZB9K8bZxvyW+wodLMFGvAY2FlyJX8etQ4Wu8vKJFbLs=";
+    hash = "sha256-pTfAcYBgXGCvZfxXTduqOHjx3+w0jB/zv3sPs26476E=";
   };
 
   patches = [
@@ -59,7 +59,7 @@ stdenvNoCC.mkDerivation {
 
   passthru = {
     inherit upstreamRev;
-    gitHead = "39c82094013480b373df6600d44c7f036f58356e";
+    gitHead = "31376c27db94204ffdc635ae71a7f61328e91a5e";
   };
 
   meta = {
