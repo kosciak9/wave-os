@@ -1,8 +1,7 @@
 // Alfred's sources, which house-agents reads on its own every few minutes
 // (`config.sources`), inlined into house-agents.config.ts. The calendar wakes
 // Alfred: at 7:00 with the day's plan and at the start and end of every timed
-// entry; a T3 session that needs the owner wakes him once it has stood for two
-// hours. Unread mail, Slack messages, others' WhatsApp messages, T3 sessions
+// entry. Unread mail, Slack messages, others' WhatsApp messages, T3 sessions
 // that ended or wait for the owner, and others' changes in Anytype that
 // arrive after a source's first read come into the conversation as notes,
 // without waking him; what was
@@ -243,7 +242,6 @@ type T3Thread = {
 	threadId: string;
 	title?: string;
 	status: string;
-	latestRunId?: string | null;
 	updatedAt?: string;
 	pullRequests?: { url: string; state?: string }[];
 };
@@ -255,16 +253,10 @@ const T3_STATUS: Record<string, string> = {
 	cancelled: "anulowana",
 	waiting: "czeka na odpowiedź",
 };
-// The owner watches T3 himself: a session that needs him wakes Alfred only
-// once it has stood this long untouched.
-const T3_LOST_AFTER = 2 * 3600 * 1000;
-
 // Threads of zilean's T3 whose latest run ended or waits; those the owner
 // settled or snoozed are his already. Each thread is noted once per status,
-// however many runs it takes, so Alfred knows what the owner worked on. One
-// that waits for him, failed, broke off or left an open PR wakes Alfred
-// when it has stood untouched for T3_LOST_AFTER; any move in it sets the
-// wake-up anew, and one that is settled drops it.
+// however many runs it takes, so Alfred knows what the owner worked on. The
+// owner runs and watches his T3 sessions himself, so none of them wakes Alfred.
 const t3 = async ({ call, cursor, now }: Read): Promise<Update> => {
 	const { threads = [] } = JSON.parse(
 		await call("t3", "t3_thread_list", {
@@ -280,25 +272,16 @@ const t3 = async ({ call, cursor, now }: Read): Promise<Update> => {
 		thread,
 		id: `${thread.threadId}:${thread.status}`,
 		at: Date.parse(thread.updatedAt ?? "") || now,
-		touched: Date.parse(thread.updatedAt ?? ""),
 		open: (thread.pullRequests ?? []).filter((pr) => pr.state === "open").map((pr) => pr.url),
 	}));
 	const line = ({ thread, open }: (typeof sessions)[number]) =>
 		`„${clip(thread.title ?? "", 120)}”: ${T3_STATUS[thread.status] ?? thread.status} (wątek ${thread.threadId}${open.length ? `, otwarte PR: ${open.join(", ")}` : ""})`;
-	const wakes = sessions
-		// Without its last move there is no telling how long it stands.
-		.filter(({ thread, open, touched }) => Number.isFinite(touched) && (!["completed", "cancelled"].includes(thread.status) || open.length > 0))
-		.map((session) => ({
-			key: `${session.thread.threadId}:${session.thread.latestRunId ?? ""}`,
-			at: session.touched + T3_LOST_AFTER,
-			prompt: `T3: od dwóch godzin nic się nie dzieje w sesji ${line(session)}.`,
-		}));
 	const seen = seenOf(cursor);
 	// What is listed at first is no news.
-	if (!seen) return { cursor: { since: now, seen: sessions.map((session) => session.id).slice(-SEEN) }, wakes };
+	if (!seen) return { cursor: { since: now, seen: sessions.map((session) => session.id).slice(-SEEN) } };
 	const { added, cursor: next } = fresh(seen, sessions);
 	const lines = sessions.filter((session) => added.includes(session.id)).map((session) => `- ${line(session)}`);
-	return { cursor: next, notes: lines.length ? [`Sesje T3:\n${lines.join("\n")}`] : [], wakes };
+	return { cursor: next, notes: lines.length ? [`Sesje T3:\n${lines.join("\n")}`] : [] };
 };
 
 type AnytypeObject = { id: string; name?: string; type?: string; properties?: { last_modified_by?: string; last_modified_date?: string } };
