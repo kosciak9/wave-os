@@ -74,17 +74,17 @@ edits.
   verify what `delegate_task` returns; outside T3, choose from the native
   catalog.
 
-  | Class   | Models                                                                                                               | Effort                  | Work                                                                                                                                                   |
-  | ------- | -------------------------------------------------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-  | Light   | DeepSeek V4.1 Flash on Morph first; GPT-6 Luna, Haiku 5.5, and other cheap models T3 currently offers, such as Flint | low                     | Cheap, bounded verification; focused exploration, extraction, classification and log triage. Not final judgment about correctness, security or design. |
-  | Worker  | Kimi K3.1 Pro on Morph first for routine implementation and investigation; GPT-6.1 Sol, Sonnet 5.5                   | medium; high for review | Substantial implementation, technical investigation and code review.                                                                                   |
-  | Main    | Opus 5.5                                                                                                             | high, no fast mode      | UI/visual/design critique, difficult architectural judgment and high-risk or subtle analysis.                                                          |
-  | Hardest | Fable 5.2, GPT-6 Astra                                                                                               | high                    | Rarely: exceptionally difficult, open-ended or long-horizon work when Opus is demonstrably insufficient. Not a routine second opinion.                 |
+  | Class   | Models                                                                                                                                      | Effort                  | Work                                                                                                                                                   |
+  | ------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+  | Light   | DeepSeek V4.1 Flash on Morph first; then Grok 4.7 on x-ai; GPT-6 Luna, Haiku 5.5, and other cheap models T3 currently offers, such as Flint | low                     | Cheap, bounded verification; focused exploration, extraction, classification and log triage. Not final judgment about correctness, security or design. |
+  | Worker  | Kimi K3.1 Pro on Morph first for routine implementation and investigation; GPT-6.1 Sol, Sonnet 5.5                                          | medium; high for review | Substantial implementation, technical investigation and code review.                                                                                   |
+  | Main    | Opus 5.5                                                                                                                                    | high, no fast mode      | UI/visual/design critique, difficult architectural judgment and high-risk or subtle analysis.                                                          |
+  | Hardest | Fable 5.2, GPT-6 Astra                                                                                                                      | high                    | Rarely: exceptionally difficult, open-ended or long-horizon work when Opus is demonstrably insufficient. Not a routine second opinion.                 |
 
 - Morph's models run on T3's `opencode` provider: DeepSeek V4.1 Flash as
-  `cliproxy/morph/dsv41flash`, Kimi K3.1 Pro as `cliproxy/morph/kimik31`. For
-  Light work, after DeepSeek prefer x-ai models, whose subscription is already
-  paid, then the other Light models.
+  `cliproxy/morph/dsv41flash`, Kimi K3.1 Pro as `cliproxy/morph/kimik31`; Grok
+  4.7 runs there as `cliproxy/grok-4.7`, on x-ai's daily credits that are
+  already paid.
 - Ultra limits Kimi to about 24k uncached input tokens per minute. Run one Kimi
   delegate at a time, and give parallel or large-context Worker tasks to Sol or
   Sonnet; treat a Kimi per-minute `429` as a capacity failure.
