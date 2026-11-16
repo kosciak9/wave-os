@@ -8,11 +8,11 @@
 
 stdenvNoCC.mkDerivation {
   pname = "anytype-mcp";
-  version = "2.0.1";
+  version = "2.0.2";
 
   src = fetchurl {
-    url = "https://registry.npmjs.org/@anyproto/anytype-mcp/-/anytype-mcp-2.0.1.tgz";
-    hash = "sha256-DnsrX5DS0/aUQ/jU59+FcJHEbkt4ob3sSNEqEjnInzI=";
+    url = "https://registry.npmjs.org/@anyproto/anytype-mcp/-/anytype-mcp-2.0.2.tgz";
+    hash = "sha256-3/MgkblYXhe6wgiBu1S7QSgTk512Rg17XmOJ6v/Jj2E=";
   };
 
   sourceRoot = "package";
@@ -32,7 +32,7 @@ stdenvNoCC.mkDerivation {
     runHook postInstall
   '';
 
-  passthru.gitHead = "0134fe8cc2341d1bf90f310c7606b5345b636c21";
+  passthru.gitHead = "18f4ab6abb6f94b41da134b286a902924ba134f6";
 
   meta = {
     description = "Anytype Model Context Protocol server";

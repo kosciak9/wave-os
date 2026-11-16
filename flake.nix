@@ -41,7 +41,7 @@
     nix-flatpak.url = "github:gmodena/nix-flatpak?ref=v0.8.0";
 
     claude-code = {
-      url = "github:sadjow/claude-code-nix/v2.1.322";
+      url = "github:sadjow/claude-code-nix/v2.1.325";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
