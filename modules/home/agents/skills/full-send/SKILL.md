@@ -104,13 +104,14 @@ hand off instead of overriding them.
 6. **Merge** when the merge gate passes, with the method and branch deletion
    behavior the repository uses. Do not pass `--delete-branch` against the
    repository's setting, and do not merge in a way the ruleset disallows.
-7. **Report** the PR link, the merge commit, the proof, every decision you made
-   without asking, and anything you left out.
-8. **Follow the rollout.** When the merge starts a deployment, such as deploy
-   status checks or workflow runs on the default branch, keep following it after
-   the report. The PR watch ends at the merge, so wait on a background command
-   that exits when the deployment finishes. Then check the merged behavior where
-   it runs and post the outcome; do not hand that check to the user.
+7. **Follow the rollout.** When the merge starts a deployment, such as deploy
+   status checks or workflow runs on the default branch, keep following it. The
+   PR watch ends at the merge, so wait on a background command that exits when
+   the deployment finishes. Then check the merged behavior where it runs; do not
+   hand that check to the user.
+8. **Report** once, as the thread's last message: the PR link, the merge commit,
+   the proof, the rollout outcome, every decision you made without asking, and
+   anything you left out.
 
 Stay active from step 1 to step 8. Ending your turn while checks or reviews are
 pending stops the work, because nobody will prompt you again. Use
