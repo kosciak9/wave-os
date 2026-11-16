@@ -8,11 +8,11 @@
 
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "foxpilot-mcp";
-  version = "1.0.34";
+  version = "1.0.37";
 
   src = fetchurl {
     url = "https://registry.npmjs.org/foxpilot-mcp/-/foxpilot-mcp-${finalAttrs.version}.tgz";
-    hash = "sha256-la0OZCWZxg3/lBvSt8SW1FQW+OatFf3PuxQ4XyFOGyM=";
+    hash = "sha256-npxmNpV9+Swi2JJdUhzyqnBCzpbwurBTtMjhJY8f1G0=";
   };
 
   sourceRoot = "package";

@@ -27,13 +27,13 @@
 
 stdenv.mkDerivation {
   pname = "waytator";
-  version = "1.5.1";
+  version = "1.6.0";
 
   src = fetchFromGitHub {
     owner = "faetalize";
     repo = "waytator";
-    rev = "65304f49de8bd38612c05d515ded9e81310b6162";
-    hash = "sha256-yzHS4Xy6FgVEqx4zDkr1OXQRz6xht7ILkjKUnsaXm/E=";
+    rev = "4da15b0636293f1b19610da400d83a31b5efa1b8";
+    hash = "sha256-u4YP5zX1pMw5Efa6b/pmcLhXNB5UbCj1gNyCDialTTU=";
   };
 
   patches = [ ./waytator-save-copy.patch ];
