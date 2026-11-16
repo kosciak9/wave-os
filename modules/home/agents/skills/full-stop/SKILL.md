@@ -28,8 +28,8 @@ Report those changes.
 
 ## Stop at the gate
 
-Use full-send's merge gate as the readiness check, then replace its merge and
-final report with a handoff.
+Use full-send's merge gate as the readiness check, then replace its merge,
+rollout, and final report with a handoff.
 
 - Proof and review must cover the final diff. Recheck behavior and meaningful
   conflict fixes before handing off.
