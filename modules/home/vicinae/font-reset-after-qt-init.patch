@@ -6,10 +6,19 @@ constructed, when Qt initialization may otherwise have overwritten it.
 diff --git a/src/server/src/server.cpp b/src/server/src/server.cpp
 --- a/src/server/src/server.cpp
 +++ b/src/server/src/server.cpp
-@@ -114,2 +114,3 @@
-  #include <QGuiApplication>
+@@ -124,6 +124,7 @@
+ #include "generated/version.h"
+ #include <filesystem>
+ #include <QGuiApplication>
 +#include <QTimer>
-  #include <QPointer>
-@@ -653,1 +654,2 @@
+ #include <QPointer>
+ #include <QQuickWindow>
+ #include <QString>
+@@ -698,6 +699,7 @@ int startServer(const ServerLaunchOptions &launchOpts) {
+   configChanged(cfgService->value(), {});
+ 
    LauncherWindow const qmlWindow(ctx);
 +  QTimer::singleShot(0, [cfgService]() { QGuiApplication::setFont(resolveAppFont(cfgService->value().font)); });
+ 
+   ctx.navigation->launch(std::make_shared<RootCommand>());
+ 
