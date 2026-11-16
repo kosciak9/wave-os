@@ -53,8 +53,7 @@ substituteInPlace Dockerfile \
     'ENV CAMOFOX_PORT=9377
 
 EXPOSE 9377
-
-CMD ["sh", "-c", "node --max-old-space-size=${MAX_OLD_SPACE_SIZE:-128} server.js"]' \
+' \
     'ENV CAMOFOX_PORT=9377
 
 EXPOSE 9377
@@ -63,6 +62,16 @@ COPY squid.conf /etc/squid/squid.conf
 COPY camofox-entrypoint.sh /usr/local/bin/camofox-entrypoint
 RUN squid -k parse -f /etc/squid/squid.conf
 RUN chmod 0755 /usr/local/bin/camofox-entrypoint
+'
+# Rootless Podman maps container root to the host user; upstream's USER 1000
+# would map to a subuid that cannot write the bind-mounted ~/.camofox dirs.
+# Firefox refuses to start as root with a HOME owned by another user.
+substituteInPlace Dockerfile \
+  --replace-fail \
+    'USER 1000
+
+CMD ["sh", "-c", "node --max-old-space-size=${MAX_OLD_SPACE_SIZE:-128} server.js"]' \
+    'ENV HOME=/root
 
 CMD ["/usr/local/bin/camofox-entrypoint"]'
 cat > squid.conf <<'EOF'

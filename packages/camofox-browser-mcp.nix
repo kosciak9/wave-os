@@ -10,7 +10,7 @@ buildNpmPackage {
   inherit (camofox-browser-source) version src;
   sourceRoot = "${camofox-browser-source.src.name}/mcp";
 
-  npmDepsHash = "sha256-WhLrBcEEmQaNW1yInB7IZfy56uwlHJDruMfgvMShS1U=";
+  npmDepsHash = "sha256-wAHyCX+araEi4+PO8Pqn+t1lzL0cp8p93No6iMjmnXM=";
   nodejs = nodejs_22;
   dontNpmBuild = true;
 
