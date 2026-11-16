@@ -30,6 +30,10 @@ let
       promptSuggestionEnabled = false;
       awaySummaryEnabled = false;
       autoCompactEnabled = true;
+      # The gateway wrapper turns on 1-hour caching for the main conversation;
+      # subagents and helper requests rarely pause that long, so a 5-minute
+      # entry avoids paying for the longer write.
+      subagentPromptCacheTtl = "5m";
       emojiCompletionEnabled = false;
       tui = "fullscreen";
       viewMode = "focus";
