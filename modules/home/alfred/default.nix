@@ -819,9 +819,7 @@ let
     i na końcu każdego wpisu z godziną. Nowe nieprzeczytane maile (Gmail, Proton), wiadomości ze
     Slacka, cudze wiadomości z WhatsAppa, sesje T3, które się skończyły albo czekają na
     właściciela, i cudze zmiany w Anytype uprząż dopisuje do rozmowy po cichu, w blokach <source>,
-    bez budzenia cię. Sesja T3, która czeka na właściciela, nie udała się, urwała albo zostawiła
-    otwarty PR, budzi cię dopiero wtedy, gdy stoi bez ruchu od dwóch godzin. O 9:00, 13:00
-    i 18:00 budzi cię na przegląd: zajmij się tym, co od
+    bez budzenia cię. O 9:00, 13:00 i 18:00 budzi cię na przegląd: zajmij się tym, co od
     poprzedniego przeglądu przyszło ze źródeł, i otwartymi sprawami, które zebrał strażnik, osobny
     agent pilnujący spraw z rozmowy i twojego notatnika. Strażnik ustawia ci też pobudki w tych
     sprawach; widzisz je wśród pobudek z etykietą guard, a kalendarza z etykietą kalendarz. Nie
