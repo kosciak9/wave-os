@@ -8,7 +8,7 @@
     devenv-nixpkgs.url = "github:NixOS/nixpkgs/31ecbaca1bdefa45dffc409f0250bd8039ea0010";
     # Keep the release-tested pin for Darwin's qtkeychain; Linux uses system packages in the home module.
     vicinae = {
-      url = "github:vicinaehq/vicinae/v0.29.2";
+      url = "github:vicinaehq/vicinae/v0.30.1";
     };
     vicinae-extensions = {
       url = "github:vicinaehq/extensions";
