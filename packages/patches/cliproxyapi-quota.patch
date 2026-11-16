@@ -1,69 +1,5 @@
-diff --git a/internal/api/server.go b/internal/api/server.go
-index 32a7c56..5196923 100644
---- a/internal/api/server.go
-+++ b/internal/api/server.go
-@@ -44,6 +44,7 @@ type Server struct {
- 
- 	// server is the underlying HTTP server.
- 	server *http.Server
-+	quota  *quotaEndpoint
- 
- 	// muxBaseListener is the shared TCP listener used to serve both HTTP and Redis protocol traffic.
- 	listenerMu      sync.Mutex
-@@ -241,6 +242,8 @@ func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdk
- 	engine.Use(s.exampleAPIKeySafeModeMiddleware())
- 
- 	// Setup routes
-+	s.quota = newQuotaEndpoint(authManager, optionState.pluginHost, engine)
-+	s.quota.config = s.getConfig
- 	s.setupRoutes()
- 
- 	// Apply additional router configurators from options
-@@ -266,7 +269,7 @@ func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdk
- 	// Create HTTP server
- 	s.server = &http.Server{
- 		Addr:              fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
--		Handler:           wrapUnconsumedRequestBodyHandler(engine),
-+		Handler:           wrapUnconsumedRequestBodyHandler(s.quota),
- 		ReadHeaderTimeout: muxSniffDeadline,
- 	}
- 
-diff --git a/internal/api/server_management_v8.go b/internal/api/server_management_v8.go
-index 47cbee0..a47a82a 100644
---- a/internal/api/server_management_v8.go
-+++ b/internal/api/server_management_v8.go
-@@ -35,6 +35,7 @@ func (s *Server) registerManagementV8Routes() {
- 	v8.POST("/models/refresh", s.mgmt.RefreshModelDefinitions)
- 
- 	v8.GET("/observability/logs", s.mgmt.GetLogs)
-+	v8.GET("/observability/quota", func(c *gin.Context) { s.quota.snapshot(c.Writer, true) })
- 	v8.DELETE("/observability/logs", s.mgmt.DeleteLogs)
- 	v8.GET("/observability/logs/errors", s.mgmt.GetRequestErrorLogs)
- 	v8.GET("/observability/logs/errors/:name", s.mgmt.DownloadRequestErrorLog)
-diff --git a/internal/runtime/executor/meta_executor.go b/internal/runtime/executor/meta_executor.go
-index 34d428d..487de34 100644
---- a/internal/runtime/executor/meta_executor.go
-+++ b/internal/runtime/executor/meta_executor.go
-@@ -71,6 +71,16 @@ func (e *MetaExecutor) HttpRequest(ctx context.Context, auth *cliproxyauth.Auth,
- 	if ctx == nil {
- 		ctx = req.Context()
- 	}
-+	// The quota/key endpoint authenticates with DCA, not the inference API key.
-+	if req.Method == http.MethodPost && req.URL.Scheme == "https" && req.URL.Host == "api.meta.ai" && req.URL.Path == "/muse-code/key" {
-+		token := extractDCAToken(auth)
-+		if token == "" {
-+			return nil, fmt.Errorf("meta quota: missing DCA credential")
-+		}
-+		httpReq := req.Clone(ctx)
-+		httpReq.Header.Set("Authorization", "Bearer "+token)
-+		return helps.NewProxyAwareHTTPClient(ctx, e.cfg, auth, 0).Do(httpReq)
-+	}
- 	enriched, err := e.ensureAuth(ctx, auth)
- 	if err != nil {
- 		return nil, err
 diff --git a/internal/api/quota_endpoint.go b/internal/api/quota_endpoint.go
 new file mode 100644
-index 0000000..830c25d
 --- /dev/null
 +++ b/internal/api/quota_endpoint.go
 @@ -0,0 +1,861 @@
@@ -930,7 +866,6 @@ index 0000000..830c25d
 +}
 diff --git a/internal/api/quota_pace.go b/internal/api/quota_pace.go
 new file mode 100644
-index 0000000..8b8731d
 --- /dev/null
 +++ b/internal/api/quota_pace.go
 @@ -0,0 +1,350 @@
@@ -1286,7 +1221,6 @@ index 0000000..8b8731d
 +}
 diff --git a/internal/api/quota_usage.go b/internal/api/quota_usage.go
 new file mode 100644
-index 0000000..38e5566
 --- /dev/null
 +++ b/internal/api/quota_usage.go
 @@ -0,0 +1,87 @@
@@ -1377,11 +1311,70 @@ index 0000000..38e5566
 +	}
 +	return result
 +}
+diff --git a/internal/api/server.go b/internal/api/server.go
+--- a/internal/api/server.go
++++ b/internal/api/server.go
+@@ -46,6 +46,7 @@ type Server struct {
+ 
+ 	// server is the underlying HTTP server.
+ 	server *http.Server
++	quota  *quotaEndpoint
+ 
+ 	// muxBaseListener is the shared TCP listener used to serve both HTTP and Redis protocol traffic.
+ 	listenerMu      sync.Mutex
+@@ -271,6 +272,8 @@ func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdk
+ 	engine.Use(s.exampleAPIKeySafeModeMiddleware())
+ 
+ 	// Setup routes
++	s.quota = newQuotaEndpoint(authManager, optionState.pluginHost, engine)
++	s.quota.config = s.getConfig
+ 	s.setupRoutes()
+ 
+ 	// Apply additional router configurators from options
+@@ -296,7 +299,7 @@ func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdk
+ 	// Create HTTP server
+ 	s.server = &http.Server{
+ 		Addr:              fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
+-		Handler:           wrapUnconsumedRequestBodyHandler(engine),
++		Handler:           wrapUnconsumedRequestBodyHandler(s.quota),
+ 		ReadHeaderTimeout: muxSniffDeadline,
+ 	}
+ 
+diff --git a/internal/api/server_management_v8.go b/internal/api/server_management_v8.go
+--- a/internal/api/server_management_v8.go
++++ b/internal/api/server_management_v8.go
+@@ -35,6 +35,7 @@ func (s *Server) registerManagementV8Routes() {
+ 	v8.POST("/models/refresh", s.mgmt.RefreshModelDefinitions)
+ 
+ 	v8.GET("/observability/logs", s.mgmt.GetLogs)
++	v8.GET("/observability/quota", func(c *gin.Context) { s.quota.snapshot(c.Writer, true) })
+ 	v8.DELETE("/observability/logs", s.mgmt.DeleteLogs)
+ 	v8.GET("/observability/logs/errors", s.mgmt.GetRequestErrorLogs)
+ 	v8.GET("/observability/logs/errors/:name", s.mgmt.DownloadRequestErrorLog)
+diff --git a/internal/runtime/executor/meta_executor.go b/internal/runtime/executor/meta_executor.go
+--- a/internal/runtime/executor/meta_executor.go
++++ b/internal/runtime/executor/meta_executor.go
+@@ -93,6 +93,16 @@ func (e *MetaExecutor) HttpRequest(ctx context.Context, auth *cliproxyauth.Auth,
+ 	if ctx == nil {
+ 		ctx = req.Context()
+ 	}
++	// The quota/key endpoint authenticates with DCA, not the inference API key.
++	if req.Method == http.MethodPost && req.URL.Scheme == "https" && req.URL.Host == "api.meta.ai" && req.URL.Path == "/muse-code/key" {
++		token := extractDCAToken(auth)
++		if token == "" {
++			return nil, fmt.Errorf("meta quota: missing DCA credential")
++		}
++		httpReq := req.Clone(ctx)
++		httpReq.Header.Set("Authorization", "Bearer "+token)
++		return helps.NewProxyAwareHTTPClient(ctx, e.cfg, auth, 0).Do(httpReq)
++	}
+ 	enriched, err := e.ensureAuth(ctx, auth)
+ 	if err != nil {
+ 		return nil, err
 diff --git a/sdk/cliproxy/auth/conductor_execution.go b/sdk/cliproxy/auth/conductor_execution.go
-index adb9b4d..596ee2e 100644
 --- a/sdk/cliproxy/auth/conductor_execution.go
 +++ b/sdk/cliproxy/auth/conductor_execution.go
-@@ -532,6 +532,10 @@ func (m *Manager) executeMixedOnce(ctx context.Context, providers []string, req
+@@ -670,6 +670,10 @@ func (m *Manager) executeMixedOnce(ctx context.Context, providers []string, req
  	attempted := make(map[string]struct{})
  	var lastErr error
  	var upstreamErr error
@@ -1392,27 +1385,27 @@ index adb9b4d..596ee2e 100644
  	for {
  		if maxRetryCredentials > 0 && len(attempted) >= maxRetryCredentials {
  			if lastErr != nil {
-@@ -549,6 +553,11 @@ func (m *Manager) executeMixedOnce(ctx context.Context, providers []string, req
- 		auth, executor, provider, errPick := m.pickNextMixed(ctx, providers, routeModel, pickOpts, tried)
+@@ -690,6 +694,11 @@ func (m *Manager) executeMixedOnce(ctx context.Context, providers []string, req
+ 		}
  		if errPick != nil {
  			if shouldReturnLastErrorOnPickFailure(homeMode, lastErr, errPick) {
 +				// A depleted plan allowance answers as the cooldown it starts,
 +				// so even the first failure reports the recovery deadline.
-+				if cooldown, ok := depletedAllowanceCooldown(routeModel, lastProvider, lastErr); ok {
++				if cooldown, ok := m.depletedAllowanceCooldown(ctx, providers, routeModel, lastProvider, opts, lastErr); ok {
 +					return cliproxyexecutor.Response{}, cooldown
 +				}
- 				return cliproxyexecutor.Response{}, preferredExecutionAttemptError(lastErr, upstreamErr)
+ 				return cliproxyexecutor.Response{}, roundPickFailureError(lastErr, upstreamErr, errPick)
  			}
  			return cliproxyexecutor.Response{}, errPick
-@@ -586,6 +595,7 @@ func (m *Manager) executeMixedOnce(ctx context.Context, providers []string, req
- 			result := Result{AuthID: auth.ID, Provider: provider, Model: stateModel, RouteModel: routeModel, Success: false, Error: resultErrorFromError(errPrepare), Options: pickOpts, AccessToken: authAccessTokenForRequest(execCtx, auth, pickOpts.Headers), CredentialVersion: auth.CredentialVersion, RegistrationEpoch: auth.RegistrationEpoch}
+@@ -727,6 +736,7 @@ func (m *Manager) executeMixedOnce(ctx context.Context, providers []string, req
+ 			result := Result{AuthID: auth.ID, Provider: provider, Model: stateModel, RouteModel: routeModel, Success: false, Error: resultErrorFromError(errPrepare), Options: pickOpts, AccessToken: authAccessTokenForRequest(execCtx, auth, pickOpts.Headers), RefreshToken: authRefreshToken(auth), CredentialVersion: auth.CredentialVersion, RegistrationEpoch: auth.RegistrationEpoch}
  			m.MarkResult(execCtx, result)
  			lastErr = errPrepare
 +			lastProvider = provider
  			continue
  		}
  		executor = executorForAuth(executor, auth)
-@@ -715,6 +725,7 @@ func (m *Manager) executeMixedOnce(ctx context.Context, providers []string, req
+@@ -856,6 +866,7 @@ func (m *Manager) executeMixedOnce(ctx context.Context, providers []string, req
  					return cliproxyexecutor.Response{}, wrapRequestStopError(authErr)
  				}
  				lastErr = authErr
@@ -1420,7 +1413,7 @@ index adb9b4d..596ee2e 100644
  				if homeMode {
  					homeAuthCount++
  				}
-@@ -724,6 +735,7 @@ func (m *Manager) executeMixedOnce(ctx context.Context, providers []string, req
+@@ -865,6 +876,7 @@ func (m *Manager) executeMixedOnce(ctx context.Context, providers []string, req
  				return cliproxyexecutor.Response{}, authErr
  			}
  			lastErr = authErr
@@ -1428,7 +1421,7 @@ index adb9b4d..596ee2e 100644
  			if homeMode {
  				homeAuthCount++
  			}
-@@ -750,6 +762,10 @@ func (m *Manager) executeCountMixedOnce(ctx context.Context, providers []string,
+@@ -891,6 +903,10 @@ func (m *Manager) executeCountMixedOnce(ctx context.Context, providers []string,
  	attempted := make(map[string]struct{})
  	var lastErr error
  	var upstreamErr error
@@ -1439,27 +1432,27 @@ index adb9b4d..596ee2e 100644
  	for {
  		if maxRetryCredentials > 0 && len(attempted) >= maxRetryCredentials {
  			if lastErr != nil {
-@@ -767,6 +783,11 @@ func (m *Manager) executeCountMixedOnce(ctx context.Context, providers []string,
- 		auth, executor, provider, errPick := m.pickNextMixed(ctx, providers, routeModel, pickOpts, tried)
+@@ -911,6 +927,11 @@ func (m *Manager) executeCountMixedOnce(ctx context.Context, providers []string,
+ 		}
  		if errPick != nil {
  			if shouldReturnLastErrorOnPickFailure(homeMode, lastErr, errPick) {
 +				// A depleted plan allowance answers as the cooldown it starts,
 +				// so even the first failure reports the recovery deadline.
-+				if cooldown, ok := depletedAllowanceCooldown(routeModel, lastProvider, lastErr); ok {
++				if cooldown, ok := m.depletedAllowanceCooldown(ctx, providers, routeModel, lastProvider, opts, lastErr); ok {
 +					return cliproxyexecutor.Response{}, cooldown
 +				}
- 				return cliproxyexecutor.Response{}, preferredExecutionAttemptError(lastErr, upstreamErr)
+ 				return cliproxyexecutor.Response{}, roundPickFailureError(lastErr, upstreamErr, errPick)
  			}
  			return cliproxyexecutor.Response{}, errPick
-@@ -804,6 +825,7 @@ func (m *Manager) executeCountMixedOnce(ctx context.Context, providers []string,
- 			result := Result{AuthID: auth.ID, Provider: provider, Model: stateModel, RouteModel: routeModel, Success: false, Error: resultErrorFromError(errPrepare), Options: pickOpts, SkipQuotaObservation: true, AccessToken: authAccessTokenForRequest(execCtx, auth, pickOpts.Headers), CredentialVersion: auth.CredentialVersion, RegistrationEpoch: auth.RegistrationEpoch}
+@@ -948,6 +969,7 @@ func (m *Manager) executeCountMixedOnce(ctx context.Context, providers []string,
+ 			result := Result{AuthID: auth.ID, Provider: provider, Model: stateModel, RouteModel: routeModel, Success: false, Error: resultErrorFromError(errPrepare), Options: pickOpts, SkipQuotaObservation: true, AccessToken: authAccessTokenForRequest(execCtx, auth, pickOpts.Headers), RefreshToken: authRefreshToken(auth), CredentialVersion: auth.CredentialVersion, RegistrationEpoch: auth.RegistrationEpoch}
  			m.MarkResult(execCtx, result)
  			lastErr = errPrepare
 +			lastProvider = provider
  			continue
  		}
  		executor = executorForAuth(executor, auth)
-@@ -938,6 +960,7 @@ func (m *Manager) executeCountMixedOnce(ctx context.Context, providers []string,
+@@ -1082,6 +1104,7 @@ func (m *Manager) executeCountMixedOnce(ctx context.Context, providers []string,
  					return cliproxyexecutor.Response{}, wrapRequestStopError(authErr)
  				}
  				lastErr = authErr
@@ -1467,7 +1460,7 @@ index adb9b4d..596ee2e 100644
  				if homeMode {
  					homeAuthCount++
  				}
-@@ -947,6 +970,7 @@ func (m *Manager) executeCountMixedOnce(ctx context.Context, providers []string,
+@@ -1091,6 +1114,7 @@ func (m *Manager) executeCountMixedOnce(ctx context.Context, providers []string,
  				return cliproxyexecutor.Response{}, authErr
  			}
  			lastErr = authErr
@@ -1475,7 +1468,7 @@ index adb9b4d..596ee2e 100644
  			if homeMode {
  				homeAuthCount++
  			}
-@@ -978,6 +1002,10 @@ func (m *Manager) executeStreamMixedOnce(ctx context.Context, providers []string
+@@ -1126,6 +1150,10 @@ func (m *Manager) executeStreamMixedOnce(ctx context.Context, providers []string
  	attempted := make(map[string]struct{})
  	var lastErr error
  	var upstreamErr error
@@ -1486,19 +1479,19 @@ index adb9b4d..596ee2e 100644
  	var roundTiming homeRetryRoundTiming
  	for {
  		allowSameAuthRetry := homeMode && homeSameAuthRetryPending && lastHomeAuthID != "" && homeSameAuthRetries[lastHomeAuthID] == 0
-@@ -1025,6 +1053,11 @@ func (m *Manager) executeStreamMixedOnce(ctx context.Context, providers []string
+@@ -1176,6 +1204,11 @@ func (m *Manager) executeStreamMixedOnce(ctx context.Context, providers []string
  				if homeMode {
  					return nil, markHomeRetryRoundExhausted(preferredErr, roundTiming.RetryAfter(), isHomeNextRoundImmediatelyAvailable(errPick))
  				}
 +				// A depleted plan allowance answers as the cooldown it starts,
 +				// so even the first failure reports the recovery deadline.
-+				if cooldown, ok := depletedAllowanceCooldown(routeModel, lastProvider, lastErr); ok {
++				if cooldown, ok := m.depletedAllowanceCooldown(ctx, providers, routeModel, lastProvider, opts, lastErr); ok {
 +					return nil, cooldown
 +				}
- 				return nil, preferredErr
+ 				return nil, roundPickFailureError(lastErr, upstreamErr, errPick)
  			}
  			return nil, errPick
-@@ -1169,6 +1202,7 @@ func (m *Manager) executeStreamMixedOnce(ctx context.Context, providers []string
+@@ -1325,6 +1358,7 @@ func (m *Manager) executeStreamMixedOnce(ctx context.Context, providers []string
  				m.MarkResult(execCtx, result)
  			}
  			lastErr = errPrepare
@@ -1506,16 +1499,16 @@ index adb9b4d..596ee2e 100644
  			if homeMode {
  				roundTiming.Observe(lastErr)
  			}
-@@ -1259,6 +1293,7 @@ func (m *Manager) executeStreamMixedOnce(ctx context.Context, providers []string
- 					return nil, wrapRequestStopError(errStream)
- 				}
+@@ -1425,6 +1459,7 @@ func (m *Manager) executeStreamMixedOnce(ctx context.Context, providers []string
+ 			}
+ 			if okAction {
  				lastErr = errStream
 +				lastProvider = provider
  				if homeMode {
  					roundTiming.Observe(lastErr)
  				}
-@@ -1271,6 +1306,7 @@ func (m *Manager) executeStreamMixedOnce(ctx context.Context, providers []string
- 				return nil, errStream
+@@ -1434,6 +1469,7 @@ func (m *Manager) executeStreamMixedOnce(ctx context.Context, providers []string
+ 				continue
  			}
  			lastErr = errStream
 +			lastProvider = provider
@@ -1523,16 +1516,17 @@ index adb9b4d..596ee2e 100644
  				roundTiming.Observe(lastErr)
  			}
 diff --git a/sdk/cliproxy/auth/selector.go b/sdk/cliproxy/auth/selector.go
-index 9d88187..de51428 100644
 --- a/sdk/cliproxy/auth/selector.go
 +++ b/sdk/cliproxy/auth/selector.go
-@@ -84,15 +84,40 @@ const (
+@@ -106,17 +106,50 @@ const (
  type modelCooldownError struct {
- 	model    string
- 	resetIn  time.Duration
-+	resetAt  time.Time
- 	provider string
- 	cause    error
+ 	model          string
+ 	resetIn        time.Duration
++	resetAt        time.Time
+ 	provider       string
+ 	cause          error
+ 	claudeCooldown bool
+ 	claudeSignals  map[string]string
  }
  
 +// usageLimitCooldown is the shortest cooldown reported to clients as a usage
@@ -1549,31 +1543,42 @@ index 9d88187..de51428 100644
  }
  
 +// depletedAllowanceCooldown turns the last failure into a model cooldown when
-+// it is a 429 that blocks the credential for at least usageLimitCooldown, so
-+// the first failing request already answers with the recovery deadline and
-+// the same usage-limit body as the requests that follow it. The deadline is
-+// the last credential's; the selector reports the earliest one afterwards.
-+func depletedAllowanceCooldown(model, provider string, err error) (error, bool) {
++// it is a 429 and the whole candidate pool stays blocked for at least
++// usageLimitCooldown, so the first failing request already answers with the
++// pool's recovery deadline and the same usage-limit body as the requests that
++// follow it. Shorter pool cooldowns stay retryable upstream errors.
++func (m *Manager) depletedAllowanceCooldown(ctx context.Context, providers []string, model, provider string, opts cliproxyexecutor.Options, err error) (error, bool) {
 +	if statusCodeFromError(err) != http.StatusTooManyRequests {
 +		return nil, false
 +	}
-+	retryAfter := retryAfterFromError(err)
-+	if retryAfter == nil || *retryAfter < usageLimitCooldown {
++	now := time.Now()
++	deadline, hasUnblocked, ok := m.earliestPoolCooldownForModelAt(ctx, providers, model, opts, now)
++	if hasUnblocked || !ok {
 +		return nil, false
 +	}
-+	return newModelCooldownErrorWithCause(model, provider, *retryAfter, err), true
++	resetIn := deadline.Sub(now)
++	if resetIn < usageLimitCooldown {
++		return nil, false
++	}
++	// The pool wrapper's deadline outranks the last credential's own trusted
++	// Retry-After wherever the cause is consulted.
++	cause := &poolCooldownTerminalError{cause: err, deadline: deadline}
++	return newModelCooldownErrorWithCause(model, provider, resetIn, cause), true
 +}
 +
  func newModelCooldownError(model, provider string, resetIn time.Duration) *modelCooldownError {
  	return newModelCooldownErrorWithCause(model, provider, resetIn, nil)
  }
-@@ -105,10 +130,21 @@ func newModelCooldownErrorWithCause(model, provider string, resetIn time.Duratio
- 		model:    model,
- 		provider: provider,
- 		resetIn:  resetIn,
-+		resetAt:  time.Now().Add(resetIn),
- 		cause:    cause,
- 	}
+@@ -133,6 +166,7 @@ func newModelCooldownErrorForCandidates(model, provider string, resetIn time.Dur
+ 		model:          model,
+ 		provider:       provider,
+ 		resetIn:        resetIn,
++		resetAt:        time.Now().Add(resetIn),
+ 		cause:          cause,
+ 		claudeCooldown: claudeCooldown,
+ 		claudeSignals:  maps.Clone(claudeSignals),
+@@ -143,6 +177,16 @@ func isClaudeCooldownProvider(provider string) bool {
+ 	return strings.EqualFold(strings.TrimSpace(provider), "claude")
  }
  
 +func (e *modelCooldownError) isUsageLimit() bool {
@@ -1589,7 +1594,7 @@ index 9d88187..de51428 100644
  func (e *modelCooldownError) IsModelCooldown() bool {
  	return true
  }
-@@ -156,6 +192,19 @@ func (e *modelCooldownError) Error() string {
+@@ -190,6 +234,19 @@ func (e *modelCooldownError) Error() string {
  			errorBody["message"] = message
  		}
  	}
@@ -1609,11 +1614,11 @@ index 9d88187..de51428 100644
  	payload := map[string]any{"error": errorBody}
  	data, err := json.Marshal(payload)
  	if err != nil {
-@@ -359,6 +408,14 @@ func (e *modelCooldownError) Headers() http.Header {
- 		resetSeconds = 0
- 	}
- 	headers.Set("Retry-After", strconv.Itoa(resetSeconds))
-+	if e.isUsageLimit() {
+@@ -406,6 +463,14 @@ func (e *modelCooldownError) SafeResponseHeaders() http.Header {
+ 
+ func (e *modelCooldownError) Headers() http.Header {
+ 	headers := e.SafeResponseHeaders()
++	if e != nil && e.isUsageLimit() {
 +		// Over WebSocket, Codex turns these into a rate-limit snapshot: its
 +		// message names the model, and T3 Code resumes the thread at the
 +		// reset. The HTTP handlers forward only Retry-After.
@@ -1621,6 +1626,6 @@ index 9d88187..de51428 100644
 +		headers.Set("x-codex-primary-used-percent", "100")
 +		headers.Set("x-codex-primary-reset-at", strconv.FormatInt(e.resetsAt().Unix(), 10))
 +	}
- 	return headers
- }
- 
+ 	if e != nil && e.claudeCooldown && e.resetIn > 0 {
+ 		e.appendClaudeUnifiedHeaders(headers)
+ 	}

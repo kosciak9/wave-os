@@ -1,8 +1,8 @@
 diff --git a/internal/runtime/executor/openai_compat_executor.go b/internal/runtime/executor/openai_compat_executor.go
-index 17a0694..24f3a05 100644
+index 1c72c5e..2a20bf1 100644
 --- a/internal/runtime/executor/openai_compat_executor.go
 +++ b/internal/runtime/executor/openai_compat_executor.go
-@@ -1358,8 +1358,11 @@ func openAICompatRetryAfter(status int, headers http.Header, body []byte, now ti
+@@ -1422,8 +1422,11 @@ func openAICompatRetryAfter(status int, headers http.Header, body []byte, now ti
  
  	code := strings.ToLower(strings.TrimSpace(ojson.GetBytesNoCopy(body, "error.code").String()))
  	message := strings.ToLower(strings.TrimSpace(ojson.GetBytesNoCopy(body, "error.message").String()))
