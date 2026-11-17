@@ -10,10 +10,7 @@ let
   dashboardPort = 4000;
   caddyAdmin = "localhost:2019";
   # T3 Code servers whose open threads the dashboard lists, each read with its own read-only token.
-  t3Servers = [
-    "jayce"
-    "renekton"
-  ];
+  t3Servers = [ "jayce" ];
   t3Secret = server: "t3/${server}-token";
   caddy = pkgs.caddy.withPlugins {
     plugins = [ "github.com/caddy-dns/cloudflare@v0.2.4" ];
@@ -69,7 +66,7 @@ in
       PORT = toString dashboardPort;
       CADDY_ADMIN_URL = "http://${caddyAdmin}";
       T3_SERVERS = lib.concatMapStringsSep "," (
-        server: "${server}=https://${server}.dusky-diatonic.ts.net:18443"
+        server: "${server}=https://${server}.wave.exposed"
       ) t3Servers;
       RELEASE_DISTRIBUTION = "none";
       # Distribution is off, so the cookie never authenticates anything.

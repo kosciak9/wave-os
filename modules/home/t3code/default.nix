@@ -18,9 +18,6 @@ let
     "127.0.0.1"
     "--port"
     "3773"
-    "--tailscale-serve"
-    "--tailscale-serve-port"
-    "18443"
   ];
   environment = {
     HOME = config.home.homeDirectory;

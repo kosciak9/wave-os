@@ -11,7 +11,7 @@
     ./alfred.nix
     ../../modules/wave/nixos.nix
     ../../modules/sops.nix
-    ../../modules/caddy/nixos.nix
+    ../../modules/caddy/gateway.nix
     ../../modules/cliproxyapi/nixos.nix
     ../../modules/monitoring/nixos.nix
     ../../modules/monitoring/processes.nix
