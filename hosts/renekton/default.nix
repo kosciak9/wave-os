@@ -57,8 +57,7 @@
 
   wave.health.checks.t3code = ''
     ${lib.getExe pkgs.curl} -q -fsS --max-time 3 \
-      https://renekton.dusky-diatonic.ts.net:18443/.well-known/t3/environment \
-      >/dev/null
+      http://127.0.0.1:3773/.well-known/t3/environment >/dev/null
   '';
 
   system.activationScripts.userDefaults.text = lib.mkMerge [
