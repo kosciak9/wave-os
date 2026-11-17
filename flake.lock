@@ -25,16 +25,16 @@
         "systems": "systems"
       },
       "locked": {
-        "lastModified": 1794603688,
-        "narHash": "sha256-ayfDlD5d9U5b06xxwZndph+/tRgusLaKg4Dcj7bvnEM=",
+        "lastModified": 1794870087,
+        "narHash": "sha256-JggThKdK7+7Dm0J2Mg6k3F7+rdU4uD25MW1t48FeEB4=",
         "owner": "sadjow",
         "repo": "claude-code-nix",
-        "rev": "2c0782ecf4d07e4395cb56b33555fa4eb30f6784",
+        "rev": "ab27a02c0f2d046e8d4ed53fb03c0649bdfae191",
         "type": "github"
       },
       "original": {
         "owner": "sadjow",
-        "ref": "v2.1.325",
+        "ref": "v2.1.326",
         "repo": "claude-code-nix",
         "type": "github"
       }
@@ -633,16 +633,16 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1793722883,
-        "narHash": "sha256-6BJpFjv0xSSQnk9/xRtsShsKUHup7uRDACPQLSKdwgg=",
+        "lastModified": 1794884115,
+        "narHash": "sha256-ccMYbLHgoHYzb+ikQgfegheLNTB6t6Bx7o9VAoqlPCg=",
         "owner": "crmne",
         "repo": "spotifast",
-        "rev": "d22e8185e0baadbbd4d0262023f74d30b493c6e4",
+        "rev": "aae7452b55a739a88f58b26e149bec8f3e52c556",
         "type": "github"
       },
       "original": {
         "owner": "crmne",
-        "ref": "v0.17.1",
+        "ref": "v0.17.2",
         "repo": "spotifast",
         "type": "github"
       }

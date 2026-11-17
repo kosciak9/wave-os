@@ -11,7 +11,7 @@ let
     inherit (cuaDriver) version;
     src = pkgs.fetchurl {
       url = "https://github.com/trycua/cua/releases/download/cua-driver-rs-v${cuaDriver.version}/cua-driver-rs-v${cuaDriver.version}-skills.tar.gz";
-      hash = "sha256-Q5msuGH5McfSISkNyXZMarWp0PwP84Is+HjUpw9QTgQ=";
+      hash = "sha256-23EARIe3LAjVWhMhwF1llZnGa4BVrMB3rDS/VjuFcAw=";
     };
     installPhase = ''
       runHook preInstall

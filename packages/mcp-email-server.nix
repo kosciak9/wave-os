@@ -42,13 +42,13 @@ let
   py = python.pkgs;
   package = py.buildPythonApplication rec {
     pname = "mcp-email-server";
-    version = "1.13.3";
+    version = "1.14.0";
     pyproject = true;
 
     src = fetchPypi {
       pname = "mcp_email_server";
       inherit version;
-      hash = "sha256-HI3mooCX5jf2RZ9W44GFmf1J+nS7ydhbXSNVXtf66mo=";
+      hash = "sha256-3z3rjQZF2W2MAxY95pUUy4TPp2DajgCyZC++4eJ2Amo=";
     };
 
     build-system = [ py.hatchling ];
