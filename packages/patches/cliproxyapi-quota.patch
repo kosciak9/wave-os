@@ -1371,6 +1371,102 @@ diff --git a/internal/runtime/executor/meta_executor.go b/internal/runtime/execu
  	enriched, err := e.ensureAuth(ctx, auth)
  	if err != nil {
  		return nil, err
+diff --git a/sdk/api/handlers/claude/code_handlers.go b/sdk/api/handlers/claude/code_handlers.go
+--- a/sdk/api/handlers/claude/code_handlers.go
++++ b/sdk/api/handlers/claude/code_handlers.go
+@@ -581,7 +581,8 @@ func (h *ClaudeCodeAPIHandler) toClaudeErrorWithRetryAfter(msg *interfaces.Error
+ 	if status == http.StatusTooManyRequests && msg != nil && msg.Error != nil {
+ 		var cooldown interface{ IsModelCooldown() bool }
+ 		if errors.As(msg.Error, &cooldown) && cooldown != nil && cooldown.IsModelCooldown() {
+-			if seconds, errParse := strconv.ParseInt(retryAfter, 10, 64); errParse == nil && seconds > 0 {
++			// A usage-limit message already names its reset.
++			if seconds, errParse := strconv.ParseInt(retryAfter, 10, 64); errParse == nil && seconds > 0 && !strings.Contains(message, "(reset after ") {
+ 				delay := retryAfter + "s"
+ 				if seconds <= (1<<63-1)/int64(time.Second) {
+ 					delay = (time.Duration(seconds) * time.Second).String()
+diff --git a/sdk/api/handlers/claude/code_handlers_cooldown_test.go b/sdk/api/handlers/claude/code_handlers_cooldown_test.go
+--- a/sdk/api/handlers/claude/code_handlers_cooldown_test.go
++++ b/sdk/api/handlers/claude/code_handlers_cooldown_test.go
+@@ -27,10 +27,11 @@ func TestClaudeCooldownMessageMatchesRetryAfter(t *testing.T) {
+ 		duration   time.Duration
+ 		header     string
+ 		resetAfter string
++		usageLimit bool
+ 	}{
+-		{name: "reported delay", duration: 8250 * time.Second, header: "8250", resetAfter: "2h17m30s"},
++		{name: "reported delay", duration: 8250 * time.Second, header: "8250", resetAfter: "2h17m30s", usageLimit: true},
+ 		{name: "round up fractional second", duration: 60*time.Second + 100*time.Millisecond, header: "61", resetAfter: "1m1s"},
+-		{name: "largest duration", duration: time.Duration(1<<63 - 1), header: "9223372037", resetAfter: "9223372037s"},
++		{name: "largest duration", duration: time.Duration(1<<63 - 1), header: "9223372037", resetAfter: "2562047h47m16.854775807s", usageLimit: true},
+ 	} {
+ 		t.Run(tt.name, func(t *testing.T) {
+ 			recorder := httptest.NewRecorder()
+@@ -48,12 +49,17 @@ func TestClaudeCooldownMessageMatchesRetryAfter(t *testing.T) {
+ 			if got := recorder.Header().Get("Retry-After"); got != tt.header {
+ 				t.Fatalf("Retry-After = %q, want %q", got, tt.header)
+ 			}
+-			if got := ojson.GetBytesNoCopy(recorder.Body.Bytes(), "error.type").String(); got != "rate_limit_error" {
+-				t.Fatalf("error.type = %q, want rate_limit_error", got)
++			// Cooldowns of two minutes or more are reported as usage limits.
++			wantType, wantText := "rate_limit_error", "cooling down"
++			if tt.usageLimit {
++				wantType, wantText = "usage_limit_reached", "usage limit"
++			}
++			if got := ojson.GetBytesNoCopy(recorder.Body.Bytes(), "error.type").String(); got != wantType {
++				t.Fatalf("error.type = %q, want %s", got, wantType)
+ 			}
+ 			message := ojson.GetBytesNoCopy(recorder.Body.Bytes(), "error.message").String()
+-			if !strings.Contains(message, "cooling down") || !strings.Contains(message, "reset after "+tt.resetAfter) {
+-				t.Fatalf("error.message = %q, want cooldown message with reset after %s", message, tt.resetAfter)
++			if !strings.Contains(message, wantText) || strings.Count(message, "reset after ") != 1 || !strings.Contains(message, "reset after "+tt.resetAfter) {
++				t.Fatalf("error.message = %q, want %q message with a single reset after %s", message, wantText, tt.resetAfter)
+ 			}
+ 		})
+ 	}
+@@ -85,8 +91,8 @@ func TestClaudeCooldownMessageInCommittedStream(t *testing.T) {
+ 	}
+ 	_, event, _ := strings.Cut(body, "event: error\ndata: ")
+ 	message := ojson.Get(strings.TrimSpace(event), "error.message").String()
+-	if !strings.Contains(message, "cooling down") || !strings.Contains(message, "reset after 2h17m30s") {
+-		t.Fatalf("SSE error.message = %q, want cooldown message with reset after 2h17m30s", message)
++	if !strings.Contains(message, "usage limit") || strings.Count(message, "reset after ") != 1 || !strings.Contains(message, "reset after 2h17m30s") {
++		t.Fatalf("SSE error.message = %q, want usage limit message with a single reset after 2h17m30s", message)
+ 	}
+ }
+ 
+@@ -218,8 +224,8 @@ func TestClaudeCooldownMessagesRoute(t *testing.T) {
+ 				t.Fatalf("Retry-After = %q, want positive seconds", recorder.Header().Get("Retry-After"))
+ 			}
+ 			message := ojson.GetBytesNoCopy(recorder.Body.Bytes(), "error.message").String()
+-			if !strings.Contains(message, "upstream quota exceeded") || !strings.Contains(message, "reset after "+(time.Duration(seconds)*time.Second).String()) {
+-				t.Fatalf("error.message = %q, want upstream cause and reset matching Retry-After %d", message, seconds)
++			if !strings.Contains(message, "usage limit for "+model) || strings.Count(message, "reset after ") != 1 || !strings.Contains(message, "reset after "+(time.Duration(seconds)*time.Second).String()) {
++				t.Fatalf("error.message = %q, want usage limit message with a single reset matching Retry-After %d", message, seconds)
+ 			}
+ 		})
+ 	}
+diff --git a/sdk/api/handlers/claude/code_handlers_pool_cooldown_test.go b/sdk/api/handlers/claude/code_handlers_pool_cooldown_test.go
+--- a/sdk/api/handlers/claude/code_handlers_pool_cooldown_test.go
++++ b/sdk/api/handlers/claude/code_handlers_pool_cooldown_test.go
+@@ -161,13 +161,13 @@ func TestClaudeLastCredential429AppendsPoolResetTime(t *testing.T) {
+ 			if gotTrace := rec.Header().Get("X-Upstream-Trace"); gotTrace != "trace-b" {
+ 				t.Fatalf("X-Upstream-Trace = %q, want trace-b preserved under passthrough-headers", gotTrace)
+ 			}
+-			if gotType := ojson.GetBytesNoCopy(rec.Body.Bytes(), "error.type").String(); gotType != "rate_limit_error" {
+-				t.Fatalf("error.type = %q, want rate_limit_error", gotType)
++			if gotType := ojson.GetBytesNoCopy(rec.Body.Bytes(), "error.type").String(); gotType != "usage_limit_reached" {
++				t.Fatalf("error.type = %q, want usage_limit_reached", gotType)
+ 			}
+ 			wantDelay := (time.Duration(seconds) * time.Second).String()
+-			wantMessage := "This request would exceed your account's monthly spend limit. Please try again later. (reset after " + wantDelay + ")"
+-			if gotMsg := ojson.GetBytesNoCopy(rec.Body.Bytes(), "error.message").String(); gotMsg != wantMessage {
+-				t.Fatalf("error.message = %q, want %q", gotMsg, wantMessage)
++			gotMsg := ojson.GetBytesNoCopy(rec.Body.Bytes(), "error.message").String()
++			if !strings.HasPrefix(gotMsg, "You've hit your usage limit for "+model+" (reset after "+wantDelay+").") || strings.Count(gotMsg, "reset after ") != 1 {
++				t.Fatalf("error.message = %q, want usage limit message with a single reset after %s", gotMsg, wantDelay)
+ 			}
+ 		})
+ 	}
 diff --git a/sdk/cliproxy/auth/conductor_execution.go b/sdk/cliproxy/auth/conductor_execution.go
 --- a/sdk/cliproxy/auth/conductor_execution.go
 +++ b/sdk/cliproxy/auth/conductor_execution.go
@@ -1515,6 +1611,45 @@ diff --git a/sdk/cliproxy/auth/conductor_execution.go b/sdk/cliproxy/auth/conduc
  			if homeMode {
  				roundTiming.Observe(lastErr)
  			}
+diff --git a/sdk/cliproxy/auth/conductor_pool_cooldown_test.go b/sdk/cliproxy/auth/conductor_pool_cooldown_test.go
+--- a/sdk/cliproxy/auth/conductor_pool_cooldown_test.go
++++ b/sdk/cliproxy/auth/conductor_pool_cooldown_test.go
+@@ -171,7 +171,7 @@ func TestExecuteLastUsableCredential429KeepsExistingCooldownReset(t *testing.T)
+ 			identifier: "claude",
+ 			executeFn: func(ctx context.Context, _ *Auth, _ cliproxyexecutor.Request, _ cliproxyexecutor.Options) (cliproxyexecutor.Response, error) {
+ 				cliproxyexecutor.MarkUpstreamAttempt(ctx)
+-				return cliproxyexecutor.Response{}, newIssue7521Upstream429("second credential rate limited", freshHint)
++				return cliproxyexecutor.Response{}, newIssue7521Upstream429("second account rate limited", freshHint)
+ 			},
+ 		},
+ 	}
+@@ -187,7 +187,7 @@ func TestExecuteLastUsableCredential429KeepsExistingCooldownReset(t *testing.T)
+ 	})
+ 
+ 	_, errExec := manager.Execute(context.Background(), []string{"claude"}, cliproxyexecutor.Request{Model: issue7521PoolModel}, cliproxyexecutor.Options{})
+-	assertIssue7521PoolCooldownError(t, errExec, "second credential rate limited", existingCooldown)
++	assertIssue7521PoolCooldownError(t, errExec, "second account rate limited", existingCooldown)
+ }
+ 
+ func TestExecuteCountLastCredential429CarriesEarliestPoolReset(t *testing.T) {
+@@ -313,7 +313,7 @@ func TestExecuteLastCredential429IgnoresZeroWeightCandidateUnderWeightedSelector
+ 			identifier: "claude",
+ 			executeFn: func(ctx context.Context, _ *Auth, _ cliproxyexecutor.Request, _ cliproxyexecutor.Options) (cliproxyexecutor.Response, error) {
+ 				cliproxyexecutor.MarkUpstreamAttempt(ctx)
+-				return cliproxyexecutor.Response{}, newIssue7521Upstream429("active credential exhausted", hint)
++				return cliproxyexecutor.Response{}, newIssue7521Upstream429("active account exhausted", hint)
+ 			},
+ 		},
+ 	}
+@@ -321,7 +321,7 @@ func TestExecuteLastCredential429IgnoresZeroWeightCandidateUnderWeightedSelector
+ 	manager := newIssue7521Manager(t, selector, exec, active, drained)
+ 
+ 	_, errExec := manager.Execute(context.Background(), []string{"claude"}, cliproxyexecutor.Request{Model: issue7521PoolModel}, cliproxyexecutor.Options{})
+-	assertIssue7521PoolCooldownError(t, errExec, "active credential exhausted", hint)
++	assertIssue7521PoolCooldownError(t, errExec, "active account exhausted", hint)
+ }
+ 
+ func TestAnnotatePoolCooldownSelectionFallbackAndUnblockedGuard(t *testing.T) {
 diff --git a/sdk/cliproxy/auth/selector.go b/sdk/cliproxy/auth/selector.go
 --- a/sdk/cliproxy/auth/selector.go
 +++ b/sdk/cliproxy/auth/selector.go
@@ -1614,10 +1749,20 @@ diff --git a/sdk/cliproxy/auth/selector.go b/sdk/cliproxy/auth/selector.go
  	payload := map[string]any{"error": errorBody}
  	data, err := json.Marshal(payload)
  	if err != nil {
-@@ -406,6 +463,14 @@ func (e *modelCooldownError) SafeResponseHeaders() http.Header {
+@@ -405,7 +462,23 @@ func (e *modelCooldownError) SafeResponseHeaders() http.Header {
+ }
  
  func (e *modelCooldownError) Headers() http.Header {
- 	headers := e.SafeResponseHeaders()
+-	headers := e.SafeResponseHeaders()
++	headers := make(http.Header)
++	// A usage limit built from a failed upstream attempt keeps that
++	// response's headers for passthrough; the local ones below outrank them.
++	if e != nil {
++		if pool, ok := e.cause.(*poolCooldownTerminalError); ok {
++			maps.Copy(headers, pool.Headers())
++		}
++	}
++	maps.Copy(headers, e.SafeResponseHeaders())
 +	if e != nil && e.isUsageLimit() {
 +		// Over WebSocket, Codex turns these into a rate-limit snapshot: its
 +		// message names the model, and T3 Code resumes the thread at the
