@@ -1,4 +1,4 @@
-# Public names of the model gateway (tokens.wave.exposed) and the MCP gateway, both tailnet-only.
+# Tailnet-only public names: the model gateway (tokens.wave.exposed), the MCP gateway and T3 Code.
 {
   config,
   lib,
@@ -49,15 +49,26 @@ in
           [ mcpGateway.baseURL mcpGateway.addr ]
           (builtins.readFile ./gateway.Caddyfile);
     };
-    # Caddy fetches the certificate of the MCP gateway's tailnet name from tailscaled.
+    # Caddy fetches the certificate of the MCP gateway's Tailscale name from tailscaled.
     tailscale.permitCertUid = config.services.caddy.user;
   };
+
+  # Local clients (agents, Alfred) reach these sites over loopback, so they keep working while
+  # the host's tailnet address changes.
+  networking.hosts."127.0.0.1" = [
+    "tokens.wave.exposed"
+    "zilean.wave.exposed"
+  ];
 
   # Through the site name, so a lost TLS policy or a certificate that Caddy cannot renew fails
   # the check instead of the gateway itself; pinned to loopback, so it checks this host's Caddy.
   wave.health.checks.tokens = ''
     test "$(${lib.getExe pkgs.curl} --silent --output /dev/null --write-out '%{http_code}' --max-time 5 \
       --resolve tokens.wave.exposed:443:127.0.0.1 https://tokens.wave.exposed/v1/models)" = 401
+  '';
+  wave.health.checks.t3code = ''
+    ${lib.getExe pkgs.curl} -q -fsS --max-time 3 \
+      https://zilean.wave.exposed/.well-known/t3/environment >/dev/null
   '';
 
   networking.firewall.interfaces.tailscale0.allowedTCPPorts = [

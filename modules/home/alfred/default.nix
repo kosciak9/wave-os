@@ -962,7 +962,7 @@ let
     			headers: { Authorization: `Bearer ''${process.env.SLACK_MIRROR_MCP_TOKEN}` },
     		},
     		lightpanda: { url: "http://127.0.0.1:${toString lightpandaPort}/mcp" },
-    		t3: { url: "https://zilean.dusky-diatonic.ts.net:18443/mcp", oauth: true },
+    		t3: { url: "https://zilean.wave.exposed/mcp", oauth: true },
             scape: { url: "https://api.v2.scape.app/mcp", oauth: true },
             cal: { url: "https://mcp.cal.com/mcp", oauth: true },
     	},

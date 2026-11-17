@@ -24,10 +24,36 @@ https://tokens.wave.exposed {
 
 @MCP_GATEWAY_URL@ {
 	tls {
-		get_certificate tailscale
+		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+		resolvers 1.1.1.1
 	}
+	@outside not remote_ip 127.0.0.1 ::1 100.64.0.0/10 fd7a:115c:a1e0::/48
+	respond @outside 403
 	# mcp-proxy rejects requests whose Host is not its own listen address.
 	reverse_proxy @MCP_GATEWAY_ADDR@ {
 		header_up Host {upstream_hostport}
 	}
+}
+
+# The gateway's Tailscale name, for sessions that started before the move; gone once zilean
+# leaves Tailscale.
+https://zilean.dusky-diatonic.ts.net:18111 {
+	tls {
+		get_certificate tailscale
+	}
+	reverse_proxy @MCP_GATEWAY_ADDR@ {
+		header_up Host {upstream_hostport}
+	}
+}
+
+# T3 Code on this host. Tailscale Serve still answers on the Tailscale name at port 18443, so
+# this name takes 443 until zilean leaves Tailscale.
+https://zilean.wave.exposed {
+	tls {
+		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+		resolvers 1.1.1.1
+	}
+	@outside not remote_ip 127.0.0.1 ::1 100.64.0.0/10 fd7a:115c:a1e0::/48
+	respond @outside 403
+	reverse_proxy 127.0.0.1:3773
 }
