@@ -72,7 +72,11 @@
       allowedTCPPorts = [ 53 ];
     };
     firewall.interfaces.tailscale0 = {
-      allowedTCPPorts = [ 22 ];
+      allowedTCPPorts = [
+        22
+        22000
+      ];
+      allowedUDPPorts = [ 22000 ];
       allowedUDPPortRanges = [
         {
           from = 60000;
@@ -189,13 +193,13 @@
       enable = true;
       extraSetFlags = [ "--operator=kosciak" ];
     };
+    # Peers connect over the tailnet; the laptop does not accept them from other networks.
     syncthing = {
       enable = true;
       user = "kosciak";
       group = "users";
       dataDir = "/home/kosciak";
       configDir = "/home/kosciak/.config/syncthing";
-      openDefaultPorts = true;
     };
     pipewire = {
       enable = true;
