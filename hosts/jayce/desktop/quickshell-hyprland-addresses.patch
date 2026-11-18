@@ -1,0 +1,34 @@
+--- a/src/wayland/hyprland/ipc/connection.cpp
++++ b/src/wayland/hyprland/ipc/connection.cpp
+@@ -405,7 +405,8 @@
+ 
+ 		HyprlandWorkspace* workspace = nullptr;
+ 		if (workspaceName != "?") { // what the fuck
+-			workspace = this->findWorkspaceByName(workspaceName, false);
++			// Hyprland 0.57 sends the workspace address here, not its name.
++			workspace = this->findWorkspaceByName(workspaceName, false, workspaceName);
+ 		}
+ 
+ 		auto* monitor = this->findMonitorByName(name, true);
+@@ -472,7 +473,8 @@
+ 		auto windowClass = QString::fromUtf8(args.at(2));
+ 		auto windowTitle = QString::fromUtf8(args.at(3));
+ 
+-		auto* workspace = this->findWorkspaceByName(workspaceName, false);
++		// Hyprland 0.57 sends the workspace address here, not its name.
++		auto* workspace = this->findWorkspaceByName(workspaceName, false, workspaceName);
+ 		if (!workspace) {
+ 			qCWarning(logHyprlandIpc) << "Got openwindow for workspace" << workspaceName
+ 			                          << "which was not previously tracked.";
+--- a/src/wayland/hyprland/ipc/hyprland_toplevel.cpp
++++ b/src/wayland/hyprland/ipc/hyprland_toplevel.cpp
+@@ -62,7 +62,8 @@
+     const QString& title,
+     const QString& workspaceName
+ ) {
+-	auto* workspace = this->ipc->findWorkspaceByName(workspaceName, false);
++	// Hyprland 0.57 sends the workspace address in openwindow, not its name.
++	auto* workspace = this->ipc->findWorkspaceByName(workspaceName, false, workspaceName);
+ 	Qt::beginPropertyUpdateGroup();
+ 	this->setAddress(address);
+ 	this->bTitle = title;
