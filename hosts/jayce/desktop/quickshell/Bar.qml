@@ -21,7 +21,8 @@ PanelWindow {
     screen: modelData
     color: "transparent"
     implicitHeight: 48
-    exclusiveZone: 48
+    // Hyprland adds gaps_out 24 below this zone, so windows start 16 below the bar, like the gap between columns.
+    exclusiveZone: 32
     exclusionMode: ExclusionMode.Normal
 
     anchors {
