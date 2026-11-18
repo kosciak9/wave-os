@@ -117,16 +117,17 @@ in
     };
   };
 
-  # The owner logs Alfred's Camofox profiles in over the tailnet; only the Tailscale operator
-  # (kosciak) may run `tailscale serve`.
-  home-manager.users.kosciak.systemd.user.services.alfred-camofox-vnc-serve = {
-    Unit.Description = "Tailnet endpoint for Alfred's Camofox noVNC";
-    Service = {
-      ExecStart = "${lib.getExe pkgs.tailscale} serve --https=6080 --yes http://127.0.0.1:${toString config.home-manager.users.alfred.services.camofox.vnc.port}";
-      Restart = "always";
-      RestartSec = 10;
-      UMask = "0077";
-    };
-    Install.WantedBy = [ "default.target" ];
-  };
+  # The owner logs Alfred's Camofox profiles in over the tailnet.
+  services.caddy.extraConfig = ''
+    https://zilean.wave.exposed:6080 {
+      tls {
+        dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+        resolvers 1.1.1.1
+      }
+      @outside not remote_ip 127.0.0.1 ::1 100.64.0.0/10 fd7a:115c:a1e0::/48
+      respond @outside 403
+      reverse_proxy 127.0.0.1:${toString config.home-manager.users.alfred.services.camofox.vnc.port}
+    }
+  '';
+  networking.firewall.interfaces.tailscale0.allowedTCPPorts = [ 6080 ];
 }
