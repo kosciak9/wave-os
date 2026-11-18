@@ -130,7 +130,7 @@ in
     nix-eval.exec = ''
       set -euo pipefail
       if (($# != 1)); then
-        printf 'Usage: nix-eval jayce|renekton|ahri|zilean|zac|all\n' >&2
+        printf 'Usage: nix-eval jayce|ahri|zilean|zac|all\n' >&2
         exit 2
       fi
 
@@ -145,9 +145,6 @@ in
         jayce)
           eval_target 'path:.#nixosConfigurations.jayce.config.system.build.toplevel.drvPath'
           ;;
-        renekton)
-          eval_target 'path:.#darwinConfigurations.renekton.system.drvPath'
-          ;;
         ahri)
           eval_target 'path:.#nixosConfigurations.ahri.config.system.build.toplevel.drvPath'
           ;;
@@ -161,7 +158,6 @@ in
           ;;
         all)
           eval_target 'path:.#nixosConfigurations.jayce.config.system.build.toplevel.drvPath'
-          eval_target 'path:.#darwinConfigurations.renekton.system.drvPath'
           eval_target 'path:.#nixosConfigurations.ahri.config.system.build.toplevel.drvPath'
           eval_target 'path:.#nixosConfigurations.zilean.config.system.build.toplevel.drvPath'
           eval_target 'path:.#nixosConfigurations.zac.config.system.build.toplevel.drvPath'
@@ -169,7 +165,7 @@ in
           eval_target 'path:.#packages.x86_64-linux.zac-cache.drvPath'
           ;;
         *)
-          printf 'Usage: nix-eval jayce|renekton|ahri|zilean|zac|all\n' >&2
+          printf 'Usage: nix-eval jayce|ahri|zilean|zac|all\n' >&2
           exit 2
           ;;
       esac

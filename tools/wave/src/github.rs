@@ -103,7 +103,7 @@ impl GitHub {
         let required: &[&str] = match host {
             "ahri" => &["nix-validate", "betterleaks", "ahri-cache"],
             "zac" => &["nix-validate", "betterleaks", "zac-cache"],
-            "jayce" | "renekton" | "zilean" => &["nix-validate", "betterleaks"],
+            "jayce" | "zilean" => &["nix-validate", "betterleaks"],
             _ => anyhow::bail!("no deployment CI policy for {host}"),
         };
         let body = self.request(
