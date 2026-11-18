@@ -18,15 +18,13 @@
         },
         {
           "title": "Wolna pamięć",
-          "description": "Linux: MemAvailable; macOS: free + inactive.",
+          "description": "MemAvailable.",
           "unit": "GiB",
           "width": 6,
           "expr": [
-            "node_memory_MemAvailable_bytes{host=~\"jayce|zilean\"} / 2^30",
-            "(node_memory_free_bytes{host=~\"jayce|zilean\"} + node_memory_inactive_bytes{host=~\"jayce|zilean\"}) / 2^30"
+            "node_memory_MemAvailable_bytes{host=~\"jayce|zilean\"} / 2^30"
           ],
           "alias": [
-            "{{host}}",
             "{{host}}"
           ]
         },
