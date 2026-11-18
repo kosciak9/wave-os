@@ -59,6 +59,7 @@
       tailscale0 = {
         allowedTCPPorts = [
           22
+          8443
           22000
         ];
         allowedUDPPorts = [ 22000 ];
@@ -206,6 +207,24 @@
   wave.deployTarget.enable = true;
 
   services = {
+    # The tailnet endpoint of the Home Manager whisper services. Only inference is published,
+    # not the server's model-loading or browser endpoints.
+    caddy.extraConfig = ''
+      https://zilean.wave.exposed:8443 {
+        tls {
+          dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+          resolvers 1.1.1.1
+        }
+        route {
+          @outside not remote_ip 127.0.0.1 ::1 100.64.0.0/10 fd7a:115c:a1e0::/48
+          respond @outside 403
+          handle /v1/audio/transcriptions {
+            reverse_proxy 127.0.0.1:18080
+          }
+          respond 404
+        }
+      }
+    '';
     resolved.enable = true;
     openssh = {
       enable = true;
