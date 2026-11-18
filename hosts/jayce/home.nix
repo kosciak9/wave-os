@@ -12,6 +12,7 @@ let
   zenBrowser = inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default;
   quickshellWithMultimedia = pkgs.quickshell.overrideAttrs (old: {
     buildInputs = (old.buildInputs or [ ]) ++ [ pkgs.kdePackages.qtmultimedia ];
+    patches = (old.patches or [ ]) ++ [ ./desktop/quickshell-hyprland-addresses.patch ];
   });
   notificationSoundPath = "${pkgs.sound-theme-freedesktop}/share/sounds/freedesktop/stereo/message-new-instant.oga";
   waytator = pkgs.callPackage ../../packages/waytator.nix { };
