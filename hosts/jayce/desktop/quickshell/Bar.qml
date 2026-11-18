@@ -430,7 +430,10 @@ PanelWindow {
             top: parent.top
             left: parent.left
             right: parent.right
-            margins: 8
+            topMargin: 8
+            // Line up with the border of a full-width column: gaps_out + gaps_in in hyprland.lua.
+            leftMargin: 32
+            rightMargin: 32
         }
         height: 32
         radius: 6
