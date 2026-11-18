@@ -315,6 +315,9 @@
 
       };
 
+      # Lets other flakes apply these home modules with the same package set.
+      overlays.default = packageOverlay;
+
       darwinConfigurations.renekton = nix-darwin.lib.darwinSystem {
         system = darwinSystem;
         specialArgs.waveRevision = self.rev or "unknown";
