@@ -76,17 +76,16 @@ edits.
   tool isolation. Do a direct read or command yourself when delegation would
   cost more coordination than it saves.
 - Choose the lowest class that fits the work. Within a class, take Morph's Ultra
-  models (DeepSeek V4.1 Flash, Kimi K3.1 Pro) first, except for code review
-  below: the plan serves them without a token charge. Then use the rest of the
-  class; the classes are a menu, not a sequence to run every task through. In
-  T3, take a model from the class that `orchestrator_capabilities` offers and
-  verify what `delegate_task` returns; outside T3, choose from the native
-  catalog.
+  models (DeepSeek V4.1 Flash, Kimi K3.1 Pro) first: the plan serves them
+  without a token charge. Then use the rest of the class; the classes are a
+  menu, not a sequence to run every task through. In T3, take a model from the
+  class that `orchestrator_capabilities` offers and verify what `delegate_task`
+  returns; outside T3, choose from the native catalog.
 
   | Class   | Models                                                                                                                                      | Effort                  | Work                                                                                                                                                   |
   | ------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
   | Light   | DeepSeek V4.1 Flash on Morph first; then Grok 4.7 on x-ai; GPT-6 Luna, Haiku 5.5, and other cheap models T3 currently offers, such as Flint | low                     | Cheap, bounded verification; focused exploration, extraction, classification and log triage. Not final judgment about correctness, security or design. |
-  | Worker  | Kimi K3.1 Pro on Morph first for routine implementation and investigation; GPT-6.1 Sol, Sonnet 5.5                                          | medium; high for review | Substantial implementation, technical investigation and code review.                                                                                   |
+  | Worker  | Kimi K3.1 Pro on Morph first; GPT-6.1 Sol, Sonnet 5.5                                                                                       | medium; high for review | Substantial implementation, technical investigation and code review.                                                                                   |
   | Main    | Opus 5.5                                                                                                                                    | high, no fast mode      | UI/visual/design critique, difficult architectural judgment and high-risk or subtle analysis.                                                          |
   | Hardest | Fable 5.2, GPT-6 Astra                                                                                                                      | high                    | Rarely: exceptionally difficult, open-ended or long-horizon work when Opus is demonstrably insufficient. Not a routine second opinion.                 |
 
@@ -105,10 +104,11 @@ edits.
   brief, changes and evidence, and tell the user which model failed and which
   one continues. If no model of the class runs, stop the delegated attempt and
   escalate to the operator.
-- Delegate code review to the Worker class, preferring GPT-6.1 Sol, which
-  reviews best. The reviewer must be read-only and must not be the subagent that
-  wrote the change. Give it the requirements, relevant diff and checks; inspect
-  its evidence and findings yourself. Add an Opus pass for
+- Delegate code review to the Worker class, Kimi K3.1 Pro first (the `sol-loop`
+  skill sets the order). Review cannot catch everything; its point is a second
+  look by a different model. The reviewer must be read-only and must not be the
+  subagent that wrote the change. Give it the requirements, relevant diff and
+  checks; inspect its evidence and findings yourself. Add an Opus pass for
   high-risk/architectural concerns, not as a routine replacement.
 - Always use Opus for frontend visual and design critique, even when a Worker
   wrote or reviewed the code. Provide the design goals and screenshots of the
