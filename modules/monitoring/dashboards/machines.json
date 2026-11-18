@@ -33,14 +33,13 @@
       "panels": [
         {
           "title": "Zajęta pamięć",
-          "description": "Linux: MemAvailable; macOS: pamięć bez free i inactive.",
+          "description": "MemAvailable.",
           "unit": "%",
           "width": 6,
           "expr": [
-            "100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)",
-            "100 * (1 - (node_memory_free_bytes + node_memory_inactive_bytes) / node_memory_total_bytes)"
+            "100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)"
           ],
-          "alias": ["{{host}}", "{{host}}"]
+          "alias": ["{{host}}"]
         },
         {
           "title": "Wolne miejsce na dyskach",
