@@ -381,6 +381,9 @@ let
     lightpandaPort
     gotenbergPort
     recordingProxyPort
+    # Caddy, for T3 at zilean.wave.exposed: the container copies the host's /etc/hosts, which
+    # points that name at loopback (modules/caddy/nixos.nix).
+    443
   ];
 
   # Gotenberg renders attachments the model cannot read to PDF. It has no way out: an internal
