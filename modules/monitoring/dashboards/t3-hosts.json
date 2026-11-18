@@ -6,11 +6,11 @@
       "panels": [
         {
           "title": "Wolne rdzenie",
-          "description": "Ile rdzeni stoi bezczynnie (jayce 16, renekton 10, zilean 4).",
+          "description": "Ile rdzeni stoi bezczynnie (jayce 16, zilean 4).",
           "unit": "rdzeni",
           "width": 6,
           "expr": [
-            "sum by (host) (rate(node_cpu_seconds_total{host=~\"jayce|renekton|zilean\",mode=\"idle\"}[5m]))"
+            "sum by (host) (rate(node_cpu_seconds_total{host=~\"jayce|zilean\",mode=\"idle\"}[5m]))"
           ],
           "alias": [
             "{{host}}"
@@ -22,8 +22,8 @@
           "unit": "GiB",
           "width": 6,
           "expr": [
-            "node_memory_MemAvailable_bytes{host=~\"jayce|renekton|zilean\"} / 2^30",
-            "(node_memory_free_bytes{host=~\"jayce|renekton|zilean\"} + node_memory_inactive_bytes{host=~\"jayce|renekton|zilean\"}) / 2^30"
+            "node_memory_MemAvailable_bytes{host=~\"jayce|zilean\"} / 2^30",
+            "(node_memory_free_bytes{host=~\"jayce|zilean\"} + node_memory_inactive_bytes{host=~\"jayce|zilean\"}) / 2^30"
           ],
           "alias": [
             "{{host}}",
@@ -35,7 +35,7 @@
           "unit": "%",
           "width": 6,
           "expr": [
-            "100 * (1 - avg by (host) (rate(node_cpu_seconds_total{host=~\"jayce|renekton|zilean\",mode=\"idle\"}[5m])))"
+            "100 * (1 - avg by (host) (rate(node_cpu_seconds_total{host=~\"jayce|zilean\",mode=\"idle\"}[5m])))"
           ],
           "alias": [
             "{{host}}"
@@ -46,7 +46,7 @@
           "description": "Load average (5 min) na rdzeń; powyżej 1 zadania czekają na CPU.",
           "width": 6,
           "expr": [
-            "node_load5{host=~\"jayce|renekton|zilean\"} / on (host) count by (host) (node_cpu_seconds_total{host=~\"jayce|renekton|zilean\",mode=\"idle\"})"
+            "node_load5{host=~\"jayce|zilean\"} / on (host) count by (host) (node_cpu_seconds_total{host=~\"jayce|zilean\",mode=\"idle\"})"
           ],
           "alias": [
             "{{host}}"
@@ -76,35 +76,6 @@
           "width": 6,
           "expr": [
             "topk_avg(10, namedprocess_namegroup_memory_bytes{host=\"jayce\",memtype=\"resident\"} / 2^30)"
-          ],
-          "alias": [
-            "{{groupname}}"
-          ]
-        }
-      ]
-    },
-    {
-      "title": "Procesy: renekton",
-      "panels": [
-        {
-          "title": "CPU",
-          "description": "100% = jeden rdzeń. Dziesięć nazw o najwyższej średniej w wybranym zakresie.",
-          "unit": "%",
-          "width": 6,
-          "expr": [
-            "topk_avg(10, darwin_process_cpu_percent{host=\"renekton\"})"
-          ],
-          "alias": [
-            "{{groupname}}"
-          ]
-        },
-        {
-          "title": "Pamięć (RSS)",
-          "description": "Suma RSS procesów o tej nazwie; pamięć współdzielona liczy się wielokrotnie. Dziesięć nazw o najwyższej średniej w wybranym zakresie.",
-          "unit": "GiB",
-          "width": 6,
-          "expr": [
-            "topk_avg(10, darwin_process_resident_bytes{host=\"renekton\"} / 2^30)"
           ],
           "alias": [
             "{{groupname}}"

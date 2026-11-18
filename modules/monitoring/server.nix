@@ -5,10 +5,9 @@ let
   nodeHosts = [
     "ahri"
     "jayce"
-    "renekton"
     "zilean"
   ];
-  # Linux T3 Code hosts with process-exporter; renekton reports processes through node_exporter.
+  # Linux T3 Code hosts with process-exporter.
   processHosts = [
     "jayce"
     "zilean"

@@ -62,7 +62,6 @@
     autoDeploy = {
       enable = true;
       nodes = [
-        "renekton"
         "zilean"
         "zac"
       ];

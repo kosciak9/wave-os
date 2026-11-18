@@ -15,14 +15,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.vicinae.follows = "vicinae";
     };
-    nix-darwin = {
-      url = "github:nix-darwin/nix-darwin";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    determinate = {
-      url = "https://flakehub.com/f/DeterminateSystems/determinate/3";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
     nixos-hardware = {
       url = "github:NixOS/nixos-hardware";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -86,13 +78,10 @@
       nixos-hardware,
       home-manager,
       nix-flatpak,
-      nix-darwin,
-      determinate,
       ...
     }:
     let
       system = "x86_64-linux";
-      darwinSystem = "aarch64-darwin";
       ahriSystem = "aarch64-linux";
       zacSystem = "armv7l-linux";
       packageOverlay =
@@ -180,11 +169,6 @@
         config.allowUnfree = true;
         overlays = [ packageOverlay ];
       };
-      darwinPkgs = import nixpkgs {
-        system = darwinSystem;
-        config.allowUnfree = true;
-        overlays = [ packageOverlay ];
-      };
       ahriPkgs = import inputs.nixpkgs-ahri {
         system = ahriSystem;
         overlays = [ packageOverlay ];
@@ -208,12 +192,6 @@
       };
       kanagawa-kvantum = pkgs.callPackage ./packages/kanagawa-kvantum.nix {
         src = inputs.kanagawa-kvantum;
-      };
-      renektonNode = import ./tools/deploy-node.nix {
-        pkgs = darwinPkgs;
-        deployLib = inputs.deploy-rs.lib.${darwinSystem};
-        configuration = self.darwinConfigurations.renekton;
-        hostname = "renekton";
       };
       ahriNode = import ./tools/deploy-node.nix {
         pkgs = ahriPkgs;
@@ -318,34 +296,6 @@
       # Lets other flakes apply these home modules with the same package set.
       overlays.default = packageOverlay;
 
-      darwinConfigurations.renekton = nix-darwin.lib.darwinSystem {
-        system = darwinSystem;
-        specialArgs.waveRevision = self.rev or "unknown";
-        modules = [
-          determinate.darwinModules.default
-          home-manager.darwinModules.home-manager
-          (import ./modules/sops-darwin.nix {
-            inherit (nixpkgs) lib;
-            inherit (inputs) sops-nix;
-          })
-          ./hosts/renekton/default.nix
-          (_: {
-            nixpkgs.overlays = [ packageOverlay ];
-          })
-          (_: {
-            home-manager = {
-              useGlobalPkgs = true;
-              useUserPackages = true;
-              extraSpecialArgs = {
-                inherit inputs;
-                ghosttyCursorShaders = inputs.ghostty-cursor-shaders;
-              };
-              users.kosciak = ./hosts/renekton/home.nix;
-            };
-          })
-        ];
-      };
-
       packages = {
         ${system} = {
           deploy-rs = inputs.deploy-rs.packages.${system}.deploy-rs;
@@ -384,27 +334,12 @@
             workspace-mcp
             ;
         };
-        ${darwinSystem} = {
-          deploy-rs = inputs.deploy-rs.packages.${darwinSystem}.deploy-rs;
-          inherit (darwinPkgs)
-            mcp-proxy
-            wave
-            openclaw-sandbox-machine-check
-            t3code-cli
-            slack-mirror
-            slack-mirror-context
-            slack-mirror-image
-            camofox-browser-source
-            camofox-browser-cli
-            ;
-        };
         ${ahriSystem} = {
           deploy-rs = inputs.deploy-rs.packages.${ahriSystem}.deploy-rs;
           inherit (ahriPkgs) wave;
         };
       };
       deploy.nodes = {
-        renekton = renektonNode;
         ahri = ahriNode;
         zilean = zileanNode;
         zac = zacNode;
@@ -419,9 +354,6 @@
             quickshell = home.programs.quickshell.package;
             hyprland = configuration.programs.hyprland.package;
           };
-        ${darwinSystem} = inputs.deploy-rs.lib.${darwinSystem}.deployChecks {
-          nodes.renekton = renektonNode;
-        };
         ${ahriSystem} = inputs.deploy-rs.lib.${ahriSystem}.deployChecks {
           nodes.ahri = ahriNode;
         };
