@@ -61,15 +61,5 @@ in
       "--backend-version"
       whisper.version
     ];
-
-    # Publish only inference, not the server's model-loading or browser endpoints.
-    whisper-serve = service "Tailnet endpoint for whisper transcription" [
-      (lib.getExe pkgs.tailscale)
-      "serve"
-      "--https=8443"
-      "--set-path=/v1/audio/transcriptions"
-      "--yes"
-      "http://127.0.0.1:18080/v1/audio/transcriptions"
-    ];
   };
 }

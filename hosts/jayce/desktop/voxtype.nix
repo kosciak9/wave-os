@@ -9,24 +9,14 @@ let
   daemon = pkgs.writeShellApplication {
     name = "wave-voxtype-daemon";
     runtimeInputs = with pkgs; [
-      tailscale
-      jq
       which
       wl-clipboard
       ydotool
       libnotify
     ];
     text = ''
-      if ! dns_name=$(tailscale status --json 2>/dev/null | jq -er '
-        [.Peer[] | select(.HostName == "zilean") | .DNSName] |
-        select(length == 1) | .[0] | rtrimstr(".") |
-        select(test("^[a-zA-Z0-9-]+\\.[a-zA-Z0-9.-]+\\.ts\\.net$"))
-      '); then
-        printf '%s\n' "voxtype: transcription peer missing from Tailscale" >&2
-        exit 1
-      fi
       export YDOTOOL_SOCKET=/run/ydotoold/socket
-      exec ${lib.getExe pkgs.voxtype} --quiet --remote-endpoint "https://$dns_name:8443" daemon
+      exec ${lib.getExe pkgs.voxtype} --quiet daemon
     '';
   };
 in
@@ -52,8 +42,7 @@ in
         };
         whisper = {
           mode = "remote";
-          # The daemon supplies the private tailnet DNS name; direct starts fail closed.
-          remote_endpoint = "http://127.0.0.1:18080";
+          remote_endpoint = "https://zilean.wave.exposed:8443";
           remote_timeout_secs = 180;
           language = "pl";
           translate = false;
