@@ -1,9 +1,9 @@
 ---
 name: sol-loop
 description:
-  Review a change with GPT Sol in a loop until both sides agree, bounding rounds
-  and scope. Use when the user says "sol loop", or as the review step of
-  full-send and full-stop.
+  Review a change with a second model, Kimi K3.1 Pro first, in a loop until both
+  sides agree, bounding rounds and scope. Use when the user says "sol loop", or
+  as the review step of full-send and full-stop.
 when_to_use:
   "'sol loop', 'niech Sol to sprawdzi', review before filing a PR, after a
   non-trivial fix."
@@ -11,8 +11,8 @@ when_to_use:
 
 # sol-loop
 
-Make the change more correct before (or after) filing a PR by having GPT Sol
-review it in a loop. Make the smallest possible change that answers a real
+Make the change more correct before (or after) filing a PR by having a second
+model review it in a loop. Make the smallest possible change that answers a real
 finding, and push back when the finding is wrong.
 
 ## Budget
@@ -24,7 +24,7 @@ finding, and push back when the finding is wrong.
   the user asks.
 - Stop early when a round returns only nits. Declined nits and comment, doc, or
   format-only fixes need no new round.
-- One reviewer only. Sol must not start subagents.
+- One reviewer only. The reviewer must not start subagents.
 - Keep a ledger: id, severity, outcome, and usage when the harness returns it.
   Never invent usage numbers.
 
@@ -48,21 +48,31 @@ Use the same diff command in every round. State the intent and out-of-scope in
 one or two sentences. Run the covering checks first; do not send code that this
 change breaks, and note missing or pre-failing checks in the brief.
 
-## 2. Start Sol
+## 2. Start the reviewer
 
-In T3 Code, call `orchestrator_capabilities`, pick the latest Sol unless the
-user named a version, and start it with `delegate_task` every round
-(`role: "review"`, `mode: "async"`). Save the `taskId`; use a new
-`clientRequestId` per round. `childThreadId` is storage, not a review target:
-never continue a review with `t3_thread_send`, `create_threads`, or
-`t3_thread_launch`.
+Pick the reviewer once, in this order, unless the user named a model:
 
-Outside T3 Code, use a native subagent configured to run Sol, and keep its ID.
+1. Kimi K3.1 Pro on Morph (in T3, the `opencode` provider's
+   `cliproxy/morph/kimik31`). Its plan has the most room for reviews.
+2. The latest GPT Sol.
+3. Sonnet.
 
-When Sol does not run, fall back to Kimi K3.1 Pro on Morph (in T3, the
-`opencode` provider's `cliproxy/morph/kimik31`) unless another Kimi delegate is
-running or Kimi wrote the change, then to Sonnet, and say so in the ledger. If
-none of them runs, report the blocker.
+Skip a model that wrote the change. Skip Kimi while another Kimi delegate is
+running or when the diff and the files it needs would not fit its per-minute
+input limit. Keep the same reviewer for every round, and note it in the ledger.
+
+In T3 Code, call `orchestrator_capabilities` and start the reviewer with
+`delegate_task` every round (`role: "review"`, `mode: "async"`). Save the
+`taskId`; use a new `clientRequestId` per round. `childThreadId` is storage, not
+a review target: never continue a review with `t3_thread_send`,
+`create_threads`, or `t3_thread_launch`.
+
+Outside T3 Code, use a native subagent running the first of these models the
+harness offers, and keep its ID.
+
+When the reviewer does not run (a refusal, a usage limit, a per-minute `429`),
+cancel it and continue with the next model in the order, and say so in the
+ledger. If none of them runs, report the blocker.
 
 Do not edit the scoped files while the review runs, and do not start a second
 reviewer. A timeout, error, or silence is not approval; cancel, confirm it
@@ -107,8 +117,9 @@ review grew the diff, cut first. Never agree just to end the loop.
 Start one only when budget remains and a blocker or should is open, behavior
 code changed, or the approval does not cover the current behavior diff. Send the
 same base diff, the ledger (`fixed:` / `disagree:` / `declined:` with evidence),
-and the change since the last round. Tell Sol to look at open ids and changed
-code only, and mark every old id as `resolved` or `still open: <reason>`.
+and the change since the last round. Tell the reviewer to look at open ids and
+changed code only, and mark every old id as `resolved` or
+`still open: <reason>`.
 
 ## 5. Stop and ship
 
