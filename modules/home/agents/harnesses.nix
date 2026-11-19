@@ -122,7 +122,15 @@ in
         if not isinstance(original, dict):
             sys.exit("Antigravity settings must be a JSON object")
         settings = {**original, **json.loads(pathlib.Path(sys.argv[2]).read_text(encoding="utf-8"))}
-        if settings != original:
+        custom_models_config = settings.get("customModelsConfig")
+        custom_models = custom_models_config.get("customModels") if isinstance(custom_models_config, dict) else None
+        removed_managed_models = False
+        if isinstance(custom_models, dict):
+            for name in tuple(custom_models):
+                if name.startswith("cliproxy/"):
+                    del custom_models[name]
+                    removed_managed_models = True
+        if removed_managed_models or settings != original:
             target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
             target.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
         PYTHON
