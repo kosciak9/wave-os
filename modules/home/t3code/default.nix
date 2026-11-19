@@ -11,14 +11,12 @@ let
     builtins.toJSON (import ./server-settings.nix { inherit (config.home) profileDirectory; })
   );
   theme = pkgs.writeText "kanagawa-dragon.json" (builtins.toJSON (import ./kanagawa-dragon.nix));
-  arguments = [
-    (lib.getExe pkgs.t3code-cli)
-    "serve"
-    "--host"
-    "127.0.0.1"
-    "--port"
-    "3773"
-  ];
+  # T3 merges the models each provider reports into its cache and never drops one,
+  # so models a gateway no longer serves stay selectable until the cache goes.
+  serve = pkgs.writeShellScript "t3code-serve" ''
+    ${lib.getExe' pkgs.coreutils "rm"} -f -- "$T3CODE_HOME"/caches/*.json
+    exec ${lib.getExe pkgs.t3code-cli} serve --host 127.0.0.1 --port 3773
+  '';
   environment = {
     HOME = config.home.homeDirectory;
     T3CODE_HOME = "${config.home.homeDirectory}/.t3";
@@ -99,7 +97,7 @@ in
       Wants = [ "network-online.target" ];
     };
     Service = {
-      ExecStart = lib.escapeShellArgs arguments;
+      ExecStart = "${serve}";
       Environment = lib.mapAttrsToList (name: value: "${name}=${value}") environment;
       WorkingDirectory = config.home.homeDirectory;
       Restart = "on-failure";
@@ -117,7 +115,7 @@ in
     enable = true;
     domain = "gui";
     config = {
-      ProgramArguments = arguments;
+      ProgramArguments = [ "${serve}" ];
       EnvironmentVariables = environment;
       WorkingDirectory = config.home.homeDirectory;
       RunAtLoad = true;
