@@ -14,6 +14,9 @@ let
   };
   claudeDirectory =
     config.home.sessionVariables.CLAUDE_CONFIG_DIR or "${config.home.homeDirectory}/.claude";
+  antigravitySettings = pkgs.writeText "antigravity-settings.json" (
+    builtins.toJSON { modelProvider = "gemini"; }
+  );
   claudeSettings = pkgs.writeText "claude-settings.json" (
     builtins.toJSON {
       "$schema" = "https://json.schemastore.org/claude-code-settings.json";
@@ -59,14 +62,17 @@ in
     }
   ];
 
-  programs.zsh.generatedCompletions.claude = "printf '%s\\n' '#compdef claude' '_gnu_generic'";
+  programs.zsh.generatedCompletions = {
+    agy = "printf '%s\\n' '#compdef agy' '_gnu_generic'";
+    claude = "printf '%s\\n' '#compdef claude' '_gnu_generic'";
+  };
 
   home = {
     packages = [
       pkgs.bash
+      (gatewayPackage pkgs.antigravity-cli "antigravity")
       (gatewayPackage pkgs.claude-code "claude")
       (gatewayPackage pkgs.codex "codex")
-      (gatewayPackage pkgs.omp "omp")
       pkgs.fzf
       pkgs.jq
       pkgs.python3
@@ -77,30 +83,62 @@ in
       text = builtins.toJSON (import ./claude-kanagawa.nix);
     };
 
-    activation.claudeSettings = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
-      run ${pkgs.python3}/bin/python3 - ${lib.escapeShellArg "${claudeDirectory}/settings.json"} ${claudeSettings} <<'PYTHON'
-      import json
-      import pathlib
-      import sys
+    activation = {
+      claudeSettings = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+        run ${pkgs.python3}/bin/python3 - ${lib.escapeShellArg "${claudeDirectory}/settings.json"} ${claudeSettings} <<'PYTHON'
+        import json
+        import pathlib
+        import sys
 
-      path = pathlib.Path(sys.argv[1])
-      if path.is_symlink() and not path.exists():
-          sys.exit("Claude settings path is a dangling symlink")
-      target = path.resolve()
-      if target.is_relative_to(${builtins.toJSON builtins.storeDir}):
-          sys.exit("Claude settings must remain writable outside the Nix store")
-      original = json.loads(target.read_text(encoding="utf-8")) if target.exists() else {}
-      if not isinstance(original, dict):
-          sys.exit("Claude settings must be a JSON object")
-      settings = {**original, **json.loads(pathlib.Path(sys.argv[2]).read_text(encoding="utf-8"))}
-      if settings != original:
-          target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-          target.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
-      PYTHON
-    '';
+        path = pathlib.Path(sys.argv[1])
+        if path.is_symlink() and not path.exists():
+            sys.exit("Claude settings path is a dangling symlink")
+        target = path.resolve()
+        if target.is_relative_to(${builtins.toJSON builtins.storeDir}):
+            sys.exit("Claude settings must remain writable outside the Nix store")
+        original = json.loads(target.read_text(encoding="utf-8")) if target.exists() else {}
+        if not isinstance(original, dict):
+            sys.exit("Claude settings must be a JSON object")
+        settings = {**original, **json.loads(pathlib.Path(sys.argv[2]).read_text(encoding="utf-8"))}
+        if settings != original:
+            target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+            target.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
+        PYTHON
+      '';
 
-    activation.agentHarnessesReady = lib.hm.dag.entryBetween (
-      if pkgs.stdenv.hostPlatform.isDarwin then [ "setupLaunchAgents" ] else [ "reloadSystemd" ]
-    ) ([ "claudeSettings" ] ++ lib.optional config.programs.agents.cua.enable "cuaMcp") "";
+      antigravitySettings = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+        run ${pkgs.python3}/bin/python3 - ${lib.escapeShellArg "${config.home.homeDirectory}/.gemini/antigravity-cli/settings.json"} ${antigravitySettings} <<'PYTHON'
+        import json
+        import pathlib
+        import sys
+
+        path = pathlib.Path(sys.argv[1])
+        if path.is_symlink() and not path.exists():
+            sys.exit("Antigravity settings path is a dangling symlink")
+        target = path.resolve()
+        if target.is_relative_to(${builtins.toJSON builtins.storeDir}):
+            sys.exit("Antigravity settings must remain writable outside the Nix store")
+        original = json.loads(target.read_text(encoding="utf-8")) if target.exists() else {}
+        if not isinstance(original, dict):
+            sys.exit("Antigravity settings must be a JSON object")
+        settings = {**original, **json.loads(pathlib.Path(sys.argv[2]).read_text(encoding="utf-8"))}
+        if settings != original:
+            target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+            target.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
+        PYTHON
+      '';
+
+      agentHarnessesReady =
+        lib.hm.dag.entryBetween
+          (if pkgs.stdenv.hostPlatform.isDarwin then [ "setupLaunchAgents" ] else [ "reloadSystemd" ])
+          (
+            [
+              "antigravitySettings"
+              "claudeSettings"
+            ]
+            ++ lib.optional config.programs.agents.cua.enable "cuaMcp"
+          )
+          "";
+    };
   };
 }

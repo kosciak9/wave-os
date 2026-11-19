@@ -8,9 +8,8 @@
 package: client:
 let
   program = package.meta.mainProgram;
-  # Writes an OpenCode config fragment with the gateway models except Claude,
-  # which has its own client, named from models.dev. OPENCODE_CONFIG merges it
-  # into the cliproxy provider.
+  # Writes an OpenCode config fragment excluding models owned by other clients.
+  # Names come from models.dev; OPENCODE_CONFIG merges the cliproxy provider.
   opencodeModels = pkgs.writeShellApplication {
     name = "opencode-gateway-models";
     runtimeInputs = [
@@ -36,7 +35,7 @@ let
           (first(["opencode", "opencode-go"][] | $catalog[.].models[$id].name // empty) //
             ($id | rtrimstr("-free") | split("-") | map((.[:1] | ascii_upcase) + .[1:]) | join(" "))) |
           sub("(?i)[ -]free$"; "");
-        [$gateway[0].data[] | select(.id | type == "string" and (startswith("claude-") | not))] as $models |
+        [$gateway[0].data[] | select((.id | type == "string") and .owned_by != "antigravity" and (.id | startswith("claude-") | not))] as $models |
         if ($models | length) == 0 then error("gateway lists no models") else
           {providers: {cliproxy: {models: ($models | map(
             (.id | split("/")) as $parts |
@@ -60,6 +59,57 @@ let
       mv -f "$work/models.json" "$target"
     '';
   };
+  # Antigravity rewrites its built-in model IDs before sending them to Gemini.
+  # Short custom-model URIs keep the exact gateway IDs; the endpoint still
+  # comes from GOOGLE_GEMINI_BASE_URL and no credential is written to disk.
+  antigravityModels = pkgs.writeShellApplication {
+    name = "antigravity-gateway-models";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.curl
+      pkgs.jq
+    ];
+    text = ''
+      target=$1
+      directory=$(dirname "$target")
+      mkdir -p "$directory"
+      work=$(mktemp -d "$directory/.gateway-models.XXXXXX")
+      trap 'rm -rf "$work"' EXIT
+      printf '{}\n' > "$work/original.json"
+      if [[ -e "$target" ]]; then
+        jq --exit-status 'if type == "object" then . else error("settings must be a JSON object") end' \
+          "$target" > "$work/original.json"
+      fi
+      printf 'Authorization: Bearer %s\n' "$CLIPROXYAPI_API_KEY" |
+        curl --fail --silent --show-error --max-time 5 --header @- \
+          --output "$work/gateway.json" "$CLIPROXYAPI_BASE_URL/v1/models"
+      jq --null-input --slurpfile gateway "$work/gateway.json" '
+        [$gateway[0].data[] | select((.id | type == "string") and .owned_by == "antigravity")] as $models |
+        if ($models | length) == 0 then error("gateway lists no Antigravity models") else
+          {customModelsConfig: {customModels: ($models | map(
+            {key: ("cliproxy/" + .id), value: {
+              modelName: ("gemini-api://" + .id),
+              label: ("[CLIProxy] " + .id)
+            }}
+          ) | from_entries)}}
+        end
+      ' > "$work/models.json"
+      jq --null-input --slurpfile original "$work/original.json" --slurpfile managed "$work/models.json" '
+        $original[0] as $original |
+        $original + {
+          customModelsConfig: (($original.customModelsConfig // {}) + {
+            customModels: (
+              (($original.customModelsConfig.customModels // {}) |
+                with_entries(select(.key | startswith("cliproxy/") | not))) +
+              $managed[0].customModelsConfig.customModels
+            )
+          })
+        }
+      ' > "$work/settings.json"
+      chmod 600 "$work/settings.json"
+      mv -f "$work/settings.json" "$target"
+    '';
+  };
   launcher = pkgs.writeShellScript "${program}-gateway" ''
     set -euo pipefail
     ${lib.optionalString (client == "claude") ''
@@ -69,6 +119,15 @@ let
       case "''${1:-}" in
         install|update|upgrade)
           printf 'Claude Code is managed by Nix; update it through wave-os.\n' >&2
+          exit 1
+          ;;
+      esac
+    ''}
+    ${lib.optionalString (client == "antigravity") ''
+      # Nix owns Antigravity CLI and its binary, just like the other agent CLIs.
+      case "''${1:-}" in
+        install|update|upgrade)
+          printf 'Antigravity CLI is managed by Nix; update it through wave-os.\n' >&2
           exit 1
           ;;
       esac
@@ -96,6 +155,13 @@ let
       printf 'Agent gateway requires a client key and HTTPS base URL in SOPS.\n' >&2
       exit 1
     fi
+    ${lib.optionalString (client == "antigravity") ''
+      # Antigravity appends /v1beta and sends the key as X-Goog-Api-Key.
+      export GEMINI_API_KEY="$CLIPROXYAPI_API_KEY"
+      export GOOGLE_GEMINI_BASE_URL="$CLIPROXYAPI_BASE_URL"
+      ${lib.getExe antigravityModels} "$HOME/.gemini/antigravity-cli/settings.json" ||
+        printf 'Could not refresh gateway models for Antigravity CLI; using the saved catalog.\n' >&2
+    ''}
     ${lib.optionalString (client == "claude") ''
       export ANTHROPIC_BASE_URL="$CLIPROXYAPI_BASE_URL"
       export ANTHROPIC_AUTH_TOKEN="$CLIPROXYAPI_API_KEY"
@@ -124,35 +190,13 @@ let
       fi
       # The background service reads this when it starts, so newer models
       # appear after the service restarts.
-      models="''${XDG_CACHE_HOME:-$HOME/.cache}/opencode/gateway-models.json"
+      models="''${XDG_CACHE_HOME:-$HOME/.cache}/opencode/gateway-models-v2.json"
       if [[ ! -s "$models" || -n "$(${pkgs.findutils}/bin/find "$models" -mmin +360)" ]]; then
         ${lib.getExe opencodeModels} "$models" ||
           printf 'Could not refresh gateway models for OpenCode.\n' >&2
       fi
       if [[ -s "$models" ]]; then
         export OPENCODE_CONFIG="$models"
-      fi
-    ''}
-    ${lib.optionalString (client == "omp") ''
-      # OMP reads custom providers only from models.yml in its agent directory.
-      # The key stays an environment variable name; the gateway lists the models.
-      agent="''${PI_CODING_AGENT_DIR:-$HOME/.omp/agent}"
-      yq=${lib.getExe pkgs.yq-go}
-      (umask 077 && mkdir -p "$agent" && : >> "$agent/models.yml" && : >> "$agent/config.yml")
-      provider=$(CLIPROXYAPI_MODELS_URL="$CLIPROXYAPI_BASE_URL/v1" "$yq" -n -o json '{
-        "baseUrl": strenv(CLIPROXYAPI_MODELS_URL),
-        "apiKey": "CLIPROXYAPI_API_KEY",
-        "authHeader": true,
-        "api": "openai-responses",
-        "discovery": {"type": "proxy"}
-      }')
-      if [[ "$("$yq" -o json '.providers.cliproxy' "$agent/models.yml")" != "$provider" ]]; then
-        OMP_PROVIDER="$provider" "$yq" -i '.providers.cliproxy = (env(OMP_PROVIDER) | ... style="")' "$agent/models.yml"
-      fi
-      # Without a default OMP picks the first listed model, a free tier that
-      # rejects other clients; /model replaces this choice.
-      if [[ "$("$yq" '.modelRoles.default' "$agent/config.yml")" == null ]]; then
-        "$yq" -i '.modelRoles.default = "cliproxy/claude-opus-5-5"' "$agent/config.yml"
       fi
     ''}
     ${lib.optionalString (client == "codex") ''
