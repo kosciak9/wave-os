@@ -1,6 +1,8 @@
 defmodule WaveDashboard.Tailnet do
   @moduledoc """
-  The owner's devices on the tailnet, read from `tailscale status`.
+  The owner's devices on the tailnet, read from `tailscale status`: every device
+  the tailnet policy lets this host see. Tagged hosts such as ahri belong to no
+  user, so a device's user cannot tell whether it is the owner's.
 
   A device's name is the first label of its MagicDNS name, which is also the
   host label in app domains.
@@ -77,11 +79,8 @@ defmodule WaveDashboard.Tailnet do
   end
 
   defp parse_status(%{"Self" => self_node, "Peer" => peers}) do
-    owner = self_node["UserID"]
-
     peers
     |> Map.values()
-    |> Enum.filter(&(&1["UserID"] == owner))
     |> Enum.map(&host(&1, &1["Online"]))
     |> then(&[host(self_node, true) | &1])
     |> Enum.sort_by(& &1.name)
