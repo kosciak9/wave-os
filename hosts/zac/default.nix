@@ -69,7 +69,6 @@ in
       enable = true;
       userControlled = true;
       allowAuxiliaryImperativeNetworks = true;
-      scanOnLowSignal = false;
     };
     firewall = {
       allowedUDPPorts = [ 5353 ];
