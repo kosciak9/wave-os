@@ -1,6 +1,7 @@
 defmodule WaveDashboard.Tailnet do
   @moduledoc """
-  The owner's devices on the tailnet, read from `tailscale status`.
+  The owner's devices on the tailnet, read from `tailscale status`: those of
+  the configured tailnet owner and those sharing this host's tailnet user.
 
   A device's name is the first label of its MagicDNS name, which is also the
   host label in app domains.
@@ -76,12 +77,19 @@ defmodule WaveDashboard.Tailnet do
     new_hosts
   end
 
-  defp parse_status(%{"Self" => self_node, "Peer" => peers}) do
-    owner = self_node["UserID"]
+  # This host is a tagged device, so its own user is the pseudo-user of tagged
+  # devices; the owner's personal devices belong to the owner's tailnet user.
+  defp parse_status(%{"Self" => self_node, "Peer" => peers, "User" => users}) do
+    owner = Application.fetch_env!(:wave_dashboard, :tailnet_owner)
+
+    owned? = fn node ->
+      node["UserID"] == self_node["UserID"] or
+        users[to_string(node["UserID"])]["LoginName"] == owner
+    end
 
     peers
     |> Map.values()
-    |> Enum.filter(&(&1["UserID"] == owner))
+    |> Enum.filter(owned?)
     |> Enum.map(&host(&1, &1["Online"]))
     |> then(&[host(self_node, true) | &1])
     |> Enum.sort_by(& &1.name)
