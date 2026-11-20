@@ -1,6 +1,9 @@
 import Config
 
-config :wave_dashboard, domain: "wave.exposed"
+config :wave_dashboard,
+  domain: "wave.exposed",
+  # The tailnet user whose devices may register apps.
+  tailnet_owner: "kosciak"
 
 config :wave_dashboard, WaveDashboardWeb.Endpoint,
   adapter: Bandit.PhoenixAdapter,
