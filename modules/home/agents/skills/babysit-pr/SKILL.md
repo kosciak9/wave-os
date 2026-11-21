@@ -31,9 +31,9 @@ Never write your own polling loop, `sleep` loop, or background watcher script.
   calls `watch_pull_request`; the parent owns the PR.
 - **Unwatch when you hand off.** Call `unwatch_pull_request` before you stop for
   a question or a handoff. Merging or closing ends the watch on its own.
-- When an event needs no action, end your turn without any text, including
-  checks still running, stale events about older commits, and advisory bot
-  comments with no real finding. Never post or say "still waiting".
+- When an event needs no action, end your turn, including checks still running,
+  stale events about older commits, and advisory bot comments with no real
+  finding. Never post "still waiting" on the PR.
 
 ## Reviews and CI
 
