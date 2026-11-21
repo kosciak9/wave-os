@@ -1,5 +1,5 @@
 # Merged into each server's settings.json; T3 keeps every other key.
-{ profileDirectory }:
+{ profileDirectory, antigravityExecutable }:
 {
   favorites = [
     {
@@ -49,6 +49,16 @@
       driver = "claudeAgent";
       enabled = true;
       config.binaryPath = "${profileDirectory}/bin/claude";
+    };
+    antigravity = {
+      driver = "antigravity";
+      enabled = true;
+      config = {
+        binaryPath = antigravityExecutable;
+        # T3 starts this method only with a key; the gateway launcher replaces it.
+        authMethod = "gemini-api-key";
+        apiKey = "cliproxyapi";
+      };
     };
     opencode = {
       driver = "opencode";
