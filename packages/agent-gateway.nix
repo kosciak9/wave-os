@@ -173,7 +173,8 @@ pkgs.runCommand "${package.pname}-${package.version}-gateway"
     mkdir -p $out/bin
     ln -s ${package}/bin/* $out/bin/
     rm $out/bin/${program}
-    ln -s ${launcher} $out/bin/${program}
+    # A copy, not a link: T3 looks for Antigravity's harness next to the real path.
+    cp ${launcher} $out/bin/${program}
     if [ -d ${package}/share ]; then
       ln -s ${package}/share $out/share
     fi
