@@ -27,9 +27,7 @@ edits.
   tell you; never poll. Cancel delegates and unwatch PRs you no longer need.
   Servers you leave running for the user may stay.
 - A wake-up (a delegate finishing, a watched PR event, a background command
-  exiting) continues the work; it is not a reply to the user. Act on it without
-  narrating. While you still wait on other wake-ups, end the turn without any
-  text: no status line, no "still waiting", no restated summary. When nothing is
+  exiting) continues the work; it is not a reply to the user. When nothing is
   left to wait on, write the final report.
 - Stay within the agreed scope.
 - When the user must run commands, give at most three short commands at a time
