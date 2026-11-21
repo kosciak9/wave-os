@@ -1,14 +1,35 @@
 {
   config,
+  osConfig,
   lib,
   pkgs,
   ...
 }:
 let
+  gatewayPackage = import ../../../packages/agent-gateway.nix {
+    inherit lib pkgs;
+    mcpApiKeyFile = osConfig.sops.secrets."mcp-gateway/api-key".path;
+    apiKeyFile = osConfig.sops.secrets."cliproxyapi/api-key".path;
+    baseUrlFile = osConfig.sops.secrets."cliproxyapi/base-url".path;
+  };
+  # T3 starts agy_acp_server.par itself; the gateway wraps only the main program.
+  antigravityAcp = gatewayPackage (
+    pkgs.antigravity-acp
+    // {
+      meta = pkgs.antigravity-acp.meta // {
+        mainProgram = "agy_acp_server.par";
+      };
+    }
+  ) "antigravity";
   logDirectory = "${config.home.homeDirectory}/Library/Logs/T3Code";
   settingsFile = "${environment.T3CODE_HOME}/userdata/settings.json";
   settings = pkgs.writeText "t3code-settings.json" (
-    builtins.toJSON (import ./server-settings.nix { inherit (config.home) profileDirectory; })
+    builtins.toJSON (
+      import ./server-settings.nix {
+        inherit (config.home) profileDirectory;
+        antigravityExecutable = lib.getExe antigravityAcp;
+      }
+    )
   );
   theme = pkgs.writeText "kanagawa-dragon.json" (builtins.toJSON (import ./kanagawa-dragon.nix));
   # T3 merges the models each provider reports into its cache and never drops one,
