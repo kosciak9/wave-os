@@ -1,4 +1,3 @@
-import asyncio
 import base64
 import json
 import logging
@@ -6,13 +5,12 @@ import mimetypes
 import os
 import re
 import sys
-import time
 from pathlib import Path
 
 from fastmcp.exceptions import ToolError
 from fastmcp.server.middleware import Middleware
 from fastmcp.tools import ToolResult
-from mcp.types import EmbeddedResource, TextContent, ToolAnnotations
+from mcp.types import EmbeddedResource, TextContent
 
 from alfred_attachments import MAX_PDF_PAGES, MAX_TEXT_CHARS, preview
 
@@ -45,97 +43,6 @@ def mail_attachments(attachments):
         except binascii.Error:
             raise ToolError(f"The content of {filename} is not standard base64.") from None
     return attachments
-
-
-class SendLedger:
-    """Every draft sent, by its ID, so a repeated call never sends a draft twice.
-
-    A draft is "sending" from just before it goes to Gmail until Gmail answers; one left "sending"
-    or marked "unknown" may have been delivered, so it is never sent again.
-    """
-
-    def __init__(self, path):
-        self.path = Path(path)
-        self.lock = asyncio.Lock()
-
-    def read(self):
-        try:
-            return json.loads(self.path.read_text(encoding="utf-8"))
-        except FileNotFoundError:
-            return {}
-
-    def write(self, draft_id, entry):
-        entries = self.read()
-        entries[draft_id] = {**entry, "updated_at": int(time.time())}
-        temporary = self.path.with_suffix(".tmp")
-        with open(temporary, "w", encoding="utf-8") as target:
-            json.dump(entries, target)
-            target.flush()
-            os.fsync(target.fileno())
-        os.replace(temporary, self.path)
-
-
-def register_send_draft(server, ledger):
-    """send_gmail_draft: upstream composes and sends in one call; the owner approves drafts instead."""
-    # Gmail's drafts.send needs the compose scope, which drafting already holds.
-    from auth.scopes import GMAIL_COMPOSE_SCOPE
-    from auth.service_decorator import require_google_service
-    from core.utils import handle_http_errors
-    from googleapiclient.errors import HttpError
-
-    @server.tool(
-        title="Send Gmail Draft",
-        annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=True, openWorldHint=True),
-    )
-    @handle_http_errors("send_gmail_draft", service_type="gmail")
-    @require_google_service("gmail", ["gmail_read", GMAIL_COMPOSE_SCOPE])
-    async def send_gmail_draft(service, user_google_email: str, draft_id: str) -> str:
-        """SEND an existing Gmail draft exactly as saved; this cannot be undone. Only for a draft the user
-        reviewed and explicitly approved for sending; never right after creating it. Sending the same draft
-        again never sends it twice. If the outcome is unknown, the message may have been delivered: search
-        the Sent folder and tell the user instead of sending again."""
-        async with ledger.lock:
-            entry = ledger.read().get(draft_id)
-            if entry and entry["state"] == "sent":
-                return f"Not sent again: draft {draft_id} was already sent. {entry['result']}"
-            if entry and entry["state"] != "failed":
-                raise ToolError(
-                    f"Not sent: an earlier send of draft {draft_id} has an unknown outcome and may have been delivered. "
-                    "Search the Sent folder (search_gmail_messages with in:sent) and tell the user."
-                )
-            draft = await asyncio.to_thread(
-                service.users().drafts().get(userId="me", id=draft_id, format="metadata").execute
-            )
-            headers = {
-                header["name"].lower(): header["value"] for header in draft["message"]["payload"].get("headers", [])
-            }
-            summary = ", ".join(
-                f"{name}: {headers[name.lower()]}" for name in ("To", "Cc", "Bcc", "Subject") if name.lower() in headers
-            )
-            ledger.write(draft_id, {"state": "sending"})
-        try:
-            sent = await asyncio.to_thread(
-                service.users().drafts().send(userId="me", body={"id": draft_id}).execute, num_retries=0
-            )
-        except HttpError as error:
-            # Gmail refused it; a server error may come after the message went out.
-            definite = error.resp.status < 500
-            ledger.write(draft_id, {"state": "failed" if definite else "unknown"})
-            if definite:
-                raise
-            raise ToolError(
-                f"Sending draft {draft_id} failed with an ambiguous error, so it may have been delivered. "
-                "Search the Sent folder before doing anything else."
-            ) from error
-        except Exception as error:
-            ledger.write(draft_id, {"state": "unknown"})
-            raise ToolError(
-                f"Sending draft {draft_id} failed with an ambiguous error, so it may have been delivered. "
-                "Search the Sent folder before doing anything else."
-            ) from error
-        result = f"Sent draft {draft_id} as message {sent['id']} ({summary})."
-        ledger.write(draft_id, {"state": "sent", "result": result})
-        return result
 
 
 class WorkspacePolicy(Middleware):
@@ -173,8 +80,8 @@ class WorkspacePolicy(Middleware):
                     }
             elif tool.name in {"draft_gmail_message", "send_gmail_message"}:
                 action = (
-                    "Save a Gmail draft without sending it; set forward_message_id to draft a forward. To send it, show the user "
-                    "the draft and call send_gmail_draft only after they approve it"
+                    "Save a Gmail draft without sending it; set forward_message_id to draft a forward. Only the user sends "
+                    "drafts: show them the draft and tell them where to find it"
                     if tool.name == "draft_gmail_message"
                     else "Send a Gmail message only when the user requests sending"
                 )
@@ -332,8 +239,6 @@ def main():
             policy.get("whisperUrl"),
         )
     )
-    if "send_gmail_draft" in policy["allowedTools"]:
-        register_send_draft(upstream.server, SendLedger(os.environ["WORKSPACE_SEND_LEDGER"]))
     sys.argv = [
         "workspace-mcp",
         "--transport", "stdio",
