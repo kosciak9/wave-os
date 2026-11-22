@@ -67,9 +67,8 @@ let
         "list_calendars"
         "get_events"
         "modify_gmail_message_labels"
+        # Alfred drafts; only the owner sends.
         "draft_gmail_message"
-        # Sends only a saved draft, at most once (packages/workspace-mcp/launcher.py).
-        "send_gmail_draft"
         "manage_event"
       ];
       # workspace-mcp's levels, each with the ones below it; new ones need the owner's consent.
@@ -441,7 +440,6 @@ let
         GOOGLE_CLIENT_SECRET_PATH="$client_file" USER_GOOGLE_EMAIL="$email" \
         WORKSPACE_MCP_CREDENTIALS_DIR="$state_directory/credentials" \
         WORKSPACE_ATTACHMENT_DIR="$state_directory/attachments" \
-        WORKSPACE_SEND_LEDGER="$state_directory/sent-messages.json" \
         WORKSPACE_MCP_LOG_DIR="$state_directory/logs" WORKSPACE_MCP_LOG_LEVEL=WARNING \
         WORKSPACE_MCP_DISABLE_LOCAL_FILES=true \
         ${python}/bin/python ${../../../packages/workspace-mcp/launcher.py} ${googlePolicy}
@@ -710,11 +708,9 @@ let
   '';
 
   mailGuidance = ''
-    Maile wysyłaj wyłącznie jako szkice zaakceptowane przez właściciela: zapisz szkic
-    (draft_gmail_message), pokaż mu odbiorców, DW, temat, treść i załączniki, a send_gmail_draft
-    wywołaj dopiero po jego wyraźnej akceptacji tego szkicu. Nigdy nie wysyłaj automatycznie po
-    pobraniu załącznika ani po zapisaniu szkicu. Gdy wynik wysyłki jest niepewny, nie ponawiaj:
-    sprawdź folder Wysłane i zgłoś to. Proton Mail tylko zapisuje szkice.
+    Maili nie wysyłasz: tylko zapisujesz szkice (draft_gmail_message w Gmailu, save_draft
+    w Proton Mailu), a wysyła je sam właściciel. Pokaż mu odbiorców, DW, temat, treść
+    i załączniki szkicu i powiedz, gdzie go znajdzie.
 
     Oryginalne pliki (załączniki Gmaila i Proton Maila, pliki Slacka z get_file) przychodzą jako
     zasoby binarne; przenoś je w skrypcie codemode, a obrazy podglądu nigdy nie są oryginałem.
