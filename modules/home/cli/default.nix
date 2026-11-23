@@ -20,6 +20,11 @@ let
         '';
       });
   weave = pkgs.callPackage ../../../packages/weave.nix { };
+  # btop 1.4.8 segfaults at start while an amdgpu card is runtime-suspended (zilean's idle Polaris card):
+  # aristocratos/btop#1973. Drop the patch once a release contains aristocratos/btop#1978.
+  btop = pkgs.btop.overrideAttrs (old: {
+    patches = (old.patches or [ ]) ++ [ ../../../packages/patches/btop-suspended-amdgpu.patch ];
+  });
 in
 {
   # System GC skips Home Manager generations in ~/.local/state/nix/profiles.
