@@ -83,7 +83,7 @@ edits.
   | Class   | Models                                                                                                                                      | Effort                  | Work                                                                                                                                                   |
   | ------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
   | Light   | DeepSeek V4.1 Flash on Morph first; then Grok 4.7 on x-ai; GPT-6 Luna, Haiku 5.5, and other cheap models T3 currently offers, such as Flint | low                     | Cheap, bounded verification; focused exploration, extraction, classification and log triage. Not final judgment about correctness, security or design. |
-  | Worker  | Kimi K3.1 Pro on Morph first; GPT-6.1 Sol, Sonnet 5.5                                                                                       | medium; high for review | Substantial implementation, technical investigation and code review.                                                                                   |
+  | Worker  | Kimi K3.1 Pro on Morph first; Sonnet 5.5; GPT-6.1 Sol only for code review                                                                  | medium; high for review | Substantial implementation, technical investigation and code review.                                                                                   |
   | Main    | Opus 5.5                                                                                                                                    | high, no fast mode      | UI/visual/design critique, difficult architectural judgment and high-risk or subtle analysis.                                                          |
   | Hardest | Fable 5.2, GPT-6 Astra                                                                                                                      | high                    | Rarely: exceptionally difficult, open-ended or long-horizon work when Opus is demonstrably insufficient. Not a routine second opinion.                 |
 
@@ -92,8 +92,8 @@ edits.
   4.7 runs there as `cliproxy/grok-4.7`, on x-ai's daily credits that are
   already paid.
 - Ultra limits Kimi to about 24k uncached input tokens per minute. Run one Kimi
-  delegate at a time, and give parallel or large-context Worker tasks to Sol or
-  Sonnet; treat a Kimi per-minute `429` as a capacity failure.
+  delegate at a time, and give parallel or large-context Worker tasks to Sonnet,
+  or reviews to Sol; treat a Kimi per-minute `429` as a capacity failure.
 
 - A refusal such as `usage limit reached` or a missing subscription is a
   capacity failure. In T3, `task_cancel` the refused delegate first; otherwise
