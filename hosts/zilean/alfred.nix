@@ -62,31 +62,43 @@ in
         owner = "alfred";
       });
 
-  # His services and rootless containers all run in his user slice. Its MemoryLow keeps his
-  # steady state (agent, bridges, Proton Mail Bridge, Anytype) resident when builds and agents
-  # press on memory; MemoryHigh throttles his bursts (Gotenberg alone may take 2G, Camofox and
-  # LanguageTool more) before they push kosciak's work out. A cgroup's protection is capped by
-  # its ancestors', so user.slice carries it too; its other children share none of it.
-  systemd.slices = {
-    user.sliceConfig.MemoryLow = "1536M";
-    "user-${toString uid}" = {
-      overrideStrategy = "asDropin";
-      sliceConfig = {
-        MemoryLow = "1536M";
-        MemoryHigh = "5G";
+  systemd = {
+    # His home is a nofail mount on the storage disk: without it his stack must not start on the
+    # empty directory underneath.
+    services = {
+      "user@${toString uid}" = {
+        overrideStrategy = "asDropin";
+        unitConfig.RequiresMountsFor = config.users.users.alfred.home;
+      };
+      home-manager-alfred.unitConfig.RequiresMountsFor = config.users.users.alfred.home;
+    };
+
+    # His services and rootless containers all run in his user slice. Its MemoryLow keeps his
+    # steady state (agent, bridges, Proton Mail Bridge, Anytype) resident when builds and agents
+    # press on memory; MemoryHigh throttles his bursts (Gotenberg alone may take 2G, Camofox and
+    # LanguageTool more) before they push kosciak's work out. A cgroup's protection is capped by
+    # its ancestors', so user.slice carries it too; its other children share none of it.
+    slices = {
+      user.sliceConfig.MemoryLow = "1536M";
+      "user-${toString uid}" = {
+        overrideStrategy = "asDropin";
+        sliceConfig = {
+          MemoryLow = "1536M";
+          MemoryHigh = "5G";
+        };
       };
     };
-  };
 
-  # His Obsidian bridge edits the vault Syncthing keeps in kosciak's home: alfred may only pass
-  # through to it, and files either of them creates stay editable by the other. A chmod narrows
-  # the mask, so zilean's Syncthing ignores permissions in this folder (set at runtime); m::
-  # restores the mask at the next boot or switch.
-  systemd.tmpfiles.rules = [
-    "a+ /home/kosciak - - - - u:alfred:--x"
-    "a+ /home/kosciak/Documents - - - - u:alfred:--x"
-    "A+ /home/kosciak/Documents/zk - - - - u:alfred:rwX,u:kosciak:rwX,m::rwX,d:u:alfred:rwX,d:u:kosciak:rwX,d:g::---"
-  ];
+    # His Obsidian bridge edits the vault Syncthing keeps in kosciak's home: alfred may only pass
+    # through to it, and files either of them creates stay editable by the other. A chmod narrows
+    # the mask, so zilean's Syncthing ignores permissions in this folder (set at runtime); m::
+    # restores the mask at the next boot or switch.
+    tmpfiles.rules = [
+      "a+ /home/kosciak - - - - u:alfred:--x"
+      "a+ /home/kosciak/Documents - - - - u:alfred:--x"
+      "A+ /home/kosciak/Documents/zk - - - - u:alfred:rwX,u:kosciak:rwX,m::rwX,d:u:alfred:rwX,d:u:kosciak:rwX,d:g::---"
+    ];
+  };
 
   home-manager.users.alfred = {
     imports = [
