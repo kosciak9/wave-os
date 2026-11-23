@@ -1,0 +1,83 @@
+--- a/src/wayland/hyprland/ipc/connection.cpp
++++ b/src/wayland/hyprland/ipc/connection.cpp
+@@ -14,8 +14,10 @@
+ #include <qlogging.h>
+ #include <qloggingcategory.h>
+ #include <qobject.h>
++#include <qpointer.h>
+ #include <qproperty.h>
+ #include <qqml.h>
++#include <qscopeguard.h>
+ #include <qtenvironmentvariables.h>
+ #include <qtmetamacros.h>
+ #include <qtypes.h>
+@@ -315,7 +317,13 @@
+ 
+ 		// refresh even if it already existed because workspace focus might have changed.
+ 		this->refreshMonitors(false);
++		// Hotplug moves, creates and destroys workspaces in a burst; resync the whole list so a
++		// missed or misordered event cannot leave one untracked or on a stale monitor.
++		this->refreshWorkspaces(true);
+ 	} else if (event->name == "monitorremoved") {
++		// See monitoraddedv2.
++		this->refreshWorkspaces(true);
++
+ 		const auto& mList = this->mMonitors.valueList();
+ 		auto name = QString::fromUtf8(event->data);
+ 
+@@ -635,11 +643,31 @@
+ }
+ 
+ void HyprlandIpc::refreshWorkspaces(bool canCreate) {
+-	if (this->requestingWorkspaces) return;
++	// The in-flight response may predate whatever prompted this refresh, so run it afterwards.
++	if (this->requestingWorkspaces) {
++		this->workspaceRefreshQueued = true;
++		this->queuedRefreshCanCreate |= canCreate;
++		return;
++	}
+ 	this->requestingWorkspaces = true;
+ 
+-	this->makeRequest("j/workspaces", [this, canCreate](bool success, const QByteArray& resp) {
++	// A response only proves absent the workspaces tracked when it was requested; ones created
++	// by events since then are not in it yet.
++	auto requestedWorkspaces = QVector<QPointer<HyprlandWorkspace>>();
++	for (auto* workspace: this->mWorkspaces.valueList()) {
++		requestedWorkspaces.push_back(workspace);
++	}
++
++	this->makeRequest("j/workspaces", [this, canCreate, requestedWorkspaces](bool success, const QByteArray& resp) {
+ 		this->requestingWorkspaces = false;
++		auto runQueued = qScopeGuard([this] {
++			if (!this->workspaceRefreshQueued) return;
++			auto queuedCanCreate = this->queuedRefreshCanCreate;
++			this->workspaceRefreshQueued = false;
++			this->queuedRefreshCanCreate = false;
++			this->refreshWorkspaces(queuedCanCreate);
++		});
++
+ 		if (!success) return;
+ 
+ 		qCDebug(logHyprlandIpc) << "Parsing workspaces response";
+@@ -689,7 +717,9 @@
+ 			auto removedWorkspaces = QVector<HyprlandWorkspace*>();
+ 
+ 			for (auto* workspace: mList) {
+-				if (!addresses.contains(workspace->bindableAddress().value())) {
++				if (!addresses.contains(workspace->bindableAddress().value())
++				    && requestedWorkspaces.contains(workspace))
++				{
+ 					removedWorkspaces.push_back(workspace);
+ 				}
+ 			}
+--- a/src/wayland/hyprland/ipc/connection.hpp
++++ b/src/wayland/hyprland/ipc/connection.hpp
+@@ -142,6 +142,8 @@
+ 	bool valid = false;
+ 	bool requestingMonitors = false;
+ 	bool requestingWorkspaces = false;
++	bool workspaceRefreshQueued = false;
++	bool queuedRefreshCanCreate = false;
+ 	bool requestingToplevels = false;
+ 	bool monitorsRequested = false;
+ 
