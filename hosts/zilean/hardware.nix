@@ -65,6 +65,31 @@
         "x-systemd.device-timeout=30s"
       ];
     };
+    # Regenerable caches (bun, chromium, nix, pnpm) grow by gigabytes a week.
+    "/home/kosciak/.cache" = {
+      device = "/dev/disk/by-label/ZILEAN_SCRATCH";
+      fsType = "btrfs";
+      options = [
+        "subvol=cache"
+        "noatime"
+        "compress=zstd"
+        "nofail"
+        "x-systemd.device-timeout=30s"
+      ];
+    };
+    # Alfred's home holds his Podman storage and Proton Mail Bridge state (alfred.nix makes his
+    # services require it).
+    "/var/lib/alfred" = {
+      device = "/dev/disk/by-label/ZILEAN_STORAGE";
+      fsType = "btrfs";
+      options = [
+        "subvol=alfred"
+        "noatime"
+        "compress=zstd"
+        "nofail"
+        "x-systemd.device-timeout=30s"
+      ];
+    };
     "/nix" = {
       device = "/dev/disk/by-label/ZILEAN_ROOT";
       fsType = "btrfs";
