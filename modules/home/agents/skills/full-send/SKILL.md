@@ -113,9 +113,7 @@ hand off instead of overriding them.
    the proof, the rollout outcome, every decision you made without asking, and
    anything you left out.
 
-Stay active from step 1 to step 8. Ending your turn while checks or reviews are
-pending stops the work, because nobody will prompt you again. Use
-`watch_pull_request` from `babysit-pr` so an event wakes you, and call
+Use `watch_pull_request` from `babysit-pr` so an event wakes you, and call
 `unwatch_pull_request` before you hand the thread back.
 
 ## Merge gate
