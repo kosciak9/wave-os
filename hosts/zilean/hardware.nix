@@ -77,6 +77,40 @@
         "x-systemd.device-timeout=30s"
       ];
     };
+    "/home/kosciak/.npm" = {
+      device = "/dev/disk/by-label/ZILEAN_SCRATCH";
+      fsType = "btrfs";
+      options = [
+        "subvol=npm"
+        "noatime"
+        "compress=zstd"
+        "nofail"
+        "x-systemd.device-timeout=30s"
+      ];
+    };
+    # Monitoring databases (DynamicUser state directories); default.nix makes the services require them.
+    "/var/lib/private/victoriametrics" = {
+      device = "/dev/disk/by-label/ZILEAN_STORAGE";
+      fsType = "btrfs";
+      options = [
+        "subvol=victoriametrics"
+        "noatime"
+        "compress=zstd"
+        "nofail"
+        "x-systemd.device-timeout=30s"
+      ];
+    };
+    "/var/lib/private/victorialogs" = {
+      device = "/dev/disk/by-label/ZILEAN_STORAGE";
+      fsType = "btrfs";
+      options = [
+        "subvol=victorialogs"
+        "noatime"
+        "compress=zstd"
+        "nofail"
+        "x-systemd.device-timeout=30s"
+      ];
+    };
     # Alfred's home holds his Podman storage and Proton Mail Bridge state (alfred.nix makes his
     # services require it).
     "/var/lib/alfred" = {

@@ -155,6 +155,10 @@
           curve 4 130 50/95 60/115 70/150 80/200 90/255
         '';
       };
+      # Their databases are nofail mounts on the storage disk (hardware.nix): without it they
+      # must not start a fresh, empty database on the root SSD.
+      victoriametrics.unitConfig.RequiresMountsFor = "/var/lib/private/victoriametrics";
+      victorialogs.unitConfig.RequiresMountsFor = "/var/lib/private/victorialogs";
     };
     slices = {
       "-".sliceConfig = {
