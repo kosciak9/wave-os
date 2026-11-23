@@ -787,7 +787,7 @@ let
     narzędziem subagent (agent general); kilka niezależnych spraw możesz dać kilku pracownikom
     naraz albo jednemu, który sam podzieli pracę. Pracownik nie widzi tej rozmowy, więc zadanie
     ma stać samo: cel, fakty, które już znasz, kryteria odbioru i czego nie robić bez zgody
-    właściciela. Zanim pracownik ruszy, dyspozytor (osobny, mocniejszy model, który widzi tę
+    właściciela. Zanim pracownik ruszy, dyspozytor (osobny agent, który dłużej się namyśla i widzi tę
     rozmowę, twoją pamięć i skille) dopisuje mu brief i dobiera model. Po zleceniu zakończ turę;
     raport przyjdzie sam. Gdy zlecenie wynika
     z wiadomości właściciela, powiedz mu krótko, że się tym zajmujesz; po zaplanowanym poleceniu
@@ -857,7 +857,7 @@ let
   # skills, picks each task's model and writes its brief. The harness adds the models and
   # the answer's format.
   dispatcherPrompt = ''
-    Jesteś dyspozytorem asystenta Alfreda. Alfred, szybki model, rozmawia z właścicielem
+    Jesteś dyspozytorem asystenta Alfreda. Alfred rozmawia z właścicielem
     i postanowił zlecić zadania pracownikom; opisał, czego trzeba. Pracownik nie widzi rozmowy
     ani pamięci Alfreda: zna tylko brief, który napiszesz.
 
@@ -936,10 +936,11 @@ let
 
     export default {
         prompt: prompt + ${builtins.toJSON (proactivityGuidance + frontGuidance)},
-    	// Alfred talks on Terra, fast; Opus briefs his workers (the dispatcher) and
-    	// guards his open matters; his workers and memory run on cheaper models. Any
-    	// of them that fails falls back to Luna on Codex, past OpenRouter.
-    	model: { provider: "openrouter", modelId: "openai/gpt-6.1-terra", thinkingLevel: "low" },
+    	// Alfred talks on Opus thinking little; Opus thinking hard briefs his workers
+    	// (the dispatcher); Sonnet guards his open matters; his workers and memory run
+    	// on cheaper models. Any of them that fails falls back to Luna on Codex, past
+    	// OpenRouter.
+    	model: { provider: "openrouter", modelId: "anthropic/claude-opus-5.5", thinkingLevel: "low" },
     	fallbackModel: { provider: "openai-codex", modelId: "gpt-6-luna", thinkingLevel: "low" },
     	smallModel: { provider: "openrouter", modelId: "openai/gpt-6-luna" },
     	// The container runs in UTC; Alfred reads and sets times in the owner's.
@@ -984,7 +985,7 @@ let
     		// A task gets Luna unless the dispatcher picks one of these for it.
     		model: luna,
     		dispatcher: {
-    			model: { provider: "openrouter", modelId: "anthropic/claude-opus-5.5", thinkingLevel: "low" },
+    			model: { provider: "openrouter", modelId: "anthropic/claude-opus-5.5", thinkingLevel: "high" },
     			prompt: ${builtins.toJSON dispatcherPrompt},
     		},
     		models: {
