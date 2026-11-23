@@ -3,16 +3,8 @@
 {
   favorites = [
     {
-      provider = "codex";
-      model = "gpt-6.1-sol";
-    }
-    {
       provider = "claudeAgent";
       model = "claude-opus-5-5";
-    }
-    {
-      provider = "opencode";
-      model = "cliproxy/gpt-6.1-sol";
     }
     {
       provider = "opencode";
