@@ -277,11 +277,12 @@
     enable = true;
     memoryPercent = 25;
   };
-  # Second tier behind zram for long builds; btrfs gets a NOCOW swapfile.
+  # Second tier behind zram: a 16 GiB partition on the NVMe, whose remainder is the bcache cache,
+  # so swapping neither waits on nor wears out the SATA root SSD.
   swapDevices = [
     {
-      device = "/var/lib/swapfile";
-      size = 8 * 1024;
+      device = "/dev/disk/by-label/ZILEAN_SWAP";
+      options = [ "nofail" ];
     }
   ];
 
