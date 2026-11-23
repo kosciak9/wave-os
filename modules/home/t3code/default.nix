@@ -41,7 +41,10 @@ let
   environment = {
     HOME = config.home.homeDirectory;
     T3CODE_HOME = "${config.home.homeDirectory}/.t3";
-    PATH = "${config.home.profileDirectory}/bin:${
+    # Agent shells keep this PATH when the user manager already marks the NixOS
+    # environment as set, so it must lead with the setuid wrappers or sudo and
+    # newuidmap resolve to their plain store binaries.
+    PATH = "/run/wrappers/bin:${config.home.profileDirectory}/bin:${
       lib.makeBinPath [ pkgs.tailscale ]
     }:/run/current-system/sw/bin:/usr/bin:/bin:/usr/sbin:/sbin";
   };
