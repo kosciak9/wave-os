@@ -1131,8 +1131,8 @@ in
     };
     image = lib.mkOption {
       type = lib.types.strMatching "[^@]+@sha256:[0-9a-f]{64}";
-      # house-agents e8fa1e0 (linux/amd64, linux/arm64)
-      default = "ghcr.io/kosciak9/house-agents@sha256:6c9ed7ee7e2e4ea07991f45ea5aa8badd0cbfca6ca296ffb5d5f3cd2f5bff8cc";
+      # house-agents 5a1f860 (linux/amd64, linux/arm64)
+      default = "ghcr.io/kosciak9/house-agents@sha256:2477d9620b180d052b8f8b09675afa9f889a0c2d8e82fe41473537da893dbb30";
       description = "The house-agents image, pinned by digest.";
     };
     gotenbergImage = lib.mkOption {
