@@ -32,6 +32,8 @@ PLACEHOLDER_WORDS = {"acme", "example", "przykład", "przykładowa", "test", "fo
 # Commit authors are public on GitHub anyway.
 AUTHOR_TRAILER = re.compile(r"(?im)^(co-authored-by|signed-off-by):.*$")
 PUBLIC_EMAIL = re.compile(r"(?i)(^git@|@example\.(com|org|net|pl)$|noreply|no-reply)")
+# Instances of systemd template units, such as user@1001.service, look like e-mails.
+SYSTEMD_UNIT = re.compile(r"\.(service|socket|timer|target|mount|path|slice|scope)$")
 
 
 def nip_ok(value):
@@ -69,7 +71,7 @@ RULES = [
     (
         "e-mail",
         re.compile(r"(?<![\w.+-])([\w.+-]+@[\w-]+(?:\.[\w-]+)*\.[A-Za-z]{2,})(?![\w-])"),
-        lambda v: not PUBLIC_EMAIL.search(v),
+        lambda v: not PUBLIC_EMAIL.search(v) and not SYSTEMD_UNIT.search(v),
     ),
     ("phone", re.compile(r"(?<![\w+])(\(?\+48\)?[ -]?\d{2,3}(?:[ -]?\d{2,3}){2,3})(?!\d)"), lambda v: True),
     (
@@ -131,19 +133,21 @@ def report(found, published_branch):
     return 1
 
 
-def pushed_messages(remote, updates):
+def pushed_messages(updates):
     for line in updates:
         _local_ref, local_sha, _remote_ref, _remote_sha = line.split()
         if set(local_sha) == {"0"}:
             continue
-        log = git("log", "--format=%H%x00%B%x00", local_sha, "--not", f"--remotes={remote}").stdout
+        # Commits that a remote already has are not new on their way out, so a push
+        # to a new remote, such as a scratch copy, scans only the ones no remote has.
+        log = git("log", "--format=%H%x00%B%x00", local_sha, "--not", "--remotes").stdout
         fields = log.split("\0")
         for commit, message in zip(fields[0::2], fields[1::2]):
             yield f"commit {commit.strip()[:10]} message", AUTHOR_TRAILER.sub("", message)
 
 
 def pre_push(remote):
-    found = list(findings(pushed_messages(remote, sys.stdin.read().splitlines())))
+    found = list(findings(pushed_messages(sys.stdin.read().splitlines())))
     return report(found, lambda: default_branch(remote))
 
 
