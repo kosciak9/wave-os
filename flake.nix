@@ -290,6 +290,12 @@
 
       };
 
+      # AV sandboxes apply this as their own user: `nix build --impure ...activationPackage && ./result/activate`.
+      homeConfigurations.selenge = home-manager.lib.homeManagerConfiguration {
+        inherit pkgs;
+        modules = [ ./configurations/selenge/home.nix ];
+      };
+
       # Lets other flakes apply these home modules with the same package set.
       overlays.default = packageOverlay;
 
