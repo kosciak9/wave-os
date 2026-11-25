@@ -5,28 +5,6 @@
   ...
 }:
 let
-  securityAuditSource = pkgs.fetchFromGitHub {
-    owner = "cloudflare";
-    repo = "security-audit-skill";
-    rev = "c1c8a8c1471069fb0e188eeaff69b8e8db6564a8";
-    hash = "sha256-oVVACjotkHvllQGxEP8yWaEt4c3GxT0d909TUM5P3NM=";
-  };
-  securityAuditSkill = pkgs.runCommand "security-audit-skill" { } ''
-    mkdir -p "$out/agents"
-    cp -R ${securityAuditSource}/skills/security-audit/. "$out/"
-    chmod -R u+w "$out"
-    # Runs are temporary task artifacts, so they go where the agent instructions put those on
-    # each host rather than in the home directory.
-    substituteInPlace "$out/SKILL.md" \
-      --replace-fail '`~/security-audit-skill/<repo-name>/run-<N>`' \
-        '`security-audit/<repo-name>/run-<N>` in the directory your instructions give for temporary work files'
-    cat > "$out/agents/openai.yaml" <<'YAML'
-    interface:
-      display_name: "Security Audit"
-      short_description: "Source-first vulnerability review and safe fixes"
-      default_prompt: "Use $security-audit to review this code for vulnerabilities."
-    YAML
-  '';
   earshot = pkgs.callPackage ../../../packages/earshot.nix { };
   earshotSkills = pkgs.runCommand "earshot-skills-${earshot.version}" { } ''
     mkdir -p "$out"
@@ -126,7 +104,6 @@ in
     ".agents/skills" = skills;
     ".agents/skills/earshot".source = "${earshotSkills}/earshot";
     ".agents/skills/real-sound".source = "${earshotSkills}/real-sound";
-    ".agents/skills/security-audit".source = securityAuditSkill;
     "claude-skills" = skills // {
       target = "${claudeDirectory}/skills";
     };
@@ -137,10 +114,6 @@ in
     "claude-real-sound-skill" = {
       source = "${earshotSkills}/real-sound";
       target = "${claudeDirectory}/skills/real-sound";
-    };
-    "claude-security-audit-skill" = {
-      source = securityAuditSkill;
-      target = "${claudeDirectory}/skills/security-audit";
     };
     "claude-instructions" = {
       source = ./AGENTS.md;

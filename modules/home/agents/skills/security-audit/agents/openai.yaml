@@ -1,0 +1,4 @@
+interface:
+  display_name: "Security Audit"
+  short_description: "Source-first vulnerability review and safe fixes"
+  default_prompt: "Use $security-audit to review this code for vulnerabilities."
