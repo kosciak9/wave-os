@@ -17,11 +17,11 @@
 
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "cua-driver";
-  version = "0.52.13";
+  version = "0.62.1";
 
   src = fetchurl {
     url = "https://github.com/trycua/cua/releases/download/cua-driver-rs-v${finalAttrs.version}/cua-driver-rs-${finalAttrs.version}-linux-x86_64-binary.tar.gz";
-    hash = "sha256-3g8q7yrTjFhNEF9tSPDtAYDsuzoh+BLgb4zqO1Pl5p0=";
+    hash = "sha256-KQD5hg9i6dlZlCQ/aGlfsI2TCADR5wRcpdmMFgI2McA=";
   };
   sourceRoot = ".";
 
@@ -64,15 +64,31 @@ stdenvNoCC.mkDerivation (finalAttrs: {
         'status:Show daemon status'
         'stop:Stop the daemon'
         'doctor:Check desktop readiness'
+        'test:Check a new install end to end'
+        'diagnose:Print a diagnostic dump for bug reports'
         'list-tools:List available tools'
         'describe:Describe a tool'
         'call:Call a tool'
+        'dump-docs:Print the docs of every tool'
         'sessions:List daemon sessions'
         'revoke:Revoke sessions'
+        'connect:Connect agent clients to the driver'
+        'mcp-config:Print client connection guidance'
+        'manifest:Print the CLI surface as JSON'
+        'recording:Start, stop or render recordings'
+        'history:Manage encrypted local history'
         'permissions:Inspect permissions'
         'config:Manage configuration'
+        'telemetry:Inspect or change telemetry'
         'cursor:Configure the agent cursor'
         'cursor-theme:Manage cursor themes'
+        'kwin-capture:Toggle exact KWin window capture'
+        'extension:Manage optional extensions'
+        'perception:Parse a screenshot with the perception extension'
+        'skills:Manage the agent skill pack'
+        'update:Check for a newer release'
+        'check-update:Check for a newer release, read-only'
+        'channel:Show or set the release channel'
       )
       _arguments -C \
         '--help[Show help]' \
