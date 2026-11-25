@@ -83,7 +83,10 @@ drawing an image in glyphs are in
    - In both cases the result is a redesigned page in code that the user can
      hand to whoever owns the real site, so say that in the report.
 2. **Audit.** Go through [references/signs.md](references/signs.md) and list
-   every sign you find, one line each with where it lives.
+   every sign you find, one line each with where it lives. If the screen is in
+   Arabic, Persian, Urdu or Hebrew, or should be, read
+   [references/rtl.md](references/rtl.md) first. Its rules win where they differ
+   from the passes.
 3. **Decide how much to change.** Read the audit honestly before planning
    anything.
    - **Heavy slop**, many signs across color, type, icons and copy. Run the full
@@ -535,6 +538,10 @@ It adds a few minutes, so make it only when the user wants it.
 - [ ] One icon set at one size and stroke
 - [ ] Type chosen for the character, weights 400 to 600, no uppercase tracked
       labels, no italic, no negative tracking on small text
+- [ ] Right to left screens follow [references/rtl.md](references/rtl.md): `dir`
+      and `lang` set, logical properties, the layout mirrored, directional icons
+      flipped, mixed text isolated, one digit system, zero letter spacing on
+      Arabic
 - [ ] No exclamation marks, no trailing periods on short strings, no greeting
       headline, no unverified claims
 - [ ] Numbers in one format with tabular figures

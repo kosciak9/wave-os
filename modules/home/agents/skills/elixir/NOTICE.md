@@ -4,8 +4,8 @@ The topic references `tidewave*`, `hexdocs`, `liveview*`, `oban*`, `testing*`,
 `security*`, `ecto-n1*`, `otp`, `beam-troubleshooting`, `elixir-types`, and
 `mix-tasks` in `references/` are adapted from the `elixir-phoenix` plugin
 (https://phxagents.dev/), source
-https://github.com/oliver-kriska/claude-elixir-phoenix at commit `978317b`
-(v3.1.3), `targets/opencode/skills`.
+https://github.com/oliver-kriska/claude-elixir-phoenix at commit `4621ae4`
+(v3.2.2), `targets/opencode/skills`.
 
 MIT License
 

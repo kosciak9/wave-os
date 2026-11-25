@@ -105,6 +105,9 @@ come from any row.
 
 A display serif belongs to large headlines only, never to labels or buttons.
 
+For Arabic, Persian, Urdu and Hebrew, the families and sizes are in
+[rtl.md](rtl.md). The letter spacing values below are for Latin only.
+
 ## Type scale
 
 | Use                        | Size                              | Line height  | Weight                                   |
