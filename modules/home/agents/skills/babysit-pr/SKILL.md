@@ -18,7 +18,10 @@ instructions and the base branch ruleset instead of assuming the defaults below.
 
 ## Watching
 
-Never write your own polling loop, `sleep` loop, or background watcher script.
+Do not poll for what the PR watch reports: checks, comments, reviews, conflicts,
+and removal from a merge queue. It does not report the merge itself or the
+workflow runs after it, so for those wait on one background command that exits
+when they finish.
 
 - **In T3 Code**: handle the existing checks, comments, and reviews first, then
   call `watch_pull_request` and end your turn. T3 Code wakes you when a check
