@@ -130,14 +130,13 @@ in
     nix-eval.exec = ''
       set -euo pipefail
       if (($# != 1)); then
-        printf 'Usage: nix-eval jayce|ahri|zilean|zac|all\n' >&2
+        printf 'Usage: nix-eval jayce|ahri|zilean|zac|selenge|all\n' >&2
         exit 2
       fi
 
       eval_target() {
-        target="$1"
-        printf 'Evaluating target: %s\n' "$target"
-        nix eval --no-write-lock-file --show-trace --raw "$target"
+        printf 'Evaluating target: %s\n' "$*"
+        nix eval --no-write-lock-file --show-trace --raw "$@"
         printf '\n'
       }
 
@@ -156,6 +155,10 @@ in
           eval_target 'path:.#deploy.nodes.zac.profiles.system.path.drvPath'
           eval_target 'path:.#packages.x86_64-linux.zac-cache.drvPath'
           ;;
+        selenge)
+          # Takes its user and home from the environment, as AV sandboxes do.
+          eval_target --impure 'path:.#homeConfigurations.selenge.activationPackage.drvPath'
+          ;;
         all)
           eval_target 'path:.#nixosConfigurations.jayce.config.system.build.toplevel.drvPath'
           eval_target 'path:.#nixosConfigurations.ahri.config.system.build.toplevel.drvPath'
@@ -163,9 +166,10 @@ in
           eval_target 'path:.#nixosConfigurations.zac.config.system.build.toplevel.drvPath'
           eval_target 'path:.#deploy.nodes.zac.profiles.system.path.drvPath'
           eval_target 'path:.#packages.x86_64-linux.zac-cache.drvPath'
+          eval_target --impure 'path:.#homeConfigurations.selenge.activationPackage.drvPath'
           ;;
         *)
-          printf 'Usage: nix-eval jayce|ahri|zilean|zac|all\n' >&2
+          printf 'Usage: nix-eval jayce|ahri|zilean|zac|selenge|all\n' >&2
           exit 2
           ;;
       esac
