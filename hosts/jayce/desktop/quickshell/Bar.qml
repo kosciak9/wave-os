@@ -187,7 +187,9 @@ PanelWindow {
                     id: workspacePointer
                     anchors.fill: parent
                     hoverEnabled: true
-                    onClicked: workspaceButton.modelData.activate()
+                    // activate() focuses by name, which Hyprland 0.57 resolves to a new empty
+                    // workspace of that name instead of this one; the address selects this one.
+                    onClicked: Hyprland.dispatch(`hl.dsp.focus({ workspace = "${workspaceButton.modelData.address}" })`)
                 }
             }
         }
