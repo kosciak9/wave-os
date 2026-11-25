@@ -111,7 +111,7 @@ impl Paths {
         self.directory.join("state.json")
     }
 
-    /// Read by Hyprland's config on every load; see hosts/jayce/desktop/hyprland.lua.
+    /// Read by Hyprland's config on every load; see configurations/jayce/desktop/hyprland.lua.
     fn internal_off(&self) -> PathBuf {
         self.directory.join("internal-off")
     }

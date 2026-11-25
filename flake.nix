@@ -153,7 +153,7 @@
             spotifast = inputs.spotifast.packages.${final.stdenv.hostPlatform.system}.default;
           };
           wave-hyprland = prev.hyprland.overrideAttrs (old: {
-            patches = (old.patches or [ ]) ++ [ ./hosts/jayce/desktop/hyprland-niri-parity.patch ];
+            patches = (old.patches or [ ]) ++ [ ./configurations/jayce/desktop/hyprland-niri-parity.patch ];
           });
           hyprland-scroll-overview = final.callPackage ./packages/hyprland-scroll-overview.nix {
             src = inputs.hyprland-scroll-overview;
@@ -221,7 +221,7 @@
             nixos-hardware.nixosModules.framework-16-7040-amd
             inputs.vicinae.nixosModules.default
             inputs.sops-nix.nixosModules.sops
-            ./hosts/jayce/default.nix
+            ./configurations/jayce/default.nix
             home-manager.nixosModules.home-manager
             (_: { nixpkgs.overlays = [ packageOverlay ]; })
             (_: {
@@ -235,7 +235,7 @@
                 sharedModules = [
                   nix-flatpak.homeManagerModules.nix-flatpak
                 ];
-                users.kosciak = ./hosts/jayce/home.nix;
+                users.kosciak = ./configurations/jayce/home.nix;
               };
             })
             (
@@ -255,7 +255,7 @@
           };
           modules = [
             inputs.sops-nix.nixosModules.sops
-            ./hosts/ahri/default.nix
+            ./configurations/ahri/default.nix
             (_: { nixpkgs.pkgs = ahriPkgs; })
           ];
         };
@@ -266,14 +266,14 @@
           modules = [
             inputs.sops-nix.nixosModules.sops
             home-manager.nixosModules.home-manager
-            ./hosts/zilean/default.nix
+            ./configurations/zilean/default.nix
             (_: { nixpkgs.pkgs = pkgs; })
             (_: {
               home-manager = {
                 useGlobalPkgs = true;
                 useUserPackages = true;
                 extraSpecialArgs = { inherit inputs; };
-                users.kosciak = ./hosts/zilean/home.nix;
+                users.kosciak = ./configurations/zilean/home.nix;
               };
             })
           ];
@@ -283,7 +283,7 @@
           system = zacSystem;
           specialArgs.waveRevision = self.rev or "unknown";
           modules = [
-            ./hosts/zac/default.nix
+            ./configurations/zac/default.nix
             (_: { nixpkgs.pkgs = zacPkgs; })
           ];
         };
