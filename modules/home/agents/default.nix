@@ -15,6 +15,10 @@ let
     mkdir -p "$out/agents"
     cp -R ${securityAuditSource}/skills/security-audit/. "$out/"
     chmod -R u+w "$out"
+    # Runs belong with other task artifacts on the scratch disk, not in the home directory.
+    substituteInPlace "$out/SKILL.md" \
+      --replace-fail '`~/security-audit-skill/<repo-name>/run-<N>`' \
+        '`/srv/scratch/security-audit/<repo-name>/run-<N>` (`/tmp/security-audit/<repo-name>/run-<N>` when `/srv/scratch` is not a mounted, writable disk)'
     cat > "$out/agents/openai.yaml" <<'YAML'
     interface:
       display_name: "Security Audit"
