@@ -284,6 +284,7 @@ in
         }
       ];
       packages = [
+        "com.heroicgameslauncher.hgl"
         "com.slack.Slack"
         "org.telegram.desktop"
       ];
