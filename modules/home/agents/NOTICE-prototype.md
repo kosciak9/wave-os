@@ -2,7 +2,7 @@
 
 `skills/prototype` is vendored from `skills`
 (https://github.com/emilkowalski/skills), commit
-[`715c180`](https://github.com/emilkowalski/skills/tree/715c1807e08c497cfd1dc4feb450a2a3300ef2a9/skills/prototype),
+[`64eb3de`](https://github.com/emilkowalski/skills/tree/64eb3deb9a5fbfa041faf783e0bc3fd635872e9c/skills/prototype),
 reformatted by the repository formatter, with added Codex metadata in
 `agents/openai.yaml`.
 

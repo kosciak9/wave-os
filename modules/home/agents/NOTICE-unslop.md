@@ -2,7 +2,7 @@
 
 `skills/unslop` is vendored from `unslop` (https://github.com/heydamir/unslop),
 commit
-[`97daa3e`](https://github.com/heydamir/unslop/tree/97daa3eb365670ea3f87ed85356cbfcee18105a5/skills/unslop),
+[`620163e`](https://github.com/heydamir/unslop/tree/620163eedb3529d9cd23a3994ed8d287d06f760d/skills/unslop),
 reformatted by the repository formatter.
 
 unslop was created by Damir Sokolovsky ([@heydamir](https://x.com/heydamir)) and

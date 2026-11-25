@@ -3,8 +3,7 @@ name: prototype
 description:
   Build multiple genuinely different versions of a UI piece you describe,
   rendered behind a visual picker so you can flip through them live and promote
-  the one that feels right. Only runs when explicitly invoked; it does not
-  trigger on its own.
+  the one that feels right.
 disable-model-invocation: true
 ---
 
@@ -37,10 +36,11 @@ answer to the same brief.
 
 Divergence is not an excuse to drop the craft bar. Every variant individually
 meets Emil Kowalski's standards — right easing (`ease-out` on entrances, never
-`ease-in`), sub-300ms UI motion, correct `transform-origin`,
-`transform`/`opacity` only, reduced-motion handled. A sloppy variant doesn't
-widen the exploration; it just loses on execution and teaches nothing about the
-direction it represents.
+`ease-in`), sub-300ms UI motion (modals, drawers, sheets, and toasts excepted),
+correct `transform-origin`, `transform`/`opacity` preferred (clip-path and
+measured-height accordions excepted), reduced-motion handled. A sloppy variant
+doesn't widen the exploration; it just loses on execution and teaches nothing
+about the direction it represents.
 
 ## Hard Rules
 
@@ -146,6 +146,10 @@ project's existing conventions (file layout, naming, token usage), then delete
 the prototype surface per Hard Rule 5. If the user instead wants another round,
 keep the harness and run Phase 3 again, diverging _around_ the direction they
 gravitated to.
+
+**Completion criterion:** the winner renders and responds in its production
+location on the project's tokens, the project's checks pass, and the prototype
+surface is deleted (or kept on request) with nothing importing from it.
 
 ## Invocation Variants
 
