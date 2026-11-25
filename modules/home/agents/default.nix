@@ -30,10 +30,23 @@ let
     lib.concatStringsSep " " (
       lib.filter (s: lib.isString s && s != "") (builtins.split "[[:space:]]+" text)
     );
+  instructionsText = import ./instructions [
+    "managed"
+    "communication"
+    "execution"
+    "delegation"
+    "model-routing"
+    "t3"
+    "ui-changes"
+    "ui-previews"
+    "evidence"
+    "transcribed-messages"
+    "worktrees"
+  ];
   instructions = {
-    Claude = config.home.file."claude-instructions".source;
-    Codex = config.home.file."codex-instructions".source;
-    OpenCode = config.xdg.configFile."opencode/AGENTS.md".source;
+    Claude = config.home.file."claude-instructions".text;
+    Codex = config.home.file."codex-instructions".text;
+    OpenCode = config.xdg.configFile."opencode/AGENTS.md".text;
   };
 in
 {
@@ -51,9 +64,9 @@ in
   ];
 
   assertions = lib.mapAttrsToList (
-    harness: source:
+    harness: instructions:
     let
-      text = normalize (builtins.readFile source);
+      text = normalize instructions;
       missing = lib.filter (rule: !lib.hasInfix rule text) uiRules;
     in
     {
@@ -93,12 +106,12 @@ in
       target = "${claudeDirectory}/skills/real-sound";
     };
     "claude-instructions" = {
-      source = ./AGENTS.md;
+      text = instructionsText;
       target = "${claudeDirectory}/CLAUDE.md";
       force = true;
     };
     "codex-instructions" = {
-      source = ./AGENTS.md;
+      text = instructionsText;
       target = "${codexDirectory}/AGENTS.md";
       force = true;
     };
@@ -113,7 +126,7 @@ in
     }
   ) (builtins.readDir ./skills);
   xdg.configFile."opencode/AGENTS.md" = {
-    source = ./AGENTS.md;
+    text = instructionsText;
     force = true;
   };
 }
