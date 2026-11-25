@@ -712,6 +712,10 @@ let
     w Proton Mailu), a wysyła je sam właściciel. Pokaż mu odbiorców, DW, temat, treść
     i załączniki szkicu i powiedz, gdzie go znajdzie.
 
+    Właściciel archiwizuje pocztę w Proton Mailu, więc szukaj w skrzynce "All Mail":
+    list_emails_metadata bez mailbox przeszukuje tylko INBOX. Inne skrzynki nazywaj tak, jak
+    zwraca je list_mailboxes (np. "Archive", "Labels/praca").
+
     Oryginalne pliki (załączniki Gmaila i Proton Maila, pliki Slacka z get_file) przychodzą jako
     zasoby binarne; przenoś je w skrypcie codemode, a obrazy podglądu nigdy nie są oryginałem.
 

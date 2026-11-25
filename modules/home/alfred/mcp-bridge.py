@@ -13,6 +13,7 @@ nobody calls it.
 
 import base64
 import contextlib
+import json
 import logging
 import mimetypes
 import os
@@ -57,6 +58,30 @@ class InlineAttachments(Middleware):
             )
         return ToolResult(
             content=content, structured_content=result.structured_content, meta=result.meta, is_error=result.is_error
+        )
+
+
+class StructuredText(Middleware):
+    """Puts a structured result into one text block instead of one block per list item.
+
+    mcp-email-server returns list_mailboxes as one block per mailbox, so a codemode script
+    reading content[0] sees only the first mailbox. A result that also carries other blocks,
+    such as an attachment with its text preview, stays as it is.
+    """
+
+    async def on_call_tool(self, context, call_next):
+        result = await call_next(context)
+        if (
+            result.structured_content is None
+            or len(result.content) < 2
+            or not all(isinstance(block, TextContent) for block in result.content)
+        ):
+            return result
+        return ToolResult(
+            content=[TextContent(type="text", text=json.dumps(result.structured_content, ensure_ascii=False))],
+            structured_content=result.structured_content,
+            meta=result.meta,
+            is_error=result.is_error,
         )
 
 
@@ -109,6 +134,8 @@ def main():
         proxy = create_proxy(transport, name=name, auth=auth)
     if gotenberg_url:
         proxy.add_middleware(InlineAttachments(gotenberg_url, whisper_url))
+    # Added last, so it sees the server's own result, before any preview.
+    proxy.add_middleware(StructuredText())
     # Stateless, so a client keeps working across restarts of the bridge.
     proxy.run(
         transport="http",
