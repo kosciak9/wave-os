@@ -17,11 +17,11 @@
 
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "cua-driver";
-  version = "0.62.1";
+  version = "0.64.2";
 
   src = fetchurl {
     url = "https://github.com/trycua/cua/releases/download/cua-driver-rs-v${finalAttrs.version}/cua-driver-rs-${finalAttrs.version}-linux-x86_64-binary.tar.gz";
-    hash = "sha256-KQD5hg9i6dlZlCQ/aGlfsI2TCADR5wRcpdmMFgI2McA=";
+    hash = "sha256-fpnUjf1z120M1QDqLIzCSRX6kKKXR5QT7am7sQnqrUg=";
   };
   sourceRoot = ".";
 
@@ -63,6 +63,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
         'serve:Run the local daemon'
         'status:Show daemon status'
         'stop:Stop the daemon'
+        'autostart:Manage daemon autostart'
         'doctor:Check desktop readiness'
         'test:Check a new install end to end'
         'diagnose:Print a diagnostic dump for bug reports'
