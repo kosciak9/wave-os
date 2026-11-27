@@ -134,6 +134,14 @@ forward_signal() {
 
 trap 'forward_signal' INT TERM HUP
 
+# Squid resolves the wave_gateway ACL only when it reads its configuration, so
+# it keeps refusing *.wave.exposed after the gateway moves or when DNS was not
+# up at start. SIGHUP makes it read the configuration, and resolve, again.
+gateway_addresses() {
+  getent ahosts wave.exposed | cut -d ' ' -f 1 | sort -u || true
+}
+gateway=$(gateway_addresses)
+
 squid -f /etc/squid/squid.conf -N &
 squid_pid=$!
 ready=0
@@ -167,6 +175,13 @@ fi
 
 node --max-old-space-size="${MAX_OLD_SPACE_SIZE:-128}" server.js &
 node_pid=$!
+while sleep 60; do
+  current=$(gateway_addresses)
+  if [ "$current" != "$gateway" ]; then
+    kill -HUP "$squid_pid" 2>/dev/null || true
+    gateway=$current
+  fi
+done &
 if wait -n -p failed_pid "$squid_pid" "$node_pid"; then failed_status=0; else failed_status=$?; fi
 if [ "$interrupted" -ne 0 ]; then
   kill -TERM "$squid_pid" "$node_pid" 2>/dev/null || true
